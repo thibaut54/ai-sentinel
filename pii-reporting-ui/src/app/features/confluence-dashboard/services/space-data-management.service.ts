@@ -262,7 +262,13 @@ export class SpaceDataManagementService {
 
   /**
    * Computes UI status from backend scan state.
-   * Business logic for status display based on scan state and activity.
+   * Mapping:
+   *  - COMPLETED → OK
+   *  - FAILED    → FAILED
+   *  - PAUSED    → PAUSED
+   *  - RUNNING   → RUNNING if SSE is active, PAUSED otherwise (e.g. page refresh)
+   *  - PENDING   → PENDING
+   * Fallback: PAUSED if work has been done, PENDING otherwise.
    */
   private computeUiStatus(
     spaceScanState: SpaceScanStateDto,
@@ -270,8 +276,9 @@ export class SpaceDataManagementService {
   ): 'FAILED' | 'RUNNING' | 'OK' | 'PENDING' | 'PAUSED' | undefined {
     if (spaceScanState.status === 'COMPLETED') return 'OK';
     if (spaceScanState.status === 'FAILED') return 'FAILED';
-    if (spaceScanState.status === 'PENDING') return 'PAUSED';
-    if (spaceScanState.status === 'RUNNING' && isActive) return 'RUNNING';
+    if (spaceScanState.status === 'PAUSED') return 'PAUSED';
+    if (spaceScanState.status === 'RUNNING') return isActive ? 'RUNNING' : 'PAUSED';
+    if (spaceScanState.status === 'PENDING') return 'PENDING';
 
     const workDone = (spaceScanState.pagesDone ?? 0) + (spaceScanState.attachmentsDone ?? 0);
     if (workDone > 0) return 'PAUSED';

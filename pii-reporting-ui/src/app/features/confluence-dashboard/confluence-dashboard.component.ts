@@ -96,6 +96,10 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   // Confluence config missing warning
   readonly confluenceConfigMissing = signal(false);
 
+  // Visibility change listener for sleep/wake recovery
+  private lastVisibilityRefresh = 0;
+  private readonly visibilityChangeHandler = () => this.onVisibilityChange();
+
   // ===== Computed signals exposing service state to template =====
 
   // Filtering & Sorting
@@ -189,11 +193,34 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
         }, 100);
       }
     });
+
+    this.setupVisibilityChangeListener();
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
     this.scanControl.reset();
     this.dataManagement.stopBackgroundPolling();
+  }
+
+  // ===== Sleep/wake recovery =====
+
+  private setupVisibilityChangeListener(): void {
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+  }
+
+  private onVisibilityChange(): void {
+    if (document.visibilityState !== 'visible') {
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastVisibilityRefresh < 2000) {
+      return;
+    }
+    this.lastVisibilityRefresh = now;
+    this.dataManagement.loadLastSpaceStatuses(false, true).subscribe({
+      next: () => this.scanControl.checkAndReconnectToRunningScan()
+    });
   }
 
   // ===== Template event handlers - delegation to services =====
