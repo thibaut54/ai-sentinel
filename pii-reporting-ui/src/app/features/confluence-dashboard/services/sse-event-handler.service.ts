@@ -216,13 +216,9 @@ export class SseEventHandlerService {
    *
    * Business Rules:
    * - Updates progress based on page index and total
-   * - Calculates percentage if not provided in payload
+   * - Progress percentage is always provided by the backend (analysisProgressPercentage)
    * - Preserves existing total if not in payload
-   *
-   * Progress Calculation:
-   * - Uses payload percentage if provided
-   * - Otherwise: (pageIndex / pagesTotal) * 100
-   * - Rounds to nearest integer
+   * - If backend does not provide percentage, keeps the existing progress value
    *
    * @param payload Page start payload with progress data
    */
@@ -236,12 +232,9 @@ export class SseEventHandlerService {
     const total = (payload as any).pagesTotal ?? currentProgress.total;
     const index = (payload as any).pageIndex ?? currentProgress.index;
 
-    let percent = this.extractPercent(payload);
-    if (percent == null && typeof total === 'number' && typeof index === 'number' && total > 0) {
-      percent = Math.round((index / total) * 100);
-    }
+    const percent = this.extractPercent(payload);
 
-    this.updateProgress(spaceKey, { total, index, percent });
+    this.updateProgress(spaceKey, { total, index, ...(percent != null ? { percent } : {}) });
   }
 
   /**
