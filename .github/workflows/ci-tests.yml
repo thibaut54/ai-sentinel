@@ -5,10 +5,12 @@ on:
     branches-ignore:
       - main
       - develop
+      - 'release/**'
   pull_request:
     branches:
       - main
       - develop
+      - 'release/**'
     types: [opened, synchronize, reopened]
   workflow_dispatch: {}
 
