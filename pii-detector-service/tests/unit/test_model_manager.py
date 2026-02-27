@@ -90,14 +90,13 @@ class TestDownloadModel:
         config.custom_filenames = None
         manager = ModelManager(config)
         
-        error = Exception("Network error")
-        mock_hf_download.side_effect = error
+        mock_hf_download.side_effect = Exception("Network error")
 
         with patch.object(manager.logger, 'error') as mock_error:
-                with pytest.raises(Exception) as exc_info:
+                with pytest.raises(ModelLoadError, match="Network error") as exc_info:
                     manager.download_model()
-                
-                assert exc_info.value == error
+
+                assert isinstance(exc_info.value.__cause__, Exception)
                 mock_error.assert_called_once()
 
     @patch('pii_detector.infrastructure.model_management.model_manager.hf_hub_download')
