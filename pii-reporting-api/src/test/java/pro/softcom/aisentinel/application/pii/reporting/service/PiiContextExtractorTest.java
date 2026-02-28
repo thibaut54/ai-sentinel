@@ -11,7 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.PlainTextParser;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 
 import java.util.List;
@@ -90,14 +90,14 @@ class PiiContextExtractorTest {
                 .sensitiveContext(existingContext)
                 .build();
 
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent("My email is john.doe@example.com and my phone")
                 .detectedPIIList(List.of(entity))
                 .build();
 
         // When
-        ConfluenceContentScanResult result = piiContextExtractor.enrichContexts(
+        ContentScanResult result = piiContextExtractor.enrichContexts(
             confluenceContentScanResult);
 
         // Then
@@ -377,14 +377,14 @@ class PiiContextExtractorTest {
                 .piiType("PHONE")
                 .build();
 
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent(source)
                 .detectedPIIList(List.of(emailEntity, phoneEntity))
                 .build();
 
         // When: Enriching contexts via enrichContexts (not direct extract call)
-        ConfluenceContentScanResult result = piiContextExtractor.enrichContexts(
+        ContentScanResult result = piiContextExtractor.enrichContexts(
             confluenceContentScanResult);
 
         // Then: BOTH entities should have contexts with BOTH PIIs masked
@@ -547,14 +547,14 @@ class PiiContextExtractorTest {
                 .piiType("EMAIL")
                 .build();
 
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent(source)
                 .detectedPIIList(List.of(entity))
                 .build();
 
         // When
-        ConfluenceContentScanResult result = piiContextExtractor.enrichContexts(
+        ContentScanResult result = piiContextExtractor.enrichContexts(
             confluenceContentScanResult);
 
         // Then: Both sensitiveContext and maskedContext should be populated

@@ -8,27 +8,27 @@ import java.util.List;
 import java.util.Map;
 
 @Builder(toBuilder = true)
-public record ConfluenceContentScanResult(
+public record ContentScanResult(
     String scanId,
-    String spaceKey,
+    String sourceId, // Formerly spaceKey
     String eventType,
     Boolean isFinal,
-    Integer pagesTotal,
-    Integer pageIndex,
-    String pageId,
-    String pageTitle,
+    Integer contentTotal, // Formerly pagesTotal
+    Integer contentIndex, // Formerly pageIndex
+    String contentId, // Formerly pageId
+    String contentTitle, // Formerly pageTitle
     List<DetectedPersonallyIdentifiableInformation> detectedPIIList,
-    Map<String, Integer> nbOfDetectedPIIBySeverity,// Severity-based counts (high, medium, low) for badges
-    Map<String, Integer> nbOfDetectedPIIByType,// PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item details
+    Map<String, Integer> nbOfDetectedPIIBySeverity,
+    Map<String, Integer> nbOfDetectedPIIByType,
     @JsonIgnore String sourceContent,
     String maskedContent,
     String message,
-    String pageUrl,
+    String contentUrl, // Formerly pageUrl
     String emittedAt,
     String attachmentName,
     String attachmentType,
     String attachmentUrl,
     Double analysisProgressPercentage,
     ScanStatus scanStatus,
-    PersonallyIdentifiableInformationSeverity severity  // Pre-calculated severity from backend (HIGH/MEDIUM/LOW)
+    PersonallyIdentifiableInformationSeverity severity
 ) { }

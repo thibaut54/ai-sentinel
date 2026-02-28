@@ -49,7 +49,7 @@ public class ConfluencePersonallyIdentifiableInformationScanController {
         log.info("[SSE] Starting stream for space {}", spaceKey);
 
         Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> keepalive = Flux.interval(Duration.ofSeconds(15))
-                .map(_ -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
+                .map(ignored -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
                         .event(ScanEventType.KEEPALIVE.toJson())
                         .comment("ping")
                         .build());
@@ -80,7 +80,7 @@ public class ConfluencePersonallyIdentifiableInformationScanController {
         log.info("[SSE] Starting multi-space stream{}", resume ? " (resume scanId=" + scanId + ")" : "");
 
         Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> keepalive = Flux.interval(Duration.ofSeconds(15))
-                .map(_ -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
+                .map(ignored -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
                         .event(ScanEventType.KEEPALIVE.toJson())
                         .comment("ping")
                         .build());
@@ -130,7 +130,7 @@ public class ConfluencePersonallyIdentifiableInformationScanController {
         log.info("[SSE] Starting multi-space stream for selected spaces: {}", spaceKeys);
 
         Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> keepalive = Flux.interval(Duration.ofSeconds(15))
-                .map(_ -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
+                .map(ignored -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
                         .event(ScanEventType.KEEPALIVE.toJson())
                         .comment("ping")
                         .build());

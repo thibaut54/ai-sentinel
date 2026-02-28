@@ -7,7 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
 import java.util.Optional;
@@ -46,11 +46,11 @@ class ScanCheckpointServiceStatusTransitionTest {
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A new scan event trying to update to RUNNING (invalid transition)
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-123")
-            .spaceKey("TEST")
+            .sourceId("TEST")
             .eventType("pageComplete")
-            .pageId("page-789")
+            .contentId("page-789")
             .build();
 
         // When: Attempting to persist checkpoint with RUNNING status
@@ -75,9 +75,9 @@ class ScanCheckpointServiceStatusTransitionTest {
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A scan event trying to complete the space (invalid transition)
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-456")
-            .spaceKey("PROD")
+            .sourceId("PROD")
             .eventType("complete")
             .build();
 
@@ -103,9 +103,9 @@ class ScanCheckpointServiceStatusTransitionTest {
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A scan event completing the space (valid transition: RUNNING → COMPLETED)
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-789")
-            .spaceKey("DEV")
+            .sourceId("DEV")
             .eventType("complete")
             .analysisProgressPercentage(100.0)
             .build();
@@ -124,11 +124,11 @@ class ScanCheckpointServiceStatusTransitionTest {
             .thenReturn(Optional.empty());
 
         // And: A scan event starting a new scan
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-new")
-            .spaceKey("SPACE")
+            .sourceId("SPACE")
             .eventType("pageComplete")
-            .pageId("page-1")
+            .contentId("page-1")
             .build();
 
         // When: Persisting first checkpoint
@@ -153,11 +153,11 @@ class ScanCheckpointServiceStatusTransitionTest {
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A scan event with same status (idempotent: RUNNING → RUNNING)
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-same")
-            .spaceKey("SAME")
+            .sourceId("SAME")
             .eventType("pageComplete")
-            .pageId("page-51")
+            .contentId("page-51")
             .analysisProgressPercentage(52.0)
             .build();
 
@@ -185,11 +185,11 @@ class ScanCheckpointServiceStatusTransitionTest {
         // And: A pause event arrives late (race condition scenario)
         // In reality, PauseScanUseCase would try to transition COMPLETED → PAUSED
         // This test simulates if a RUNNING event tries to overwrite COMPLETED
-        ConfluenceContentScanResult scanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-race")
-            .spaceKey("RACE")
+            .sourceId("RACE")
             .eventType("pageComplete")
-            .pageId("page-late")
+            .contentId("page-late")
             .build();
 
         // When: Attempting to persist checkpoint (would create RUNNING status)

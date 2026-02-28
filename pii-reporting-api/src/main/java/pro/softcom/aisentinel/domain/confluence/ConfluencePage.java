@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.domain.confluence;
 
 import lombok.Builder;
+import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +16,33 @@ public record ConfluencePage(
     PageMetadata metadata,
     List<String> labels,
     Map<String, Object> customProperties
-) {
-    
+) implements ScannableContent {
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public String getContentBody() {
+        return content != null ? content.body() : "";
+    }
+
+    @Override
+    public String getTitle() {
+        return title;
+    }
+
+    @Override
+    public String getSourceId() {
+        return spaceKey;
+    }
+
+    @Override
+    public Map<String, Object> getMetadata() {
+        return customProperties;
+    }
+
     public sealed interface PageContent permits HtmlContent, WikiContent, MarkdownContent {
         String format();
         String body();

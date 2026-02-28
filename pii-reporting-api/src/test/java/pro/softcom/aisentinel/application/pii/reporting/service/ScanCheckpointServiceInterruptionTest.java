@@ -7,7 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,11 +31,11 @@ class ScanCheckpointServiceInterruptionTest {
     @Test
     void Should_PersistCheckpoint_When_ThreadIsInterrupted() {
         // Given: A valid scan result with pageComplete event
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-123")
-                .spaceKey("TEST")
+                .sourceId("TEST")
                 .eventType("pageComplete")
-                .pageId("page-456")
+                .contentId("page-456")
                 .build();
 
         // Mock repository to verify save is called
@@ -65,11 +65,11 @@ class ScanCheckpointServiceInterruptionTest {
     @Test
     void Should_RestoreInterruptionFlag_When_PersistenceThrowsException() {
         // Given: A valid scan result
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-123")
-                .spaceKey("TEST")
+                .sourceId("TEST")
                 .eventType("pageComplete")
-                .pageId("page-456")
+                .contentId("page-456")
                 .build();
 
         // Mock repository to throw exception
@@ -105,11 +105,11 @@ class ScanCheckpointServiceInterruptionTest {
     @Test
     void Should_HandleNonInterruptedThread_Normally() {
         // Given: A valid scan result and non-interrupted thread
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("scan-123")
-                .spaceKey("TEST")
+                .sourceId("TEST")
                 .eventType("pageComplete")
-                .pageId("page-456")
+                .contentId("page-456")
                 .build();
 
         // Ensure thread is not interrupted

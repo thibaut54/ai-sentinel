@@ -64,7 +64,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
     }
 
     @Override
-    public List<ConfluenceContentScanResult> getLatestSpaceScanResultList() {
+    public List<ContentScanResult> getLatestSpaceScanResultList() {
         try {
             Optional<LastScanMeta> meta = scanResultQuery.findLatestScan();
             if (meta.isEmpty()) return List.of();
@@ -76,17 +76,17 @@ public class ScanReportingUseCase implements ScanReportingPort {
     }
 
     @Override
-    public List<ConfluenceContentScanResult> getGlobalScanItemsEncrypted() {
+    public List<ContentScanResult> getGlobalScanItemsEncrypted() {
         try {
             // 1) Find the latest checkpoint for every space
             List<ScanCheckpoint> latestCheckpoints = checkpointRepo.findAllLatestCheckpoints();
             log.info("[SCAN] Found {} latest checkpoints for global items aggregation", latestCheckpoints.size());
-            List<ConfluenceContentScanResult> allItems = new ArrayList<>();
+            List<ContentScanResult> allItems = new ArrayList<>();
 
             for (ScanCheckpoint cp : latestCheckpoints) {
                 log.info("[SCAN] Processing checkpoint: space={}, scanId={}", cp.spaceKey(), cp.scanId());
                 // 2) Load items for this specific (scanId, spaceKey) pair
-                List<ConfluenceContentScanResult> spaceItems = scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(
+                List<ContentScanResult> spaceItems = scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(
                     cp.scanId(),
                     cp.spaceKey()
                 );

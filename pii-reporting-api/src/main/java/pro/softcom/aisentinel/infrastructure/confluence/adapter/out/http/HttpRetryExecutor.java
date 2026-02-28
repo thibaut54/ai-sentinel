@@ -54,7 +54,7 @@ public class HttpRetryExecutor {
         
         var delayedExecutor = CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS);
         return CompletableFuture.runAsync(() -> {}, delayedExecutor)
-            .thenCompose(_ -> executeRequestWithRetry(request, retriesLeft - 1));
+            .thenCompose(ignored -> executeRequestWithRetry(request, retriesLeft - 1));
     }
 
     private long calculateRetryDelay(int attemptNumber) {

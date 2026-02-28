@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.scan.Initiator;
 import pro.softcom.aisentinel.domain.pii.scan.ScanCheckpointStatusTransition;
@@ -26,10 +26,10 @@ public class ScanCheckpointService {
      * Protected against thread interruptions to ensure checkpoint persistence
      * even when SSE client disconnects.
      *
-     * @param confluenceContentScanResult the scan event to persist
+     * @param result the scan event to persist
      */
-    public void persistCheckpoint(ConfluenceContentScanResult confluenceContentScanResult) {
-        if (!isValidForCheckpoint(confluenceContentScanResult)) {
+    public void persistCheckpoint(ContentScanResult result) {
+        if (!isValidForCheckpoint(result)) {
             return;
         }
 
@@ -41,16 +41,16 @@ public class ScanCheckpointService {
                 log.debug("[CHECKPOINT] Thread interrupted, clearing flag to persist checkpoint");
             }
             
-            ScanCheckpoint checkpoint = buildCheckpoint(confluenceContentScanResult);
+            ScanCheckpoint checkpoint = buildCheckpoint(result);
             if (checkpoint != null) {
                 scanCheckpointRepository.save(checkpoint);
-                log.debug("[CHECKPOINT] Saved checkpoint for scan {}", confluenceContentScanResult.scanId());
+                log.debug("[CHECKPOINT] Saved checkpoint for scan {}", result.scanId());
             }
         } catch (OptimisticLockException _) {
             // Concurrent modification detected - another thread updated this checkpoint first
             // This is expected behavior with optimistic locking, not an error
             log.info("[CHECKPOINT] Concurrent update detected for scan {} space {}, skipping (another process already updated)",
-                confluenceContentScanResult.scanId(), confluenceContentScanResult.spaceKey());
+                result.scanId(), result.sourceId());
         } catch (Exception exception) {
             // Check if this is a DB error caused by thread interruption (normal on SSE disconnect)
             if (isInterruptionCausedError(exception)) {
@@ -68,24 +68,24 @@ public class ScanCheckpointService {
         }
     }
 
-    private boolean isValidForCheckpoint(ConfluenceContentScanResult confluenceContentScanResult) {
-        if (confluenceContentScanResult == null) {
+    private boolean isValidForCheckpoint(ContentScanResult result) {
+        if (result == null) {
             return false;
         }
-        String scanId = confluenceContentScanResult.scanId();
-        String spaceKey = confluenceContentScanResult.spaceKey();
-        return !StringUtils.isBlank(scanId) && !StringUtils.isBlank(spaceKey);
+        String scanId = result.scanId();
+        String sourceId = result.sourceId();
+        return !StringUtils.isBlank(scanId) && !StringUtils.isBlank(sourceId);
     }
 
-    private ScanCheckpoint buildCheckpoint(ConfluenceContentScanResult confluenceContentScanResult) {
-        String eventType = confluenceContentScanResult.eventType();
+    private ScanCheckpoint buildCheckpoint(ContentScanResult result) {
+        String eventType = result.eventType();
         if (eventType == null) {
             return null;
         }
 
-        CheckpointData data = extractCheckpointData(eventType, confluenceContentScanResult);
+        CheckpointData data = extractCheckpointData(eventType, result);
         ScanCheckpoint existingCheckpoint = scanCheckpointRepository
-            .findByScanAndSpace(confluenceContentScanResult.scanId(), confluenceContentScanResult.spaceKey())
+            .findByScanAndSpace(result.scanId(), result.sourceId())
             .orElse(null);
 
         if (existingCheckpoint != null) {
@@ -107,16 +107,16 @@ public class ScanCheckpointService {
         }
 
         return ScanCheckpoint.builder()
-            .scanId(confluenceContentScanResult.scanId())
-            .spaceKey(confluenceContentScanResult.spaceKey())
-            .lastProcessedPageId(data.lastPage())
+            .scanId(result.scanId())
+            .spaceKey(result.sourceId()) // Mapping sourceId to spaceKey
+            .lastProcessedPageId(data.lastPage()) // Mapping contentId to lastProcessedPageId
             .lastProcessedAttachmentName(data.lastAttachment())
             .scanStatus(data.status())
-            .progressPercentage(confluenceContentScanResult.analysisProgressPercentage())
+            .progressPercentage(result.analysisProgressPercentage())
             .build();
     }
 
-    private CheckpointData extractCheckpointData(String eventType, ConfluenceContentScanResult confluenceContentScanResult) {
+    private CheckpointData extractCheckpointData(String eventType, ContentScanResult result) {
         return switch (eventType) {
             case "item" ->
                 // Interim page item: persist checkpoint with RUNNING status
@@ -125,10 +125,10 @@ public class ScanCheckpointService {
             case "attachmentItem" -> 
                 // Persist attachment progress but do NOT advance lastProcessedPageId
                 // Repository merge strategy preserves existing lastProcessedPageId
-                new CheckpointData(null, confluenceContentScanResult.attachmentName(), ScanStatus.RUNNING);
+                new CheckpointData(null, result.attachmentName(), ScanStatus.RUNNING);
             case "pageComplete" -> 
                 // Persist progress at end of page - advance lastProcessedPageId
-                new CheckpointData(confluenceContentScanResult.pageId(), null, ScanStatus.RUNNING);
+                new CheckpointData(result.contentId(), null, ScanStatus.RUNNING);
             case "complete" -> 
                 // Space-level completion - reset lastProcessedPageId
                 new CheckpointData(null, null, ScanStatus.COMPLETED);

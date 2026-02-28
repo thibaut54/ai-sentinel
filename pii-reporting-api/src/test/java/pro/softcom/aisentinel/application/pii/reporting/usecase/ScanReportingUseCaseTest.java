@@ -22,7 +22,7 @@ import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
@@ -146,7 +146,7 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("scanId", scanId);
-        payload.put("spaceKey", "SPACE-A");
+        payload.put("sourceId", "SPACE-A");
         payload.put("eventType", "item");
 
         ScanEventEntity event = ScanEventEntity.builder()
@@ -168,12 +168,12 @@ class ScanReportingUseCaseTest {
         assertThat(meta.scanId()).isEqualTo(scanId);
         assertThat(meta.spacesCount()).isOne();
 
-        List<ConfluenceContentScanResult> results = scanReportingUseCase.getLatestSpaceScanResultList();
+        List<ContentScanResult> results = scanReportingUseCase.getLatestSpaceScanResultList();
         assertThat(results).hasSize(1);
-        ConfluenceContentScanResult result = results.getFirst();
+        ContentScanResult result = results.getFirst();
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(result.scanId()).isEqualTo(scanId);
-        softly.assertThat(result.spaceKey()).isEqualTo("SPACE-A");
+        softly.assertThat(result.sourceId()).isEqualTo("SPACE-A");
         softly.assertThat(result.eventType()).isEqualTo("item");
         softly.assertAll();
     }
@@ -185,7 +185,7 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("scanId", scanId);
-        payload.put("spaceKey", "SPACE-1");
+        payload.put("sourceId", "SPACE-1");
         payload.put("eventType", "item");
 
         ScanEventEntity event = ScanEventEntity.builder()
@@ -229,7 +229,7 @@ class ScanReportingUseCaseTest {
         // Arrange - Create events for SPACE-A (2 pages, 1 attachment)
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "item");
 
         ScanEventEntity event1 = ScanEventEntity.builder()
@@ -258,7 +258,7 @@ class ScanReportingUseCaseTest {
 
         ObjectNode attachmentPayload = objectMapper.createObjectNode();
         attachmentPayload.put("scanId", scanId);
-        attachmentPayload.put("spaceKey", "SPACE-A");
+        attachmentPayload.put("sourceId", "SPACE-A");
         attachmentPayload.put("eventType", "attachment");
 
         ScanEventEntity event3 = ScanEventEntity.builder()
@@ -287,7 +287,7 @@ class ScanReportingUseCaseTest {
         // Create events for SPACE-B (1 page)
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "item");
 
         ScanEventEntity event4 = ScanEventEntity.builder()
@@ -380,7 +380,7 @@ class ScanReportingUseCaseTest {
         // Scan 1 events for Space A
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId1);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "pageComplete");
 
         ScanEventEntity event1 = ScanEventEntity.builder()
@@ -402,7 +402,7 @@ class ScanReportingUseCaseTest {
         // Scan 2 events for Space B
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId2);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "pageComplete");
 
         ScanEventEntity event2 = ScanEventEntity.builder()
@@ -447,7 +447,7 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId1);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "item");
         payload1.put("maskedContent", "EncryptedContentA");
 
@@ -468,7 +468,7 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId2);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "item");
         payload2.put("maskedContent", "EncryptedContentB");
 
@@ -488,7 +488,7 @@ class ScanReportingUseCaseTest {
         assertThat(itemsDirect).hasSize(1);
 
         // Act
-        List<ConfluenceContentScanResult> items = scanReportingUseCase.getGlobalScanItemsEncrypted();
+        List<ContentScanResult> items = scanReportingUseCase.getGlobalScanItemsEncrypted();
 
         // Assert
         assertThat(items)
@@ -496,12 +496,12 @@ class ScanReportingUseCaseTest {
                 // Should contain item from Scan 1 (Space A)
                 .anyMatch(i ->
                         i.scanId().equals(scanId1) &&
-                                i.spaceKey().equals("SPACE-A")
+                                i.sourceId().equals("SPACE-A")
                 )
                 // Should contain item from Scan 2 (Space B)
                 .anyMatch(i ->
                         i.scanId().equals(scanId2) &&
-                                i.spaceKey().equals("SPACE-B")
+                                i.sourceId().equals("SPACE-B")
                 );
     }
 }

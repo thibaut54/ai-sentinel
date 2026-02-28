@@ -11,7 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionException;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
@@ -48,7 +48,7 @@ class ScanResultEncryptorTest {
             createEntity("EMAIL", 0, 20, "john@example.com"),
             createEntity("PHONE", 25, 35, "1234567890")
         );
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(entities);
+        ContentScanResult confluenceContentScanResult = createScanResult(entities);
 
         when(encryptionService.encrypt(eq("john@example.com"), any()))
             .thenReturn("ENC:v1:encrypted_email");
@@ -60,7 +60,7 @@ class ScanResultEncryptorTest {
             .thenReturn("ENC:v1:encrypted_phone context");
 
         // When
-        ConfluenceContentScanResult encrypted = encryptor.encrypt(confluenceContentScanResult);
+        ContentScanResult encrypted = encryptor.encrypt(confluenceContentScanResult);
 
         // Then
         SoftAssertions softly = new SoftAssertions();
@@ -86,10 +86,10 @@ class ScanResultEncryptorTest {
     @DisplayName("Should_ReturnUnchanged_When_EncryptingWithNoEntities")
     void should_ReturnUnchanged_When_EncryptingWithNoEntities(List<DetectedPersonallyIdentifiableInformation> entities) {
         // Given
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(entities);
+        ContentScanResult confluenceContentScanResult = createScanResult(entities);
         
         // When
-        ConfluenceContentScanResult result = encryptor.encrypt(confluenceContentScanResult);
+        ContentScanResult result = encryptor.encrypt(confluenceContentScanResult);
         
         // Then
         if (entities == null) {
@@ -105,7 +105,7 @@ class ScanResultEncryptorTest {
     void should_BuildCorrectMetadata_When_EncryptingEntity() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createEntity("SSN", 10, 20, "123-45-6789");
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+        ContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
 
         ArgumentCaptor<EncryptionMetadata> metadataCaptor =
             ArgumentCaptor.forClass(EncryptionMetadata.class);
@@ -135,7 +135,7 @@ class ScanResultEncryptorTest {
             createEntity("EMAIL", 0, 10, "ENC:v1:encrypted"),
             createEntity("NAME", 15, 25, "plaintext")
         );
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(entities);
+        ContentScanResult confluenceContentScanResult = createScanResult(entities);
 
         when(encryptionService.isEncrypted("ENC:v1:encrypted")).thenReturn(true);
         when(encryptionService.isEncrypted("ENC:v1:encrypted context")).thenReturn(true);
@@ -147,7 +147,7 @@ class ScanResultEncryptorTest {
             .thenReturn("decrypted context");
 
         // When
-        ConfluenceContentScanResult decrypted = encryptor.decrypt(confluenceContentScanResult);
+        ContentScanResult decrypted = encryptor.decrypt(confluenceContentScanResult);
 
         // Then
         SoftAssertions softly = new SoftAssertions();
@@ -164,10 +164,10 @@ class ScanResultEncryptorTest {
     @DisplayName("Should_ReturnUnchanged_When_DecryptingWithNoEntities")
     void should_ReturnUnchanged_When_DecryptingWithNoEntities() {
         // Given
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(null);
+        ContentScanResult confluenceContentScanResult = createScanResult(null);
         
         // When
-        ConfluenceContentScanResult result = encryptor.decrypt(confluenceContentScanResult);
+        ContentScanResult result = encryptor.decrypt(confluenceContentScanResult);
         
         // Then
         assertThat(result).isEqualTo(confluenceContentScanResult);
@@ -179,10 +179,10 @@ class ScanResultEncryptorTest {
     void should_PreserveOtherFields_When_EncryptingEntities() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createEntity("EMAIL", 0, 10, "email@test.com");
-        ConfluenceContentScanResult original = ConfluenceContentScanResult.builder()
+        ContentScanResult original = ContentScanResult.builder()
             .scanId("scan-123")
-            .spaceKey("SPACE")
-            .pageId("page-456")
+            .sourceId("SPACE")
+            .contentId("page-456")
             .detectedPIIList(List.of(entity))
             .build();
 
@@ -190,13 +190,13 @@ class ScanResultEncryptorTest {
             .thenReturn("ENC:encrypted");
 
         // When
-        ConfluenceContentScanResult encrypted = encryptor.encrypt(original);
+        ContentScanResult encrypted = encryptor.encrypt(original);
 
         // Then
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(encrypted.scanId()).isEqualTo("scan-123");
-        softly.assertThat(encrypted.spaceKey()).isEqualTo("SPACE");
-        softly.assertThat(encrypted.pageId()).isEqualTo("page-456");
+        softly.assertThat(encrypted.sourceId()).isEqualTo("SPACE");
+        softly.assertThat(encrypted.contentId()).isEqualTo("page-456");
         softly.assertAll();
     }
 
@@ -208,7 +208,7 @@ class ScanResultEncryptorTest {
             createEntity("EMAIL", 0, 20, "ENC:v1:enc1"),
             createEntity("PHONE", 25, 35, "ENC:v1:enc2")
         );
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(entities);
+        ContentScanResult confluenceContentScanResult = createScanResult(entities);
 
         when(encryptionService.isEncrypted(anyString())).thenReturn(true);
         when(encryptionService.decrypt(eq("ENC:v1:enc1"), any()))
@@ -221,7 +221,7 @@ class ScanResultEncryptorTest {
             .thenReturn("555-1234 context");
 
         // When
-        ConfluenceContentScanResult decrypted = encryptor.decrypt(confluenceContentScanResult);
+        ContentScanResult decrypted = encryptor.decrypt(confluenceContentScanResult);
 
         // Then
         SoftAssertions softly = new SoftAssertions();
@@ -240,7 +240,7 @@ class ScanResultEncryptorTest {
     void should_PropagateEncryptionException_When_EncryptionFails() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createEntity("EMAIL", 0, 20, "test@example.com");
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+        ContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
 
         when(encryptionService.encrypt(anyString(), any()))
             .thenThrow(new EncryptionException("Key not found"));
@@ -256,7 +256,7 @@ class ScanResultEncryptorTest {
     void should_PropagateEncryptionException_When_DecryptionFails() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createEntity("EMAIL", 0, 20, "ENC:v1:corrupted");
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+        ContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
 
         when(encryptionService.isEncrypted("ENC:v1:corrupted")).thenReturn(true);
         when(encryptionService.decrypt(anyString(), any()))
@@ -276,13 +276,13 @@ class ScanResultEncryptorTest {
             .mapToObj(i -> createEntity("EMAIL", i * 10, i * 10 + 5, "email" + i + "@test.com"))
             .toList();
 
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(largeEntityList);
+        ContentScanResult confluenceContentScanResult = createScanResult(largeEntityList);
 
         when(encryptionService.encrypt(anyString(), any()))
             .thenReturn("ENC:v1:encrypted");
 
         // When
-        ConfluenceContentScanResult encrypted = encryptor.encrypt(confluenceContentScanResult);
+        ContentScanResult encrypted = encryptor.encrypt(confluenceContentScanResult);
 
         // Then
         SoftAssertions softly = new SoftAssertions();
@@ -299,10 +299,10 @@ class ScanResultEncryptorTest {
     void should_PreserveScanResultIntegrity_When_EncryptionExceptionOccurs() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createEntity("EMAIL", 0, 20, "test@example.com");
-        ConfluenceContentScanResult original = ConfluenceContentScanResult.builder()
+        ContentScanResult original = ContentScanResult.builder()
             .scanId("scan-123")
-            .spaceKey("SPACE")
-            .pageId("page-456")
+            .sourceId("SPACE")
+            .contentId("page-456")
             .detectedPIIList(List.of(entity))
             .build();
 
@@ -332,8 +332,8 @@ class ScanResultEncryptorTest {
             .build();
     }
 
-    private ConfluenceContentScanResult createScanResult(List<DetectedPersonallyIdentifiableInformation> entities) {
-        return ConfluenceContentScanResult.builder()
+    private ContentScanResult createScanResult(List<DetectedPersonallyIdentifiableInformation> entities) {
+        return ContentScanResult.builder()
             .scanId("test-scan")
             .detectedPIIList(entities)
             .build();

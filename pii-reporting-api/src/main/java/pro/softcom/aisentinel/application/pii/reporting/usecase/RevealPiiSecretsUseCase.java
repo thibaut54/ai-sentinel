@@ -6,7 +6,7 @@ import pro.softcom.aisentinel.application.pii.reporting.port.in.RevealPiiSecrets
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ReadPiiConfigPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PageSecretsResponse;
 import pro.softcom.aisentinel.domain.pii.reporting.RevealedSecret;
 
@@ -50,7 +50,7 @@ public class RevealPiiSecretsUseCase implements
         log.info("[PII_ACCESS] Reveal request for pageId={}", pageId);
 
         // Query with automatic decryption (AccessPurpose.USER_DISPLAY)
-        List<ConfluenceContentScanResult> results = scanResultQuery.listItemEventsDecrypted(
+        List<ContentScanResult> results = scanResultQuery.listItemEventsDecrypted(
                 scanId,
                 pageId,
                 AccessPurpose.USER_DISPLAY
@@ -78,14 +78,14 @@ public class RevealPiiSecretsUseCase implements
                 .toList();
 
         // Take the first result (should be unique per pageId)
-        ConfluenceContentScanResult result = results.getFirst();
+        ContentScanResult result = results.getFirst();
         log.info("[PII_ACCESS] Revealed {} secrets for pageId={} (scanId={})",
-                secrets.size(), result.pageId(), result.scanId());
+                secrets.size(), result.contentId(), result.scanId());
 
         return Optional.of(new PageSecretsResponse(
                 result.scanId(),
-                result.pageId(),
-                result.pageTitle(),
+                result.contentId(),
+                result.contentTitle(),
                 secrets
         ));
     }

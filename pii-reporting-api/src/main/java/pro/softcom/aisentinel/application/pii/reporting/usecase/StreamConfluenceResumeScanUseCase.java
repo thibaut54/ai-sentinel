@@ -11,7 +11,7 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanRemainingPages;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanRemainingPagesCalculator;
@@ -46,7 +46,7 @@ public class StreamConfluenceResumeScanUseCase extends
 
 
     @Override
-    public Flux<ConfluenceContentScanResult> resumeAllSpaces(String scanId) {
+    public Flux<ContentScanResult> resumeAllSpaces(String scanId) {
         if (isBlank(scanId)) {
             return Flux.empty();
         }
@@ -61,11 +61,11 @@ public class StreamConfluenceResumeScanUseCase extends
             });
     }
 
-    private Flux<ConfluenceContentScanResult> resumeScanResultFlux(String scanId, ConfluenceSpace space) {
+    private Flux<ContentScanResult> resumeScanResultFlux(String scanId, ConfluenceSpace space) {
         try {
             var scanCheckpoint = scanCheckpointRepository.findByScanAndSpace(scanId, space.key())
                 .orElse(null);
-            Flux<ConfluenceContentScanResult> empty = checkScanCompletionAndGenerateFlux(scanCheckpoint);
+            Flux<ContentScanResult> empty = checkScanCompletionAndGenerateFlux(scanCheckpoint);
             return Objects.requireNonNullElseGet(empty, () -> Mono.fromFuture(
                     confluenceAccessor.getAllPagesInSpace(space.key()))
                 .flatMapMany(pages -> {
@@ -91,7 +91,7 @@ public class StreamConfluenceResumeScanUseCase extends
         }
     }
 
-    private static Flux<ConfluenceContentScanResult> checkScanCompletionAndGenerateFlux(
+    private static Flux<ContentScanResult> checkScanCompletionAndGenerateFlux(
         ScanCheckpoint checkpointOptional) {
         if (checkpointOptional != null && checkpointOptional.scanStatus() == ScanStatus.COMPLETED) {
             return Flux.empty();
@@ -99,11 +99,11 @@ public class StreamConfluenceResumeScanUseCase extends
         return null;
     }
 
-    private static Flux<ConfluenceContentScanResult> buildErrorScanResultFlux(String scanId, ConfluenceSpace space,
+    private static Flux<ContentScanResult> buildErrorScanResultFlux(String scanId, ConfluenceSpace space,
                                                                               Throwable exception) {
-        return Flux.just(ConfluenceContentScanResult.builder()
+        return Flux.just(ContentScanResult.builder()
                              .scanId(scanId)
-                             .spaceKey(space != null ? space.key() : null)
+                             .sourceId(space != null ? space.key() : null)
                              .eventType(DetectionReportingEventType.ERROR.getLabel())
                              .message(exception.getMessage())
                              .emittedAt(Instant.now().toString())

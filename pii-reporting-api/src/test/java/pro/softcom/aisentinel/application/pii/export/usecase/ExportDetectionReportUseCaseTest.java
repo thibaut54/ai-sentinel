@@ -17,7 +17,7 @@ import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
 import pro.softcom.aisentinel.domain.pii.export.SourceType;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 
 import java.io.IOException;
@@ -97,7 +97,7 @@ class ExportDetectionReportUseCaseTest {
         // Given
         ExportContext exportContext = createExportContext();
         WriteDetectionReportPort.ReportSession reportSession = mock(WriteDetectionReportPort.ReportSession.class);
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult();
+        ContentScanResult confluenceContentScanResult = createScanResult();
         DetectionReportEntry entry = createDetectionReportEntry();
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
@@ -125,8 +125,8 @@ class ExportDetectionReportUseCaseTest {
         ExportContext exportContext = createExportContext();
         WriteDetectionReportPort.ReportSession reportSession = mock(WriteDetectionReportPort.ReportSession.class);
         
-        ConfluenceContentScanResult confluenceContentScanResult1 = createScanResult();
-        ConfluenceContentScanResult confluenceContentScanResult2 = createScanResult();
+        ContentScanResult confluenceContentScanResult1 = createScanResult();
+        ContentScanResult confluenceContentScanResult2 = createScanResult();
         DetectionReportEntry entry1 = createDetectionReportEntry();
         DetectionReportEntry entry2 = createDetectionReportEntry();
 
@@ -194,7 +194,7 @@ class ExportDetectionReportUseCaseTest {
         // Given
         ExportContext exportContext = createExportContext();
         WriteDetectionReportPort.ReportSession reportSession = mock(WriteDetectionReportPort.ReportSession.class);
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult();
+        ContentScanResult confluenceContentScanResult = createScanResult();
         DetectionReportEntry entry = createDetectionReportEntry();
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
@@ -219,7 +219,7 @@ class ExportDetectionReportUseCaseTest {
         // Given
         ExportContext exportContext = createExportContext();
         WriteDetectionReportPort.ReportSession reportSession = mock(WriteDetectionReportPort.ReportSession.class);
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult();
+        ContentScanResult confluenceContentScanResult = createScanResult();
         DetectionReportEntry entry1 = createDetectionReportEntry();
         DetectionReportEntry entry2 = createDetectionReportEntry();
         DetectionReportEntry entry3 = createDetectionReportEntry();
@@ -249,13 +249,13 @@ class ExportDetectionReportUseCaseTest {
                 .build();
     }
 
-    private ConfluenceContentScanResult createScanResult() {
-        return ConfluenceContentScanResult.builder()
+    private ContentScanResult createScanResult() {
+        return ContentScanResult.builder()
                 .scanId("scan-123")
-                .spaceKey("TEST")
+                .sourceId("TEST")
                 .emittedAt("2024-01-15T10:00:00Z")
-                .pageTitle("Test Page")
-                .pageUrl("https://example.com/page")
+                .contentTitle("Test Page")
+                .contentUrl("https://example.com/page")
                 .attachmentName("test.pdf")
                 .attachmentUrl("https://example.com/attachment")
                 .detectedPIIList(List.of(

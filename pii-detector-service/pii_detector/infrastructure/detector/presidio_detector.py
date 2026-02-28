@@ -211,11 +211,6 @@ class PresidioDetector:
             return
         
         if not self._recognizers_config:
-            self.logger.warning(
-                "No recognizers section found in Presidio configuration. "
-                "All entity types will be disabled by default. "
-                "Please ensure [recognizers] section exists in presidio-detector.toml"
-            )
             return
         
         # Count enabled recognizers

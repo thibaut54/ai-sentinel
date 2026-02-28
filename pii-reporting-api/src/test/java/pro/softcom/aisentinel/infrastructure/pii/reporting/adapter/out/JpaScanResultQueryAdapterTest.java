@@ -13,7 +13,7 @@ import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
@@ -158,8 +158,8 @@ class JpaScanResultQueryAdapterTest {
 
     @Test
     void Should_ReturnDecryptedResults_When_ListItemEventsWithValidEntity() throws Exception {
-        ConfluenceContentScanResult encrypted = sampleScanResult();
-        ConfluenceContentScanResult decrypted = encrypted.toBuilder().message("decrypted").build();
+        ContentScanResult encrypted = sampleScanResult();
+        ContentScanResult decrypted = encrypted.toBuilder().message("decrypted").build();
 
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
@@ -171,10 +171,10 @@ class JpaScanResultQueryAdapterTest {
         when(eventRepository.findByScanIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), any()))
             .thenReturn(List.of(entity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(
-            ConfluenceContentScanResult.class))).thenReturn(encrypted);
+            ContentScanResult.class))).thenReturn(encrypted);
         when(scanResultEncryptor.decrypt(encrypted)).thenReturn(decrypted);
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEvents(SCAN_ID);
+        List<ContentScanResult> results = adapter.listItemEvents(SCAN_ID);
 
         assertThat(results).containsExactly(decrypted);
     }
@@ -198,9 +198,9 @@ class JpaScanResultQueryAdapterTest {
         when(eventRepository.findByScanIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), any()))
             .thenReturn(List.of(nullPayloadEntity, errorEntity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(
-            ConfluenceContentScanResult.class))).thenThrow(new RuntimeException("boom"));
+            ContentScanResult.class))).thenThrow(new RuntimeException("boom"));
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEvents(SCAN_ID);
+        List<ContentScanResult> results = adapter.listItemEvents(SCAN_ID);
 
         assertThat(results).isEmpty();
         verifyNoInteractions(scanResultEncryptor);
@@ -215,7 +215,7 @@ class JpaScanResultQueryAdapterTest {
 
     @Test
     void Should_ReturnEncryptedResults_When_ListItemEventsEncrypted() throws Exception {
-        ConfluenceContentScanResult encrypted = sampleScanResult();
+        ContentScanResult encrypted = sampleScanResult();
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
             .spaceKey(SPACE_KEY)
@@ -226,9 +226,9 @@ class JpaScanResultQueryAdapterTest {
         when(eventRepository.findByScanIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), any()))
             .thenReturn(List.of(entity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(
-            ConfluenceContentScanResult.class))).thenReturn(encrypted);
+            ContentScanResult.class))).thenReturn(encrypted);
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEventsEncrypted(SCAN_ID);
+        List<ContentScanResult> results = adapter.listItemEventsEncrypted(SCAN_ID);
 
         assertThat(results).containsExactly(encrypted);
         verifyNoInteractions(scanResultEncryptor);
@@ -236,7 +236,7 @@ class JpaScanResultQueryAdapterTest {
 
     @Test
     void Should_ReturnEncryptedResults_When_ListItemEventsEncryptedByScanIdAndSpaceKey() throws Exception {
-        ConfluenceContentScanResult encrypted = sampleScanResult();
+        ContentScanResult encrypted = sampleScanResult();
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
             .spaceKey(SPACE_KEY)
@@ -247,9 +247,9 @@ class JpaScanResultQueryAdapterTest {
         when(eventRepository.findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(SPACE_KEY), any()))
             .thenReturn(List.of(entity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(
-            ConfluenceContentScanResult.class))).thenReturn(encrypted);
+            ContentScanResult.class))).thenReturn(encrypted);
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEventsEncryptedByScanIdAndSpaceKey(SCAN_ID, SPACE_KEY);
+        List<ContentScanResult> results = adapter.listItemEventsEncryptedByScanIdAndSpaceKey(SCAN_ID, SPACE_KEY);
 
         assertThat(results).containsExactly(encrypted);
     }
@@ -267,7 +267,7 @@ class JpaScanResultQueryAdapterTest {
         when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of());
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
+        List<ContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
 
         assertThat(results).isEmpty();
         verifyNoInteractions(auditService);
@@ -275,15 +275,15 @@ class JpaScanResultQueryAdapterTest {
 
     @Test
     void Should_DecryptAndAudit_When_DecryptedResultsFound() throws Exception {
-        ConfluenceContentScanResult encrypted1 = sampleScanResult().toBuilder()
+        ContentScanResult encrypted1 = sampleScanResult().toBuilder()
             .detectedPIIList(List.of(DetectedPersonallyIdentifiableInformation.builder().build()))
             .build();
-        ConfluenceContentScanResult decrypted1 = encrypted1.toBuilder().message("dec1").build();
+        ContentScanResult decrypted1 = encrypted1.toBuilder().message("dec1").build();
 
-        ConfluenceContentScanResult encrypted2 = sampleScanResult().toBuilder()
+        ContentScanResult encrypted2 = sampleScanResult().toBuilder()
             .detectedPIIList(List.of(DetectedPersonallyIdentifiableInformation.builder().build(), DetectedPersonallyIdentifiableInformation.builder().build()))
             .build();
-        ConfluenceContentScanResult decrypted2 = encrypted2.toBuilder().message("dec2").build();
+        ContentScanResult decrypted2 = encrypted2.toBuilder().message("dec2").build();
 
         ScanEventEntity entity1 = ScanEventEntity.builder()
             .scanId(SCAN_ID)
@@ -301,12 +301,12 @@ class JpaScanResultQueryAdapterTest {
 
         when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of(entity1, entity2));
-        when(objectMapper.treeToValue(any(JsonNode.class), eq(ConfluenceContentScanResult.class)))
+        when(objectMapper.treeToValue(any(JsonNode.class), eq(ContentScanResult.class)))
             .thenReturn(encrypted1, encrypted2);
         when(scanResultEncryptor.decrypt(encrypted1)).thenReturn(decrypted1);
         when(scanResultEncryptor.decrypt(encrypted2)).thenReturn(decrypted2);
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
+        List<ContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
 
         assertThat(results).containsExactly(decrypted1, decrypted2);
         // totalPiiCount = 1 + 2 = 3
@@ -314,7 +314,7 @@ class JpaScanResultQueryAdapterTest {
             SCAN_ID,
             SPACE_KEY,
             PAGE_ID,
-            decrypted1.pageTitle(),
+            decrypted1.contentTitle(),
             AccessPurpose.USER_DISPLAY,
             3
         );
@@ -338,21 +338,21 @@ class JpaScanResultQueryAdapterTest {
 
         when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of(nullPayload, errorEntity));
-        when(objectMapper.treeToValue(any(JsonNode.class), eq(ConfluenceContentScanResult.class)))
+        when(objectMapper.treeToValue(any(JsonNode.class), eq(ContentScanResult.class)))
             .thenThrow(new RuntimeException("boom"));
 
-        List<ConfluenceContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
+        List<ContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
 
         assertThat(results).isEmpty();
         verifyNoInteractions(auditService);
     }
 
-    private ConfluenceContentScanResult sampleScanResult() {
-        return ConfluenceContentScanResult.builder()
+    private ContentScanResult sampleScanResult() {
+        return ContentScanResult.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
-            .pageTitle("Page title")
+            .sourceId(SPACE_KEY)
+            .contentId(PAGE_ID)
+            .contentTitle("Page title")
             .eventType("item")
             .scanStatus(ScanStatus.RUNNING)
             .build();

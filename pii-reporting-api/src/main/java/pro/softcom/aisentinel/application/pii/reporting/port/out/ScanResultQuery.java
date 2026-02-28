@@ -1,7 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 
 import java.time.Instant;
@@ -37,7 +37,7 @@ public interface ScanResultQuery {
      * @param scanId the business identifier of the scan to inspect
      * @return the ordered list of item events recorded for the scan (may be empty)
      */
-    List<ConfluenceContentScanResult> listItemEvents(String scanId);
+    List<ContentScanResult> listItemEvents(String scanId);
 
     /**
      * Lists item events with ENCRYPTED PII data.
@@ -46,7 +46,7 @@ public interface ScanResultQuery {
      * @param scanId scan identifier
      * @return list of scan results with encrypted PII
      */
-    List<ConfluenceContentScanResult> listItemEventsEncrypted(String scanId);
+    List<ContentScanResult> listItemEventsEncrypted(String scanId);
 
     /**
      * Lists item events with DECRYPTED PII data.
@@ -57,7 +57,7 @@ public interface ScanResultQuery {
      * @param purpose access purpose (for audit trail)
      * @return list of scan results with decrypted PII
      */
-    List<ConfluenceContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose);
+    List<ContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose);
 
     /**
      * Lists item events with ENCRYPTED PII data filtered by space.
@@ -67,7 +67,7 @@ public interface ScanResultQuery {
      * @param spaceKey Confluence space key to filter results
      * @return list of scan results with encrypted PII for the specified space
      */
-    List<ConfluenceContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey);
+    List<ContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey);
 
     /**
      * Read-side projection representing per-space progress within a scan.
