@@ -25,6 +25,10 @@ export class SeverityCardsComponent {
     this._counts.set(value);
   }
 
+  getBorderColor(color: string): string {
+    return color + '33';
+  }
+
   readonly cards = computed<SeverityCard[]>(() => {
     const c = this._counts();
     return [

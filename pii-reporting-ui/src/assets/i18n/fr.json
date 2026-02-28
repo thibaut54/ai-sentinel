@@ -23,6 +23,7 @@
     "en": "English"
   },
   "severity": {
+    "critical": "Critique",
     "high": "Élevée",
     "medium": "Moyenne",
     "low": "Faible",
@@ -90,6 +91,14 @@
           "contentModified": "Contenu modifié depuis le dernier scan"
         }
       }
+    },
+    "pagination": {
+      "previous": "Page précédente",
+      "refresh": "Actualiser",
+      "next": "Page suivante"
+    },
+    "sources": {
+      "confluence": "Confluence"
     },
     "scanStatus": {
       "active": "Scan en cours",
@@ -205,7 +214,7 @@
       "validation": {
         "baseUrlRequired": "L'URL de base est requise et doit commencer par http:// ou https://",
         "usernameRequired": "Le nom d'utilisateur est requis",
-        "apiTokenRequired": "Le jeton API est requis"
+        "apiTokenRequired": "Le jeton API est requis pour les nouvelles connexions"
       },
       "messages": {
         "saveSuccess": "Configuration de la connexion Confluence enregistrée avec succès",
@@ -673,10 +682,7 @@
   },
   "piiItem": {
     "severity": {
-      "label": "Sévérité : {{value}}",
-      "high": "Élevée",
-      "medium": "Moyenne",
-      "low": "Faible"
+      "label": "Sévérité : {{value}}"
     },
     "fallback": {
       "page": "Page",

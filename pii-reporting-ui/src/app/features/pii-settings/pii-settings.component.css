@@ -298,7 +298,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG inputnumber internal structure */
-.threshold-card ::ng-deep .p-inputnumber .p-inputnumber-input {
+:host .threshold-card ::ng-deep .p-inputnumber .p-inputnumber-input {
   text-align: center;
   font-weight: 600;
   font-size: 13px;
@@ -307,17 +307,17 @@
   height: 32px;
 }
 
-.threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group {
+:host .threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group {
   display: flex;
 }
 
-.threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
+:host .threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
   width: 2rem;
   height: 32px;
   padding: 0;
 }
 
-.threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
+:host .threshold-card ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
   font-size: 0.7rem;
 }
 
@@ -530,7 +530,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG button internal structure */
-.detector-group-header ::ng-deep .p-button-sm {
+:host .detector-group-header ::ng-deep .p-button-sm {
   padding: 4px 10px;
   font-size: 11px;
   height: 28px;
@@ -680,7 +680,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG inputnumber and toggleswitch internal structure */
-.pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-input {
+:host .pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-input {
   text-align: center;
   font-weight: 600;
   max-width: 3.2rem;
@@ -689,22 +689,22 @@
   height: 28px;
 }
 
-.pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group {
+:host .pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group {
   display: flex;
 }
 
-.pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
+:host .pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
   width: 1.6rem;
   height: 28px;
   padding: 0;
 }
 
-.pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
+:host .pii-type-controls ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
   font-size: 0.65rem;
 }
 
 /* Compact toggle switch */
-.pii-type-controls ::ng-deep .p-toggleswitch {
+:host .pii-type-controls ::ng-deep .p-toggleswitch {
   transform: scale(0.85);
   transform-origin: center;
 }
@@ -763,7 +763,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG button internal structure */
-.settings-footer ::ng-deep .p-button-sm {
+:host .settings-footer ::ng-deep .p-button-sm {
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
@@ -872,7 +872,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG inputnumber internal structure */
-.custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-input {
+:host .custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-input {
   text-align: center;
   font-weight: 600;
   font-size: 13px;
@@ -881,22 +881,22 @@
   height: 32px;
 }
 
-.custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group {
+:host .custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group {
   display: flex;
 }
 
-.custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
+:host .custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group button {
   width: 2rem;
   height: 32px;
   padding: 0;
 }
 
-.custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
+:host .custom-label-field .threshold-input-group ::ng-deep .p-inputnumber .p-inputnumber-button-group button .pi {
   font-size: 0.7rem;
 }
 
 /* ::ng-deep needed: PrimeNG select internal structure */
-.custom-label-field ::ng-deep p-select.p-select {
+:host .custom-label-field ::ng-deep p-select.p-select {
   display: inline-flex;
   width: 100%;
   font-size: 12.5px;
@@ -913,7 +913,7 @@
 }
 
 /* ::ng-deep needed: PrimeNG button internal structure */
-.dialog-actions ::ng-deep .p-button {
+:host .dialog-actions ::ng-deep .p-button {
   font-size: 12px;
   padding: 6px 14px;
   height: 32px;

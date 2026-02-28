@@ -60,7 +60,7 @@
               <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
             </small>
           }
-          @if (configForm.get('apiToken')?.hasError('required') && configForm.get('apiToken')?.touched) {
+          @if (configForm.get('apiToken')?.hasError('required') && configForm.get('apiToken')?.touched && !currentConfig()) {
             <small class="field-error">{{ 'settings.confluence.validation.apiTokenRequired' | transloco }}</small>
           }
         </div>

@@ -225,7 +225,7 @@ button.expanded-header {
   max-width: 14rem;
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect {
+:host .pii-type-multiselect ::ng-deep .p-multiselect {
   min-height: 0;
   height: 26px;
   font-size: 11px;
@@ -233,21 +233,21 @@ button.expanded-header {
   border-radius: 5px;
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect:hover {
+:host .pii-type-multiselect ::ng-deep .p-multiselect:hover {
   border-color: var(--sentinel-text-muted);
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect.p-focus {
+:host .pii-type-multiselect ::ng-deep .p-multiselect.p-focus {
   border-color: var(--sentinel-text-primary);
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect-label-container {
+:host .pii-type-multiselect ::ng-deep .p-multiselect-label-container {
   display: flex;
   align-items: center;
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect-label {
+:host .pii-type-multiselect ::ng-deep .p-multiselect-label {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 500;
@@ -255,17 +255,17 @@ button.expanded-header {
   line-height: 1.4;
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect-label.p-placeholder {
+:host .pii-type-multiselect ::ng-deep .p-multiselect-label.p-placeholder {
   color: var(--sentinel-text-primary);
   font-weight: 500;
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect-trigger {
+:host .pii-type-multiselect ::ng-deep .p-multiselect-trigger {
   width: 22px;
   color: var(--sentinel-text-primary);
 }
 
-.pii-type-multiselect ::ng-deep .p-multiselect-trigger .p-multiselect-trigger-icon {
+:host .pii-type-multiselect ::ng-deep .p-multiselect-trigger .p-multiselect-trigger-icon {
   font-size: 10px;
 }
 

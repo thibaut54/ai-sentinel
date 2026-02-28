@@ -379,13 +379,13 @@
 }
 
 /* ::ng-deep needed: p-select renders its own template */
-.space-filters ::ng-deep p-select,
-#col-status-value ::ng-deep p-select {
+:host .space-filters ::ng-deep p-select,
+:host #col-status-value ::ng-deep p-select {
   width: 100%;
 }
 
-.space-filters ::ng-deep p-select .p-select,
-#col-status-value ::ng-deep p-select .p-select {
+:host .space-filters ::ng-deep p-select .p-select,
+:host #col-status-value ::ng-deep p-select .p-select {
   width: 100%;
 }
 

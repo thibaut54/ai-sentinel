@@ -19,7 +19,7 @@ const config: Config = {
 
   reporters: ['default'],
 
-  // Mapping des modules si nécessaire
+  // Module path aliases and PrimeNG subpath resolution for Jest (which does not support package.json "exports")
   moduleNameMapper: {
     '^@app/(.*)$': '<rootDir>/src/app/$1',
     '^@environments/(.*)$': '<rootDir>/src/environments/$1',

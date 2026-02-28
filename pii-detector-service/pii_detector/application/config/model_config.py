@@ -14,9 +14,9 @@ class ModelConfig:
 
     @classmethod
     def from_env(cls) -> "ModelConfig":
-        """Create a ModelConfig instance from environment variables."""
+        """Placeholder for future environment-based configuration. Currently returns a default instance."""
         return cls()
 
     def validate(self) -> None:
-        """Validate that all configuration values are within acceptable ranges."""
+        """Placeholder for future configuration validation. Currently a no-op."""
         pass

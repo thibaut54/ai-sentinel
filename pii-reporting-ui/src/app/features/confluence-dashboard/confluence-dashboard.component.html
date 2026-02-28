@@ -39,9 +39,9 @@
       <div class="caption-bar">
         <div class="caption-left">
           <div class="caption-paginator">
-            <p-button type="button" icon="pi pi-chevron-left" (click)="prevPage()" (keydown.enter)="prevPage()" [disabled]="isFirstPage()" [text]="true" size="small" />
-            <p-button type="button" icon="pi pi-refresh" (click)="resetPage()" (keydown.enter)="resetPage()" [text]="true" size="small" />
-            <p-button type="button" icon="pi pi-chevron-right" (click)="nextPage()" (keydown.enter)="nextPage()" [disabled]="isLastPage()" [text]="true" size="small" />
+            <p-button type="button" icon="pi pi-chevron-left" (click)="prevPage()" (keydown.enter)="prevPage()" [disabled]="isFirstPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.previous' | transloco" />
+            <p-button type="button" icon="pi pi-refresh" (click)="resetPage()" (keydown.enter)="resetPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.refresh' | transloco" />
+            <p-button type="button" icon="pi pi-chevron-right" (click)="nextPage()" (keydown.enter)="nextPage()" [disabled]="isLastPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.next' | transloco" />
             <span class="page-indicator">{{ 'dashboard.table.pageIndicator' | transloco: { current: currentPage, total: totalPages } }}</span>
           </div>
           <p-toggleButton
@@ -72,6 +72,7 @@
                       [disabled]="!canStartScan()"
                       [pTooltip]="(selectedSpacesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSpacesCount() }) : ('dashboard.actions.startScan' | transloco))"
                       tooltipPosition="bottom"
+                      [ariaLabel]="(selectedSpacesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSpacesCount() }) : ('dashboard.actions.startScan' | transloco))"
                       [attr.data-testid]="testIds.buttons.startScan" />
             <p-button type="button"
                       icon="pi pi-pause"
@@ -80,6 +81,7 @@
                       [disabled]="!isStreaming()"
                       [pTooltip]="'dashboard.actions.pauseScan' | transloco"
                       tooltipPosition="bottom"
+                      [ariaLabel]="'dashboard.actions.pauseScan' | transloco"
                       [attr.data-testid]="testIds.buttons.pauseScan" />
             <p-button type="button"
                       icon="pi pi-forward"
@@ -88,6 +90,7 @@
                       [disabled]="!canResumeScan()"
                       [pTooltip]="'dashboard.actions.resumeScan' | transloco"
                       tooltipPosition="bottom"
+                      [ariaLabel]="'dashboard.actions.resumeScan' | transloco"
                       [attr.data-testid]="testIds.buttons.resumeScan" />
           </div>
         </div>

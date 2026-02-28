@@ -23,6 +23,7 @@
     "en": "English"
   },
   "severity": {
+    "critical": "Critical",
     "high": "High",
     "medium": "Medium",
     "low": "Low",
@@ -90,6 +91,14 @@
           "contentModified": "Content modified since last scan"
         }
       }
+    },
+    "pagination": {
+      "previous": "Previous page",
+      "refresh": "Refresh",
+      "next": "Next page"
+    },
+    "sources": {
+      "confluence": "Confluence"
     },
     "scanStatus": {
       "active": "Scanning",
@@ -205,7 +214,7 @@
       "validation": {
         "baseUrlRequired": "Base URL is required and must start with http:// or https://",
         "usernameRequired": "Username is required",
-        "apiTokenRequired": "API token is required"
+        "apiTokenRequired": "API token is required for new connections"
       },
       "messages": {
         "saveSuccess": "Confluence connection configuration saved successfully",
@@ -365,6 +374,7 @@
         "DATEOFBIRTH": "Date of Birth",
         "AGE": "Age",
         "PERSON": "Person Name",
+        "DATE": "Date",
         "DATE_TIME": "Date and Time",
         "NRP": "Nationality/Religion/Politics Group",
         "NHS_NUMBER": "NHS Number",
@@ -580,7 +590,14 @@
         "MEDICAL_RECORD_NUMBER": "Electronic medical record number",
         "HEALTH_INSURANCE_NUMBER": "Health insurance card number",
         "DIAGNOSIS": "Medical diagnosis or health condition",
-        "MEDICATION": "Medication name or prescription"
+        "MEDICATION": "Medication name or prescription",
+        "PHONE_NUMBER": "Phone numbers in various international formats with country codes",
+        "URL": "Web addresses and URLs (Uniform Resource Locators) including HTTP/HTTPS links",
+        "EMAIL_ADDRESS": "Email addresses in standard format (e.g., user@domain.com)",
+        "IBAN_CODE": "International Bank Account Number (IBAN) for European and international banking operations",
+        "CRYPTO": "Cryptocurrency wallet addresses for various blockchains (Bitcoin, Ethereum, etc.)",
+        "UK_NHS": "United Kingdom National Health Service patient identification numbers",
+        "UK_NINO": "United Kingdom National Insurance Number used for taxation and social security"
       },
       "actions": {
         "saveAll": "Save",
@@ -665,10 +682,7 @@
   },
   "piiItem": {
     "severity": {
-      "label": "Severity: {{value}}",
-      "high": "High",
-      "medium": "Medium",
-      "low": "Low"
+      "label": "Severity: {{value}}"
     },
     "fallback": {
       "page": "Page",
@@ -803,6 +817,70 @@
     "US_DRIVER_LICENSE": "US Driver License",
     "US_BANK_NUMBER": "US Bank Account Number",
     "AU_MEDICARE": "Australian Medicare",
-    "IN_AADHAAR": "Indian Aadhaar"
+    "IN_AADHAAR": "Indian Aadhaar",
+    "CRYPTO_WALLET": "Crypto Wallet",
+    "NHS_NUMBER": "NHS Number",
+    "NRIC": "NRIC",
+    "ABN": "ABN",
+    "ACN": "ACN",
+    "TFN": "TFN",
+    "MEDICARE": "Medicare",
+    "VEHICLEREG": "Vehicle Registration",
+    "VOTERID": "Voter ID",
+    "DATE": "Date",
+    "MEDICAL_LICENSE": "Medical License",
+    "ITIN": "ITIN",
+    "NRP": "Nationality/Religion/Politics Group",
+    "US_ITIN": "US ITIN",
+    "UK_NHS": "UK NHS Number",
+    "UK_NINO": "UK NINO",
+    "ES_NIF": "Spanish NIF",
+    "ES_NIE": "Spanish NIE",
+    "IT_FISCAL_CODE": "Italian Fiscal Code",
+    "IT_DRIVER_LICENSE": "Italian Driver License",
+    "IT_VAT_CODE": "Italian VAT Code",
+    "IT_PASSPORT": "Italian Passport",
+    "IT_IDENTITY_CARD": "Italian Identity Card",
+    "PL_PESEL": "Polish PESEL",
+    "SG_NRIC_FIN": "Singapore NRIC/FIN",
+    "SG_UEN": "Singapore UEN",
+    "AU_ABN": "Australian ABN",
+    "AU_ACN": "Australian ACN",
+    "AU_TFN": "Australian TFN",
+    "IN_PAN": "Indian PAN",
+    "IN_VEHICLE_REGISTRATION": "Indian Vehicle Registration",
+    "IN_VOTER": "Indian Voter ID",
+    "IN_PASSPORT": "Indian Passport",
+    "FI_PERSONAL_IDENTITY_CODE": "Finnish Personal Identity Code",
+    "KR_RRN": "Korean RRN",
+    "TH_TNIN": "Thai TNIN",
+    "JWT_TOKEN": "JWT Token",
+    "GITHUB_TOKEN": "GitHub Token",
+    "AWS_KEY": "AWS Key",
+    "ROUTINGNUM": "Routing Number",
+    "CREDITCARDEXP": "Credit Card Expiration",
+    "CVV": "CVV",
+    "CREDITCARD": "Credit Card",
+    "MONEY": "Money Amount",
+    "DRIVERLICENSE": "Driver License",
+    "SSN_SHORT": "SSN (Short)",
+    "MEDICALPROFNAME": "Medical Professional",
+    "HEALTHCARENUM": "Healthcare Number",
+    "MEDICALCONDITION": "Medical Condition",
+    "MEDICALPROCESS": "Medical Procedure",
+    "DRUG": "Drug/Medication",
+    "DOSE": "Dosage",
+    "BLOODTYPE": "Blood Type",
+    "INJURY": "Injury",
+    "MEDICALFACILITY": "Medical Facility",
+    "MEDICALCODE": "Medical Code",
+    "VEHICLEID": "Vehicle ID",
+    "MARITALSTATUS": "Marital Status",
+    "LOCATIONZIP": "ZIP Code",
+    "LOCATIONADDRESS": "Address",
+    "LOCATIONSTREET": "Street",
+    "LOCATIONCITY": "City",
+    "LOCATIONSTATE": "State/Province",
+    "LOCATIONCOUNTRY": "Country"
   }
 }

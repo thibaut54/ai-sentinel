@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceBaseUrl;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
@@ -52,14 +53,16 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
 
     @Override
     public ConfluenceConnectionSettings updateConnectionSettings(UpdateConfluenceConnectionCommand command) {
+        var validatedUrl = new ConfluenceBaseUrl(command.baseUrl());
+
         log.info("Updating Confluence connection settings: baseUrl={}, username={}, connectTimeout={}, " +
                         "readTimeout={}, maxRetries={}, pagesLimit={}, maxPages={}",
-                command.baseUrl(), command.username(), command.connectTimeout(),
+                validatedUrl.value(), command.username(), command.connectTimeout(),
                 command.readTimeout(), command.maxRetries(), command.pagesLimit(), command.maxPages());
 
         ConfluenceConnectionSettings newSettings = new ConfluenceConnectionSettings(
                 CONFIG_ID,
-                command.baseUrl(),
+                validatedUrl.value(),
                 command.username(),
                 command.connectTimeout(),
                 command.readTimeout(),
@@ -89,12 +92,11 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
 
     @Override
     public boolean testConnection(TestConfluenceConnectionCommand command) {
-        log.info("Testing Confluence connection to: {}", command.baseUrl());
+        var validatedUrl = new ConfluenceBaseUrl(command.baseUrl());
+        log.info("Testing Confluence connection to: {}", validatedUrl.value());
 
         try {
-            String baseUrl = command.baseUrl().endsWith("/")
-                    ? command.baseUrl() + "rest/api/space"
-                    : command.baseUrl() + "/rest/api/space";
+            String baseUrl = validatedUrl.value() + "/rest/api/space";
 
             String credentials = Base64.getEncoder()
                     .encodeToString((command.username() + ":" + command.apiToken()).getBytes());
