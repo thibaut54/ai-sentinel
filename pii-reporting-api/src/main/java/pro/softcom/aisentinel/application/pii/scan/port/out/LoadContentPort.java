@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.scan.port.out;
 
+import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
 import reactor.core.publisher.Flux;
 
@@ -10,8 +11,8 @@ public interface LoadContentPort {
     /**
      * Loads all scannable content from the specified source.
      *
-     * @param sourceIdentifier identifier for the source (e.g., spaceKey for Confluence, table name for DB)
+     * @param config configuration for the source
      * @return Flux of content items
      */
-    Flux<ScannableContent> loadContent(String sourceIdentifier);
+    Flux<ScannableContent> loadContent(ScanSourceConfig config);
 }

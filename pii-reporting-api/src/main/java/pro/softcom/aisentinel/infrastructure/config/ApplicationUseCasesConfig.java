@@ -39,6 +39,7 @@ import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentPa
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.PlainTextParser;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.*;
+import pro.softcom.aisentinel.application.pii.scan.port.out.LoadContentPort;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
@@ -277,6 +278,20 @@ public class ApplicationUseCasesConfig {
                 confluenceConnectionConfigRepository,
                 encryptionService,
                 () -> eventPublisher.publishEvent(new ConfluenceConfigUpdatedEvent(this))
+        );
+    }
+
+    @Bean
+    public StreamDatabaseScanPort streamDatabaseScanUseCase(
+            LoadContentPort loadContentPort,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            ScanTimeOutConfig scanTimeOutConfig) {
+        return new StreamDatabaseScanUseCase(
+                loadContentPort,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanTimeOutConfig
         );
     }
 }
