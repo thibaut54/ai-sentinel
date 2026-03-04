@@ -30,7 +30,6 @@ public record UpdateConfluenceConnectionConfigRequestDto(
         String username,
 
         @JsonProperty("apiToken")
-        @NotBlank(message = "apiToken is required")
         String apiToken,
 
         @JsonProperty("connectTimeout")

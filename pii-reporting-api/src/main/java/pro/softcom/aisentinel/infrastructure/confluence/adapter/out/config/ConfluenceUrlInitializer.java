@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.mapper.ConfluenceUrlBuilder;
 
@@ -25,6 +26,7 @@ public class ConfluenceUrlInitializer {
     }
 
     @EventListener
+    @Order(2)
     public void onConfigUpdated(ConfluenceConfigUpdatedEvent event) {
         String newBaseUrl = config.baseUrl();
         log.info("Confluence config updated, refreshing URL builder with baseUrl: {}", newBaseUrl);

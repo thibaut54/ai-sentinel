@@ -1,8 +1,18 @@
 <div class="severity-grid">
+  <!-- Total — dark panel, first -->
+  <div class="total-card">
+    <div class="total-pattern"></div>
+    <div class="total-content">
+      <div class="total-count-row">
+        <span class="total-count">{{ total() }}</span>
+        <span class="total-unit">{{ 'severity.badgeTotal' | transloco }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Severity badges -->
   @for (card of cards(); track card.labelKey) {
-    <div class="severity-card"
-         [style.background]="card.bg"
-         [style.border-color]="getBorderColor(card.color)">
+    <div class="severity-card" [style.border-color]="card.border">
       <span class="severity-count" [style.color]="card.color">{{ card.count }}</span>
       <span class="severity-label" [style.color]="card.color">{{ card.labelKey | transloco }}</span>
     </div>

@@ -27,7 +27,11 @@
     "high": "Élevée",
     "medium": "Moyenne",
     "low": "Faible",
-    "total": "Total"
+    "total": "Total",
+    "badgeHigh": "PIIs sévérité élevée",
+    "badgeMedium": "PIIs sévérité moyenne",
+    "badgeLow": "PIIs sévérité basse",
+    "badgeTotal": "PII détectées"
   },
   "dashboard": {
     "title": "AI Sentinel",

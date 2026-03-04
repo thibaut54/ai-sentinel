@@ -243,7 +243,14 @@ public class PiiContextExtractor {
     }
 
     /**
+     * Maximum number of trailing characters to keep after the last masked entity.
+     * Limits data leakage when undetected PII follows detected entities on the same line.
+     */
+    static final int MAX_TRAILING_CHARS = 3;
+
+    /**
      * Builds the masked text by replacing entity ranges with tokens.
+     * Trailing text after the last entity is truncated to prevent leaking undetected PII.
      */
     private String buildMaskedText(String lineContext, List<TempEntity> sortedEntities) {
         int lineLen = lineContext.length();
@@ -259,8 +266,14 @@ public class PiiContextExtractor {
             idx = Math.max(idx, e);
         }
 
+        // Limit trailing text after the last detected entity to prevent
+        // undetected PII from leaking in the masked context
         if (idx < lineLen) {
-            out.append(lineContext, idx, lineLen);
+            int trailingEnd = Math.min(idx + MAX_TRAILING_CHARS, lineLen);
+            out.append(lineContext, idx, trailingEnd);
+            if (trailingEnd < lineLen) {
+                out.append("…");
+            }
         }
 
         return out.toString();

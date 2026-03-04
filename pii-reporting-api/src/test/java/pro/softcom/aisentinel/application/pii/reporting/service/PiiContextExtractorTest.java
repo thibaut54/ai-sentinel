@@ -126,10 +126,11 @@ class PiiContextExtractorTest {
         // When
         String context = piiContextExtractor.extractMaskedContext(source, start, end, "EMAIL");
 
-        // Then
+        // Then: trailing text after PII is truncated to MAX_TRAILING_CHARS
         assertSoftly(softly -> {
             softly.assertThat(context).contains("My email is");
-            softly.assertThat(context).contains("here");
+            softly.assertThat(context).doesNotContain("here");
+            softly.assertThat(context).contains("…");
             softly.assertThat(context).doesNotContain("Line 1");
             softly.assertThat(context).doesNotContain("Line 3");
         });
@@ -219,10 +220,56 @@ class PiiContextExtractorTest {
         // When
         String context = piiContextExtractor.extractMaskedContext(source, start, end, "EMAIL");
 
-        // Then
+        // Then: trailing text is truncated to prevent leaking undetected PII
         assertSoftly(softly -> {
             softly.assertThat(context).startsWith("[EMAIL]");
-            softly.assertThat(context).contains("is my email");
+            softly.assertThat(context).contains("…");
+        });
+    }
+
+    @Test
+    @DisplayName("Should_TruncateTrailingText_When_UndetectedPiiFollowsLastEntity")
+    void Should_TruncateTrailingText_When_UndetectedPiiFollowsLastEntity() {
+        // Given: 3 person names on the same line, but only 2 detected by GLINER
+        String source = "Person Name: Jean Dupont Laurent";
+        String pii1 = "Jean";
+        String pii2 = "Dupont";
+        int start1 = source.indexOf(pii1);
+        int end1 = start1 + pii1.length();
+        int start2 = source.indexOf(pii2);
+        int end2 = start2 + pii2.length();
+        var entities = List.of(
+            DetectedPersonallyIdentifiableInformation.builder().startPosition(start1).endPosition(end1).piiType("PERSON_NAME").build(),
+            DetectedPersonallyIdentifiableInformation.builder().startPosition(start2).endPosition(end2).piiType("PERSON_NAME").build()
+        );
+
+        // When: extract context for first entity with all entities
+        String ctx = piiContextExtractor.extractMaskedContext(source, start1, end1, "PERSON_NAME", entities);
+
+        // Then: "Laurent" (undetected) must NOT leak in the masked context
+        assertSoftly(softly -> {
+            softly.assertThat(ctx).contains("[PERSON_NAME]");
+            softly.assertThat(ctx).doesNotContain("Laurent");
+            softly.assertThat(ctx).contains("…");
+        });
+    }
+
+    @Test
+    @DisplayName("Should_NotTruncate_When_TrailingTextIsShorterThanLimit")
+    void Should_NotTruncate_When_TrailingTextIsShorterThanLimit() {
+        // Given: trailing text after PII is exactly 2 chars (< MAX_TRAILING_CHARS=3)
+        String source = "Email: john@example.com ok";
+        int start = source.indexOf("john@example.com");
+        int end = start + "john@example.com".length();
+
+        // When
+        String ctx = piiContextExtractor.extractMaskedContext(source, start, end, "EMAIL");
+
+        // Then: short trailing text is preserved without ellipsis
+        assertSoftly(softly -> {
+            softly.assertThat(ctx).contains("[EMAIL]");
+            softly.assertThat(ctx).endsWith(" ok");
+            softly.assertThat(ctx).doesNotContain("…");
         });
     }
 

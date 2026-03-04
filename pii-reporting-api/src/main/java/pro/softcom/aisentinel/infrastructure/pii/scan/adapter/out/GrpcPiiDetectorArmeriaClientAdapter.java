@@ -101,7 +101,9 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
 
     private ContentPiiDetection.SensitiveData convertToSensitiveData(PiiDetection.PIIEntity entity,
                                                                       String content, boolean hasSupplementaryChars) {
-        String piiType = entity.getType().trim().toUpperCase();
+        // Normalize to UPPER_SNAKE_CASE: zero-shot labels may contain spaces/hyphens
+        String piiType = entity.getType().trim().toUpperCase()
+                .replace(" ", "_").replace("-", "_");
         String typeLabel = resolveTypeLabel(piiType);
 
         int start = entity.getStart();

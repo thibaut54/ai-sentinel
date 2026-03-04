@@ -188,29 +188,6 @@
           (keydown.enter)="onTestConnection()"
           styleClass="p-button-outlined">
         </p-button>
-
-        <div class="actions-right">
-          <p-button
-            type="button"
-            [label]="'settings.confluence.buttons.reset' | transloco"
-            icon="pi pi-undo"
-            [disabled]="!hasUnsavedChanges"
-            (click)="onReset()"
-            (keydown.enter)="onReset()"
-            styleClass="p-button-sm">
-          </p-button>
-
-          <p-button
-            type="button"
-            [label]="'settings.confluence.buttons.save' | transloco"
-            icon="pi pi-save"
-            [loading]="saving()"
-            [disabled]="saving() || testing() || !hasUnsavedChanges"
-            (click)="onSave()"
-            (keydown.enter)="onSave()"
-            styleClass="p-button-success">
-          </p-button>
-        </div>
       </div>
 
     </form>

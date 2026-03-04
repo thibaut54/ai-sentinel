@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
+import { Component, computed, EventEmitter, Input, OnInit, Output, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
@@ -81,6 +81,8 @@ export class PiiSettingsComponent implements OnInit {
    * Event emitted when user closes the dialog (only in dialog mode).
    */
   @Output() closeDialog = new EventEmitter<void>();
+
+  readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
 
   configForm!: FormGroup;
   loading = signal(false);
@@ -586,9 +588,14 @@ export class PiiSettingsComponent implements OnInit {
   onSaveAll(): void {
     const hasDetectorChanges = this.configForm.dirty;
     const hasTypeChanges = this.hasUnsavedTypeChanges();
+    const hasConfluenceChanges = this.confluenceSettings()?.hasUnsavedChanges ?? false;
 
-    if (!hasDetectorChanges && !hasTypeChanges) {
+    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges) {
       return;
+    }
+
+    if (hasConfluenceChanges) {
+      this.confluenceSettings()!.onSave();
     }
 
     this.saving.set(true);
@@ -713,10 +720,11 @@ export class PiiSettingsComponent implements OnInit {
   onResetAll(): void {
     this.onResetDetectorConfig();
     this.onResetPiiTypes();
+    this.confluenceSettings()?.onReset();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty || this.hasUnsavedTypeChanges();
+    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false);
   }
 
   get hasDetectorChanges(): boolean {

@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
@@ -37,6 +38,7 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
     }
 
     @EventListener
+    @Order(1)
     public void onConfigUpdated(ConfluenceConfigUpdatedEvent event) {
         log.info("Confluence configuration updated, invalidating cache");
         cachedSettings.set(null);

@@ -6,7 +6,7 @@ interface SeverityCard {
   labelKey: string;
   count: number;
   color: string;
-  bg: string;
+  border: string;
 }
 
 @Component({
@@ -25,17 +25,14 @@ export class SeverityCardsComponent {
     this._counts.set(value);
   }
 
-  getBorderColor(color: string): string {
-    return color + '33';
-  }
+  readonly total = computed(() => this._counts().total);
 
   readonly cards = computed<SeverityCard[]>(() => {
     const c = this._counts();
     return [
-      { labelKey: 'severity.high',   count: c.high,   color: '#ef4444', bg: '#fef2f2' },
-      { labelKey: 'severity.medium', count: c.medium, color: '#f97316', bg: '#fff7ed' },
-      { labelKey: 'severity.low',    count: c.low,    color: '#eab308', bg: '#fefce8' },
-      { labelKey: 'severity.total',  count: c.total,  color: '#22c55e', bg: '#f0fdf4' },
+      { labelKey: 'severity.badgeHigh',   count: c.high,   color: '#E53935', border: '#EF9A9A' },
+      { labelKey: 'severity.badgeMedium', count: c.medium, color: '#F57C00', border: '#FFCC80' },
+      { labelKey: 'severity.badgeLow',    count: c.low,    color: '#FBC02D', border: '#FFF176' },
     ];
   });
 }

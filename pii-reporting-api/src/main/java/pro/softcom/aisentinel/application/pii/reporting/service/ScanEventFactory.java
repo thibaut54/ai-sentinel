@@ -239,7 +239,11 @@ public class ScanEventFactory {
         ContentPiiDetection detection) {
 
         // DIAGNOSTIC: Verify positions against source content (redacted values only)
-        if (sourceContent != null && data.position() >= 0 && data.end() <= sourceContent.length()) {
+        if (sourceContent != null
+                && data.position() >= 0
+                && data.position() <= sourceContent.length()
+                && data.end() >= data.position()
+                && data.end() <= sourceContent.length()) {
             String actualSlice = sourceContent.substring(data.position(), data.end());
             if (!actualSlice.equals(data.value())) {
                 log.debug("JAVA POSITION MISMATCH: type={} | value={} | content[{}:{}]={} | source={}",

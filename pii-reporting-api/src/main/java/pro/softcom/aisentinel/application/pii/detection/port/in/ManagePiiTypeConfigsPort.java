@@ -89,7 +89,8 @@ public interface ManagePiiTypeConfigsPort {
      *
      * @param piiType  the PII type identifier
      * @param detector the detector name
-     * @throws IllegalArgumentException if configuration not found or is a system type
+     * @throws IllegalArgumentException if configuration not found
+     * @throws IllegalStateException    if the configuration is a system-defined type
      */
     void deleteConfig(String piiType, String detector);
 
