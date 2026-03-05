@@ -289,7 +289,7 @@ export class SpaceDataManagementService {
       this.sentinelleApiService.getLastScanItems().subscribe({
         next: (events) => {
           for (const event of events) {
-            const type = (event as any)?.eventType as string | undefined;
+            const type = event.eventType;
             if (type !== 'item' && type !== 'attachmentItem') continue;
 
             const incomingKey = coerceSpaceKey(event);

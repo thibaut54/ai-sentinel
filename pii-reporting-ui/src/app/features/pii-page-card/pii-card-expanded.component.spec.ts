@@ -61,9 +61,9 @@ const MOCK_ITEM: PersonallyIdentifiableInformationScanResult = {
   severity: 'high',
   piiTypeSummary: { EMAIL: 3, IBAN: 1 },
   detectedPersonallyIdentifiableInformationList: [
-    { startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1.0, source: 'GLINER', maskedContext: 'user@***' },
+    { startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER', maskedContext: 'user@***' },
     { startPosition: 20, endPosition: 30, piiTypeLabel: 'EMAIL', confidence: 0.95, source: 'GLINER', maskedContext: 'admin@***' },
-    { startPosition: 40, endPosition: 50, piiTypeLabel: 'EMAIL', confidence: 0.90, source: 'PRESIDIO', maskedContext: 'test@***' },
+    { startPosition: 40, endPosition: 50, piiTypeLabel: 'EMAIL', confidence: 0.9, source: 'PRESIDIO', maskedContext: 'test@***' },
     { startPosition: 60, endPosition: 70, piiTypeLabel: 'IBAN', confidence: 0.88, source: 'GLINER', maskedContext: 'CH*** ****' },
   ],
 };
@@ -177,7 +177,7 @@ describe('PiiCardExpandedComponent', () => {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
         {
-          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1.0, source: 'GLINER',
+          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER',
           maskedContext: 'Contact: [EMAIL] for info',
           sensitiveValue: 'user@example.com',
           sensitiveContext: 'Contact: user@example.com for info',
@@ -190,14 +190,14 @@ describe('PiiCardExpandedComponent', () => {
     fixture.componentRef.setInput('isRevealing', false);
     fixture.detectChanges();
     const valueCell = fixture.nativeElement.querySelector('.td-value') as HTMLElement;
-    expect(valueCell.textContent!.trim()).toContain('Contact:');
-    expect(valueCell.textContent!.trim()).toContain('user@example.com');
-    expect(valueCell.textContent!.trim()).toContain('for info');
+    expect(valueCell.textContent?.trim()).toContain('Contact:');
+    expect(valueCell.textContent?.trim()).toContain('user@example.com');
+    expect(valueCell.textContent?.trim()).toContain('for info');
     expect(valueCell.classList).toContain('td-value--revealed');
 
     const highlight = valueCell.querySelector('.revealed-highlight') as HTMLElement;
     expect(highlight).toBeTruthy();
-    expect(highlight.textContent!.trim()).toBe('user@example.com');
+    expect(highlight.textContent?.trim()).toBe('user@example.com');
   });
 
   it('Should_DisplaySensitiveValueOnly_When_RevealedWithoutContext', () => {
@@ -205,7 +205,7 @@ describe('PiiCardExpandedComponent', () => {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
         {
-          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1.0, source: 'GLINER',
+          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER',
           maskedContext: 'user@***',
           sensitiveValue: 'user@example.com',
         },
@@ -219,7 +219,7 @@ describe('PiiCardExpandedComponent', () => {
     const valueCell = fixture.nativeElement.querySelector('.td-value') as HTMLElement;
     const highlight = valueCell.querySelector('.revealed-highlight') as HTMLElement;
     expect(highlight).toBeTruthy();
-    expect(highlight.textContent!.trim()).toBe('user@example.com');
+    expect(highlight.textContent?.trim()).toBe('user@example.com');
     expect(valueCell.classList).toContain('td-value--revealed');
   });
 });

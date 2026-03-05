@@ -42,4 +42,6 @@ export interface ConfluenceContentPersonallyIdentifiableInformationScanResult {
   status?: string;
   // Pre-calculated severity from backend (HIGH/MEDIUM/LOW)
   severity?: string;
+  // Event type discriminator used when items are loaded from last scan
+  eventType?: StreamEventType;
 }

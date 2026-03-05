@@ -1,6 +1,6 @@
-import { Component, computed, EventEmitter, Input, OnInit, Output, signal, viewChild } from '@angular/core';
+import { Component, computed, EventEmitter, Input, OnInit, Output, SecurityContext, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import {
     AbstractControlOptions,
     FormBuilder,
@@ -759,14 +759,14 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Highlight search term in text.
    */
-  highlightText(text: string, originalKey: string): SafeHtml {
+  highlightText(text: string, originalKey: string): string {
     // Get translated text first
     const translatedText = this.translocoService.translate(originalKey);
 
     const term = this.searchTerm().trim();
     if (!term) {
       // No search term, return plain translated text
-      return this.sanitizer.sanitize(1, translatedText) || translatedText;
+      return this.sanitizer.sanitize(SecurityContext.HTML, translatedText) || translatedText;
     }
 
     // Escape special regex characters
@@ -776,7 +776,7 @@ export class PiiSettingsComponent implements OnInit {
     // Replace matches with highlighted version
     const highlighted = translatedText.replaceAll(regex, '<mark class="search-highlight">$1</mark>');
 
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+    return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) || '';
   }
 
   /**

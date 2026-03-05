@@ -47,7 +47,7 @@ describe('ConfidenceIndicatorComponent', () => {
 
   it('Should_DisplayGreenAtExactly90Percent_When_ConfidenceIsOnBoundary', () => {
     fixture = TestBed.createComponent(ConfidenceIndicatorComponent);
-    fixture.componentRef.setInput('value', 0.90);
+    fixture.componentRef.setInput('value', 0.9);
     fixture.detectChanges();
     const pct = fixture.nativeElement.querySelector('.confidence-pct');
     expect(pct.textContent.trim()).toBe('90%');
@@ -56,7 +56,7 @@ describe('ConfidenceIndicatorComponent', () => {
 
   it('Should_DisplayYellowAtExactly70Percent_When_ConfidenceIsOnBoundary', () => {
     fixture = TestBed.createComponent(ConfidenceIndicatorComponent);
-    fixture.componentRef.setInput('value', 0.70);
+    fixture.componentRef.setInput('value', 0.7);
     fixture.detectChanges();
     const pct = fixture.nativeElement.querySelector('.confidence-pct');
     expect(pct.textContent.trim()).toBe('70%');

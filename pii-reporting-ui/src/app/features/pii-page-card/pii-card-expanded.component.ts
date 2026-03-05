@@ -47,16 +47,17 @@ export class PiiCardExpandedComponent {
 
     return entities.map(entity => {
       const label = entity.piiTypeLabel || entity.piiType || 'UNKNOWN';
-      const hasRevealedValue = isRevealed && !!entity.sensitiveValue;
+      const sensitiveValue = entity.sensitiveValue;
+      const hasRevealedValue = isRevealed && !!sensitiveValue;
       const displayValue = hasRevealedValue
-        ? (entity.sensitiveContext || entity.sensitiveValue!)
+        ? (entity.sensitiveContext || sensitiveValue)
         : (entity.maskedContext || '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022');
 
       return {
         typeLabel: this.translatePiiType(label),
         value: displayValue,
         valueParts: hasRevealedValue
-          ? this.parseRevealedParts(entity.sensitiveContext, entity.sensitiveValue!)
+          ? this.parseRevealedParts(entity.sensitiveContext, sensitiveValue)
           : this.parseValueParts(displayValue),
         isRevealed: hasRevealedValue,
         confidence: entity.confidence ?? 0,
@@ -181,7 +182,10 @@ export class PiiCardExpandedComponent {
     return isMissing ? this.formatFallback(cleanKey) : translated;
   }
 
-  private parseRevealedParts(sensitiveContext: string | undefined, sensitiveValue: string): ValuePart[] {
+  private parseRevealedParts(sensitiveContext: string | undefined, sensitiveValue: string | undefined): ValuePart[] {
+    if (!sensitiveValue) {
+      return [{ text: sensitiveContext ?? '', isBadge: false, isHighlighted: true }];
+    }
     if (!sensitiveContext) {
       return [{ text: sensitiveValue, isBadge: false, isHighlighted: true }];
     }
