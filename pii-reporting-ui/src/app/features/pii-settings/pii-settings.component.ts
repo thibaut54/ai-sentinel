@@ -33,6 +33,7 @@ import {
 } from '../../core/models/pii-detection-config.model';
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
+import { JiraSettingsComponent } from '../jira-settings/jira-settings.component';
 
 /**
  * Settings page for PII detection configuration.
@@ -60,7 +61,8 @@ import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-s
         SelectModule,
         ConfirmDialogModule,
         DialogModule,
-        ConfluenceSettingsComponent
+        ConfluenceSettingsComponent,
+        JiraSettingsComponent
     ],
   providers: [MessageService, ConfirmationService]
 })
@@ -83,6 +85,7 @@ export class PiiSettingsComponent implements OnInit {
   @Output() closeDialog = new EventEmitter<void>();
 
   readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
+  readonly jiraSettings = viewChild(JiraSettingsComponent);
 
   configForm!: FormGroup;
   loading = signal(false);
@@ -95,7 +98,7 @@ export class PiiSettingsComponent implements OnInit {
   modifiedPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
 
   // Sidebar navigation
-  activeSection = signal<'detectors' | 'thresholds' | 'pii_types' | 'confluence'>('detectors');
+  activeSection = signal<'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira'>('detectors');
 
   // Collapsible detector groups in PII types section
   collapsedDetectors = signal<Set<string>>(new Set());
@@ -589,13 +592,18 @@ export class PiiSettingsComponent implements OnInit {
     const hasDetectorChanges = this.configForm.dirty;
     const hasTypeChanges = this.hasUnsavedTypeChanges();
     const hasConfluenceChanges = this.confluenceSettings()?.hasUnsavedChanges ?? false;
+    const hasJiraChanges = this.jiraSettings()?.hasUnsavedChanges ?? false;
 
-    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges) {
+    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges && !hasJiraChanges) {
       return;
     }
 
     if (hasConfluenceChanges) {
       this.confluenceSettings()!.onSave();
+    }
+
+    if (hasJiraChanges) {
+      this.jiraSettings()!.onSave();
     }
 
     this.saving.set(true);
@@ -721,10 +729,11 @@ export class PiiSettingsComponent implements OnInit {
     this.onResetDetectorConfig();
     this.onResetPiiTypes();
     this.confluenceSettings()?.onReset();
+    this.jiraSettings()?.onReset();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false);
+    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false) || (this.jiraSettings()?.hasUnsavedChanges ?? false);
   }
 
   get hasDetectorChanges(): boolean {
@@ -782,7 +791,7 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Set the active sidebar section.
    */
-  setActiveSection(section: 'detectors' | 'thresholds' | 'pii_types' | 'confluence'): void {
+  setActiveSection(section: 'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira'): void {
     this.activeSection.set(section);
   }
 

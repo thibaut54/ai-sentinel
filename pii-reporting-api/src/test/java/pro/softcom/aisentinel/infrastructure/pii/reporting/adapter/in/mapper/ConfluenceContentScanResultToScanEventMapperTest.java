@@ -7,7 +7,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 
 import java.util.List;
@@ -52,7 +52,7 @@ class ConfluenceContentScanResultToScanEventMapperTest {
                 .build();
 
         // Act
-        ConfluenceContentScanResultEventDto dto = mapper.toDto(sr);
+        ContentScanResultEventDto dto = mapper.toDto(sr);
 
         // Assert (soft)
         SoftAssertions softly = new SoftAssertions();

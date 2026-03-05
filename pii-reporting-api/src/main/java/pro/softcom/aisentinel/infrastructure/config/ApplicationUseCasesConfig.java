@@ -5,6 +5,16 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
+import pro.softcom.aisentinel.application.jira.port.in.JiraProjectPort;
+import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort;
+import pro.softcom.aisentinel.application.jira.port.in.StreamJiraScanPort;
+import pro.softcom.aisentinel.application.jira.port.out.JiraClient;
+import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
+import pro.softcom.aisentinel.application.jira.service.AdfContentParser;
+import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
+import pro.softcom.aisentinel.application.jira.usecase.FetchJiraProjectUseCase;
+import pro.softcom.aisentinel.application.jira.usecase.ManageJiraConnectionUseCase;
+import pro.softcom.aisentinel.application.jira.usecase.StreamJiraScanUseCase;
 import pro.softcom.aisentinel.application.config.port.in.GetPollingConfigPort;
 import pro.softcom.aisentinel.application.config.port.out.ReadConfluenceConfigPort;
 import pro.softcom.aisentinel.application.config.usecase.GetPollingConfigUseCase;
@@ -292,6 +302,48 @@ public class ApplicationUseCasesConfig {
                 piiDetectorClient,
                 contentScanOrchestrator,
                 scanTimeOutConfig
+        );
+    }
+
+    // ---- Jira beans ----
+
+    @Bean
+    public AdfContentParser adfContentParser() {
+        return new AdfContentParser();
+    }
+
+    @Bean
+    public JiraAccessor jiraAccessor(JiraClient jiraClient) {
+        return new JiraAccessor(jiraClient);
+    }
+
+    @Bean
+    public JiraProjectPort jiraProjectPort(JiraAccessor jiraAccessor) {
+        return new FetchJiraProjectUseCase(jiraAccessor);
+    }
+
+    @Bean
+    public ManageJiraConnectionPort manageJiraConnectionPort(
+            JiraConnectionConfigRepository jiraConnectionConfigRepository,
+            EncryptionService encryptionService) {
+        return new ManageJiraConnectionUseCase(
+                jiraConnectionConfigRepository,
+                encryptionService,
+                () -> { /* Jira config updated callback */ }
+        );
+    }
+
+    @Bean
+    public StreamJiraScanPort streamJiraScanPort(
+            JiraAccessor jiraAccessor,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestrator) {
+        return new StreamJiraScanUseCase(
+                jiraAccessor,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanExecutionOrchestrator
         );
     }
 }

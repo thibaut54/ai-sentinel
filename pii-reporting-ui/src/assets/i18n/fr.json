@@ -102,7 +102,8 @@
       "next": "Page suivante"
     },
     "sources": {
-      "confluence": "Confluence"
+      "confluence": "Confluence",
+      "jira": "Jira"
     },
     "scanStatus": {
       "active": "Scan en cours",
@@ -172,7 +173,8 @@
       "detectors": "Moteurs de d\u00e9tection",
       "thresholds": "Seuils & Performance",
       "piiTypes": "Types d'IPI",
-      "confluence": "Connexion Confluence"
+      "confluence": "Connexion Confluence",
+      "jira": "Connexion Jira"
     },
     "subtitle": "Configurez les moteurs, seuils et types d'informations \u00e0 d\u00e9tecter",
     "tabs": {
@@ -227,6 +229,56 @@
         "testSuccess": "Connexion à Confluence réussie",
         "testError": "Erreur lors du test de connexion : {{error}}",
         "testFailed": "La connexion à Confluence a échoué : {{message}}"
+      }
+    },
+    "jira": {
+      "title": "Configuration de la connexion Jira",
+      "connection": {
+        "title": "Connexion",
+        "baseUrl": "URL de base",
+        "email": "Adresse e-mail",
+        "apiToken": "Jeton API",
+        "apiTokenHint": "Jeton actuel :"
+      },
+      "timeouts": {
+        "title": "Délais d'attente",
+        "connectTimeout": "Délai de connexion",
+        "connectTimeoutDesc": "Temps maximum pour établir la connexion au serveur Jira (en millisecondes)",
+        "readTimeout": "Délai de lecture",
+        "readTimeoutDesc": "Temps maximum pour recevoir une réponse du serveur Jira (en millisecondes)",
+        "maxRetries": "Nombre de tentatives",
+        "maxRetriesDesc": "Nombre maximum de tentatives en cas d'échec de connexion"
+      },
+      "pagination": {
+        "title": "Pagination",
+        "issuesLimit": "Limite d'issues par requête",
+        "issuesLimitDesc": "Nombre d'issues Jira récupérées par requête API",
+        "maxIssues": "Maximum d'issues",
+        "maxIssuesDesc": "Nombre maximum d'issues à scanner par projet Jira"
+      },
+      "buttons": {
+        "save": "Enregistrer",
+        "test": "Tester la connexion",
+        "reset": "Réinitialiser"
+      },
+      "placeholders": {
+        "baseUrl": "https://votre-instance.atlassian.net",
+        "email": "votre.email@domaine.com",
+        "apiToken": "Entrez votre jeton API Jira",
+        "apiTokenExisting": "Laisser vide pour conserver le jeton actuel"
+      },
+      "validation": {
+        "baseUrlRequired": "L'URL de base est requise et doit commencer par http:// ou https://",
+        "emailRequired": "L'adresse e-mail est requise",
+        "apiTokenRequired": "Le jeton API est requis pour les nouvelles connexions"
+      },
+      "messages": {
+        "saveSuccess": "Configuration de la connexion Jira enregistrée avec succès",
+        "saveError": "Erreur lors de l'enregistrement de la configuration : {{error}}",
+        "loadError": "Erreur lors du chargement de la configuration Jira : {{error}}",
+        "testSuccess": "Connexion à Jira réussie",
+        "testError": "Erreur lors du test de connexion : {{error}}",
+        "testFailed": "La connexion à Jira a échoué : {{message}}"
       }
     },
     "sections": {

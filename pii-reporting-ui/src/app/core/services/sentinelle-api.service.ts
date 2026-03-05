@@ -9,6 +9,7 @@ import {
   StreamEventType
 } from '../models/stream-event-type';
 import { SpaceUpdateInfo } from '../models/space-update-info.model';
+import { JiraProject } from '../models/jira-project.model';
 
 export interface LastScanMeta {
   scanId: string;
@@ -326,6 +327,83 @@ export class SentinelleApiService {
         }
       });
       return () => sub.unsubscribe();
+    });
+  }
+  // --- Jira ---
+
+  getJiraProjects(): Observable<JiraProject[]> {
+    return new Observable<JiraProject[]>((observer) => {
+      const sub = this.http.get<JiraProject[]>('/api/v1/jira/projects').subscribe({
+        next: (data) => {
+          const projects: JiraProject[] = data.map((project) => ({
+            key: project.key,
+            name: project.name ?? '',
+            url: project.url ?? undefined,
+            issueCount: project.issueCount
+          })).filter((project) => !!project.key);
+          observer.next(projects);
+          observer.complete();
+        },
+        error: (err) => observer.error(err)
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  startAllJiraProjectsStream(scanId?: string): Observable<StreamEvent> {
+    return new Observable<StreamEvent>((observer) => {
+      const url = scanId && String(scanId).trim().length > 0
+        ? `/api/v1/stream/jira/projects/events?scanId=${encodeURIComponent(scanId)}`
+        : '/api/v1/stream/jira/projects/events';
+      const es = new EventSource(url);
+
+      const types: StreamEventType[] = [
+        'multiStart', 'start', 'pageStart', 'item', 'attachmentItem', 'pageComplete', 'scanError', 'complete', 'multiComplete', 'keepalive'
+      ];
+
+      for (const t of types) {
+        const handler = (e: Event) => this.onSseEvent(observer, t, e as MessageEvent);
+        es.addEventListener(t, handler as EventListener);
+      }
+
+      const onError = () => this.zone.run(() => observer.error(new Error('SSE connection error')));
+      es.onerror = onError as any;
+
+      return () => {
+        try {
+          es.close();
+        } catch {
+          // ignore
+        }
+      };
+    });
+  }
+
+  startSelectedJiraProjectsStream(projectKeys: string[]): Observable<StreamEvent> {
+    return new Observable<StreamEvent>((observer) => {
+      const params = projectKeys.map(k => `projectKeys=${encodeURIComponent(k)}`).join('&');
+      const url = `/api/v1/stream/jira/projects/events/selected?${params}`;
+      const es = new EventSource(url);
+
+      const types: StreamEventType[] = [
+        'multiStart', 'start', 'pageStart', 'item', 'attachmentItem', 'pageComplete', 'scanError', 'complete', 'multiComplete', 'keepalive'
+      ];
+
+      for (const t of types) {
+        const handler = (e: Event) => this.onSseEvent(observer, t, e as MessageEvent);
+        es.addEventListener(t, handler as EventListener);
+      }
+
+      const onError = () => this.zone.run(() => observer.error(new Error('SSE connection error')));
+      es.onerror = onError as any;
+
+      return () => {
+        try {
+          es.close();
+        } catch {
+          // ignore
+        }
+      };
     });
   }
 }

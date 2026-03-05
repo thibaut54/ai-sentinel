@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Payload for Server-Sent Events emitted during a Confluence space scan.
+ * Payload for Server-Sent Events emitted during a content scan (Confluence, Jira, etc.).
  * Business intent: provide a stable, typed contract for clients instead of a generic map.
  * Only non-null fields are serialized to keep the wire format compatible with the previous Map-based payloads.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Builder
-public record ConfluenceContentScanResultEventDto(
+public record ContentScanResultEventDto(
         String scanId,
         String spaceKey,
         ScanEventType eventType,

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConfluenceContentScanResultToScanEventMapper {
 
-    public ConfluenceContentScanResultEventDto toDto(
+    public ContentScanResultEventDto toDto(
         ContentScanResult result) {
         if (result == null) return null;
         
@@ -36,7 +36,7 @@ public class ConfluenceContentScanResultToScanEventMapper {
                     .toList();
         }
         
-        return ConfluenceContentScanResultEventDto.builder()
+        return ContentScanResultEventDto.builder()
                 .scanId(result.scanId())
                 .spaceKey(result.sourceId())
                 .eventType(ScanEventType.from(result.eventType()))

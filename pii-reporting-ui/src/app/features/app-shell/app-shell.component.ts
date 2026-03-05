@@ -9,6 +9,7 @@ import { DialogModule } from 'primeng/dialog';
 import { TabsModule } from 'primeng/tabs';
 import { LanguageSelectorComponent } from '../../core/components/language-selector/language-selector.component';
 import { ConfluenceDashboardComponent } from '../confluence-dashboard/confluence-dashboard.component';
+import { JiraDashboardComponent } from '../jira-dashboard/jira-dashboard.component';
 import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
 import { ThemeService } from '../../core/services/theme.service';
 
@@ -31,6 +32,7 @@ import { ThemeService } from '../../core/services/theme.service';
     TabsModule,
     LanguageSelectorComponent,
     ConfluenceDashboardComponent,
+    JiraDashboardComponent,
     PiiSettingsComponent
   ],
   templateUrl: './app-shell.component.html',

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamDatabaseScanPort;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
 import pro.softcom.aisentinel.domain.pii.scan.model.SourceType;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper.ConfluenceContentScanResultToScanEventMapper;
 import reactor.core.publisher.Flux;
@@ -49,7 +49,7 @@ public class DatabaseScanController {
     @GetMapping(value = "/{sourceId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream database scan (SSE)")
     @ApiResponse(responseCode = "200", description = "SSE stream started")
-    public Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> streamScan(
+    public Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> streamScan(
             @Parameter(description = "Source ID of the database content to scan") @PathVariable String sourceId
     ) {
         log.info("[SSE][DB] Starting stream for sourceId {}", sourceId);
@@ -65,14 +65,14 @@ public class DatabaseScanController {
                 )
         );
 
-        Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> keepalive = Flux.interval(Duration.ofSeconds(15))
-                .map(ignored -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> keepalive = Flux.interval(Duration.ofSeconds(15))
+                .map(ignored -> ServerSentEvent.<ContentScanResultEventDto>builder()
                         .event(ScanEventType.KEEPALIVE.toJson())
                         .comment("ping")
                         .build());
 
-        Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> data = streamDatabaseScanPort.streamScan(config)
-                .map(ev -> ServerSentEvent.<ConfluenceContentScanResultEventDto>builder()
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> data = streamDatabaseScanPort.streamScan(config)
+                .map(ev -> ServerSentEvent.<ContentScanResultEventDto>builder()
                         .event(ev.eventType())
                         .data(mapper.toDto(ev))
                         .build());
