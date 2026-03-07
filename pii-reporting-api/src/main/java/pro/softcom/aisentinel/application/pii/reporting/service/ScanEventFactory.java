@@ -3,10 +3,12 @@ package pro.softcom.aisentinel.application.pii.reporting.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
+import pro.softcom.aisentinel.application.jira.port.out.JiraUrlProvider;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReportingEventType;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
+import pro.softcom.aisentinel.domain.jira.JiraIssue;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 public class ScanEventFactory {
 
     private final ConfluenceUrlProvider confluenceUrlProvider;
+    private final JiraUrlProvider jiraUrlProvider;
     private final PiiContextExtractor piiContextExtractor;
     private final SeverityCalculationService severityCalculationService;
 
@@ -204,7 +207,7 @@ public class ScanEventFactory {
             .eventType(DetectionReportingEventType.ERROR.getLabel())
             .contentId(contentId)
             .message(errorMessage)
-            .contentUrl(buildContentUrl(contentId))
+            .contentUrl(buildConfluencePageUrl(contentId))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.FAILED)
@@ -378,15 +381,25 @@ public class ScanEventFactory {
 
     private String buildContentUrl(ScannableContent content) {
         if (content instanceof ConfluencePage) {
-            return buildContentUrl(content.getId());
+            return buildConfluencePageUrl(content.getId());
+        }
+        if (content instanceof JiraIssue jiraIssue) {
+            return buildJiraIssueUrl(jiraIssue.key());
         }
         return null;
     }
 
-    private String buildContentUrl(String contentId) {
+    private String buildConfluencePageUrl(String contentId) {
         if (confluenceUrlProvider == null || contentId == null) {
             return null;
         }
         return confluenceUrlProvider.pageUrl(contentId);
+    }
+
+    private String buildJiraIssueUrl(String issueKey) {
+        if (jiraUrlProvider == null || issueKey == null) {
+            return null;
+        }
+        return jiraUrlProvider.issueUrl(issueKey);
     }
 }

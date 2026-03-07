@@ -16,7 +16,6 @@ from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.exception.exceptions import ModelNotLoadedError, PIIDetectionError
 from pii_detector.infrastructure.model_management.gliner_model_manager import \
     GLiNERModelManager
-# FIXME: from service.detector.models import
 from pii_detector.infrastructure.text_processing.semantic_chunker import \
     create_chunker
 

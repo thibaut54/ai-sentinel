@@ -1,15 +1,13 @@
 package pro.softcom.aisentinel.infrastructure.jira.adapter.out.jpa.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -67,6 +65,11 @@ public class JiraConnectionConfigEntity {
     @Min(value = 1, message = "Max issues must be positive")
     @Column(name = "max_issues", nullable = false)
     private Integer maxIssues;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deployment_type", nullable = false, length = 20)
+    private JiraDeploymentType deploymentType;
 
     @NotNull
     @Column(name = "updated_at", nullable = false)

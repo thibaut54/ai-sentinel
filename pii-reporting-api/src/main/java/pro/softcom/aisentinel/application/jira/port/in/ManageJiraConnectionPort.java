@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.jira.port.in;
 
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 
 import java.util.Objects;
 
@@ -27,23 +28,27 @@ public interface ManageJiraConnectionPort {
             int maxRetries,
             int issuesLimit,
             int maxIssues,
+            JiraDeploymentType deploymentType,
             String updatedBy
     ) {
         public UpdateJiraConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
             Objects.requireNonNull(email, "email must not be null");
             Objects.requireNonNull(updatedBy, "updatedBy must not be null");
+            if (deploymentType == null) deploymentType = JiraDeploymentType.CLOUD;
         }
     }
 
     record TestJiraConnectionCommand(
             String baseUrl,
             String email,
-            String apiToken
+            String apiToken,
+            JiraDeploymentType deploymentType
     ) {
         public TestJiraConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
             Objects.requireNonNull(email, "email must not be null");
+            if (deploymentType == null) deploymentType = JiraDeploymentType.CLOUD;
         }
     }
 }

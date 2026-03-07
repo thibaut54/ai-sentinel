@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 
 /**
  * DTO for testing Jira connection via REST API.
@@ -21,6 +22,9 @@ public record TestJiraConnectionRequestDto(
 
         @JsonProperty("apiToken")
         @NotBlank(message = "apiToken is required")
-        String apiToken
+        String apiToken,
+
+        @JsonProperty("deploymentType")
+        JiraDeploymentType deploymentType
 ) {
 }

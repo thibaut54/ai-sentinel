@@ -43,6 +43,31 @@ armeria:
   internal-services:
     port: 0
 
+# Jira Cloud integration test settings
+jira:
+  cloud:
+    base-url: ${JIRA_CLOUD_BASE_URL}
+    email: ${JIRA_CLOUD_EMAIL}
+    api-token: ${JIRA_CLOUD_API_TOKEN}
+    project-key: ${JIRA_CLOUD_PROJECT_KEY:}
+    connect-timeout: ${JIRA_CLOUD_CONNECT_TIMEOUT:10000}
+    read-timeout: ${JIRA_CLOUD_READ_TIMEOUT:30000}
+    max-retries: ${JIRA_CLOUD_MAX_RETRIES:2}
+    issues-limit: ${JIRA_CLOUD_ISSUES_LIMIT:10}
+    max-issues: ${JIRA_CLOUD_MAX_ISSUES:50}
+
+# Jira Data Center integration test settings
+  datacenter:
+    base-url: ${JIRA_DC_BASE_URL}
+    username: ${JIRA_DC_USERNAME}
+    api-token: ${JIRA_DC_API_TOKEN}
+    project-key: ${JIRA_DC_PROJECT_KEY:}
+    connect-timeout: ${JIRA_DC_CONNECT_TIMEOUT:10000}
+    read-timeout: ${JIRA_DC_READ_TIMEOUT:30000}
+    max-retries: ${JIRA_DC_MAX_RETRIES:2}
+    issues-limit: ${JIRA_DC_ISSUES_LIMIT:10}
+    max-issues: ${JIRA_DC_MAX_ISSUES:50}
+
 # Reduce logging noise during tests
 logging:
   level:

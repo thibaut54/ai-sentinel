@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, EventEmitter, inject, OnDestroy, OnInit, Output, signal } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    DestroyRef,
+    EventEmitter,
+    inject,
+    OnDestroy,
+    OnInit,
+    Output,
+    signal
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -20,7 +32,9 @@ import { SortEvent } from 'primeng/api';
 import { TestIds } from '../test-ids.constants';
 import { DialogModule } from 'primeng/dialog';
 import { NewSpacesBannerComponent } from '../../shared/components/new-spaces-banner/new-spaces-banner.component';
-import { ConfluenceConfigBannerComponent } from '../../shared/components/confluence-config-banner/confluence-config-banner.component';
+import {
+    ConfluenceConfigBannerComponent
+} from '../../shared/components/confluence-config-banner/confluence-config-banner.component';
 import { ConfluenceConnectionConfigService } from '../../core/services/confluence-connection-config.service';
 import { SpaceFilteringService } from './services/space-filtering.service';
 import { DashboardUiStateService } from './services/dashboard-ui-state.service';
@@ -73,6 +87,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   private readonly dataManagement = inject(SpaceDataManagementService);
   private readonly scanControl = inject(ScanControlService);
   private readonly confluenceConfigService = inject(ConfluenceConnectionConfigService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Utility services
   readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
@@ -156,7 +171,6 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    // Check if Confluence connection is configured before loading data
     this.confluenceConfigService.getConfig().subscribe({
       next: (config) => {
         if (!config.configured) {
@@ -169,6 +183,15 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
       error: () => {
         this.confluenceConfigMissing.set(true);
         this.dataManagement.isSpacesLoading.set(false);
+      }
+    });
+
+    this.confluenceConfigService.configSaved$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.confluenceConfigMissing.set(false);
+      if (this.spaces().length === 0) {
+        this.initializeDataLoading();
       }
     });
   }

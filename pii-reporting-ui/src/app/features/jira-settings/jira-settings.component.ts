@@ -8,13 +8,15 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { RadioButtonModule } from 'primeng/radiobutton';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { JiraConnectionConfigService } from '../../core/services/jira-connection-config.service';
 import {
-  JiraConnectionConfig,
-  UpdateJiraConnectionConfigRequest,
-  TestJiraConnectionRequest
+    JiraConnectionConfig,
+    JiraDeploymentType,
+    TestJiraConnectionRequest,
+    UpdateJiraConnectionConfigRequest
 } from '../../core/models/jira-connection-config.model';
 
 @Component({
@@ -32,6 +34,7 @@ import {
     InputTextModule,
     PasswordModule,
     ProgressSpinnerModule,
+    RadioButtonModule,
     ToastModule
   ],
   providers: [MessageService]
@@ -58,6 +61,7 @@ export class JiraSettingsComponent implements OnInit {
 
   private initForm(): void {
     this.configForm = this.fb.group({
+      deploymentType: ['CLOUD' as JiraDeploymentType, [Validators.required]],
       baseUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
       email: ['', [Validators.required, Validators.email]],
       apiToken: [''],
@@ -76,6 +80,7 @@ export class JiraSettingsComponent implements OnInit {
       next: (config) => {
         this.currentConfig.set(config);
         this.configForm.patchValue({
+          deploymentType: config.deploymentType || 'CLOUD',
           baseUrl: config.baseUrl,
           email: config.email,
           apiToken: '',
@@ -122,7 +127,8 @@ export class JiraSettingsComponent implements OnInit {
       readTimeout: formValue.readTimeout,
       maxRetries: formValue.maxRetries,
       issuesLimit: formValue.issuesLimit,
-      maxIssues: formValue.maxIssues
+      maxIssues: formValue.maxIssues,
+      deploymentType: formValue.deploymentType
     };
 
     this.configService.updateConfig(request).subscribe({
@@ -172,7 +178,8 @@ export class JiraSettingsComponent implements OnInit {
     const request: TestJiraConnectionRequest = {
       baseUrl: baseUrl?.value,
       email: email?.value,
-      apiToken: apiToken?.value
+      apiToken: apiToken?.value,
+      deploymentType: this.configForm.get('deploymentType')?.value || 'CLOUD'
     };
 
     this.configService.testConnection(request).subscribe({
@@ -210,6 +217,7 @@ export class JiraSettingsComponent implements OnInit {
     if (this.currentConfig()) {
       const config = this.currentConfig()!;
       this.configForm.patchValue({
+        deploymentType: config.deploymentType || 'CLOUD',
         baseUrl: config.baseUrl,
         email: config.email,
         apiToken: '',

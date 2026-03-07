@@ -2,12 +2,8 @@ package pro.softcom.aisentinel.infrastructure.jira.adapter.out;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.jira.port.out.JiraClient;
-import pro.softcom.aisentinel.application.jira.service.AdfContentParser;
 import pro.softcom.aisentinel.domain.jira.JiraAttachmentInfo;
 import pro.softcom.aisentinel.domain.jira.JiraComment;
 import pro.softcom.aisentinel.domain.jira.JiraIssue;
@@ -16,62 +12,89 @@ import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.HttpRet
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.JiraConnectionConfig;
 
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 /**
- * HTTP Adapter for Jira Cloud REST API v3.
- * Implements the JiraClient port using java.net.http.HttpClient with HTTP/2 and virtual threads.
+ * Shared logic for Jira HTTP adapters (Cloud and Data Center).
+ * <p>
+ * Subclasses must implement the four template methods that differ between Cloud and DC:
+ * authentication header, text-content parsing, date parsing, project retrieval, and
+ * attachment-content download.
  */
-@Service
 @Slf4j
-public class JiraHttpClientAdapter implements JiraClient {
+public abstract class AbstractJiraHttpClientAdapter implements JiraClient {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String ACCEPT_HEADER = "Accept";
-    private static final String CONTENT_TYPE_JSON = "application/json";
-    private static final DateTimeFormatter JQL_DATE_FORMATTER =
+    protected static final String AUTHORIZATION_HEADER = "Authorization";
+    protected static final String ACCEPT_HEADER = "Accept";
+    protected static final String CONTENT_TYPE_JSON = "application/json";
+    protected static final String CONTENT_TYPE_HEADER = "Content-Type";
+    protected static final int HTTP_OK = 200;
+    protected static final int DEFAULT_PAGE_SIZE = 50;
+
+    protected static final DateTimeFormatter JQL_DATE_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("UTC"));
 
-    private static final List<String> ISSUE_FIELDS = List.of(
-        "summary", "description", "comment", "attachment",
-        "created", "updated", "reporter", "assignee", "status", "issuetype"
+    protected static final Pattern PROJECT_KEY_PATTERN = Pattern.compile("[A-Z][A-Z0-9_]+");
+
+    protected static final String ISSUE_FIELD_DESCRIPTION = "description";
+    protected static final String ISSUE_FIELD_COMMENT = "comment";
+    protected static final String ISSUE_FIELD_ATTACHMENT = "attachment";
+    protected static final String ISSUE_FIELD_CREATED = "created";
+    protected static final String ISSUE_FIELD_UPDATED = "updated";
+    protected static final String FIELD_NAME_PROJECT = "project";
+    protected static final String FIELD_NAME_TOTAL = "total";
+    protected static final String DISPLAY_NAME = "displayName";
+    protected static final String FIELD_NAME_FIELDS = "fields";
+    protected static final String FIELD_NAME_COMMENTS = "comments";
+    protected static final String FIELD_NAME_AUTHOR = "author";
+
+    protected static final List<String> ISSUE_FIELDS = List.of(
+        "summary", ISSUE_FIELD_DESCRIPTION, ISSUE_FIELD_COMMENT, ISSUE_FIELD_ATTACHMENT, FIELD_NAME_PROJECT,
+        ISSUE_FIELD_CREATED, ISSUE_FIELD_UPDATED, "reporter", "assignee", "status", "issuetype"
     );
+    public static final String FIELD_NAME_INSIGHT = "insight";
 
-    private final JiraConnectionConfig config;
-    private final ObjectMapper objectMapper;
-    private final AdfContentParser adfParser;
-    private final HttpRetryExecutor retryExecutor;
+    protected final JiraConnectionConfig config;
+    protected final ObjectMapper objectMapper;
+    protected final HttpRetryExecutor retryExecutor;
 
-    public JiraHttpClientAdapter(
-        @Qualifier("jiraConfig") JiraConnectionConfig config,
-        ObjectMapper objectMapper,
-        AdfContentParser adfParser
-    ) {
+    protected AbstractJiraHttpClientAdapter(JiraConnectionConfig config,
+                                            ObjectMapper objectMapper,
+                                            HttpRetryExecutor retryExecutor) {
         this.config = config;
         this.objectMapper = objectMapper;
-        this.adfParser = adfParser;
-        this.retryExecutor = new HttpRetryExecutor(buildHttpClient(), config.maxRetries());
+        this.retryExecutor = retryExecutor;
     }
+
+    // --- Template methods (implemented by subclasses) ---
+
+    /** Returns the value of the HTTP Authorization header (e.g. "Basic ..." or "Bearer ..."). */
+    protected abstract String getAuthHeader();
+
+    /** Parses a text-content JSON field (ADF for Cloud, raw string for Data Center). */
+    protected abstract String parseTextContent(JsonNode node);
+
+    /** Parses an Instant from a JSON fields node (different date formats between Cloud and DC). */
+    protected abstract Instant parseDate(JsonNode fieldsOrNode, String fieldName);
+
+    // --- JiraClient implementation (common) ---
 
     @Override
     public CompletableFuture<Boolean> testConnection() {
         log.info("Testing connection to Jira");
-        var uri = URI.create(config.getRestApiUrl() + "/myself");
+        var uri = URI.create(config.getRestApiUrl() + config.myselfPath());
         var request = buildGetRequest(uri);
         return retryExecutor.executeRequest(request)
-            .thenApply(response -> response.statusCode() == 200)
+            .thenApply(response -> response.statusCode() == HTTP_OK)
             .exceptionally(ex -> {
                 log.error("Jira connection test failed", ex);
                 return false;
@@ -79,13 +102,8 @@ public class JiraHttpClientAdapter implements JiraClient {
     }
 
     @Override
-    public CompletableFuture<List<JiraProject>> getAllProjects() {
-        log.info("Retrieving all Jira projects");
-        return collectAllProjectsRecursively(0, new ArrayList<>());
-    }
-
-    @Override
     public CompletableFuture<List<JiraIssue>> getIssuesInProject(String projectKey) {
+        validateProjectKey(projectKey);
         log.info("Retrieving issues for project: {}", projectKey);
         var jql = "project = " + projectKey + " ORDER BY updated DESC";
         return collectAllIssuesRecursively(jql, 0, new ArrayList<>());
@@ -93,6 +111,7 @@ public class JiraHttpClientAdapter implements JiraClient {
 
     @Override
     public CompletableFuture<List<JiraIssue>> getIssuesUpdatedSince(String projectKey, Instant since) {
+        validateProjectKey(projectKey);
         log.info("Retrieving issues updated since {} for project: {}", since, projectKey);
         var sinceFormatted = JQL_DATE_FORMATTER.format(since);
         var jql = "project = " + projectKey + " AND updated >= '" + sinceFormatted + "' ORDER BY updated DESC";
@@ -109,103 +128,24 @@ public class JiraHttpClientAdapter implements JiraClient {
     public CompletableFuture<List<JiraAttachmentInfo>> getAttachments(String issueKey) {
         log.info("Retrieving attachments for issue: {}", issueKey);
         var jql = "key = " + issueKey;
-        var body = buildSearchBody(jql, 0, 1, List.of("attachment"));
-        var uri = URI.create(config.getRestApiUrl() + "/search");
+        var body = buildSearchBody(jql, 0, 1, List.of(ISSUE_FIELD_ATTACHMENT));
+        var uri = URI.create(config.getRestApiUrl() + config.searchPath());
         var request = buildPostRequest(uri, body);
         return retryExecutor.executeRequest(request)
             .thenApply(this::parseAttachmentsFromSearchResponse);
     }
 
-    @Override
-    public CompletableFuture<byte[]> getAttachmentContent(String attachmentId) {
-        log.info("Downloading attachment content: {}", attachmentId);
-        var uri = URI.create(config.getRestApiUrl() + "/attachment/content/" + attachmentId);
-        var request = buildGetRequestForBytes(uri);
-        return retryExecutor.executeRequest(request)
-            .thenApply(response -> {
-                if (response.statusCode() != 200) {
-                    log.error("Error downloading attachment {}: HTTP {}", attachmentId, response.statusCode());
-                    return new byte[0];
-                }
-                return response.body().getBytes(StandardCharsets.ISO_8859_1);
-            });
-    }
+    // --- Validation ---
 
-    // --- Project pagination ---
-
-    private CompletableFuture<List<JiraProject>> collectAllProjectsRecursively(
-        int startAt, List<JiraProject> accumulated
-    ) {
-        var uri = URI.create(config.getRestApiUrl()
-            + "/project/search?startAt=" + startAt
-            + "&maxResults=50&expand=insight");
-        var request = buildGetRequest(uri);
-
-        return retryExecutor.executeRequest(request)
-            .thenCompose(response -> processProjectsBatch(response, startAt, accumulated));
-    }
-
-    private CompletableFuture<List<JiraProject>> processProjectsBatch(
-        HttpResponse<String> response, int startAt, List<JiraProject> accumulated
-    ) {
-        if (response.statusCode() != 200) {
-            log.error("Error retrieving projects: HTTP {}", response.statusCode());
-            return CompletableFuture.completedFuture(accumulated);
+    protected static void validateProjectKey(String projectKey) {
+        if (projectKey == null || !PROJECT_KEY_PATTERN.matcher(projectKey).matches()) {
+            throw new IllegalArgumentException("Invalid Jira project key: " + projectKey);
         }
-
-        try {
-            var root = objectMapper.readTree(response.body());
-            var values = root.get("values");
-            if (values == null || !values.isArray() || values.isEmpty()) {
-                return CompletableFuture.completedFuture(accumulated);
-            }
-
-            var batch = parseProjects(values);
-            var merged = new ArrayList<>(accumulated);
-            merged.addAll(batch);
-
-            var total = root.has("total") ? root.get("total").asInt() : 0;
-            if (merged.size() < total) {
-                return collectAllProjectsRecursively(startAt + values.size(), merged);
-            }
-            return CompletableFuture.completedFuture(merged);
-        } catch (Exception e) {
-            log.error("Error parsing projects response", e);
-            return CompletableFuture.completedFuture(accumulated);
-        }
-    }
-
-    private List<JiraProject> parseProjects(JsonNode valuesNode) {
-        var projects = new ArrayList<JiraProject>();
-        for (var node : valuesNode) {
-            projects.add(parseSingleProject(node));
-        }
-        return projects;
-    }
-
-    private JiraProject parseSingleProject(JsonNode node) {
-        var id = textOrEmpty(node, "id");
-        var key = textOrEmpty(node, "key");
-        var name = textOrEmpty(node, "name");
-        var description = textOrEmpty(node, "description");
-
-        var leadName = "";
-        if (node.has("lead") && node.get("lead").has("displayName")) {
-            leadName = node.get("lead").get("displayName").asText("");
-        }
-
-        var url = textOrEmpty(node, "self");
-        var issueCount = 0;
-        if (node.has("insight") && node.get("insight").has("totalIssueCount")) {
-            issueCount = node.get("insight").get("totalIssueCount").asInt(0);
-        }
-
-        return new JiraProject(id, key, name, description, leadName, url, issueCount, null);
     }
 
     // --- Issue search with JQL (POST /search) ---
 
-    private CompletableFuture<List<JiraIssue>> collectAllIssuesRecursively(
+    protected CompletableFuture<List<JiraIssue>> collectAllIssuesRecursively(
         String jql, int startAt, List<JiraIssue> accumulated
     ) {
         if (accumulated.size() >= config.maxIssues()) {
@@ -214,17 +154,17 @@ public class JiraHttpClientAdapter implements JiraClient {
         }
 
         var body = buildSearchBody(jql, startAt, config.issuesLimit(), ISSUE_FIELDS);
-        var uri = URI.create(config.getRestApiUrl() + "/search");
+        var uri = URI.create(config.getRestApiUrl() + config.searchPath());
         var request = buildPostRequest(uri, body);
 
         return retryExecutor.executeRequest(request)
             .thenCompose(response -> processIssuesBatch(response, jql, startAt, accumulated));
     }
 
-    private CompletableFuture<List<JiraIssue>> processIssuesBatch(
+    protected CompletableFuture<List<JiraIssue>> processIssuesBatch(
         HttpResponse<String> response, String jql, int startAt, List<JiraIssue> accumulated
     ) {
-        if (response.statusCode() != 200) {
+        if (response.statusCode() != HTTP_OK) {
             log.error("Error searching issues: HTTP {}", response.statusCode());
             return CompletableFuture.completedFuture(accumulated);
         }
@@ -240,7 +180,7 @@ public class JiraHttpClientAdapter implements JiraClient {
             var merged = new ArrayList<>(accumulated);
             merged.addAll(batch);
 
-            var total = root.has("total") ? root.get("total").asInt() : 0;
+            var total = root.has(FIELD_NAME_TOTAL) ? root.get(FIELD_NAME_TOTAL).asInt() : 0;
             if (merged.size() < total && merged.size() < config.maxIssues()) {
                 return collectAllIssuesRecursively(jql, startAt + issues.size(), merged);
             }
@@ -251,7 +191,7 @@ public class JiraHttpClientAdapter implements JiraClient {
         }
     }
 
-    private List<JiraIssue> parseIssues(JsonNode issuesNode) {
+    protected List<JiraIssue> parseIssues(JsonNode issuesNode) {
         var issues = new ArrayList<JiraIssue>();
         for (var node : issuesNode) {
             issues.add(parseSingleIssue(node));
@@ -262,14 +202,14 @@ public class JiraHttpClientAdapter implements JiraClient {
     private JiraIssue parseSingleIssue(JsonNode node) {
         var id = textOrEmpty(node, "id");
         var key = textOrEmpty(node, "key");
-        var fields = node.get("fields");
+        var fields = node.get(FIELD_NAME_FIELDS);
         if (fields == null) {
             return JiraIssue.builder().id(id).key(key).build();
         }
 
         var summary = textOrEmpty(fields, "summary");
         var projectKey = extractProjectKey(fields);
-        var descriptionText = parseAdfField(fields.get("description"));
+        var descriptionText = parseTextContent(fields.get(ISSUE_FIELD_DESCRIPTION));
         var comments = parseEmbeddedComments(fields);
         var metadata = parseIssueMetadata(fields);
 
@@ -284,27 +224,20 @@ public class JiraHttpClientAdapter implements JiraClient {
             .build();
     }
 
-    private String extractProjectKey(JsonNode fields) {
-        if (fields.has("project") && fields.get("project").has("key")) {
-            return fields.get("project").get("key").asText("");
+    protected String extractProjectKey(JsonNode fields) {
+        if (fields.has(FIELD_NAME_PROJECT) && fields.get(FIELD_NAME_PROJECT).has("key")) {
+            return fields.get(FIELD_NAME_PROJECT).get("key").asText("");
         }
         return "";
     }
 
-    private String parseAdfField(JsonNode descriptionNode) {
-        if (descriptionNode == null || descriptionNode.isNull()) {
-            return "";
-        }
-        return adfParser.toPlainText(descriptionNode.toString());
-    }
-
-    private List<JiraComment> parseEmbeddedComments(JsonNode fields) {
+    protected List<JiraComment> parseEmbeddedComments(JsonNode fields) {
         var comments = new ArrayList<JiraComment>();
-        if (!fields.has("comment")) {
+        if (!fields.has(ISSUE_FIELD_COMMENT)) {
             return comments;
         }
-        var commentField = fields.get("comment");
-        var commentsArray = commentField.has("comments") ? commentField.get("comments") : null;
+        var commentField = fields.get(ISSUE_FIELD_COMMENT);
+        var commentsArray = commentField.has(FIELD_NAME_COMMENTS) ? commentField.get(FIELD_NAME_COMMENTS) : null;
         if (commentsArray == null || !commentsArray.isArray()) {
             return comments;
         }
@@ -314,25 +247,25 @@ public class JiraHttpClientAdapter implements JiraClient {
         return comments;
     }
 
-    private JiraIssue.IssueMetadata parseIssueMetadata(JsonNode fields) {
+    protected JiraIssue.IssueMetadata parseIssueMetadata(JsonNode fields) {
         var reporter = extractDisplayName(fields, "reporter");
         var assignee = extractDisplayName(fields, "assignee");
         var status = extractNameField(fields, "status");
         var issueType = extractNameField(fields, "issuetype");
-        var created = parseInstantField(fields, "created");
-        var updated = parseInstantField(fields, "updated");
+        var created = parseDate(fields, ISSUE_FIELD_CREATED);
+        var updated = parseDate(fields, ISSUE_FIELD_UPDATED);
         return new JiraIssue.IssueMetadata(reporter, assignee, status, issueType, created, updated);
     }
 
-    private String extractDisplayName(JsonNode fields, String fieldName) {
+    protected String extractDisplayName(JsonNode fields, String fieldName) {
         if (fields.has(fieldName) && !fields.get(fieldName).isNull()
-                && fields.get(fieldName).has("displayName")) {
-            return fields.get(fieldName).get("displayName").asText("");
+                && fields.get(fieldName).has(DISPLAY_NAME)) {
+            return fields.get(fieldName).get(DISPLAY_NAME).asText("");
         }
         return null;
     }
 
-    private String extractNameField(JsonNode fields, String fieldName) {
+    protected String extractNameField(JsonNode fields, String fieldName) {
         if (fields.has(fieldName) && !fields.get(fieldName).isNull()
                 && fields.get(fieldName).has("name")) {
             return fields.get(fieldName).get("name").asText("");
@@ -340,41 +273,31 @@ public class JiraHttpClientAdapter implements JiraClient {
         return null;
     }
 
-    private Instant parseInstantField(JsonNode fields, String fieldName) {
-        if (fields.has(fieldName) && !fields.get(fieldName).isNull()) {
-            try {
-                return Instant.parse(fields.get(fieldName).asText());
-            } catch (Exception _) {
-                return null;
-            }
-        }
-        return null;
-    }
-
     // --- Comments pagination ---
 
-    private CompletableFuture<List<JiraComment>> collectAllCommentsRecursively(
+    protected CompletableFuture<List<JiraComment>> collectAllCommentsRecursively(
         String issueKey, int startAt, List<JiraComment> accumulated
     ) {
         var uri = URI.create(config.getRestApiUrl()
-            + "/issue/" + issueKey + "/comment?startAt=" + startAt + "&maxResults=50");
+            + config.issuePath() + issueKey + config.commentPath()
+            + "?startAt=" + startAt + "&maxResults=" + DEFAULT_PAGE_SIZE);
         var request = buildGetRequest(uri);
 
         return retryExecutor.executeRequest(request)
             .thenCompose(response -> processCommentsBatch(response, issueKey, startAt, accumulated));
     }
 
-    private CompletableFuture<List<JiraComment>> processCommentsBatch(
+    protected CompletableFuture<List<JiraComment>> processCommentsBatch(
         HttpResponse<String> response, String issueKey, int startAt, List<JiraComment> accumulated
     ) {
-        if (response.statusCode() != 200) {
+        if (response.statusCode() != HTTP_OK) {
             log.error("Error retrieving comments for {}: HTTP {}", issueKey, response.statusCode());
             return CompletableFuture.completedFuture(accumulated);
         }
 
         try {
             var root = objectMapper.readTree(response.body());
-            var comments = root.get("comments");
+            var comments = root.get(FIELD_NAME_COMMENTS);
             if (comments == null || !comments.isArray() || comments.isEmpty()) {
                 return CompletableFuture.completedFuture(accumulated);
             }
@@ -387,7 +310,7 @@ public class JiraHttpClientAdapter implements JiraClient {
             var merged = new ArrayList<>(accumulated);
             merged.addAll(batch);
 
-            var total = root.has("total") ? root.get("total").asInt() : 0;
+            var total = root.has(FIELD_NAME_TOTAL) ? root.get(FIELD_NAME_TOTAL).asInt() : 0;
             if (merged.size() < total) {
                 return collectAllCommentsRecursively(issueKey, startAt + comments.size(), merged);
             }
@@ -398,33 +321,22 @@ public class JiraHttpClientAdapter implements JiraClient {
         }
     }
 
-    private JiraComment parseSingleComment(JsonNode node) {
+    protected JiraComment parseSingleComment(JsonNode node) {
         var id = textOrEmpty(node, "id");
         var authorName = "";
-        if (node.has("author") && node.get("author").has("displayName")) {
-            authorName = node.get("author").get("displayName").asText("");
+        if (node.has(FIELD_NAME_AUTHOR) && node.get(FIELD_NAME_AUTHOR).has(DISPLAY_NAME)) {
+            authorName = node.get(FIELD_NAME_AUTHOR).get(DISPLAY_NAME).asText("");
         }
-        var bodyText = parseAdfField(node.get("body"));
-        var created = parseInstantFromNode(node, "created");
-        var updated = parseInstantFromNode(node, "updated");
+        var bodyText = parseTextContent(node.get("body"));
+        var created = parseDate(node, ISSUE_FIELD_CREATED);
+        var updated = parseDate(node, ISSUE_FIELD_UPDATED);
         return new JiraComment(id, authorName, bodyText, created, updated);
-    }
-
-    private Instant parseInstantFromNode(JsonNode node, String fieldName) {
-        if (node.has(fieldName) && !node.get(fieldName).isNull()) {
-            try {
-                return Instant.parse(node.get(fieldName).asText());
-            } catch (Exception _) {
-                return null;
-            }
-        }
-        return null;
     }
 
     // --- Attachment parsing from search response ---
 
-    private List<JiraAttachmentInfo> parseAttachmentsFromSearchResponse(HttpResponse<String> response) {
-        if (response.statusCode() != 200) {
+    protected List<JiraAttachmentInfo> parseAttachmentsFromSearchResponse(HttpResponse<String> response) {
+        if (response.statusCode() != HTTP_OK) {
             return List.of();
         }
         try {
@@ -433,11 +345,11 @@ public class JiraHttpClientAdapter implements JiraClient {
             if (issues == null || !issues.isArray() || issues.isEmpty()) {
                 return List.of();
             }
-            var fields = issues.get(0).get("fields");
-            if (fields == null || !fields.has("attachment")) {
+            var fields = issues.get(0).get(FIELD_NAME_FIELDS);
+            if (fields == null || !fields.has(ISSUE_FIELD_ATTACHMENT)) {
                 return List.of();
             }
-            var attachments = fields.get("attachment");
+            var attachments = fields.get(ISSUE_FIELD_ATTACHMENT);
             if (!attachments.isArray()) {
                 return List.of();
             }
@@ -452,42 +364,47 @@ public class JiraHttpClientAdapter implements JiraClient {
         }
     }
 
-    private JiraAttachmentInfo parseSingleAttachment(JsonNode node) {
+    protected JiraAttachmentInfo parseSingleAttachment(JsonNode node) {
         var id = textOrEmpty(node, "id");
         var filename = textOrEmpty(node, "filename");
         var mimeType = textOrEmpty(node, "mimeType");
         var size = node.has("size") ? node.get("size").asLong(0) : 0;
         var contentUrl = textOrEmpty(node, "content");
         var author = "";
-        if (node.has("author") && node.get("author").has("displayName")) {
-            author = node.get("author").get("displayName").asText("");
+        if (node.has(FIELD_NAME_AUTHOR) && node.get(FIELD_NAME_AUTHOR).has(DISPLAY_NAME)) {
+            author = node.get(FIELD_NAME_AUTHOR).get(DISPLAY_NAME).asText("");
         }
         return new JiraAttachmentInfo(id, filename, mimeType, size, contentUrl, author);
     }
 
+    // --- Project parsing (shared helper for parseSingleProject) ---
+
+    protected JiraProject parseSingleProject(JsonNode node, boolean hasInsightCount) {
+        var id = textOrEmpty(node, "id");
+        var key = textOrEmpty(node, "key");
+        var name = textOrEmpty(node, "name");
+        var description = textOrEmpty(node, ISSUE_FIELD_DESCRIPTION);
+
+        var leadName = "";
+        if (node.has("lead") && node.get("lead").has(DISPLAY_NAME)) {
+            leadName = node.get("lead").get(DISPLAY_NAME).asText("");
+        }
+
+        var rawBaseUrl = config.baseUrl();
+        var baseUrl = (rawBaseUrl != null && !rawBaseUrl.isBlank()) ? rawBaseUrl.replaceAll("/+$", "") : "";
+        var url = baseUrl.isEmpty() ? "" : baseUrl + "/projects/" + key;
+
+        var issueCount = 0;
+        if (hasInsightCount && node.has(FIELD_NAME_INSIGHT) && node.get(FIELD_NAME_INSIGHT).has("totalIssueCount")) {
+            issueCount = node.get(FIELD_NAME_INSIGHT).get("totalIssueCount").asInt(0);
+        }
+
+        return new JiraProject(id, key, name, description, leadName, url, issueCount, null);
+    }
+
     // --- HTTP request builders ---
 
-    private HttpClient buildHttpClient() {
-        var executor = Executors.newVirtualThreadPerTaskExecutor();
-        return HttpClient.newBuilder()
-            .executor(executor)
-            .connectTimeout(Duration.ofMillis(config.connectTimeout()))
-            .version(HttpClient.Version.HTTP_2)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
-    }
-
-    private String encodeBasicAuth(String email, String apiToken) {
-        var credentials = email.trim() + ":" + apiToken.trim();
-        return "Basic " + Base64.getEncoder()
-            .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String getAuthHeader() {
-        return encodeBasicAuth(config.email(), config.apiToken());
-    }
-
-    private HttpRequest buildGetRequest(URI uri) {
+    protected HttpRequest buildGetRequest(URI uri) {
         return HttpRequest.newBuilder()
             .uri(uri)
             .header(AUTHORIZATION_HEADER, getAuthHeader())
@@ -497,7 +414,7 @@ public class JiraHttpClientAdapter implements JiraClient {
             .build();
     }
 
-    private HttpRequest buildGetRequestForBytes(URI uri) {
+    protected HttpRequest buildGetRequestForBytes(URI uri) {
         return HttpRequest.newBuilder()
             .uri(uri)
             .header(AUTHORIZATION_HEADER, getAuthHeader())
@@ -506,33 +423,33 @@ public class JiraHttpClientAdapter implements JiraClient {
             .build();
     }
 
-    private HttpRequest buildPostRequest(URI uri, String body) {
+    protected HttpRequest buildPostRequest(URI uri, String body) {
         return HttpRequest.newBuilder()
             .uri(uri)
             .header(AUTHORIZATION_HEADER, getAuthHeader())
             .header(ACCEPT_HEADER, CONTENT_TYPE_JSON)
-            .header("Content-Type", CONTENT_TYPE_JSON)
+            .header(CONTENT_TYPE_HEADER, CONTENT_TYPE_JSON)
             .timeout(Duration.ofMillis(config.readTimeout()))
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build();
     }
 
-    private String buildSearchBody(String jql, int startAt, int maxResults, List<String> fields) {
+    protected String buildSearchBody(String jql, int startAt, int maxResults, List<String> fields) {
         try {
             var root = objectMapper.createObjectNode();
             root.put("jql", jql);
             root.put("startAt", startAt);
             root.put("maxResults", maxResults);
-            var fieldsArray = root.putArray("fields");
+            var fieldsArray = root.putArray(FIELD_NAME_FIELDS);
             fields.forEach(fieldsArray::add);
             return objectMapper.writeValueAsString(root);
         } catch (Exception e) {
             log.error("Error building search body", e);
-            return "{}";
+            throw new IllegalStateException("Failed to build search request body", e);
         }
     }
 
-    private String textOrEmpty(JsonNode node, String field) {
+    protected String textOrEmpty(JsonNode node, String field) {
         return node.has(field) && !node.get(field).isNull() ? node.get(field).asText("") : "";
     }
 }

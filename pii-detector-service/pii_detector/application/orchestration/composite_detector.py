@@ -29,7 +29,7 @@ except ImportError as e:
     PRESIDIO_AVAILABLE = False
     PresidioDetector = None
     print(f"[PRESIDIO_IMPORT] FAILED - ImportError: {e}")
-    print(f"[PRESIDIO_IMPORT] PRESIDIO_AVAILABLE set to False")
+    print("[PRESIDIO_IMPORT] PRESIDIO_AVAILABLE set to False")
 
 
 logger = logging.getLogger(__name__)
@@ -154,8 +154,8 @@ class CompositePIIDetector:
             pass
     
     def detect_pii(
-        self, 
-        text: str, 
+        self,
+        text: str,
         threshold: Optional[float] = None,
         enable_ml: Optional[bool] = None,
         enable_regex: Optional[bool] = None,
@@ -165,18 +165,18 @@ class CompositePIIDetector:
     ) -> List[PIIEntity]:
         """
         Detect PII using both ML and regex detectors.
-        
+
         Business process:
         1. Execute ML detection (if enabled)
         2. Execute regex detection (if enabled)
         3. Execute Presidio detection (if enabled)
         4. Merge results with priority-based fusion
         5. Return deduplicated entities
-        
+
         Business rule: Dynamic configuration allows runtime control of detectors
         based on database configuration without service restart. Detectors remain
         loaded in memory for performance but can be selectively activated per request.
-        
+
         Args:
             text: Text to analyze
             threshold: Optional confidence threshold
@@ -184,73 +184,139 @@ class CompositePIIDetector:
             enable_regex: Override regex detector activation (None=use default, True/False=force)
             enable_presidio: Override Presidio detector activation (None=use default, True/False=force)
             pii_type_configs: Optional fresh PII type configurations from database
-            
+
         Returns:
             Merged list of PII entities
         """
         if not text:
             return []
-        
-        # Determine which detectors to use (runtime override or default config)
-        use_ml = enable_ml if enable_ml is not None else (self.ml_detector is not None)
-        use_regex = enable_regex if enable_regex is not None else self.enable_regex
-        use_presidio = enable_presidio if enable_presidio is not None else self.enable_presidio
-        
-        # Log active detector configuration for debugging
-        active_detectors = []
-        if use_ml:
-            active_detectors.append("ML")
-        if use_regex:
-            active_detectors.append("Regex")
-        if use_presidio:
-            active_detectors.append("Presidio")
-        
-        if self.logger.isEnabledFor(logging.DEBUG):
-            detectors_str = ', '.join(active_detectors) if active_detectors else 'NONE'
-            self.logger.debug("Detecting PII with active detectors: %s", detectors_str)
-        
-        # Collect results from all detectors
-        results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]] = []
-        
-        # Execute ML detection
-        if use_ml and self.ml_detector:
-            ml_entities = self._run_ml_detection(text, threshold, pii_type_configs, chunk_size)
-            results_per_detector.append((self.ml_detector, ml_entities))
-        
-        # Execute regex detection
-        if use_regex and self.regex_detector:
-            regex_entities = self._run_regex_detection(text, threshold)
-            results_per_detector.append((self.regex_detector, regex_entities))
-        
-        # Execute Presidio detection
-        if use_presidio and self.presidio_detector:
-            presidio_entities = self._run_presidio_detection(text, threshold)
-            results_per_detector.append((self.presidio_detector, presidio_entities))
-        
-        # Merge results
+
+        use_ml, use_regex, use_presidio = self._resolve_active_detectors(
+            enable_ml, enable_regex, enable_presidio
+        )
+        self._log_active_detectors(use_ml, use_regex, use_presidio)
+
+        results_per_detector = self._collect_detector_results(
+            text, threshold, pii_type_configs, chunk_size,
+            use_ml, use_regex, use_presidio
+        )
+
         if not results_per_detector:
             self.logger.warning("No detectors available")
             return []
-        
+
         merged_entities = self._merger.merge(results_per_detector)
-        
-        # Count entities per detector for logging
-        ml_count = len(results_per_detector[0][1]) if self.ml_detector else 0
+        self._log_detection_counts(results_per_detector, merged_entities)
+
+        return merged_entities
+
+    def _resolve_active_detectors(
+        self,
+        enable_ml: Optional[bool],
+        enable_regex: Optional[bool],
+        enable_presidio: Optional[bool],
+    ) -> Tuple[bool, bool, bool]:
+        """
+        Determine which detectors to use (runtime override or default config).
+
+        Args:
+            enable_ml: Override ML detector activation (None=use default)
+            enable_regex: Override regex detector activation (None=use default)
+            enable_presidio: Override Presidio detector activation (None=use default)
+
+        Returns:
+            Tuple of (use_ml, use_regex, use_presidio) booleans
+        """
+        use_ml = enable_ml if enable_ml is not None else (self.ml_detector is not None)
+        use_regex = enable_regex if enable_regex is not None else self.enable_regex
+        use_presidio = enable_presidio if enable_presidio is not None else self.enable_presidio
+        return use_ml, use_regex, use_presidio
+
+    def _log_active_detectors(
+        self, use_ml: bool, use_regex: bool, use_presidio: bool
+    ) -> None:
+        """Log active detector configuration for debugging."""
+        if not self.logger.isEnabledFor(logging.DEBUG):
+            return
+        active = []
+        if use_ml:
+            active.append("ML")
+        if use_regex:
+            active.append("Regex")
+        if use_presidio:
+            active.append("Presidio")
+        detectors_str = ', '.join(active) if active else 'NONE'
+        self.logger.debug("Detecting PII with active detectors: %s", detectors_str)
+
+    def _collect_detector_results(
+        self,
+        text: str,
+        threshold: Optional[float],
+        pii_type_configs: Optional[dict],
+        chunk_size: Optional[int],
+        use_ml: bool,
+        use_regex: bool,
+        use_presidio: bool,
+    ) -> List[Tuple[PIIDetectorProtocol, List[PIIEntity]]]:
+        """
+        Execute enabled detectors and collect their results.
+
+        Args:
+            text: Text to analyze
+            threshold: Optional confidence threshold
+            pii_type_configs: Optional fresh PII type configurations
+            chunk_size: Optional chunk size for ML detection
+            use_ml: Whether to run ML detector
+            use_regex: Whether to run regex detector
+            use_presidio: Whether to run Presidio detector
+
+        Returns:
+            List of (detector, entities) tuples
+        """
+        results: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]] = []
+
+        if use_ml and self.ml_detector:
+            ml_entities = self._run_ml_detection(text, threshold, pii_type_configs, chunk_size)
+            results.append((self.ml_detector, ml_entities))
+
+        if use_regex and self.regex_detector:
+            regex_entities = self._run_regex_detection(text, threshold)
+            results.append((self.regex_detector, regex_entities))
+
+        if use_presidio and self.presidio_detector:
+            presidio_entities = self._run_presidio_detection(text, threshold)
+            results.append((self.presidio_detector, presidio_entities))
+
+        return results
+
+    def _log_detection_counts(
+        self,
+        results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]],
+        merged_entities: List[PIIEntity],
+    ) -> None:
+        """
+        Log entity counts per detector after merging.
+
+        Args:
+            results_per_detector: Results from each detector
+            merged_entities: Final merged entity list
+        """
+        ml_count = 0
         regex_count = 0
         presidio_count = 0
-        
+
         for detector, entities in results_per_detector:
-            if detector == self.regex_detector:
+            if detector == self.ml_detector:
+                ml_count = len(entities)
+            elif detector == self.regex_detector:
                 regex_count = len(entities)
             elif detector == self.presidio_detector:
                 presidio_count = len(entities)
-        
+
         self.logger.info(
             f"Composite detection complete: {len(merged_entities)} entities "
             f"(ML: {ml_count}, Regex: {regex_count}, Presidio: {presidio_count})"
         )
-        
-        return merged_entities
     
     def mask_pii(
         self, text: str, threshold: Optional[float] = None

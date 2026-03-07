@@ -13,13 +13,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.jira.service.AdfContentParser;
-import pro.softcom.aisentinel.domain.jira.JiraAttachmentInfo;
-import pro.softcom.aisentinel.domain.jira.JiraComment;
-import pro.softcom.aisentinel.domain.jira.JiraIssue;
-import pro.softcom.aisentinel.domain.jira.JiraProject;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.HttpRetryExecutor;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.JiraConnectionConfig;
 
-import java.lang.reflect.Field;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -36,12 +32,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for JiraHttpClientAdapter.
+ * Unit tests for JiraCloudHttpClientAdapter.
  * Tests cover: connection, project retrieval, issue search, comments pagination,
  * attachments, auth encoding, and retry policy.
  */
 @ExtendWith(MockitoExtension.class)
-class JiraHttpClientAdapterTest {
+class JiraCloudHttpClientAdapterTest {
 
     @Mock
     private JiraConnectionConfig config;
@@ -53,10 +49,10 @@ class JiraHttpClientAdapterTest {
     private HttpResponse<String> httpResponse;
 
     private final AdfContentParser adfParser = new AdfContentParser();
-    private JiraHttpClientAdapter adapter;
+    private JiraCloudHttpClientAdapter adapter;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         setupConfig();
         createAdapterWithMockedHttpClient();
     }
@@ -71,19 +67,22 @@ class JiraHttpClientAdapterTest {
         lenient().when(config.maxRetries()).thenReturn(3);
         lenient().when(config.issuesLimit()).thenReturn(50);
         lenient().when(config.maxIssues()).thenReturn(5000);
+
+        // Delegate API path default methods to the real interface defaults
+        lenient().when(config.myselfPath()).thenCallRealMethod();
+        lenient().when(config.searchPath()).thenCallRealMethod();
+        lenient().when(config.projectPath()).thenCallRealMethod();
+        lenient().when(config.projectSearchPath()).thenCallRealMethod();
+        lenient().when(config.issuePath()).thenCallRealMethod();
+        lenient().when(config.attachmentPath()).thenCallRealMethod();
+        lenient().when(config.attachmentContentPath()).thenCallRealMethod();
+        lenient().when(config.commentPath()).thenCallRealMethod();
     }
 
-    private void createAdapterWithMockedHttpClient() throws Exception {
+    private void createAdapterWithMockedHttpClient() {
         var objectMapper = new ObjectMapper();
-        adapter = new JiraHttpClientAdapter(config, objectMapper, adfParser);
-
-        Field retryExecutorField = JiraHttpClientAdapter.class.getDeclaredField("retryExecutor");
-        retryExecutorField.setAccessible(true);
-        Object retryExecutor = retryExecutorField.get(adapter);
-
-        Field httpClientField = retryExecutor.getClass().getDeclaredField("httpClient");
-        httpClientField.setAccessible(true);
-        httpClientField.set(retryExecutor, httpClient);
+        var retryExecutor = new HttpRetryExecutor(httpClient, config.maxRetries());
+        adapter = new JiraCloudHttpClientAdapter(config, objectMapper, adfParser, retryExecutor);
 
         lenient().when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
             .thenReturn(CompletableFuture.completedFuture(httpResponse));

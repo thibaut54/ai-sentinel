@@ -18,6 +18,7 @@ import java.time.Instant;
  * @param maxRetries     Maximum number of retry attempts
  * @param issuesLimit    Number of issues per pagination request (max 100)
  * @param maxIssues      Maximum total issues to retrieve per project
+ * @param deploymentType Type of Jira deployment (CLOUD or DATA_CENTER)
  * @param updatedAt      Timestamp of last configuration update
  * @param updatedBy      User who last updated the configuration
  */
@@ -30,12 +31,14 @@ public record JiraConnectionSettings(
     int maxRetries,
     int issuesLimit,
     int maxIssues,
+    JiraDeploymentType deploymentType,
     Instant updatedAt,
     String updatedBy
 ) {
     public JiraConnectionSettings {
         if (baseUrl == null) baseUrl = "";
         if (email == null) email = "";
+        if (deploymentType == null) deploymentType = JiraDeploymentType.CLOUD;
         if (connectTimeout <= 0) throw new IllegalArgumentException("Connect timeout must be positive");
         if (readTimeout <= 0) throw new IllegalArgumentException("Read timeout must be positive");
         if (maxRetries < 0) throw new IllegalArgumentException("Max retries cannot be negative");

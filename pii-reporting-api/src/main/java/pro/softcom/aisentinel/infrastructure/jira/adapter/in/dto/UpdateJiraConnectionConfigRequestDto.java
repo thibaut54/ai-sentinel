@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 
 /**
  * DTO for updating Jira connection configuration via REST API.
@@ -52,6 +53,9 @@ public record UpdateJiraConnectionConfigRequestDto(
         @JsonProperty("maxIssues")
         @NotNull(message = "maxIssues is required")
         @Min(value = 1, message = "maxIssues must be positive")
-        Integer maxIssues
+        Integer maxIssues,
+
+        @JsonProperty("deploymentType")
+        JiraDeploymentType deploymentType
 ) {
 }

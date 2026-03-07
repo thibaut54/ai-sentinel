@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, EventEmitter, inject, OnDestroy, OnInit, Output, signal } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    DestroyRef,
+    EventEmitter,
+    inject,
+    OnDestroy,
+    OnInit,
+    Output,
+    signal
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -59,6 +71,7 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
   private readonly dataManagement = inject(JiraProjectDataManagementService);
   private readonly scanControl = inject(JiraScanControlService);
   private readonly jiraConfigService = inject(JiraConnectionConfigService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly dashboardUtils = inject(JiraProjectsDashboardUtils);
 
   @Output() openSettings = new EventEmitter<number>();
@@ -134,6 +147,15 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
         this.dataManagement.isProjectsLoading.set(false);
       }
     });
+
+    this.jiraConfigService.configSaved$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.jiraConfigMissing.set(false);
+      if (this.projects().length === 0) {
+        this.dataManagement.fetchProjects().subscribe();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -183,6 +205,12 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
 
   statusStyle(status?: string): 'danger' | 'warning' | 'success' | 'info' | 'secondary' {
     return this.uiStateService.statusStyle(status);
+  }
+
+  openJira(project: { url?: string }): void {
+    if (project.url) {
+      window.open(project.url, '_blank', 'noopener');
+    }
   }
 
   openPiiHelpDialog(): void {

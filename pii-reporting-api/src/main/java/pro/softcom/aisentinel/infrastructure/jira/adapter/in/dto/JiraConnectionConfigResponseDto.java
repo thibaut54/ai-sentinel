@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto;
 
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
+
 import java.time.Instant;
 
 /**
@@ -29,6 +31,7 @@ public record JiraConnectionConfigResponseDto(
         int maxRetries,
         int issuesLimit,
         int maxIssues,
+        JiraDeploymentType deploymentType,
         Instant updatedAt,
         String updatedBy,
         boolean configured

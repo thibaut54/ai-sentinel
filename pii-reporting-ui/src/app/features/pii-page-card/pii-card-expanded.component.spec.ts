@@ -2,7 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { PiiCardExpandedComponent } from './pii-card-expanded.component';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import { PersonallyIdentifiableInformationScanResult } from '../../core/models/personally-identifiable-information-scan-result';
+import {
+    PersonallyIdentifiableInformationScanResult
+} from '../../core/models/personally-identifiable-information-scan-result';
 import { SentinelleApiService } from '../../core/services/sentinelle-api.service';
 
 const FR_TRANSLATIONS = {
@@ -30,6 +32,7 @@ const FR_TRANSLATIONS = {
     detections: 'd\u00e9tections',
     types: 'types',
     openInConfluence: 'Ouvrir dans Confluence',
+    openInSource: 'Ouvrir le contenu source',
     filter: {
       all: 'Tous',
     },
@@ -139,7 +142,7 @@ describe('PiiCardExpandedComponent', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('Should_DisplayConfluenceLink_When_PageUrlExists', () => {
+  it('Should_DisplaySourceLink_When_PageUrlExists', () => {
     fixture = TestBed.createComponent(PiiCardExpandedComponent);
     fixture.componentRef.setInput('item', MOCK_ITEM);
     fixture.componentRef.setInput('revealed', false);
@@ -149,6 +152,39 @@ describe('PiiCardExpandedComponent', () => {
     expect(link).toBeTruthy();
     expect(link.href).toBe('https://confluence.example.com/page/1');
     expect(link.target).toBe('_blank');
+    expect(link.textContent).toContain('Ouvrir le contenu source');
+  });
+
+  it('Should_HideSourceLink_When_PageUrlIsUndefined', () => {
+    const itemWithoutUrl: PersonallyIdentifiableInformationScanResult = {
+      ...MOCK_ITEM,
+      pageUrl: undefined,
+    };
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', itemWithoutUrl);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('.btn-confluence');
+    expect(link).toBeNull();
+  });
+
+  it('Should_DisplaySourceLinkForJira_When_JiraPageUrlExists', () => {
+    const jiraItem: PersonallyIdentifiableInformationScanResult = {
+      ...MOCK_ITEM,
+      pageUrl: 'https://jira.example.com/browse/PROJ-123',
+    };
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', jiraItem);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('.btn-confluence') as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.href).toBe('https://jira.example.com/browse/PROJ-123');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toBe('noopener noreferrer');
+    expect(link.textContent).toContain('Ouvrir le contenu source');
   });
 
   it('Should_ShowMaskLabel_When_Revealed', () => {

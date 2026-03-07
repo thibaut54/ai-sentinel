@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.jpa.JiraConnectionConfigJpaRepository;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.jpa.entity.JiraConnectionConfigEntity;
 
@@ -17,7 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("JiraConnectionConfigPersistenceAdapter")
@@ -230,6 +233,7 @@ class JiraConnectionConfigPersistenceAdapterTest {
                 .maxRetries(3)
                 .issuesLimit(50)
                 .maxIssues(5000)
+                .deploymentType(JiraDeploymentType.CLOUD)
                 .updatedAt(Instant.parse("2024-01-15T10:00:00Z"))
                 .updatedBy("admin")
                 .build();
@@ -245,6 +249,7 @@ class JiraConnectionConfigPersistenceAdapterTest {
                 3,
                 50,
                 5000,
+                JiraDeploymentType.CLOUD,
                 Instant.parse("2024-01-15T10:00:00Z"),
                 "admin"
         );

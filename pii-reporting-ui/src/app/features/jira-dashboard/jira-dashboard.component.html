@@ -110,6 +110,7 @@
                     styleClass="pii-help-button">
           </p-button>
         </th>
+        <th id="jira-col-actions" style="width: 9rem">{{ 'dashboard.table.headers.actions' | transloco }}</th>
       </tr>
       <tr>
         <th id="jira-col-select-filter"></th>
@@ -145,6 +146,7 @@
         <th id="jira-col-last-scan-value"></th>
         <th id="jira-col-risk-score-value"></th>
         <th id="jira-col-pii-value"></th>
+        <th id="jira-col-actions-value"></th>
       </tr>
     </ng-template>
     <ng-template #body let-project let-expanded="expanded">
@@ -185,6 +187,19 @@
             <p-badge [value]="project?.counts?.low ?? 0" severity="info" size="large"></p-badge>
           </div>
         </td>
+        <td class="col-actions">
+          <span
+            [pTooltip]="(project.url ? 'dashboard.actions.openInJira' : 'dashboard.actions.jiraUnavailable') | transloco"
+            tooltipPosition="top">
+            <p-button icon="pi pi-external-link"
+                      styleClass="p-button-text"
+                      [disabled]="!project.url"
+                      (click)="$event.stopPropagation(); openJira(project)"
+                      (keydown.enter)="$event.stopPropagation(); openJira(project)"
+                      (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openJira(project)"
+                      [ariaLabel]="'dashboard.actions.openInJira' | transloco"></p-button>
+          </span>
+        </td>
       </tr>
     </ng-template>
 
@@ -205,13 +220,14 @@
               <p-skeleton width="1.75rem" height="1.75rem" shape="circle"></p-skeleton>
             </div>
           </td>
+          <td></td>
         </tr>
       }
     </ng-template>
 
     <ng-template #expandedrow let-project>
       <tr>
-        <td colspan="8">
+        <td colspan="9">
           <div class="row-expansion">
             <div class="pii-scroll">
               @for (it of itemsByProject()[project.key] ?? []; track (it.pageId + '-' + (it.attachmentName ?? 'issue'))) {

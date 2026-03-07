@@ -1,39 +1,40 @@
 package pro.softcom.aisentinel.infrastructure.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
-import pro.softcom.aisentinel.application.jira.port.in.JiraProjectPort;
-import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort;
-import pro.softcom.aisentinel.application.jira.port.in.StreamJiraScanPort;
-import pro.softcom.aisentinel.application.jira.port.out.JiraClient;
-import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
-import pro.softcom.aisentinel.application.jira.service.AdfContentParser;
-import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
-import pro.softcom.aisentinel.application.jira.usecase.FetchJiraProjectUseCase;
-import pro.softcom.aisentinel.application.jira.usecase.ManageJiraConnectionUseCase;
-import pro.softcom.aisentinel.application.jira.usecase.StreamJiraScanUseCase;
 import pro.softcom.aisentinel.application.config.port.in.GetPollingConfigPort;
 import pro.softcom.aisentinel.application.config.port.out.ReadConfluenceConfigPort;
 import pro.softcom.aisentinel.application.config.usecase.GetPollingConfigUseCase;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpacePort;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpaceUpdateInfoPort;
+import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
 import pro.softcom.aisentinel.application.confluence.port.out.*;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceSpaceCacheRefreshService;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchConfluenceSpaceContentUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchSpaceUpdateInfoUseCase;
+import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
+import pro.softcom.aisentinel.application.jira.port.in.JiraProjectPort;
+import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort;
+import pro.softcom.aisentinel.application.jira.port.in.StreamJiraScanPort;
+import pro.softcom.aisentinel.application.jira.port.out.JiraClient;
+import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
+import pro.softcom.aisentinel.application.jira.port.out.JiraUrlProvider;
+import pro.softcom.aisentinel.application.jira.service.AdfContentParser;
+import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
+import pro.softcom.aisentinel.application.jira.usecase.FetchJiraProjectUseCase;
+import pro.softcom.aisentinel.application.jira.usecase.ManageJiraConnectionUseCase;
+import pro.softcom.aisentinel.application.jira.usecase.StreamJiraScanUseCase;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiDetectionConfigUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiTypeConfigsUseCase;
-import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
-import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
-import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
 import pro.softcom.aisentinel.application.pii.export.DetectionReportMapper;
 import pro.softcom.aisentinel.application.pii.export.port.in.ExportDetectionReportPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextPort;
@@ -56,6 +57,12 @@ import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
+import pro.softcom.aisentinel.infrastructure.jira.adapter.out.DelegatingJiraClient;
+import pro.softcom.aisentinel.infrastructure.jira.adapter.out.JiraCloudHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.jira.adapter.out.JiraDataCenterHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.DatabaseBackedJiraConnectionConfig;
+import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.JiraConnectionConfig;
 
 /**
  * Spring configuration that wires application use cases as beans from the infrastructure layer.
@@ -84,9 +91,10 @@ public class ApplicationUseCasesConfig {
 
     @Bean
     public ScanEventFactory scanEventFactory(ConfluenceUrlProvider confluenceUrlProvider,
+                                             JiraUrlProvider jiraUrlProvider,
                                              PiiContextExtractor piiContextExtractor,
                                              SeverityCalculationService severityCalculationService) {
-        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        return new ScanEventFactory(confluenceUrlProvider, jiraUrlProvider, piiContextExtractor, severityCalculationService);
     }
 
     @Bean
@@ -313,6 +321,29 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public JiraCloudHttpClientAdapter jiraCloudAdapter(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            ObjectMapper objectMapper,
+            AdfContentParser adfContentParser) {
+        return new JiraCloudHttpClientAdapter(config, objectMapper, adfContentParser);
+    }
+
+    @Bean
+    public JiraDataCenterHttpClientAdapter jiraDataCenterAdapter(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            ObjectMapper objectMapper) {
+        return new JiraDataCenterHttpClientAdapter(config, objectMapper);
+    }
+
+    @Bean
+    public JiraClient jiraClient(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            JiraCloudHttpClientAdapter cloudAdapter,
+            JiraDataCenterHttpClientAdapter dataCenterAdapter) {
+        return new DelegatingJiraClient(config, cloudAdapter, dataCenterAdapter);
+    }
+
+    @Bean
     public JiraAccessor jiraAccessor(JiraClient jiraClient) {
         return new JiraAccessor(jiraClient);
     }
@@ -325,11 +356,12 @@ public class ApplicationUseCasesConfig {
     @Bean
     public ManageJiraConnectionPort manageJiraConnectionPort(
             JiraConnectionConfigRepository jiraConnectionConfigRepository,
-            EncryptionService encryptionService) {
+            EncryptionService encryptionService,
+            @Qualifier("jiraConfig") DatabaseBackedJiraConnectionConfig jiraConfig) {
         return new ManageJiraConnectionUseCase(
                 jiraConnectionConfigRepository,
                 encryptionService,
-                () -> { /* Jira config updated callback */ }
+                jiraConfig::invalidateCache
         );
     }
 

@@ -6,6 +6,7 @@ import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort;
 import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.jira.JiraBaseUrl;
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
@@ -43,7 +44,7 @@ public class ManageJiraConnectionUseCase implements ManageJiraConnectionPort {
     public JiraConnectionSettings getConnectionSettings() {
         log.debug("Retrieving Jira connection settings");
         return repository.findSettings()
-                .orElse(new JiraConnectionSettings(CONFIG_ID, "", "", 30000, 60000, 3, 50, 5000, null, null));
+                .orElse(new JiraConnectionSettings(CONFIG_ID, "", "", 30000, 60000, 3, 50, 5000, JiraDeploymentType.CLOUD, null, null));
     }
 
     @Override
@@ -71,6 +72,7 @@ public class ManageJiraConnectionUseCase implements ManageJiraConnectionPort {
                 command.maxRetries(),
                 command.issuesLimit(),
                 command.maxIssues(),
+                command.deploymentType(),
                 Instant.now(),
                 command.updatedBy()
         );
@@ -92,17 +94,17 @@ public class ManageJiraConnectionUseCase implements ManageJiraConnectionPort {
     @Override
     public boolean testConnection(TestJiraConnectionCommand command) {
         var validatedUrl = new JiraBaseUrl(command.baseUrl());
-        log.info("Testing Jira connection to: {}", validatedUrl.value());
+        log.info("Testing Jira connection to: {} (deployment: {})", validatedUrl.value(), command.deploymentType());
 
         try {
-            String url = validatedUrl.value() + "/rest/api/3/myself";
+            String apiVersion = command.deploymentType() == JiraDeploymentType.DATA_CENTER ? "2" : "3";
+            String url = validatedUrl.value() + "/rest/api/" + apiVersion + "/myself";
 
-            String credentials = Base64.getEncoder()
-                    .encodeToString((command.email() + ":" + command.apiToken()).getBytes());
+            String authHeader = buildAuthHeader(command);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .header("Authorization", "Basic " + credentials)
+                    .header("Authorization", authHeader)
                     .header("Accept", "application/json")
                     .timeout(Duration.ofSeconds(10))
                     .GET()
@@ -125,6 +127,17 @@ public class ManageJiraConnectionUseCase implements ManageJiraConnectionPort {
             log.warn("Jira connection test failed: {}", e.getMessage());
             return false;
         }
+    }
+
+    private String buildAuthHeader(TestJiraConnectionCommand command) {
+        String token = command.apiToken() != null ? command.apiToken() : "";
+        if (command.deploymentType() == JiraDeploymentType.DATA_CENTER) {
+            return "Bearer " + token;
+        }
+        String email = command.email() != null ? command.email() : "";
+        String credentials = Base64.getEncoder()
+                .encodeToString((email + ":" + token).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return "Basic " + credentials;
     }
 
     private String encryptToken(String plainToken) {

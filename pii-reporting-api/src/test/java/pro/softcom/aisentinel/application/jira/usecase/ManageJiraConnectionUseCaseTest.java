@@ -13,6 +13,7 @@ import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort.
 import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort.UpdateJiraConnectionCommand;
 import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
 import java.time.Instant;
@@ -202,7 +203,7 @@ class ManageJiraConnectionUseCaseTest {
         @Test
         @DisplayName("Should reject URL when host is private address (SSRF protection)")
         void Should_RejectUrl_When_HostIsPrivateAddress() {
-            var command = new TestJiraConnectionCommand("https://10.0.0.1", "user@example.com", "token");
+            var command = new TestJiraConnectionCommand("https://10.0.0.1", "user@example.com", "token", JiraDeploymentType.CLOUD);
 
             assertThatThrownBy(() -> useCase.testConnection(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -212,7 +213,7 @@ class ManageJiraConnectionUseCaseTest {
         @Test
         @DisplayName("Should reject URL when scheme is HTTP (SSRF protection)")
         void Should_RejectUrl_When_SchemeIsHttp() {
-            var command = new TestJiraConnectionCommand("http://public.example.com", "user@example.com", "token");
+            var command = new TestJiraConnectionCommand("http://public.example.com", "user@example.com", "token", JiraDeploymentType.CLOUD);
 
             assertThatThrownBy(() -> useCase.testConnection(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -222,7 +223,7 @@ class ManageJiraConnectionUseCaseTest {
         @Test
         @DisplayName("Should reject URL when host is localhost (SSRF protection)")
         void Should_RejectUrl_When_HostIsLocalhost() {
-            var command = new TestJiraConnectionCommand("https://localhost", "user@example.com", "token");
+            var command = new TestJiraConnectionCommand("https://localhost", "user@example.com", "token", JiraDeploymentType.CLOUD);
 
             assertThatThrownBy(() -> useCase.testConnection(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -233,7 +234,7 @@ class ManageJiraConnectionUseCaseTest {
     private UpdateJiraConnectionCommand createUpdateCommand(String baseUrl, String apiToken) {
         return new UpdateJiraConnectionCommand(
                 baseUrl, "user@example.com", apiToken,
-                5000, 30000, 3, 50, 5000, "test-user"
+                5000, 30000, 3, 50, 5000, JiraDeploymentType.CLOUD, "test-user"
         );
     }
 
@@ -241,7 +242,7 @@ class ManageJiraConnectionUseCaseTest {
         return new JiraConnectionSettings(
                 1, baseUrl, "user@example.com",
                 5000, 30000, 3, 50, 5000,
-                Instant.now(), "test-user"
+                JiraDeploymentType.CLOUD, Instant.now(), "test-user"
         );
     }
 }

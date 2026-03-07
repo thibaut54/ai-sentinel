@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import pro.softcom.aisentinel.application.jira.port.in.ManageJiraConnectionPort;
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto.JiraConnectionConfigResponseDto;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto.TestJiraConnectionRequestDto;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto.UpdateJiraConnectionConfigRequestDto;
@@ -86,7 +87,7 @@ class JiraConnectionConfigControllerTest {
 
         UpdateJiraConnectionConfigRequestDto request = new UpdateJiraConnectionConfigRequestDto(
                 "https://test.atlassian.net", "user@test.com", "token",
-                30000, 60000, 3, 50, 5000
+                30000, 60000, 3, 50, 5000, JiraDeploymentType.CLOUD
         );
 
         // Act
@@ -109,7 +110,7 @@ class JiraConnectionConfigControllerTest {
 
         UpdateJiraConnectionConfigRequestDto request = new UpdateJiraConnectionConfigRequestDto(
                 "invalid", "user@test.com", "token",
-                30000, 60000, 3, 50, 5000
+                30000, 60000, 3, 50, 5000, JiraDeploymentType.CLOUD
         );
 
         // Act
@@ -128,7 +129,7 @@ class JiraConnectionConfigControllerTest {
         when(manageJiraConnectionPort.testConnection(any())).thenReturn(true);
 
         TestJiraConnectionRequestDto request = new TestJiraConnectionRequestDto(
-                "https://test.atlassian.net", "user@test.com", "token"
+                "https://test.atlassian.net", "user@test.com", "token", JiraDeploymentType.CLOUD
         );
 
         // Act
@@ -151,7 +152,7 @@ class JiraConnectionConfigControllerTest {
         when(manageJiraConnectionPort.testConnection(any())).thenReturn(false);
 
         TestJiraConnectionRequestDto request = new TestJiraConnectionRequestDto(
-                "https://test.atlassian.net", "user@test.com", "token"
+                "https://test.atlassian.net", "user@test.com", "token", JiraDeploymentType.CLOUD
         );
 
         // Act
@@ -174,7 +175,7 @@ class JiraConnectionConfigControllerTest {
         when(manageJiraConnectionPort.testConnection(any())).thenThrow(new RuntimeException("Connection refused"));
 
         TestJiraConnectionRequestDto request = new TestJiraConnectionRequestDto(
-                "https://test.atlassian.net", "user@test.com", "token"
+                "https://test.atlassian.net", "user@test.com", "token", JiraDeploymentType.CLOUD
         );
 
         // Act
@@ -202,6 +203,7 @@ class JiraConnectionConfigControllerTest {
                 3,
                 50,
                 5000,
+                JiraDeploymentType.CLOUD,
                 Instant.parse("2024-01-15T10:00:00Z"),
                 "admin"
         );

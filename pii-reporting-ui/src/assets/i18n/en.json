@@ -63,7 +63,9 @@
       "pauseScan": "Pause scan",
       "resumeScan": "Resume last scan",
       "openInConfluence": "Open in Confluence",
+      "openInJira": "Open in Jira",
       "confluenceUnavailable": "URL unavailable (not provided by backend)",
+      "jiraUnavailable": "URL unavailable",
       "settings": "Settings",
       "darkMode": "Switch to dark mode",
       "lightMode": "Switch to light mode",
@@ -233,6 +235,13 @@
     },
     "jira": {
       "title": "Jira Connection Configuration",
+      "deploymentType": {
+        "title": "Deployment Type",
+        "cloud": "Jira Cloud",
+        "cloudDesc": "Atlassian-hosted instances (*.atlassian.net) — REST API v3, ADF format",
+        "dataCenter": "Jira Data Center / Server",
+        "dataCenterDesc": "Self-hosted instances — REST API v2, wiki markup format"
+      },
       "connection": {
         "title": "Connection",
         "baseUrl": "Base URL",
@@ -725,6 +734,7 @@
     "detections": "detections",
     "types": "types",
     "openInConfluence": "Open in Confluence",
+    "openInSource": "Open source content",
     "filter": {
       "all": "All",
       "selectedItems": "{0} types selected"

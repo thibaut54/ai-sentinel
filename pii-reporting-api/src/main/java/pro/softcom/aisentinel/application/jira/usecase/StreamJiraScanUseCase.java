@@ -11,12 +11,13 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.jira.JiraIssue;
 import pro.softcom.aisentinel.domain.jira.JiraProject;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
-import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ScanProgress;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -130,7 +131,21 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                     Flux<ContentScanResult> completeEvent = Flux.just(
                             contentScanOrchestrator.createCompleteEvent(scanId, project.key()));
 
-                    return Flux.concat(startEvent, issueEvents, completeEvent);
+                    return Flux.concat(startEvent, issueEvents, completeEvent)
+                            .doOnEach(signal -> {
+                                if (signal.isOnNext() && signal.get() != null) {
+                                    ContentScanResult event = signal.get();
+                                    contentScanOrchestrator.persistCheckpointSynchronously(event);
+                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event))
+                                        .subscribeOn(Schedulers.boundedElastic())
+                                        .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
+                                        .onErrorResume(e -> {
+                                            log.warn("[JIRA-SCAN] Failed to persist async operations: {}", e.getMessage());
+                                            return Mono.empty();
+                                        })
+                                        .subscribe();
+                                }
+                            });
                 });
     }
 

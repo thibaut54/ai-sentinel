@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS jira_connection_config
     max_retries         INTEGER                  NOT NULL DEFAULT 3,
     issues_limit        INTEGER                  NOT NULL DEFAULT 50,
     max_issues          INTEGER                  NOT NULL DEFAULT 5000,
+    deployment_type     VARCHAR(20)              NOT NULL DEFAULT 'CLOUD',
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by          VARCHAR(255)                      DEFAULT 'system',
     CONSTRAINT check_single_jira_row CHECK (id = 1)

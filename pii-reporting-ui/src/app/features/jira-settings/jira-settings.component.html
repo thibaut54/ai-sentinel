@@ -8,6 +8,34 @@
   <div class="jira-settings-content">
     <form [formGroup]="configForm">
 
+      <!-- Deployment Type -->
+      <p-fieldset [legend]="'settings.jira.deploymentType.title' | transloco" [toggleable]="false">
+        <div class="deployment-type-group">
+          <div class="deployment-type-option">
+            <p-radioButton
+              inputId="deployCloud"
+              formControlName="deploymentType"
+              value="CLOUD">
+            </p-radioButton>
+            <label for="deployCloud" class="deployment-type-label">
+              <span class="deployment-type-name">{{ 'settings.jira.deploymentType.cloud' | transloco }}</span>
+              <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.cloudDesc' | transloco }}</small>
+            </label>
+          </div>
+          <div class="deployment-type-option">
+            <p-radioButton
+              inputId="deployDC"
+              formControlName="deploymentType"
+              value="DATA_CENTER">
+            </p-radioButton>
+            <label for="deployDC" class="deployment-type-label">
+              <span class="deployment-type-name">{{ 'settings.jira.deploymentType.dataCenter' | transloco }}</span>
+              <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.dataCenterDesc' | transloco }}</small>
+            </label>
+          </div>
+        </div>
+      </p-fieldset>
+
       <!-- Connection Fieldset -->
       <p-fieldset [legend]="'settings.jira.connection.title' | transloco" [toggleable]="true">
         <div class="form-field">

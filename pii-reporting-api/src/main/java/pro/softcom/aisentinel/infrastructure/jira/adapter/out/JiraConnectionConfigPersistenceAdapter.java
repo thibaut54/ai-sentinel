@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.jira.port.out.JiraConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.jira.JiraConnectionSettings;
+import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.jpa.JiraConnectionConfigJpaRepository;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.jpa.entity.JiraConnectionConfigEntity;
 
@@ -86,6 +87,7 @@ public class JiraConnectionConfigPersistenceAdapter implements JiraConnectionCon
                 entity.getMaxRetries(),
                 entity.getIssuesLimit(),
                 entity.getMaxIssues(),
+                entity.getDeploymentType() != null ? entity.getDeploymentType() : JiraDeploymentType.CLOUD,
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -102,6 +104,7 @@ public class JiraConnectionConfigPersistenceAdapter implements JiraConnectionCon
                 .maxRetries(settings.maxRetries())
                 .issuesLimit(settings.issuesLimit())
                 .maxIssues(settings.maxIssues())
+                .deploymentType(settings.deploymentType() != null ? settings.deploymentType() : JiraDeploymentType.CLOUD)
                 .updatedAt(settings.updatedAt() != null ? settings.updatedAt() : Instant.now())
                 .updatedBy(settings.updatedBy())
                 .build();

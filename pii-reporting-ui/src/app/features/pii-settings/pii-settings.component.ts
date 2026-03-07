@@ -1,6 +1,16 @@
-import { Component, computed, EventEmitter, Input, OnInit, Output, signal, viewChild } from '@angular/core';
+import {
+    Component,
+    computed,
+    EventEmitter,
+    Input,
+    OnInit,
+    Output,
+    SecurityContext,
+    signal,
+    viewChild
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import {
     AbstractControlOptions,
     FormBuilder,
@@ -606,8 +616,6 @@ export class PiiSettingsComponent implements OnInit {
       this.jiraSettings()!.onSave();
     }
 
-    this.saving.set(true);
-
     const requests: Observable<any>[] = [];
     let detectorRequestIndex = -1;
     let typesRequestIndex = -1;
@@ -629,15 +637,21 @@ export class PiiSettingsComponent implements OnInit {
       requests.push(this.configService.bulkUpdatePiiTypeConfigs(updates));
     }
 
+    // If only child components (Confluence/Jira) had changes, requests is empty.
+    // forkJoin([]) completes without emitting in RxJS 7+, so skip it.
+    if (requests.length === 0) {
+      return;
+    }
+
+    this.saving.set(true);
+
     forkJoin(requests).subscribe({
       next: (results) => {
-        // Update detector config if it was saved
         if (detectorRequestIndex >= 0 && results[detectorRequestIndex]) {
           this.currentConfig.set(results[detectorRequestIndex]);
           this.configForm.markAsPristine();
         }
 
-        // Update PII types if they were saved
         if (typesRequestIndex >= 0 && results[typesRequestIndex]) {
           const piiTypesResult = results[typesRequestIndex];
           piiTypesResult.forEach((config: PiiTypeConfig) => {
@@ -768,14 +782,14 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Highlight search term in text.
    */
-  highlightText(text: string, originalKey: string): SafeHtml {
+  highlightText(text: string, originalKey: string): string {
     // Get translated text first
     const translatedText = this.translocoService.translate(originalKey);
 
     const term = this.searchTerm().trim();
     if (!term) {
       // No search term, return plain translated text
-      return this.sanitizer.sanitize(1, translatedText) || translatedText;
+      return this.sanitizer.sanitize(SecurityContext.HTML, translatedText) || translatedText;
     }
 
     // Escape special regex characters
@@ -785,7 +799,7 @@ export class PiiSettingsComponent implements OnInit {
     // Replace matches with highlighted version
     const highlighted = translatedText.replaceAll(regex, '<mark class="search-highlight">$1</mark>');
 
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+    return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) || translatedText;
   }
 
   /**

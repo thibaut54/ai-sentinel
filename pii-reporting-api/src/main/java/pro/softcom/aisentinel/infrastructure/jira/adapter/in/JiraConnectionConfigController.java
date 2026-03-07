@@ -80,6 +80,7 @@ public class JiraConnectionConfigController {
                         request.maxRetries(),
                         request.issuesLimit(),
                         request.maxIssues(),
+                        request.deploymentType(),
                         updatedBy
                 );
 
@@ -113,7 +114,8 @@ public class JiraConnectionConfigController {
                 TestJiraConnectionCommand command = new TestJiraConnectionCommand(
                         request.baseUrl(),
                         request.email(),
-                        request.apiToken()
+                        request.apiToken(),
+                        request.deploymentType()
                 );
 
                 boolean success = manageJiraConnectionPort.testConnection(command);
@@ -141,6 +143,7 @@ public class JiraConnectionConfigController {
                 settings.maxRetries(),
                 settings.issuesLimit(),
                 settings.maxIssues(),
+                settings.deploymentType(),
                 settings.updatedAt(),
                 settings.updatedBy(),
                 manageJiraConnectionPort.isConfigured()
