@@ -37,6 +37,8 @@
         <build-helper-maven-plugin.version>3.4.0</build-helper-maven-plugin.version>
         <pdfbox.version>3.0.5</pdfbox.version>
         <tika.version>3.2.2</tika.version>
+        <microsoft-graph.version>6.60.0</microsoft-graph.version>
+        <azure-identity.version>1.18.2</azure-identity.version>
         <lombok.version>1.18.40</lombok.version>
         <grpc-api.version>1.76.0</grpc-api.version>
         <mockito-core.version>5.19.0</mockito-core.version>
@@ -159,6 +161,18 @@
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parsers-standard-package</artifactId>
             <version>${tika.version}</version>
+        </dependency>
+
+        <!-- Microsoft Graph SDK for SharePoint integration -->
+        <dependency>
+            <groupId>com.microsoft.graph</groupId>
+            <artifactId>microsoft-graph</artifactId>
+            <version>${microsoft-graph.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+            <version>${azure-identity.version}</version>
         </dependency>
 
         <!-- gRPC dependencies for PII detection service -->

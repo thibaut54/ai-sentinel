@@ -29,6 +29,9 @@ import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
 import pro.softcom.aisentinel.application.jira.usecase.FetchJiraProjectUseCase;
 import pro.softcom.aisentinel.application.jira.usecase.ManageJiraConnectionUseCase;
 import pro.softcom.aisentinel.application.jira.usecase.StreamJiraScanUseCase;
+import pro.softcom.aisentinel.application.sharepoint.port.in.SharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
+import pro.softcom.aisentinel.application.sharepoint.usecase.FetchSharePointContentUseCase;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
@@ -377,5 +380,12 @@ public class ApplicationUseCasesConfig {
                 contentScanOrchestrator,
                 scanExecutionOrchestrator
         );
+    }
+
+    // ---- SharePoint beans ----
+
+    @Bean
+    public SharePointScanPort sharePointScanPort(SharePointClient sharePointClient) {
+        return new FetchSharePointContentUseCase(sharePointClient);
     }
 }
