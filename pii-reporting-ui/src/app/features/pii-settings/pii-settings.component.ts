@@ -44,6 +44,7 @@ import {
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
 import { JiraSettingsComponent } from '../jira-settings/jira-settings.component';
+import { SharePointSettingsComponent } from '../sharepoint-settings/sharepoint-settings.component';
 
 /**
  * Settings page for PII detection configuration.
@@ -72,7 +73,8 @@ import { JiraSettingsComponent } from '../jira-settings/jira-settings.component'
         ConfirmDialogModule,
         DialogModule,
         ConfluenceSettingsComponent,
-        JiraSettingsComponent
+        JiraSettingsComponent,
+        SharePointSettingsComponent
     ],
   providers: [MessageService, ConfirmationService]
 })
@@ -96,6 +98,7 @@ export class PiiSettingsComponent implements OnInit {
 
   readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
   readonly jiraSettings = viewChild(JiraSettingsComponent);
+  readonly sharePointSettings = viewChild(SharePointSettingsComponent);
 
   configForm!: FormGroup;
   loading = signal(false);
@@ -108,7 +111,7 @@ export class PiiSettingsComponent implements OnInit {
   modifiedPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
 
   // Sidebar navigation
-  activeSection = signal<'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira'>('detectors');
+  activeSection = signal<'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira' | 'sharepoint'>('detectors');
 
   // Collapsible detector groups in PII types section
   collapsedDetectors = signal<Set<string>>(new Set());
@@ -603,8 +606,9 @@ export class PiiSettingsComponent implements OnInit {
     const hasTypeChanges = this.hasUnsavedTypeChanges();
     const hasConfluenceChanges = this.confluenceSettings()?.hasUnsavedChanges ?? false;
     const hasJiraChanges = this.jiraSettings()?.hasUnsavedChanges ?? false;
+    const hasSharePointChanges = this.sharePointSettings()?.hasUnsavedChanges ?? false;
 
-    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges && !hasJiraChanges) {
+    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges && !hasJiraChanges && !hasSharePointChanges) {
       return;
     }
 
@@ -614,6 +618,10 @@ export class PiiSettingsComponent implements OnInit {
 
     if (hasJiraChanges) {
       this.jiraSettings()!.onSave();
+    }
+
+    if (hasSharePointChanges) {
+      this.sharePointSettings()!.onSave();
     }
 
     const requests: Observable<any>[] = [];
@@ -744,10 +752,11 @@ export class PiiSettingsComponent implements OnInit {
     this.onResetPiiTypes();
     this.confluenceSettings()?.onReset();
     this.jiraSettings()?.onReset();
+    this.sharePointSettings()?.onReset();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false) || (this.jiraSettings()?.hasUnsavedChanges ?? false);
+    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false) || (this.jiraSettings()?.hasUnsavedChanges ?? false) || (this.sharePointSettings()?.hasUnsavedChanges ?? false);
   }
 
   get hasDetectorChanges(): boolean {
@@ -805,7 +814,7 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Set the active sidebar section.
    */
-  setActiveSection(section: 'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira'): void {
+  setActiveSection(section: 'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira' | 'sharepoint'): void {
     this.activeSection.set(section);
   }
 

@@ -32,7 +32,7 @@ public class SpaceScanCompletedListener {
         try {
             exportDetectionReportPort.export(
                     spaceScanCompleted.scanId(),
-                    SourceType.CONFLUENCE,
+                    SourceType.fromValue(spaceScanCompleted.sourceType()),
                     spaceScanCompleted.spaceKey()
             );
         } catch (Exception ex) {

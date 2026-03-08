@@ -3,11 +3,9 @@ import {
     Component,
     computed,
     DestroyRef,
-    EventEmitter,
     inject,
     OnDestroy,
     OnInit,
-    Output,
     signal
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,7 +15,6 @@ import { ButtonModule } from 'primeng/button';
 import { TranslocoModule } from '@jsverse/transloco';
 import { PiiPageCardComponent } from '../pii-page-card/pii-page-card.component';
 import { ToggleButtonModule } from 'primeng/togglebutton';
-import { BadgeModule } from 'primeng/badge';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -26,8 +23,9 @@ import { Ripple } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ScanProgressBarComponent } from '../../shared/components/scan-progress-bar/scan-progress-bar.component';
+import { PiiHelpDialogComponent } from '../../shared/components/pii-help-dialog/pii-help-dialog.component';
+import { PiiSeverityBadgesComponent } from '../../shared/components/pii-severity-badges/pii-severity-badges.component';
 import { SortEvent } from 'primeng/api';
-import { DialogModule } from 'primeng/dialog';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
 import { JiraConnectionConfigService } from '../../core/services/jira-connection-config.service';
@@ -37,6 +35,7 @@ import { JiraPiiItemsStorageService } from './services/jira-pii-items-storage.se
 import { JiraProjectDataManagementService } from './services/jira-project-data-management.service';
 import { JiraScanControlService } from './services/jira-scan-control.service';
 import { JiraProjectsDashboardUtils } from './jira-projects-dashboard.utils';
+import { SettingsDialogService } from '../../core/services/settings-dialog.service';
 
 @Component({
   selector: 'app-jira-dashboard',
@@ -47,7 +46,6 @@ import { JiraProjectsDashboardUtils } from './jira-projects-dashboard.utils';
     ButtonModule,
     ToggleButtonModule,
     PiiPageCardComponent,
-    BadgeModule,
     InputTextModule,
     SelectModule,
     TableModule,
@@ -55,10 +53,11 @@ import { JiraProjectsDashboardUtils } from './jira-projects-dashboard.utils';
     Ripple,
     TooltipModule,
     SkeletonModule,
-    DialogModule,
     TranslocoModule,
     ScanProgressBarComponent,
-    SeverityCardsComponent
+    SeverityCardsComponent,
+    PiiHelpDialogComponent,
+    PiiSeverityBadgesComponent
   ],
   templateUrl: './jira-dashboard.component.html',
   styleUrl: './jira-dashboard.component.css',
@@ -72,9 +71,8 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
   private readonly scanControl = inject(JiraScanControlService);
   private readonly jiraConfigService = inject(JiraConnectionConfigService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly settingsDialog = inject(SettingsDialogService);
   readonly dashboardUtils = inject(JiraProjectsDashboardUtils);
-
-  @Output() openSettings = new EventEmitter<number>();
 
   readonly skeletonRows: number[] = Array.from({ length: 10 }, (_, i) => i);
   readonly showPiiHelpDialog = signal(false);
@@ -218,7 +216,7 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
   }
 
   requestOpenSettings(tab: number = 0): void {
-    this.openSettings.emit(tab);
+    this.settingsDialog.open(tab);
   }
 
   dismissJiraConfigBanner(): void {

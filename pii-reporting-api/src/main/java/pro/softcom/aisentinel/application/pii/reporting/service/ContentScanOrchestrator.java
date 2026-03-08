@@ -102,22 +102,35 @@ public class ContentScanOrchestrator {
      * 
      * @param event the scan event to process
      */
-    public void persistEventAsyncOperations(ContentScanResult event) {
+    /**
+     * Persists severity counts, event store, and dispatches notifications with source type.
+     *
+     * @param event      the scan event to process
+     * @param sourceType the source type identifier (e.g., "CONFLUENCE", "SHAREPOINT", "JIRA")
+     */
+    public void persistEventAsyncOperations(ContentScanResult event, String sourceType) {
         // Calculate and persist severity counts if event contains PII detections
         if (event.detectedPIIList() != null && !event.detectedPIIList().isEmpty()) {
             SeverityCounts counts = severityCalculationService.aggregateCounts(event.detectedPIIList());
             scanSeverityCountService.incrementCounts(event.scanId(), event.sourceId(), counts);
         }
-        
+
         if (scanEventStore != null) {
             scanEventStore.append(event);
 
             // Has findings?
-            if (shouldPublishEvent(event)) {
+            if (shouldPublishEvent(event) && sourceType != null) {
                 // Publish the event only if transaction successfully committed
-                scanEventDispatcher.publishAfterCommit(event.scanId(), event.sourceId());
+                scanEventDispatcher.publishAfterCommit(event.scanId(), event.sourceId(), sourceType);
             }
         }
+    }
+
+    /**
+     * Backward-compatible overload for scan types that do not support export (e.g., database scans).
+     */
+    public void persistEventAsyncOperations(ContentScanResult event) {
+        persistEventAsyncOperations(event, null);
     }
 
     private static boolean shouldPublishEvent(ContentScanResult event) {

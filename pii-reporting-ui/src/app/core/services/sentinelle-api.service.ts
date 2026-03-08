@@ -5,11 +5,12 @@ import { catchError, tap } from 'rxjs/operators';
 import { Space } from '../models/space';
 import { StreamEvent } from '../models/stream-event';
 import {
-  ConfluenceContentPersonallyIdentifiableInformationScanResult,
-  StreamEventType
+    ConfluenceContentPersonallyIdentifiableInformationScanResult,
+    StreamEventType
 } from '../models/stream-event-type';
 import { SpaceUpdateInfo } from '../models/space-update-info.model';
 import { JiraProject } from '../models/jira-project.model';
+import { SharePointSite } from '../models/sharepoint-site.model';
 
 export interface LastScanMeta {
   scanId: string;
@@ -383,6 +384,84 @@ export class SentinelleApiService {
     return new Observable<StreamEvent>((observer) => {
       const params = projectKeys.map(k => `projectKeys=${encodeURIComponent(k)}`).join('&');
       const url = `/api/v1/stream/jira/projects/events/selected?${params}`;
+      const es = new EventSource(url);
+
+      const types: StreamEventType[] = [
+        'multiStart', 'start', 'pageStart', 'item', 'attachmentItem', 'pageComplete', 'scanError', 'complete', 'multiComplete', 'keepalive'
+      ];
+
+      for (const t of types) {
+        const handler = (e: Event) => this.onSseEvent(observer, t, e as MessageEvent);
+        es.addEventListener(t, handler as EventListener);
+      }
+
+      const onError = () => this.zone.run(() => observer.error(new Error('SSE connection error')));
+      es.onerror = onError as any;
+
+      return () => {
+        try {
+          es.close();
+        } catch {
+          // ignore
+        }
+      };
+    });
+  }
+
+  // --- SharePoint ---
+
+  getSharePointSites(): Observable<SharePointSite[]> {
+    return new Observable<SharePointSite[]>((observer) => {
+      const sub = this.http.get<SharePointSite[]>('/api/v1/sharepoint/sites').subscribe({
+        next: (data) => {
+          const sites: SharePointSite[] = data.map((site) => ({
+            id: site.id,
+            name: site.name ?? '',
+            webUrl: site.webUrl ?? undefined,
+            description: site.description ?? undefined
+          })).filter((site) => !!site.id);
+          observer.next(sites);
+          observer.complete();
+        },
+        error: (err) => observer.error(err)
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  startAllSharePointSitesStream(scanId?: string): Observable<StreamEvent> {
+    return new Observable<StreamEvent>((observer) => {
+      const url = scanId && String(scanId).trim().length > 0
+        ? `/api/v1/stream/sharepoint/sites/events?scanId=${encodeURIComponent(scanId)}`
+        : '/api/v1/stream/sharepoint/sites/events';
+      const es = new EventSource(url);
+
+      const types: StreamEventType[] = [
+        'multiStart', 'start', 'pageStart', 'item', 'attachmentItem', 'pageComplete', 'scanError', 'complete', 'multiComplete', 'keepalive'
+      ];
+
+      for (const t of types) {
+        const handler = (e: Event) => this.onSseEvent(observer, t, e as MessageEvent);
+        es.addEventListener(t, handler as EventListener);
+      }
+
+      const onError = () => this.zone.run(() => observer.error(new Error('SSE connection error')));
+      es.onerror = onError as any;
+
+      return () => {
+        try {
+          es.close();
+        } catch {
+          // ignore
+        }
+      };
+    });
+  }
+
+  startSelectedSharePointSitesStream(siteIds: string[]): Observable<StreamEvent> {
+    return new Observable<StreamEvent>((observer) => {
+      const params = siteIds.map(id => `siteIds=${encodeURIComponent(id)}`).join('&');
+      const url = `/api/v1/stream/sharepoint/sites/events/selected?${params}`;
       const es = new EventSource(url);
 
       const types: StreamEventType[] = [

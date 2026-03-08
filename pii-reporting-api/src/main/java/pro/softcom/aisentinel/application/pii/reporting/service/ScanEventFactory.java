@@ -15,6 +15,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiabl
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointScannableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -385,6 +386,9 @@ public class ScanEventFactory {
         }
         if (content instanceof JiraIssue jiraIssue) {
             return buildJiraIssueUrl(jiraIssue.key());
+        }
+        if (content instanceof SharePointScannableFile spFile) {
+            return spFile.driveItem().webUrl();
         }
         return null;
     }

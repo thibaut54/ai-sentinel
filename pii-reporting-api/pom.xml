@@ -26,7 +26,7 @@
     <properties>
         <java.version>25</java.version>
         <jackson.version>2.15.3</jackson.version>
-        <springdoc.version>2.2.0</springdoc.version>
+        <springdoc.version>2.8.6</springdoc.version>
         <grpc.version>1.76.0</grpc.version>
         <protobuf.version>4.33.0</protobuf.version>
         <armeria-bom.version>1.34.0</armeria-bom.version>
@@ -37,6 +37,7 @@
         <build-helper-maven-plugin.version>3.4.0</build-helper-maven-plugin.version>
         <pdfbox.version>3.0.5</pdfbox.version>
         <tika.version>3.2.2</tika.version>
+        <kotlin.version>2.2.0</kotlin.version>
         <microsoft-graph.version>6.60.0</microsoft-graph.version>
         <azure-identity.version>1.18.2</azure-identity.version>
         <lombok.version>1.18.40</lombok.version>

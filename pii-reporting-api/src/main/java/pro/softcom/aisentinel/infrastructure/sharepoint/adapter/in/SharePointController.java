@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/api/v1/sharepoint")
 @Tag(name = "SharePoint", description = "SharePoint operations")
-@ConditionalOnProperty(prefix = "sharepoint", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class SharePointController {

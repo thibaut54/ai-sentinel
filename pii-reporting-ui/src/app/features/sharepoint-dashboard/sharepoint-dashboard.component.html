@@ -1,0 +1,245 @@
+<div class="mx-auto p-3">
+  <!-- Warning: SharePoint credentials not configured -->
+  @if (spConfigMissing()) {
+    <div class="config-banner" role="alert">
+      <span>{{ 'settings.sharepoint.messages.loadError' | transloco: { error: '' } }}</span>
+      <p-button type="button"
+                [label]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco"
+                icon="pi pi-cog"
+                (click)="requestOpenSettings(2)"
+                (keydown.enter)="requestOpenSettings(2)"
+                styleClass="p-button-sm p-button-outlined"
+                [ariaLabel]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco" />
+      <p-button type="button"
+                icon="pi pi-times"
+                [text]="true"
+                [rounded]="true"
+                (click)="dismissSpConfigBanner()"
+                (keydown.enter)="dismissSpConfigBanner()"
+                [ariaLabel]="'dashboard.notifications.confluenceConfig.closeAriaLabel' | transloco" />
+    </div>
+  }
+
+  <!-- Severity cards -->
+  <app-severity-cards [counts]="globalSeverityCounts()" />
+
+  <p-table #dt [value]="sortedSites()"
+           [(selection)]="selectedSites"
+           dataKey="id"
+           sortField="name" [sortOrder]="1"
+           [paginator]="true"
+           [tableStyle]="{'min-width':'60rem'}"
+           [loading]="isSitesLoading()" [showLoader]="false"
+           [rows]="rows"
+           [first]="first"
+           [showCurrentPageReport]="true"
+           [currentPageReportTemplate]="'dashboard.table.paginatorReport' | transloco"
+           (onPage)="onPageChange($event)"
+           [rowsPerPageOptions]="[10,20,50]"
+           [expandedRowKeys]="expandedRowKeys()"
+           (onRowExpand)="onRowExpand($event)"
+           (onRowCollapse)="onRowCollapse($event)"
+           (onSort)="onCustomSort($event)" [customSort]="true">
+    <ng-template #caption>
+      <div class="caption-bar">
+        <div class="caption-left">
+          <div class="caption-paginator">
+            <p-button type="button" icon="pi pi-chevron-left" (click)="prevPage()" (keydown.enter)="prevPage()" [disabled]="isFirstPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.previous' | transloco" />
+            <p-button type="button" icon="pi pi-refresh" (click)="resetPage()" (keydown.enter)="resetPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.refresh' | transloco" />
+            <p-button type="button" icon="pi pi-chevron-right" (click)="nextPage()" (keydown.enter)="nextPage()" [disabled]="isLastPage()" [text]="true" size="small" [ariaLabel]="'dashboard.pagination.next' | transloco" />
+            <span class="page-indicator">{{ 'dashboard.table.pageIndicator' | transloco: { current: currentPage, total: totalPages } }}</span>
+          </div>
+        </div>
+        <div class="caption-right">
+          <output class="scan-status-badge"
+                  [class.scanning]="isStreaming()"
+                  [class.inactive]="!isStreaming()"
+                  [attr.aria-live]="isStreaming() ? 'polite' : 'off'"
+                  [attr.aria-label]="(isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
+            {{ (isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
+          </output>
+          <div class="scan-actions-group">
+            <p-button type="button"
+                      icon="pi pi-play"
+                      (click)="selectedSitesCount() > 0 ? startSelected() : startAll()"
+                      (keydown.enter)="selectedSitesCount() > 0 ? startSelected() : startAll()"
+                      [disabled]="!canStartScan()"
+                      [pTooltip]="(selectedSitesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSitesCount() }) : ('dashboard.actions.startScan' | transloco))"
+                      tooltipPosition="bottom"
+                      [ariaLabel]="(selectedSitesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSitesCount() }) : ('dashboard.actions.startScan' | transloco))" />
+            <p-button type="button"
+                      icon="pi pi-pause"
+                      (click)="pauseScan()"
+                      (keydown.enter)="pauseScan()"
+                      [disabled]="!isStreaming()"
+                      [pTooltip]="'dashboard.actions.pauseScan' | transloco"
+                      tooltipPosition="bottom"
+                      [ariaLabel]="'dashboard.actions.pauseScan' | transloco" />
+          </div>
+        </div>
+      </div>
+    </ng-template>
+    <ng-template #header>
+      <tr>
+        <th id="sp-col-check-box" style="width: 3.5rem">
+          <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+        </th>
+        <th id="sp-col-toggle" style="width: 3.5rem"></th>
+        <th id="sp-col-site" style="width: 14rem" pSortableColumn="name">
+          {{ 'dashboard.table.headers.space' | transloco }}
+          <p-sortIcon field="name" />
+        </th>
+        <th id="sp-col-status" style="width: 9.5rem">{{ 'dashboard.table.headers.status' | transloco }}</th>
+        <th id="sp-col-progress" style="width: 6rem">{{ 'dashboard.table.headers.progress' | transloco }}</th>
+        <th id="sp-col-last-scan" style="width: 8rem">{{ 'dashboard.table.headers.lastScan' | transloco }}</th>
+        <th id="sp-col-risk-score" style="width: 6rem" class="text-center" pSortableColumn="piiCount">
+          {{ 'dashboard.table.headers.riskScore' | transloco }}
+          <p-sortIcon field="piiCount" />
+        </th>
+        <th id="sp-col-pii" style="width: 9rem" class="pii-header-cell">
+          {{ 'dashboard.table.headers.pii' | transloco }}
+          <p-button type="button"
+                    icon="pi pi-question-circle"
+                    [text]="true"
+                    [rounded]="true"
+                    (click)="openPiiHelpDialog(); $event.stopPropagation()"
+                    (keydown.enter)="openPiiHelpDialog(); $event.stopPropagation()"
+                    [pTooltip]="'piiHelp.buttonTooltip' | transloco"
+                    tooltipPosition="top"
+                    [ariaLabel]="'piiHelp.buttonTooltip' | transloco"
+                    styleClass="pii-help-button">
+          </p-button>
+        </th>
+        <th id="sp-col-actions" style="width: 9rem">{{ 'dashboard.table.headers.actions' | transloco }}</th>
+      </tr>
+      <tr>
+        <th id="sp-col-select-filter"></th>
+        <th id="sp-col-toggle-value"></th>
+        <th id="sp-col-site-value">
+          <input
+            class="search-global"
+            pInputText
+            type="text"
+            [placeholder]="'common.search' | transloco"
+            [ngModel]="globalFilter()"
+            (ngModelChange)="onGlobalChange($event)"
+            [attr.aria-label]="'common.searchGlobally' | transloco" />
+        </th>
+        <th id="sp-col-status-value">
+          <p-select
+            [options]="statusOptions()"
+            optionLabel="labelKey"
+            optionValue="value"
+            [ngModel]="statusFilter()"
+            (ngModelChange)="onFilter('status', $event)"
+            [showClear]="true"
+            appendTo="body">
+            <ng-template pTemplate="item" let-option>
+              {{ option.labelKey | transloco }}
+            </ng-template>
+            <ng-template pTemplate="selectedItem" let-option>
+              {{ option.labelKey | transloco }}
+            </ng-template>
+          </p-select>
+        </th>
+        <th id="sp-col-progress-value"></th>
+        <th id="sp-col-last-scan-value"></th>
+        <th id="sp-col-risk-score-value"></th>
+        <th id="sp-col-pii-value"></th>
+        <th id="sp-col-actions-value"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-site let-expanded="expanded">
+      <tr>
+        <td>
+          <p-tableCheckbox [value]="site" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()"></p-tableCheckbox>
+        </td>
+        <td class="toggle-cell">
+          <p-button type="button"
+                    pRipple
+                    [pRowToggler]="site"
+                    [text]="true"
+                    [rounded]="true"
+                    [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                    [ariaLabel]="(expanded ? 'dashboard.table.collapse' : 'dashboard.table.expand') | transloco">
+          </p-button>
+        </td>
+        <td class="space-name-cell" [pRowToggler]="site" tabindex="0">
+          <span class="fw-500">{{ site.name }}</span>
+        </td>
+        <td class="col-status">
+          <p-tag [value]="statusLabel(site.status)"
+                 [severity]="statusStyle(site.status)"></p-tag>
+        </td>
+        <td class="col-progress">
+          <app-scan-progress-bar [spaceKey]="site.id" [status]="site.status"></app-scan-progress-bar>
+        </td>
+        <td class="col-last-scan">{{ site.lastScanTs | date:'short' }}</td>
+        <td class="text-center col-risk-score">
+          <span class="pii-total-badge">
+            {{ site?.counts?.total ?? 0 }}
+          </span>
+        </td>
+        <td>
+          <app-pii-severity-badges [high]="site?.counts?.high ?? 0"
+                                   [medium]="site?.counts?.medium ?? 0"
+                                   [low]="site?.counts?.low ?? 0" />
+        </td>
+        <td class="col-actions">
+          <span
+            [pTooltip]="(site.webUrl ? 'dashboard.actions.openInSharePoint' : 'dashboard.actions.sharePointUnavailable') | transloco"
+            tooltipPosition="top">
+            <p-button icon="pi pi-external-link"
+                      styleClass="p-button-text"
+                      [disabled]="!site.webUrl"
+                      (click)="$event.stopPropagation(); openSharePoint(site)"
+                      (keydown.enter)="$event.stopPropagation(); openSharePoint(site)"
+                      (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openSharePoint(site)"
+                      [ariaLabel]="'dashboard.actions.openInSharePoint' | transloco"></p-button>
+          </span>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="loadingbody">
+      @for (_ of skeletonRows; track $index) {
+        <tr>
+          <td><p-skeleton width="1.5rem" height="1.5rem" shape="circle"></p-skeleton></td>
+          <td></td>
+          <td><p-skeleton width="12rem"></p-skeleton></td>
+          <td class="col-status"><p-skeleton width="6rem" height="1.5rem"></p-skeleton></td>
+          <td class="col-progress"><p-skeleton width="8rem" height="0.75rem"></p-skeleton></td>
+          <td class="col-last-scan"><p-skeleton width="9rem"></p-skeleton></td>
+          <td class="col-risk-score"><p-skeleton width="2.5rem" height="1.5rem"></p-skeleton></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.5rem">
+              <p-skeleton width="1.75rem" height="1.75rem" shape="circle"></p-skeleton>
+              <p-skeleton width="1.75rem" height="1.75rem" shape="circle"></p-skeleton>
+              <p-skeleton width="1.75rem" height="1.75rem" shape="circle"></p-skeleton>
+            </div>
+          </td>
+          <td></td>
+        </tr>
+      }
+    </ng-template>
+
+    <ng-template #expandedrow let-site>
+      <tr>
+        <td colspan="9">
+          <div class="row-expansion">
+            <div class="pii-scroll">
+              @for (it of itemsBySite()[site.id] ?? []; track (it.pageId + '-' + (it.attachmentName ?? 'doc'))) {
+                <app-pii-page-card [item]="it"
+                                   [maskByDefault]="maskByDefault()"></app-pii-page-card>
+              } @empty {
+                <div class="text-muted">{{ 'dashboard.table.emptyMessage' | transloco }}</div>
+              }
+            </div>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <app-pii-help-dialog [(visible)]="showPiiHelpDialog" />
+</div>

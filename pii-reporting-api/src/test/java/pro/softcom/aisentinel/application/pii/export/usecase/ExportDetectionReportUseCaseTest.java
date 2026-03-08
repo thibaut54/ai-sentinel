@@ -244,6 +244,7 @@ class ExportDetectionReportUseCaseTest {
                 .reportName("Test Space")
                 .reportIdentifier("TEST")
                 .sourceUrl("https://example.com/space/TEST")
+                .sourceType(SourceType.CONFLUENCE)
                 .contacts(List.of())
                 .additionalMetadata(Map.of())
                 .build();

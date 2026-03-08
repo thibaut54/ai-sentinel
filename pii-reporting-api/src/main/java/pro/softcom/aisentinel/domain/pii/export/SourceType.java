@@ -9,7 +9,8 @@ public enum SourceType {
      * Confluence platform - collaborative workspace for teams
      */
     CONFLUENCE("CONFLUENCE"),
-    JIRA("JIRA");
+    JIRA("JIRA"),
+    SHAREPOINT("SHAREPOINT");
 
     private final String value;
 

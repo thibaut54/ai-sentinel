@@ -2,43 +2,69 @@ package pro.softcom.aisentinel.infrastructure.sharepoint.adapter.out;
 
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.models.Site;
+import com.microsoft.graph.models.odataerrors.ODataError;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointDriveItem;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointSite;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * Infrastructure adapter implementing SharePointClient using Microsoft Graph SDK v6.
  * Translates Graph API responses into domain objects.
+ * Uses a Supplier to allow dynamic client replacement when DB-backed credentials change.
  */
 @Component
-@ConditionalOnProperty(prefix = "sharepoint", name = "enabled", havingValue = "true")
-@RequiredArgsConstructor
 @Slf4j
 public class MicrosoftGraphSharePointAdapter implements SharePointClient {
 
-    private final GraphServiceClient graphServiceClient;
+    private final Supplier<GraphServiceClient> graphClientSupplier;
+
+    public MicrosoftGraphSharePointAdapter(Supplier<GraphServiceClient> graphClientSupplier) {
+        this.graphClientSupplier = graphClientSupplier;
+    }
+
+    private GraphServiceClient client() {
+        return graphClientSupplier.get();
+    }
 
     @Override
     public CompletableFuture<Boolean> testConnection() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                var result = graphServiceClient.sites().get(config ->
-                    config.queryParameters.search = "*"
-                );
-                return result != null;
-            } catch (Exception e) {
-                log.error("[SHAREPOINT] Connection test failed: {}", e.getMessage());
+                var root = client().sites().bySiteId("root").get();
+                return root != null;
+            } catch (ODataError e) {
+                log.error("[SHAREPOINT] Connection test failed: HTTP {} - code={}, message={}",
+                    e.getResponseStatusCode(),
+                    e.getError() != null ? e.getError().getCode() : "unknown",
+                    e.getError() != null ? e.getError().getMessage() : e.getMessage(), e);
                 return false;
+            } catch (Exception e) {
+                log.error("[SHAREPOINT] Connection test failed: {}", e.getMessage(), e);
+                return false;
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<SharePointSite> getSite(String siteId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                var site = client().sites().bySiteId(siteId).get();
+                if (site == null) {
+                    return null;
+                }
+                return toSharePointSite(site);
+            } catch (Exception e) {
+                log.error("[SHAREPOINT] Error fetching site {}: {}", siteId, e.getMessage(), e);
+                return null;
             }
         });
     }
@@ -47,8 +73,9 @@ public class MicrosoftGraphSharePointAdapter implements SharePointClient {
     public CompletableFuture<List<SharePointSite>> searchSites(String query) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                var result = graphServiceClient.sites().get(config ->
-                    config.queryParameters.search = query
+                var effectiveQuery = "*".equals(query) ? "" : query;
+                var result = client().sites().get(config ->
+                    config.queryParameters.search = effectiveQuery
                 );
                 if (result == null || result.getValue() == null) {
                     return List.of();
@@ -68,13 +95,13 @@ public class MicrosoftGraphSharePointAdapter implements SharePointClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Get the default drive for the site
-                var drive = graphServiceClient.sites().bySiteId(siteId).drive().get();
+                var drive = client().sites().bySiteId(siteId).drive().get();
                 if (drive == null || drive.getId() == null) {
                     log.warn("[SHAREPOINT] No default drive found for site {}", siteId);
                     return List.of();
                 }
                 // List root children
-                var response = graphServiceClient.drives()
+                var response = client().drives()
                     .byDriveId(drive.getId())
                     .items()
                     .byDriveItemId("root")
@@ -94,10 +121,50 @@ public class MicrosoftGraphSharePointAdapter implements SharePointClient {
     }
 
     @Override
+    public CompletableFuture<List<SharePointDriveItem>> listAllDrivesRootItems(String siteId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                var drivesResponse = client().sites().bySiteId(siteId).drives().get();
+                if (drivesResponse == null || drivesResponse.getValue() == null) {
+                    return List.of();
+                }
+                log.info("[SHAREPOINT] Found {} drives for site {}", drivesResponse.getValue().size(), siteId);
+                drivesResponse.getValue().forEach(d ->
+                    log.info("[SHAREPOINT]   drive: name={}, id={}, driveType={}", d.getName(), d.getId(), d.getDriveType())
+                );
+                return drivesResponse.getValue().stream()
+                    .filter(drive -> drive.getId() != null)
+                    .flatMap(drive -> {
+                        try {
+                            var response = client().drives()
+                                .byDriveId(drive.getId())
+                                .items()
+                                .byDriveItemId("root")
+                                .children()
+                                .get();
+                            if (response == null || response.getValue() == null) {
+                                return java.util.stream.Stream.empty();
+                            }
+                            return response.getValue().stream()
+                                .map(item -> toDriveItem(item, drive.getId()));
+                        } catch (Exception e) {
+                            log.warn("[SHAREPOINT] Error listing items for drive {}: {}", drive.getId(), e.getMessage());
+                            return java.util.stream.Stream.empty();
+                        }
+                    })
+                    .toList();
+            } catch (Exception e) {
+                log.error("[SHAREPOINT] Error listing all drives for site {}: {}", siteId, e.getMessage(), e);
+                return List.of();
+            }
+        });
+    }
+
+    @Override
     public CompletableFuture<List<SharePointDriveItem>> listChildren(String driveId, String itemId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                var response = graphServiceClient.drives()
+                var response = client().drives()
                     .byDriveId(driveId)
                     .items()
                     .byDriveItemId(itemId)
@@ -121,7 +188,7 @@ public class MicrosoftGraphSharePointAdapter implements SharePointClient {
     public CompletableFuture<InputStream> downloadContent(String driveId, String itemId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return graphServiceClient.drives()
+                return client().drives()
                     .byDriveId(driveId)
                     .items()
                     .byDriveItemId(itemId)

@@ -136,7 +136,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                                 if (signal.isOnNext() && signal.get() != null) {
                                     ContentScanResult event = signal.get();
                                     contentScanOrchestrator.persistCheckpointSynchronously(event);
-                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event))
+                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, "JIRA"))
                                         .subscribeOn(Schedulers.boundedElastic())
                                         .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
                                         .onErrorResume(e -> {

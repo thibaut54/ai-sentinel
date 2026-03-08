@@ -32,6 +32,7 @@ spring:
   autoconfigure:
     exclude:
       - com.linecorp.armeria.spring.ArmeriaAutoConfiguration
+      - org.springdoc.core.configuration.SpringDocKotlinConfiguration
 
 # Confluence cache/polling settings (connection config is DB-backed)
 ai-sentinel:
@@ -99,15 +100,6 @@ armeria:
   internal-services:
     include: docs, health, metrics, actuator
     port: 8090
-
-# SharePoint Configuration (Microsoft Graph API)
-# Set sharepoint.enabled=true and provide credentials to activate SharePoint scanning
-sharepoint:
-  enabled: ${SHAREPOINT_ENABLED:false}
-  tenant-id: ${AZURE_TENANT_ID:}
-  client-id: ${AZURE_CLIENT_ID:}
-  client-secret: ${AZURE_CLIENT_SECRET:}
-  access-token: ${SHAREPOINT_ACCESS_TOKEN:}
 
 # Server Configuration
 server:

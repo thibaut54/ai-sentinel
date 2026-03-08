@@ -29,9 +29,6 @@ import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
 import pro.softcom.aisentinel.application.jira.usecase.FetchJiraProjectUseCase;
 import pro.softcom.aisentinel.application.jira.usecase.ManageJiraConnectionUseCase;
 import pro.softcom.aisentinel.application.jira.usecase.StreamJiraScanUseCase;
-import pro.softcom.aisentinel.application.sharepoint.port.in.SharePointScanPort;
-import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
-import pro.softcom.aisentinel.application.sharepoint.usecase.FetchSharePointContentUseCase;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
@@ -59,6 +56,16 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointReposi
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.ManageSharePointConnectionPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.SharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
+import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointConnectionConfigRepository;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointAccessor;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointTextExtractorPort;
+import pro.softcom.aisentinel.application.sharepoint.usecase.FetchSharePointContentUseCase;
+import pro.softcom.aisentinel.application.sharepoint.usecase.ManageSharePointConnectionUseCase;
+import pro.softcom.aisentinel.application.sharepoint.usecase.StreamSharePointScanUseCase;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.DelegatingJiraClient;
@@ -66,6 +73,7 @@ import pro.softcom.aisentinel.infrastructure.jira.adapter.out.JiraCloudHttpClien
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.JiraDataCenterHttpClientAdapter;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.DatabaseBackedJiraConnectionConfig;
 import pro.softcom.aisentinel.infrastructure.jira.adapter.out.config.JiraConnectionConfig;
+import pro.softcom.aisentinel.infrastructure.sharepoint.adapter.out.config.SharePointGraphClientHolder;
 
 /**
  * Spring configuration that wires application use cases as beans from the infrastructure layer.
@@ -387,5 +395,38 @@ public class ApplicationUseCasesConfig {
     @Bean
     public SharePointScanPort sharePointScanPort(SharePointClient sharePointClient) {
         return new FetchSharePointContentUseCase(sharePointClient);
+    }
+
+    @Bean
+    public SharePointAccessor sharePointAccessor(SharePointClient sharePointClient) {
+        return new SharePointAccessor(sharePointClient);
+    }
+
+    @Bean
+    public ManageSharePointConnectionPort manageSharePointConnectionPort(
+            SharePointConnectionConfigRepository sharePointConnectionConfigRepository,
+            EncryptionService encryptionService,
+            SharePointGraphClientHolder sharePointGraphClientHolder) {
+        return new ManageSharePointConnectionUseCase(
+                sharePointConnectionConfigRepository,
+                encryptionService,
+                sharePointGraphClientHolder::invalidate
+        );
+    }
+
+    @Bean
+    public StreamSharePointScanPort streamSharePointScanPort(
+            SharePointAccessor sharePointAccessor,
+            SharePointTextExtractorPort sharePointTextExtractor,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestrator) {
+        return new StreamSharePointScanUseCase(
+                sharePointAccessor,
+                sharePointTextExtractor,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanExecutionOrchestrator
+        );
     }
 }

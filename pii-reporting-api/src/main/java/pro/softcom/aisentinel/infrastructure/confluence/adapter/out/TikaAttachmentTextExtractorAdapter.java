@@ -40,7 +40,7 @@ public class TikaAttachmentTextExtractorAdapter implements AttachmentTextExtract
         if (bytes == null || bytes.length == 0) return Optional.empty();
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
             AutoDetectParser parser = new AutoDetectParser();
-            BodyContentHandler handler = new BodyContentHandler(-1); // unlimited
+            BodyContentHandler handler = new BodyContentHandler(-1);
             Metadata metadata = new Metadata();
             ParseContext context = new ParseContext();
 

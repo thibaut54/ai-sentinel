@@ -15,9 +15,13 @@ public interface SharePointClient {
 
     CompletableFuture<Boolean> testConnection();
 
+    CompletableFuture<SharePointSite> getSite(String siteId);
+
     CompletableFuture<List<SharePointSite>> searchSites(String query);
 
     CompletableFuture<List<SharePointDriveItem>> listRootDriveItems(String siteId);
+
+    CompletableFuture<List<SharePointDriveItem>> listAllDrivesRootItems(String siteId);
 
     CompletableFuture<List<SharePointDriveItem>> listChildren(String driveId, String itemId);
 

@@ -31,8 +31,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Confluence export context adapter tests")
-class ConfluenceExportContextAdapterTest {
+@DisplayName("Composite export context adapter tests")
+class CompositeExportContextAdapterTest {
 
     @Mock
     private ConfluenceSpaceRepository confluenceSpaceRepository;
@@ -40,11 +40,14 @@ class ConfluenceExportContextAdapterTest {
     @Mock
     private ConfluenceClient confluenceClient;
 
-    private ConfluenceExportContextAdapter adapter;
+    @Mock
+    private SharePointExportContextAdapter sharePointExportContextAdapter;
+
+    private CompositeExportContextAdapter adapter;
 
     @BeforeEach
     void setUp() {
-        adapter = new ConfluenceExportContextAdapter(confluenceSpaceRepository, confluenceClient);
+        adapter = new CompositeExportContextAdapter(confluenceSpaceRepository, confluenceClient, sharePointExportContextAdapter);
     }
 
     @Test
@@ -108,6 +111,46 @@ class ConfluenceExportContextAdapterTest {
         assertThat(result.contacts()).hasSize(1);
         verify(confluenceSpaceRepository).findByKey(spaceKey);
         verify(confluenceClient).getSpaceWithPermissions(spaceKey);
+    }
+
+    @Test
+    @DisplayName("Should_DelegateToSharePointAdapter_When_SourceTypeIsSharePoint")
+    void Should_DelegateToSharePointAdapter_When_SourceTypeIsSharePoint() {
+        // Given
+        String siteId = "site-123";
+        ExportContext expectedContext = ExportContext.builder()
+                .reportName("Test Site")
+                .reportIdentifier(siteId)
+                .sourceUrl("https://sp.com/sites/test")
+                .sourceType(SourceType.SHAREPOINT)
+                .contacts(List.of())
+                .additionalMetadata(java.util.Map.of("siteId", siteId))
+                .build();
+        when(sharePointExportContextAdapter.findContext(siteId, SourceType.SHAREPOINT)).thenReturn(expectedContext);
+
+        // When
+        ExportContext result = adapter.findContext(SourceType.SHAREPOINT, siteId);
+
+        // Then
+        assertThat(result).isEqualTo(expectedContext);
+        verify(sharePointExportContextAdapter).findContext(siteId, SourceType.SHAREPOINT);
+        verifyNoInteractions(confluenceSpaceRepository, confluenceClient);
+    }
+
+    @Test
+    @DisplayName("Should_BuildJiraContext_When_SourceTypeIsJira")
+    void Should_BuildJiraContext_When_SourceTypeIsJira() {
+        // Given
+        String projectKey = "PROJ";
+
+        // When
+        ExportContext result = adapter.findContext(SourceType.JIRA, projectKey);
+
+        // Then
+        assertThat(result.reportName()).isEqualTo(projectKey);
+        assertThat(result.reportIdentifier()).isEqualTo(projectKey);
+        assertThat(result.additionalMetadata()).containsEntry("projectKey", projectKey);
+        verifyNoInteractions(confluenceSpaceRepository, confluenceClient, sharePointExportContextAdapter);
     }
 
     @ParameterizedTest

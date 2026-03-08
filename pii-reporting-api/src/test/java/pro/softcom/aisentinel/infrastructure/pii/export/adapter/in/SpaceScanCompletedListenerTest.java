@@ -28,7 +28,7 @@ class SpaceScanCompletedListenerTest {
     @DisplayName("Should_CallExportUseCase_When_ValidEventReceived")
     void Should_CallExportUseCase_When_ValidEventReceived() {
         // Given
-        SpaceScanCompleted event = new SpaceScanCompleted("scan-123", "TEST-KEY");
+        SpaceScanCompleted event = new SpaceScanCompleted("scan-123", "TEST-KEY", "CONFLUENCE");
 
         // When
         listener.onSpaceScanCompleted(event);
@@ -53,7 +53,7 @@ class SpaceScanCompletedListenerTest {
     @DisplayName("Should_CatchException_When_ExportFails")
     void Should_CatchException_When_ExportFails() {
         // Given
-        SpaceScanCompleted event = new SpaceScanCompleted("scan-456", "FAIL-KEY");
+        SpaceScanCompleted event = new SpaceScanCompleted("scan-456", "FAIL-KEY", "CONFLUENCE");
         doThrow(new RuntimeException("Export failed"))
                 .when(exportDetectionReportUseCase)
                 .export("scan-456", SourceType.CONFLUENCE, "FAIL-KEY");
@@ -69,9 +69,9 @@ class SpaceScanCompletedListenerTest {
     @DisplayName("Should_HandleMultipleEvents_When_CalledSequentially")
     void Should_HandleMultipleEvents_When_CalledSequentially() {
         // Given
-        SpaceScanCompleted event1 = new SpaceScanCompleted("scan-1", "KEY-1");
-        SpaceScanCompleted event2 = new SpaceScanCompleted("scan-2", "KEY-2");
-        SpaceScanCompleted event3 = new SpaceScanCompleted("scan-3", "KEY-3");
+        SpaceScanCompleted event1 = new SpaceScanCompleted("scan-1", "KEY-1", "CONFLUENCE");
+        SpaceScanCompleted event2 = new SpaceScanCompleted("scan-2", "KEY-2", "CONFLUENCE");
+        SpaceScanCompleted event3 = new SpaceScanCompleted("scan-3", "KEY-3", "CONFLUENCE");
 
         // When
         listener.onSpaceScanCompleted(event1);
@@ -88,8 +88,8 @@ class SpaceScanCompletedListenerTest {
     @DisplayName("Should_ContinueProcessing_When_OneEventFails")
     void Should_ContinueProcessing_When_OneEventFails() {
         // Given
-        SpaceScanCompleted event1 = new SpaceScanCompleted("scan-1", "KEY-1");
-        SpaceScanCompleted event2 = new SpaceScanCompleted("scan-2", "KEY-2");
+        SpaceScanCompleted event1 = new SpaceScanCompleted("scan-1", "KEY-1", "CONFLUENCE");
+        SpaceScanCompleted event2 = new SpaceScanCompleted("scan-2", "KEY-2", "CONFLUENCE");
 
         doThrow(new RuntimeException("Export failed for scan-1"))
                 .when(exportDetectionReportUseCase)

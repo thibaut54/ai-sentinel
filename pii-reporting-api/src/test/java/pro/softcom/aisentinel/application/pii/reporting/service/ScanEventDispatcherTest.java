@@ -99,7 +99,7 @@ class ScanEventDispatcherTest {
     @DisplayName("Should_PublishEventImmediately_When_NoTransactionActive")
     void Should_PublishEventImmediately_When_NoTransactionActive(String scanId, String spaceKey) {
         // When
-        dispatcher.publishAfterCommit(scanId, spaceKey);
+        dispatcher.publishAfterCommit(scanId, spaceKey, "CONFLUENCE");
 
         // Then
         verify(publishEventPort).publishCompleteEvent(eventCaptor.capture());
@@ -123,7 +123,7 @@ class ScanEventDispatcherTest {
         ScanEventDispatcher txDispatcher = new ScanEventDispatcher(publishEventPort, action -> stored[0] = action);
 
         // When
-        txDispatcher.publishAfterCommit(scanId, spaceKey);
+        txDispatcher.publishAfterCommit(scanId, spaceKey, "CONFLUENCE");
 
         // Then - event should not be published immediately
         verify(publishEventPort, never()).publishCompleteEvent(any());
@@ -151,7 +151,7 @@ class ScanEventDispatcherTest {
         doThrow(new RuntimeException("Publish failed")).when(publishEventPort).publishCompleteEvent(any());
 
         // When
-        txDispatcher.publishAfterCommit(scanId, spaceKey);
+        txDispatcher.publishAfterCommit(scanId, spaceKey, "CONFLUENCE");
 
         // Then - should not throw when executing deferred publish
         assertThatCode(stored[0]::run).doesNotThrowAnyException();

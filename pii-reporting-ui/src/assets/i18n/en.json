@@ -64,8 +64,10 @@
       "resumeScan": "Resume last scan",
       "openInConfluence": "Open in Confluence",
       "openInJira": "Open in Jira",
+      "openInSharePoint": "Open in SharePoint",
       "confluenceUnavailable": "URL unavailable (not provided by backend)",
       "jiraUnavailable": "URL unavailable",
+      "sharePointUnavailable": "URL unavailable",
       "settings": "Settings",
       "darkMode": "Switch to dark mode",
       "lightMode": "Switch to light mode",
@@ -105,7 +107,8 @@
     },
     "sources": {
       "confluence": "Confluence",
-      "jira": "Jira"
+      "jira": "Jira",
+      "sharepoint": "SharePoint"
     },
     "scanStatus": {
       "active": "Scanning",
@@ -176,7 +179,8 @@
       "thresholds": "Thresholds & Performance",
       "piiTypes": "PII Types",
       "confluence": "Confluence Connection",
-      "jira": "Jira Connection"
+      "jira": "Jira Connection",
+      "sharepoint": "SharePoint Connection"
     },
     "subtitle": "Configure detection engines, thresholds and types of information to detect",
     "tabs": {
@@ -288,6 +292,40 @@
         "testSuccess": "Successfully connected to Jira",
         "testError": "Connection test failed: {{error}}",
         "testFailed": "Jira connection failed: {{message}}"
+      }
+    },
+    "sharepoint": {
+      "title": "SharePoint Connection Configuration",
+      "connection": {
+        "title": "Azure AD Application",
+        "tenantId": "Tenant ID",
+        "clientId": "Client ID",
+        "clientSecret": "Client Secret",
+        "clientSecretHint": "Current secret:"
+      },
+      "buttons": {
+        "save": "Save",
+        "test": "Test Connection",
+        "reset": "Reset"
+      },
+      "placeholders": {
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "clientId": "00000000-0000-0000-0000-000000000000",
+        "clientSecret": "Enter your Azure AD client secret",
+        "clientSecretExisting": "Leave empty to keep current secret"
+      },
+      "validation": {
+        "tenantIdRequired": "Tenant ID is required and must be a valid UUID",
+        "clientIdRequired": "Client ID is required and must be a valid UUID",
+        "clientSecretRequired": "Client secret is required for new connections"
+      },
+      "messages": {
+        "saveSuccess": "SharePoint connection configuration saved successfully",
+        "saveError": "Error saving configuration: {{error}}",
+        "loadError": "Error loading SharePoint configuration: {{error}}",
+        "testSuccess": "Successfully connected to SharePoint via Microsoft Graph",
+        "testError": "Connection test failed: {{error}}",
+        "testFailed": "SharePoint connection failed: {{message}}"
       }
     },
     "sections": {

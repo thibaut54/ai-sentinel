@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.util.ReflectionTestUtils;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,7 +46,7 @@ class ExcelDetectionReportWriterAdapterTest {
         try (var session = adapter.openReportSession("scan-123", context)) {
             session.startReport();
             // Then
-            try (var filesStream = Files.list(tempDir)) {
+            try (var filesStream = Files.walk(tempDir)) {
                 List<Path> files = filesStream
                         .filter(p -> p.toString().endsWith(".xlsx"))
                         .toList();
@@ -85,7 +86,7 @@ class ExcelDetectionReportWriterAdapterTest {
         try (var session = adapter.openReportSession("scan-123", context)) {
             session.startReport();
             // Then
-            try (var filesStream = Files.list(tempDir)) {
+            try (var filesStream = Files.walk(tempDir)) {
                 List<Path> files = filesStream
                         .filter(p -> p.toString().endsWith(".xlsx"))
                         .toList();
@@ -119,7 +120,7 @@ class ExcelDetectionReportWriterAdapterTest {
         try (var session = adapter.openReportSession("scan-123", context)) {
             session.startReport();
             // Then
-            try (var files = Files.list(tempDir)) {
+            try (var files = Files.walk(tempDir)) {
                 var filteredFiles = files.filter(p -> p.toString().endsWith(".xlsx"))
                         .toList();
 
@@ -140,7 +141,7 @@ class ExcelDetectionReportWriterAdapterTest {
         try (var session = adapter.openReportSession("scan-123", context)) {
             session.startReport();
             // Then
-            try (var filesStream = Files.list(tempDir)) {
+            try (var filesStream = Files.walk(tempDir)) {
                 List<Path> files = filesStream
                         .filter(p -> p.toString().endsWith(".xlsx"))
                         .toList();
@@ -186,7 +187,7 @@ class ExcelDetectionReportWriterAdapterTest {
         try (var session = adapter.openReportSession("scan-123", context)) {
             session.startReport();
             // Then
-            try (var filesStream = Files.list(tempDir)) {
+            try (var filesStream = Files.walk(tempDir)) {
                 List<Path> files = filesStream
                         .filter(p -> p.toString().endsWith(".xlsx"))
                         .toList();
@@ -211,6 +212,7 @@ class ExcelDetectionReportWriterAdapterTest {
                 .reportName(reportName)
                 .reportIdentifier("TEST")
                 .sourceUrl("https://example.com/source/TEST")
+                .sourceType(SourceType.CONFLUENCE)
                 .contacts(List.of())
                 .additionalMetadata(Map.of())
                 .build();

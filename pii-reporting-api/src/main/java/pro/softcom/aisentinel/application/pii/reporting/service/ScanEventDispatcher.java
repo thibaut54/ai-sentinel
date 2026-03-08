@@ -28,7 +28,7 @@ public class ScanEventDispatcher {
         });
     }
 
-    public void publishAfterCommit(String scanId, String spaceKey) {
-        scheduleAfterCommit(() -> publishEventPort.publishCompleteEvent(new SpaceScanCompleted(scanId, spaceKey)));
+    public void publishAfterCommit(String scanId, String spaceKey, String sourceType) {
+        scheduleAfterCommit(() -> publishEventPort.publishCompleteEvent(new SpaceScanCompleted(scanId, spaceKey, sourceType)));
     }
 }

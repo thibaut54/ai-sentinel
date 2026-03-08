@@ -20,23 +20,40 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Adapts Confluence spaces to export contexts.
- * This adapter converts Confluence-specific domain objects into platform-agnostic export contexts.
+ * Composite adapter that dispatches export context retrieval to the appropriate
+ * source-specific adapter based on the SourceType.
+ * Supports Confluence, Jira and SharePoint sources.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class ConfluenceExportContextAdapter implements ReadExportContextPort {
+public class CompositeExportContextAdapter implements ReadExportContextPort {
 
     private final ConfluenceSpaceRepository confluenceSpaceRepository;
     private final ConfluenceClient confluenceClient;
+    private final SharePointExportContextAdapter sharePointExportContextAdapter;
 
     @Override
     public ExportContext findContext(SourceType sourceType, String sourceIdentifier) {
-        if (sourceType != SourceType.CONFLUENCE) {
-            throw new UnsupportedSourceTypeException(sourceType.getValue());
-        }
+        return switch (sourceType) {
+            case SHAREPOINT -> sharePointExportContextAdapter.findContext(sourceIdentifier, sourceType);
+            case JIRA -> buildJiraContext(sourceIdentifier);
+            case CONFLUENCE -> buildConfluenceContext(sourceIdentifier);
+        };
+    }
 
+    private ExportContext buildJiraContext(String sourceIdentifier) {
+        return ExportContext.builder()
+                .reportName(sourceIdentifier)
+                .reportIdentifier(sourceIdentifier)
+                .sourceUrl("")
+                .sourceType(SourceType.JIRA)
+                .contacts(List.of())
+                .additionalMetadata(Map.of("projectKey", sourceIdentifier))
+                .build();
+    }
+
+    private ExportContext buildConfluenceContext(String sourceIdentifier) {
         log.debug("Retrieving export context for Confluence space: {}", sourceIdentifier);
 
         try {
@@ -44,23 +61,20 @@ public class ConfluenceExportContextAdapter implements ReadExportContextPort {
                     .orElseThrow(() -> new ConfluenceSpaceNotFoundException(sourceIdentifier));
 
             List<DataSourceContact> contacts = extractDataSourceContacts(confluenceSpace, sourceIdentifier);
-            
+
             return ExportContext.builder()
                     .reportName(confluenceSpace.name())
                     .reportIdentifier(confluenceSpace.key())
                     .sourceUrl(confluenceSpace.url())
+                    .sourceType(SourceType.CONFLUENCE)
                     .contacts(contacts)
                     .additionalMetadata(buildMetadata(confluenceSpace))
                     .build();
         } catch (ConfluenceSpaceNotFoundException e) {
-            throw new ExportContextNotFoundException(sourceType.getValue(), sourceIdentifier, e);
+            throw new ExportContextNotFoundException(SourceType.CONFLUENCE.getValue(), sourceIdentifier, e);
         }
     }
 
-    /**
-     * Extracts contacts from space, loading data owners from API if not already loaded.
-     * Uses pattern matching to handle the two states of DataOwners.
-     */
     private List<DataSourceContact> extractDataSourceContacts(ConfluenceSpace confluenceSpace, String sourceIdentifier) {
         return switch (confluenceSpace.dataOwners()) {
             case DataOwners.NotLoaded() -> {
@@ -75,9 +89,6 @@ public class ConfluenceExportContextAdapter implements ReadExportContextPort {
         };
     }
 
-    /**
-     * Loads data owners from Confluence API with permissions expansion.
-     */
     private List<ConfluenceSpaceDataOwner> loadDataOwnersFromApi(String spaceKey) {
         return confluenceClient.getSpaceWithPermissions(spaceKey)
                 .thenApply(optionalConfluenceSpace -> optionalConfluenceSpace
