@@ -87,10 +87,11 @@ export class SharePointDashboardUiStateService {
   }
 
   statusStyle(status?: string): 'danger' | 'warning' | 'success' | 'info' | 'secondary' {
-    if (status === 'FAILED') return 'danger';
-    if (status === 'RUNNING') return 'warning';
-    if (status === 'PAUSED') return 'info';
-    if (status === 'PENDING' || !status) return 'secondary';
+    const normalized = status?.toUpperCase();
+    if (normalized === 'FAILED') return 'danger';
+    if (normalized === 'RUNNING') return 'warning';
+    if (normalized === 'PAUSED') return 'info';
+    if (normalized === 'PENDING' || !normalized) return 'secondary';
     return 'success';
   }
 

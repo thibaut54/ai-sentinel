@@ -22,6 +22,7 @@ class SourceTypeTest {
         softly.assertThat(SourceType.CONFLUENCE.getValue()).isEqualTo("CONFLUENCE");
         softly.assertThat(SourceType.JIRA.getValue()).isEqualTo("JIRA");
         softly.assertThat(SourceType.SHAREPOINT.getValue()).isEqualTo("SHAREPOINT");
+        softly.assertThat(SourceType.DATABASE.getValue()).isEqualTo("DATABASE");
         softly.assertAll();
     }
 
@@ -32,9 +33,11 @@ class SourceTypeTest {
         "CONFLUENCE, CONFLUENCE",
         "JIRA, JIRA",
         "SHAREPOINT, SHAREPOINT",
+        "DATABASE, DATABASE",
         "confluence, CONFLUENCE",
         "Jira, JIRA",
         "sharePoint, SHAREPOINT",
+        "database, DATABASE",
         "jIrA, JIRA"
     })
     void Should_ReturnCorrectEnum_When_FromValueCalledWithAnyCase(String input, String expectedName) {
@@ -45,7 +48,7 @@ class SourceTypeTest {
     // --- fromValue: error cases ---
 
     @ParameterizedTest
-    @ValueSource(strings = {"UNKNOWN", "database", "   ", "CONFLUENCEX", "jira "})
+    @ValueSource(strings = {"UNKNOWN", "   ", "CONFLUENCEX", "jira "})
     void Should_ThrowIllegalArgumentException_When_FromValueCalledWithInvalidValue(String input) {
         assertThatThrownBy(() -> SourceType.fromValue(input))
             .isInstanceOf(IllegalArgumentException.class)
@@ -55,14 +58,15 @@ class SourceTypeTest {
     @Test
     void Should_ThrowIllegalArgumentException_When_FromValueCalledWithNull() {
         assertThatThrownBy(() -> SourceType.fromValue(null))
-            .isInstanceOf(Exception.class);
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unknown source type:");
     }
 
     // --- enum completeness ---
 
     @Test
-    void Should_HaveExactlyThreeValues_When_CheckingEnumValues() {
-        assertThat(SourceType.values()).hasSize(3);
+    void Should_HaveExactlyFourValues_When_CheckingEnumValues() {
+        assertThat(SourceType.values()).hasSize(4);
     }
 
     @Test
@@ -71,6 +75,7 @@ class SourceTypeTest {
         softly.assertThat(SourceType.valueOf("CONFLUENCE")).isEqualTo(SourceType.CONFLUENCE);
         softly.assertThat(SourceType.valueOf("JIRA")).isEqualTo(SourceType.JIRA);
         softly.assertThat(SourceType.valueOf("SHAREPOINT")).isEqualTo(SourceType.SHAREPOINT);
+        softly.assertThat(SourceType.valueOf("DATABASE")).isEqualTo(SourceType.DATABASE);
         softly.assertAll();
     }
 }

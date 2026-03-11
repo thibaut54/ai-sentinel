@@ -740,7 +740,7 @@ class StreamConfluenceScanUseCaseTest {
         // dédiés de ScanCheckpointService et n'est pas vérifié ici.
         verify(scanCheckpointRepository, atLeastOnce()).save(argThat(cp ->
             cp != null &&
-            cp.spaceKey().equals(spaceKey)
+            cp.sourceKey().equals(spaceKey)
         ));
     }
 

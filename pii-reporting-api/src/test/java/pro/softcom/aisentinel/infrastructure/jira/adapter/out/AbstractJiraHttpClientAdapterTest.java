@@ -83,7 +83,7 @@ class AbstractJiraHttpClientAdapterTest {
         var retryExecutor = new HttpRetryExecutor(httpClient, config.maxRetries());
         adapter = new TestableAdapter(config, objectMapper, retryExecutor);
 
-        lenient().when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
+        lenient().when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
             .thenReturn(CompletableFuture.completedFuture(httpResponse));
     }
 

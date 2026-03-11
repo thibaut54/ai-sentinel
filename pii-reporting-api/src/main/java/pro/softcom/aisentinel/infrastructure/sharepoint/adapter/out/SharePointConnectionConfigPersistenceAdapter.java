@@ -41,7 +41,7 @@ public class SharePointConnectionConfigPersistenceAdapter implements SharePointC
             throw new IllegalArgumentException("Configuration cannot be null");
         }
 
-        log.info("Saving SharePoint connection configuration: tenantId={}, clientId={}, enabled={}, updatedBy={}",
+        log.debug("Saving SharePoint connection configuration: tenantId={}, clientId={}, enabled={}, updatedBy={}",
                 settings.tenantId(), settings.clientId(), settings.enabled(), settings.updatedBy());
 
         SharePointConnectionConfigEntity existing = jpaRepository.findById(CONFIG_ID).orElse(null);
@@ -66,7 +66,7 @@ public class SharePointConnectionConfigPersistenceAdapter implements SharePointC
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<String> findDecryptedClientSecret() {
+    public Optional<String> findEncryptedClientSecret() {
         return jpaRepository.findById(CONFIG_ID)
                 .map(SharePointConnectionConfigEntity::getClientSecretEncrypted)
                 .filter(secret -> !secret.isEmpty());

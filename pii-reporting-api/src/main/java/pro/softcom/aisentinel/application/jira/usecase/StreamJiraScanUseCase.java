@@ -10,6 +10,7 @@ import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReporti
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.jira.JiraIssue;
 import pro.softcom.aisentinel.domain.jira.JiraProject;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ScanProgress;
 import reactor.core.publisher.Flux;
@@ -42,7 +43,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
         String scanId = UUID.randomUUID().toString();
         log.info("[JIRA-SCAN] Creating new scan with scanId: {}", scanId);
 
-        contentScanOrchestrator.purgePreviousScanData();
+        contentScanOrchestrator.purgePreviousScanData(SourceType.JIRA);
 
         Flux<ContentScanResult> header = buildHeader(scanId);
         Flux<ContentScanResult> body = buildAllProjectsScanBody(scanId);
@@ -59,7 +60,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
         String scanId = UUID.randomUUID().toString();
         log.info("[JIRA-SCAN] Creating new selected projects scan with scanId: {}", scanId);
 
-        contentScanOrchestrator.purgePreviousScanDataForSpaces(projectKeys);
+        contentScanOrchestrator.purgePreviousScanDataForSources(SourceType.JIRA, projectKeys);
 
         Flux<ContentScanResult> header = buildHeader(scanId);
         Flux<ContentScanResult> body = buildSelectedProjectsScanBody(scanId, projectKeys);
@@ -135,8 +136,8 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                             .doOnEach(signal -> {
                                 if (signal.isOnNext() && signal.get() != null) {
                                     ContentScanResult event = signal.get();
-                                    contentScanOrchestrator.persistCheckpointSynchronously(event);
-                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, "JIRA"))
+                                    contentScanOrchestrator.persistCheckpointSynchronously(event, SourceType.JIRA);
+                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, SourceType.JIRA))
                                         .subscribeOn(Schedulers.boundedElastic())
                                         .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
                                         .onErrorResume(e -> {

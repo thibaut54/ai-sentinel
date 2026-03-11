@@ -29,8 +29,11 @@ public class ScanEventEntity {
     @Column(name = "event_seq", nullable = false)
     private long eventSeq;
 
-    @Column(name = "space_key")
-    private String spaceKey;
+    @Column(name = "source_type")
+    private String sourceType;
+
+    @Column(name = "source_key")
+    private String sourceKey;
 
     @Column(name = "event_type", nullable = false)
     private String eventType;
@@ -38,11 +41,11 @@ public class ScanEventEntity {
     @Column(name = "ts", nullable = false)
     private Instant ts;
 
-    @Column(name = "page_id")
-    private String pageId;
+    @Column(name = "content_id")
+    private String contentId;
 
-    @Column(name = "page_title")
-    private String pageTitle;
+    @Column(name = "content_title")
+    private String contentTitle;
 
     @Column(name = "attachment_name")
     private String attachmentName;

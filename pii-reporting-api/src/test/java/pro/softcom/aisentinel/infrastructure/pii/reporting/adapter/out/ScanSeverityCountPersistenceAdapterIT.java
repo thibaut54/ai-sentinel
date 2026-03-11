@@ -13,6 +13,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.ScanSeverityCountJpaRepository;
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration test for {@link ScanSeverityCountPersistenceAdapter}.
- * 
+ *
  * <p>Tests the persistence layer with a real PostgreSQL database using Testcontainers.
  * Verifies critical atomic increment operations and query methods.
  */
@@ -71,21 +72,23 @@ class ScanSeverityCountPersistenceAdapterIT {
         var delta = new SeverityCounts(3, 5, 2);
 
         // Act
-        adapter.incrementCounts("scan-001", "SPACE-A", delta);
+        adapter.incrementCounts("scan-001", SourceType.CONFLUENCE, "SPACE-A", delta);
 
         // Assert
         var id = ScanSeverityCountId.builder()
             .scanId("scan-001")
-            .spaceKey("SPACE-A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
             .build();
         var saved = jpaRepository.findById(id);
-        
+
         assertThat(saved).isPresent();
         var entity = saved.orElseThrow();
-        
+
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(entity.getScanId()).isEqualTo("scan-001");
-        softly.assertThat(entity.getSpaceKey()).isEqualTo("SPACE-A");
+        softly.assertThat(entity.getSourceType()).isEqualTo("CONFLUENCE");
+        softly.assertThat(entity.getSourceKey()).isEqualTo("SPACE-A");
         softly.assertThat(entity.getNbOfHighSeverity()).isEqualTo(3);
         softly.assertThat(entity.getNbOfMediumSeverity()).isEqualTo(5);
         softly.assertThat(entity.getNbOfLowSeverity()).isEqualTo(2);
@@ -98,7 +101,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var initialEntity = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-002")
-                .spaceKey("SPACE-B")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-B")
                 .build())
             .nbOfHighSeverity(10)
             .nbOfMediumSeverity(20)
@@ -110,15 +114,16 @@ class ScanSeverityCountPersistenceAdapterIT {
 
         // Act - Increment with new delta
         var delta = new SeverityCounts(3, 5, 2);
-        adapter.incrementCounts("scan-002", "SPACE-B", delta);
+        adapter.incrementCounts("scan-002", SourceType.CONFLUENCE, "SPACE-B", delta);
 
         // Assert - Verify atomic increment
         var id = ScanSeverityCountId.builder()
             .scanId("scan-002")
-            .spaceKey("SPACE-B")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-B")
             .build();
         var updated = jpaRepository.findById(id).orElseThrow();
-        
+
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(updated.getNbOfHighSeverity())
             .as("High severity should be incremented from 10 by 3")
@@ -138,18 +143,19 @@ class ScanSeverityCountPersistenceAdapterIT {
         var delta = new SeverityCounts(0, 0, 0);
 
         // Act
-        adapter.incrementCounts("scan-003", "SPACE-C", delta);
+        adapter.incrementCounts("scan-003", SourceType.CONFLUENCE, "SPACE-C", delta);
 
         // Assert - Should create record with zeros
         var id = ScanSeverityCountId.builder()
             .scanId("scan-003")
-            .spaceKey("SPACE-C")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-C")
             .build();
         var saved = jpaRepository.findById(id);
-        
+
         assertThat(saved).isPresent();
         var entity = saved.orElseThrow();
-        
+
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(entity.getNbOfHighSeverity()).isZero();
         softly.assertThat(entity.getNbOfMediumSeverity()).isZero();
@@ -158,12 +164,13 @@ class ScanSeverityCountPersistenceAdapterIT {
     }
 
     @Test
-    void Should_FindByScanIdAndSpaceKey_When_RecordExists() {
+    void Should_FindByScanIdAndSource_When_RecordExists() {
         // Arrange
         var entity = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-004")
-                .spaceKey("SPACE-D")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-D")
                 .build())
             .nbOfHighSeverity(7)
             .nbOfMediumSeverity(14)
@@ -173,12 +180,12 @@ class ScanSeverityCountPersistenceAdapterIT {
         em.flush();
 
         // Act
-        var result = adapter.findByScanIdAndSpaceKey("scan-004", "SPACE-D");
+        var result = adapter.findByScanIdAndSource("scan-004", SourceType.CONFLUENCE, "SPACE-D");
 
         // Assert
         assertThat(result).isPresent();
         var counts = result.orElseThrow();
-        
+
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(counts.high()).isEqualTo(7);
         softly.assertThat(counts.medium()).isEqualTo(14);
@@ -188,9 +195,9 @@ class ScanSeverityCountPersistenceAdapterIT {
     }
 
     @Test
-    void Should_FindByScanIdAndSpaceKey_ReturnEmpty_When_RecordNotExists() {
+    void Should_FindByScanIdAndSource_ReturnEmpty_When_RecordNotExists() {
         // Act
-        var result = adapter.findByScanIdAndSpaceKey("scan-999", "SPACE-NONE");
+        var result = adapter.findByScanIdAndSource("scan-999", SourceType.CONFLUENCE, "SPACE-NONE");
 
         // Assert
         assertThat(result).isEmpty();
@@ -202,7 +209,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityC = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-005")
-                .spaceKey("SPACE-C")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-C")
                 .build())
             .nbOfHighSeverity(1)
             .nbOfMediumSeverity(2)
@@ -211,7 +219,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityA = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-005")
-                .spaceKey("SPACE-A")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-A")
                 .build())
             .nbOfHighSeverity(4)
             .nbOfMediumSeverity(5)
@@ -220,13 +229,14 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityB = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-005")
-                .spaceKey("SPACE-B")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-B")
                 .build())
             .nbOfHighSeverity(7)
             .nbOfMediumSeverity(8)
             .nbOfLowSeverity(9)
             .build();
-        
+
         // Persist in non-alphabetical order
         em.persist(entityC);
         em.persist(entityA);
@@ -236,12 +246,12 @@ class ScanSeverityCountPersistenceAdapterIT {
         // Act
         var results = adapter.findByScanId("scan-005");
 
-        // Assert - Should be ordered by space key alphabetically
+        // Assert - Should be ordered by source key alphabetically
         assertThat(results).hasSize(3);
         assertThat(results)
-            .extracting(ScanSeverityCount::spaceKey)
+            .extracting(ScanSeverityCount::sourceKey)
             .containsExactly("SPACE-A", "SPACE-B", "SPACE-C");
-        
+
         // Verify counts are correct
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(results.get(0).counts().high()).isEqualTo(4);
@@ -265,7 +275,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityScan1 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-006")
-                .spaceKey("SPACE-A")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-A")
                 .build())
             .nbOfHighSeverity(1)
             .nbOfMediumSeverity(2)
@@ -274,13 +285,14 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityScan2 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-007")
-                .spaceKey("SPACE-A")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-A")
                 .build())
             .nbOfHighSeverity(4)
             .nbOfMediumSeverity(5)
             .nbOfLowSeverity(6)
             .build();
-        
+
         em.persist(entityScan1);
         em.persist(entityScan2);
         em.flush();
@@ -291,7 +303,7 @@ class ScanSeverityCountPersistenceAdapterIT {
         // Assert
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().scanId()).isEqualTo("scan-006");
-        assertThat(results.getFirst().spaceKey()).isEqualTo("SPACE-A");
+        assertThat(results.getFirst().sourceKey()).isEqualTo("SPACE-A");
     }
 
     @Test
@@ -300,7 +312,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entity1 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-008")
-                .spaceKey("SPACE-A")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-A")
                 .build())
             .nbOfHighSeverity(1)
             .nbOfMediumSeverity(2)
@@ -309,7 +322,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entity2 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-008")
-                .spaceKey("SPACE-B")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-B")
                 .build())
             .nbOfHighSeverity(4)
             .nbOfMediumSeverity(5)
@@ -318,13 +332,14 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entityOther = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-009")
-                .spaceKey("SPACE-C")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-C")
                 .build())
             .nbOfHighSeverity(7)
             .nbOfMediumSeverity(8)
             .nbOfLowSeverity(9)
             .build();
-        
+
         em.persist(entity1);
         em.persist(entity2);
         em.persist(entityOther);
@@ -334,9 +349,9 @@ class ScanSeverityCountPersistenceAdapterIT {
         adapter.deleteByScanId("scan-008");
 
         // Assert
-        var remainingForScan = jpaRepository.findById_ScanIdOrderById_SpaceKey("scan-008");
-        var remainingOthers = jpaRepository.findById_ScanIdOrderById_SpaceKey("scan-009");
-        
+        var remainingForScan = jpaRepository.findById_ScanIdOrderById_SourceKey("scan-008");
+        var remainingOthers = jpaRepository.findById_ScanIdOrderById_SourceKey("scan-009");
+
         assertThat(remainingForScan).isEmpty();
         assertThat(remainingOthers).hasSize(1);
         assertThat(remainingOthers.getFirst().getScanId()).isEqualTo("scan-009");
@@ -348,7 +363,8 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entity = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-010")
-                .spaceKey("SPACE-A")
+                .sourceType("CONFLUENCE")
+                .sourceKey("SPACE-A")
                 .build())
             .nbOfHighSeverity(1)
             .nbOfMediumSeverity(2)
@@ -361,7 +377,7 @@ class ScanSeverityCountPersistenceAdapterIT {
         adapter.deleteByScanId("scan-999");
 
         // Assert - Original record should still exist
-        var remaining = jpaRepository.findById_ScanIdOrderById_SpaceKey("scan-010");
+        var remaining = jpaRepository.findById_ScanIdOrderById_SourceKey("scan-010");
         assertThat(remaining).hasSize(1);
     }
 }

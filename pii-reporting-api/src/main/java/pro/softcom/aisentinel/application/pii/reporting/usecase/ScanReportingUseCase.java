@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.*;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 
@@ -32,29 +33,17 @@ public class ScanReportingUseCase implements ScanReportingPort {
     public List<ConfluenceSpaceScanState> getLatestSpaceScanStateList(String scanId) {
         if (scanId == null || scanId.isBlank()) return List.of();
 
-        // 1) Load checkpoint statuses and progress percentages (may be empty if no checkpoint yet for a space)
-        Map<String, String> statuses = new HashMap<>();
-        Map<String, Double> progressPercentages = new HashMap<>();
-        try {
-            List<ScanCheckpoint> cps = checkpointRepo.findByScan(scanId);
-            for (ScanCheckpoint cp : cps) {
-                statuses.put(cp.spaceKey(), cp.scanStatus().name());
-                progressPercentages.put(cp.spaceKey(), cp.progressPercentage());
-            }
-        } catch (Exception ex) {
-            log.warn("[LAST_SCAN] Failed to load checkpoint statuses: {}", ex.getMessage());
-        }
+        CheckpointIndex index = loadCheckpointIndex(scanId);
 
-        // 2) Load counters from events per space via read port
         try {
             return scanResultQuery.getSpaceCounters(scanId).stream()
                 .map(c -> new ConfluenceSpaceScanState(
-                    c.spaceKey(),
-                    mapPresentationStatus(statuses.get(c.spaceKey()), c.pagesDone(), c.attachmentsDone()),
+                    c.sourceKey(),
+                    mapPresentationStatus(index.statuses().get(c.sourceKey()), c.pagesDone(), c.attachmentsDone()),
                     c.pagesDone(),
                     c.attachmentsDone(),
                     c.lastEventTs(),
-                    progressPercentages.get(c.spaceKey())
+                    index.progressPercentages().get(c.sourceKey())
                 ))
                 .toList();
         } catch (Exception ex) {
@@ -84,13 +73,13 @@ public class ScanReportingUseCase implements ScanReportingPort {
             List<ContentScanResult> allItems = new ArrayList<>();
 
             for (ScanCheckpoint cp : latestCheckpoints) {
-                log.info("[SCAN] Processing checkpoint: space={}, scanId={}", cp.spaceKey(), cp.scanId());
-                // 2) Load items for this specific (scanId, spaceKey) pair
-                List<ContentScanResult> spaceItems = scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(
+                log.info("[SCAN] Processing checkpoint: source={}, scanId={}", cp.sourceKey(), cp.scanId());
+                // 2) Load items for this specific (scanId, sourceKey) pair
+                List<ContentScanResult> spaceItems = scanResultQuery.listItemEventsEncryptedBySourceKey(
                     cp.scanId(),
-                    cp.spaceKey()
+                    cp.sourceKey()
                 );
-                log.info("[SCAN] Found {} items for space={}, scanId={}", spaceItems.size(), cp.spaceKey(), cp.scanId());
+                log.info("[SCAN] Found {} items for source={}, scanId={}", spaceItems.size(), cp.sourceKey(), cp.scanId());
                 allItems.addAll(spaceItems);
             }
             return allItems;
@@ -105,35 +94,25 @@ public class ScanReportingUseCase implements ScanReportingPort {
         if (scanId == null || scanId.isBlank()) return Optional.empty();
 
         try {
-            // 1) Load checkpoint statuses and progress percentages
-            Map<String, String> statuses = new HashMap<>();
-            Map<String, Double> progressPercentages = new HashMap<>();
-            List<ScanCheckpoint> cps = checkpointRepo.findByScan(scanId);
-            for (ScanCheckpoint cp : cps) {
-                statuses.put(cp.spaceKey(), cp.scanStatus().name());
-                progressPercentages.put(cp.spaceKey(), cp.progressPercentage());
-            }
+            CheckpointIndex index = loadCheckpointIndex(scanId);
 
-            // 2) Load counters from events per space
             List<SpaceSummary> spaces = scanResultQuery.getSpaceCounters(scanId).stream()
                 .map(c -> new SpaceSummary(
-                    c.spaceKey(),
-                    mapPresentationStatus(statuses.get(c.spaceKey()), c.pagesDone(), c.attachmentsDone()),
-                    progressPercentages.get(c.spaceKey()),
+                    c.sourceKey(),
+                    mapPresentationStatus(index.statuses().get(c.sourceKey()), c.pagesDone(), c.attachmentsDone()),
+                    index.progressPercentages().get(c.sourceKey()),
                     c.pagesDone(),
                     c.attachmentsDone(),
                     c.lastEventTs()
                 ))
                 .toList();
 
-            // 3) Find most recent timestamp
             Instant lastUpdated = spaces.stream()
                 .map(SpaceSummary::lastEventTs)
                 .filter(Objects::nonNull)
                 .max(Instant::compareTo)
                 .orElse(Instant.now());
 
-            // 4) Build ScanReportingSummary
             return Optional.of(new ScanReportingSummary(
                 scanId,
                 lastUpdated,
@@ -149,25 +128,21 @@ public class ScanReportingUseCase implements ScanReportingPort {
     @Override
     public Optional<ScanReportingSummary> getGlobalScanSummary() {
         try {
-            // 1) Find the latest checkpoint for every space
             List<ScanCheckpoint> latestCheckpoints = checkpointRepo.findAllLatestCheckpoints();
             if (latestCheckpoints.isEmpty()) {
                 return Optional.empty();
             }
 
-            // 2) Collect relevant scanIds
             Set<String> scanIds = new HashSet<>();
             for (ScanCheckpoint cp : latestCheckpoints) {
                 scanIds.add(cp.scanId());
             }
 
-            // 3) Load counters for these scanIds
             Map<String, List<ScanResultQuery.SpaceCounter>> countersByScan = new HashMap<>();
             for (String scanId : scanIds) {
                 countersByScan.put(scanId, scanResultQuery.getSpaceCounters(scanId));
             }
 
-            // 4) Build space summaries
             List<SpaceSummary> spaces = new ArrayList<>();
             for (ScanCheckpoint cp : latestCheckpoints) {
                 List<ScanResultQuery.SpaceCounter> scanCounters = countersByScan.get(cp.scanId());
@@ -178,7 +153,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
                 if (scanCounters != null) {
                     for (ScanResultQuery.SpaceCounter sc : scanCounters) {
-                        if (sc.spaceKey().equals(cp.spaceKey())) {
+                        if (sc.sourceKey().equals(cp.sourceKey())) {
                             pagesDone = sc.pagesDone();
                             attachmentsDone = sc.attachmentsDone();
                             lastEventTs = sc.lastEventTs();
@@ -188,8 +163,8 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 }
 
                 spaces.add(new SpaceSummary(
-                    cp.spaceKey(),
-                    mapPresentationStatus(cp.scanStatus().name(), pagesDone, attachmentsDone),
+                    cp.sourceKey(),
+                    mapPresentationStatus(cp.scanStatus(), pagesDone, attachmentsDone),
                     cp.progressPercentage(),
                     pagesDone,
                     attachmentsDone,
@@ -197,7 +172,6 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 ));
             }
 
-            // 5) Determine global meta info
             Optional<LastScanMeta> latestMeta = getLatestScan();
             String globalScanId = latestMeta.map(LastScanMeta::scanId).orElse(
                 latestCheckpoints.getFirst().scanId()
@@ -222,24 +196,34 @@ public class ScanReportingUseCase implements ScanReportingPort {
         }
     }
 
-    private String mapPresentationStatus(String checkpointStatus, long pagesDone, long attachmentsDone) {
+    private CheckpointIndex loadCheckpointIndex(String scanId) {
+        Map<String, ScanStatus> statuses = new HashMap<>();
+        Map<String, Double> progressPercentages = new HashMap<>();
         try {
-            if (checkpointStatus != null) {
-                switch (checkpointStatus) {
-                    case "COMPLETED", "FAILED", "RUNNING":
-                        return checkpointStatus;
-                    case "CANCELLED", "PAUSED":
-                        return "PAUSED";
-                    case "NOT_STARTED":
-                        return "PENDING";
-                    default:
-                        // fall-through to compute from progress
-                }
+            List<ScanCheckpoint> cps = checkpointRepo.findByScan(scanId);
+            for (ScanCheckpoint cp : cps) {
+                statuses.put(cp.sourceKey(), cp.scanStatus());
+                progressPercentages.put(cp.sourceKey(), cp.progressPercentage());
             }
-            long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
-            return progress > 0 ? "PAUSED" : "PENDING";
-        } catch (Exception _) {
-            return "PENDING";
+        } catch (Exception ex) {
+            log.warn("[LAST_SCAN] Failed to load checkpoint statuses: {}", ex.getMessage());
         }
+        return new CheckpointIndex(statuses, progressPercentages);
     }
+
+    private ReportingScanStatus mapPresentationStatus(ScanStatus checkpointStatus, long pagesDone, long attachmentsDone) {
+        if (checkpointStatus != null) {
+            return switch (checkpointStatus) {
+                case COMPLETED -> ReportingScanStatus.COMPLETED;
+                case FAILED -> ReportingScanStatus.FAILED;
+                case RUNNING -> ReportingScanStatus.RUNNING;
+                case PAUSED -> ReportingScanStatus.PAUSED;
+                case NOT_STARTED -> ReportingScanStatus.PENDING;
+            };
+        }
+        long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
+        return progress > 0 ? ReportingScanStatus.PAUSED : ReportingScanStatus.PENDING;
+    }
+
+    private record CheckpointIndex(Map<String, ScanStatus> statuses, Map<String, Double> progressPercentages) { }
 }

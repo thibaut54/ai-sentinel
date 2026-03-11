@@ -126,14 +126,14 @@ class CompositeExportContextAdapterTest {
                 .contacts(List.of())
                 .additionalMetadata(java.util.Map.of("siteId", siteId))
                 .build();
-        when(sharePointExportContextAdapter.findContext(siteId, SourceType.SHAREPOINT)).thenReturn(expectedContext);
+        when(sharePointExportContextAdapter.findContext(SourceType.SHAREPOINT, siteId)).thenReturn(expectedContext);
 
         // When
         ExportContext result = adapter.findContext(SourceType.SHAREPOINT, siteId);
 
         // Then
         assertThat(result).isEqualTo(expectedContext);
-        verify(sharePointExportContextAdapter).findContext(siteId, SourceType.SHAREPOINT);
+        verify(sharePointExportContextAdapter).findContext(SourceType.SHAREPOINT, siteId);
         verifyNoInteractions(confluenceSpaceRepository, confluenceClient);
     }
 

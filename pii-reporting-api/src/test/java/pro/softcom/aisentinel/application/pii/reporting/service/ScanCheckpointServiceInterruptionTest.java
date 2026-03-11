@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
@@ -42,8 +43,8 @@ class ScanCheckpointServiceInterruptionTest {
         doAnswer(invocation -> {
             ScanCheckpoint checkpoint = invocation.getArgument(0);
             assertThat(checkpoint.scanId()).isEqualTo("scan-123");
-            assertThat(checkpoint.spaceKey()).isEqualTo("TEST");
-            assertThat(checkpoint.lastProcessedPageId()).isEqualTo("page-456");
+            assertThat(checkpoint.sourceKey()).isEqualTo("TEST");
+            assertThat(checkpoint.lastProcessedContentId()).isEqualTo("page-456");
             assertThat(checkpoint.scanStatus()).isEqualTo(ScanStatus.RUNNING);
             return checkpoint;
         }).when(scanCheckpointRepository).save(any(ScanCheckpoint.class));
@@ -53,7 +54,7 @@ class ScanCheckpointServiceInterruptionTest {
         Thread.currentThread().interrupt(); // Set it again for the test
 
         // When: Persisting checkpoint with thread interrupted
-        scanCheckpointService.persistCheckpoint(confluenceContentScanResult);
+        scanCheckpointService.persistCheckpoint(confluenceContentScanResult, SourceType.CONFLUENCE);
 
         // Then: Checkpoint should be saved despite interruption
         verify(scanCheckpointRepository).save(any(ScanCheckpoint.class));
@@ -81,7 +82,7 @@ class ScanCheckpointServiceInterruptionTest {
         Thread.currentThread().interrupt();
 
         // When: Persisting checkpoint that throws exception
-        scanCheckpointService.persistCheckpoint(confluenceContentScanResult);
+        scanCheckpointService.persistCheckpoint(confluenceContentScanResult, SourceType.CONFLUENCE);
 
         // Then: Thread interruption flag should still be restored
         assertThat(Thread.interrupted()).isTrue();
@@ -93,7 +94,7 @@ class ScanCheckpointServiceInterruptionTest {
         Thread.currentThread().interrupt();
 
         // When: Persisting null checkpoint
-        scanCheckpointService.persistCheckpoint(null);
+        scanCheckpointService.persistCheckpoint(null, SourceType.CONFLUENCE);
 
         // Then: No interaction with repository
         verify(scanCheckpointRepository, org.mockito.Mockito.never()).save(any());
@@ -116,7 +117,7 @@ class ScanCheckpointServiceInterruptionTest {
         Thread.interrupted(); // Clear any existing flag
 
         // When: Persisting checkpoint without interruption
-        scanCheckpointService.persistCheckpoint(confluenceContentScanResult);
+        scanCheckpointService.persistCheckpoint(confluenceContentScanResult, SourceType.CONFLUENCE);
 
         // Then: Checkpoint should be saved normally
         verify(scanCheckpointRepository).save(any(ScanCheckpoint.class));

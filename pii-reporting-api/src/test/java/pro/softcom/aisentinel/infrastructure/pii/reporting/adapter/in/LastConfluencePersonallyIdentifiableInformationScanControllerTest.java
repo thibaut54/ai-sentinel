@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
+import pro.softcom.aisentinel.domain.pii.reporting.ReportingScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
 import pro.softcom.aisentinel.infrastructure.config.SecurityConfig;
@@ -64,8 +65,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             lastUpdated,
             2,
             List.of(
-                new SpaceSummary("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs),
-                new SpaceSummary("SPACE2", "IN_PROGRESS", 50.0, 5L, 2L, lastEventTs)
+                new SpaceSummary("SPACE1", ReportingScanStatus.COMPLETED, 100.0, 10L, 5L, lastEventTs),
+                new SpaceSummary("SPACE2", ReportingScanStatus.RUNNING, 50.0, 5L, 2L, lastEventTs)
             )
         );
 
@@ -135,7 +136,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             scanId,
             lastUpdated,
             1,
-            List.of(new SpaceSummary("SPACE3", "COMPLETED", 100.0, 5L, 0L, lastEventTs))
+            List.of(new SpaceSummary("SPACE3", ReportingScanStatus.COMPLETED, 100.0, 5L, 0L, lastEventTs))
         );
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
@@ -233,7 +234,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             scanId,
             lastUpdated,
             1,
-            List.of(new SpaceSummary("COMPLETE", "COMPLETED", 100.0, 20L, 10L, lastEventTs))
+            List.of(new SpaceSummary("COMPLETE", ReportingScanStatus.COMPLETED, 100.0, 20L, 10L, lastEventTs))
         );
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(

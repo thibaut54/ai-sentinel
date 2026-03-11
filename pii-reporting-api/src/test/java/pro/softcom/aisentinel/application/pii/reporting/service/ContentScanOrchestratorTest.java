@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
@@ -80,10 +81,10 @@ class ContentScanOrchestratorTest {
                     .build();
 
             // When
-            orchestrator.persistCheckpointSynchronously(event);
+            orchestrator.persistCheckpointSynchronously(event, SourceType.CONFLUENCE);
 
             // Then
-            verify(scanCheckpointService).persistCheckpoint(event);
+            verify(scanCheckpointService).persistCheckpoint(event, SourceType.CONFLUENCE);
             verifyNoInteractions(severityCalculationService);
             verifyNoInteractions(scanSeverityCountService);
             verifyNoInteractions(scanEventStore);
@@ -102,11 +103,11 @@ class ContentScanOrchestratorTest {
                     .build();
 
             org.mockito.Mockito.doThrow(new RuntimeException("DB error"))
-                    .when(scanCheckpointService).persistCheckpoint(event);
+                    .when(scanCheckpointService).persistCheckpoint(event, SourceType.CONFLUENCE);
 
             // When & Then - should not throw
-            org.assertj.core.api.Assertions.assertThatCode(() -> 
-                    orchestrator.persistCheckpointSynchronously(event)
+            org.assertj.core.api.Assertions.assertThatCode(() ->
+                    orchestrator.persistCheckpointSynchronously(event, SourceType.CONFLUENCE)
             ).doesNotThrowAnyException();
         }
     }
@@ -139,13 +140,13 @@ class ContentScanOrchestratorTest {
                     .thenReturn(calculatedCounts);
 
             // When
-            orchestrator.persistEventAsyncOperations(event);
+            orchestrator.persistEventAsyncOperations(event, SourceType.CONFLUENCE);
 
             // Then
             verifyNoInteractions(scanCheckpointService); // Checkpoint NOT persisted here
             verify(severityCalculationService).aggregateCounts(detectedEntities);
-            verify(scanSeverityCountService).incrementCounts(scanId, sourceId, calculatedCounts);
-            verify(scanEventStore).append(event);
+            verify(scanSeverityCountService).incrementCounts(scanId, SourceType.CONFLUENCE, sourceId, calculatedCounts);
+            verify(scanEventStore).append(event, SourceType.CONFLUENCE);
         }
 
         @Test
@@ -163,11 +164,11 @@ class ContentScanOrchestratorTest {
                     .build();
 
             // When
-            orchestrator.persistEventAsyncOperations(event);
+            orchestrator.persistEventAsyncOperations(event, SourceType.CONFLUENCE);
 
             // Then
             verifyNoInteractions(scanCheckpointService);
-            verify(scanEventStore).append(event);
+            verify(scanEventStore).append(event, SourceType.CONFLUENCE);
         }
     }
 }

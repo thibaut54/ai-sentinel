@@ -46,16 +46,17 @@ public class PauseScanUseCase implements PauseScanPort {
         ScanCheckpoint checkpoint = runningCheckpoint.get();
         ScanCheckpoint pausedCheckpoint = ScanCheckpoint.builder()
             .scanId(checkpoint.scanId())
-            .spaceKey(checkpoint.spaceKey())
-            .lastProcessedPageId(checkpoint.lastProcessedPageId())
+            .sourceType(checkpoint.sourceType())
+            .sourceKey(checkpoint.sourceKey())
+            .lastProcessedContentId(checkpoint.lastProcessedContentId())
             .lastProcessedAttachmentName(checkpoint.lastProcessedAttachmentName())
             .scanStatus(ScanStatus.PAUSED)
             .progressPercentage(checkpoint.progressPercentage())
             .build();
-        
+
         scanCheckpointRepository.save(pausedCheckpoint);
-        log.info("[PAUSE] Scan {} paused: space {} updated from RUNNING to PAUSED", 
-            scanId, checkpoint.spaceKey());
+        log.info("[PAUSE] Scan {} paused: source {} updated from RUNNING to PAUSED",
+            scanId, checkpoint.sourceKey());
     }
 
     private boolean isBlank(String value) {

@@ -14,6 +14,7 @@ import pro.softcom.aisentinel.domain.confluence.DataOwners;
 import pro.softcom.aisentinel.domain.confluence.ModifiedPageInfo;
 import pro.softcom.aisentinel.domain.confluence.SpaceUpdateInfo;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
 import java.time.Instant;
@@ -78,7 +79,7 @@ class FetchSpaceUpdateInfoUseCaseTest {
         });
         
         verify(confluenceSpacePort).getAllSpaces();
-        verify(scanCheckpointRepository).findLatestBySpace("TEST");
+        verify(scanCheckpointRepository).findLatestBySource(SourceType.CONFLUENCE, "TEST");
     }
 
     @Test
@@ -92,7 +93,7 @@ class FetchSpaceUpdateInfoUseCaseTest {
         
         when(confluenceSpacePort.getAllSpaces())
             .thenReturn(CompletableFuture.completedFuture(List.of(space)));
-        when(scanCheckpointRepository.findLatestBySpace(anyString()))
+        when(scanCheckpointRepository.findLatestBySource(any(SourceType.class), anyString()))
             .thenReturn(Optional.of(checkpoint));
         when(confluenceClient.getModifiedPagesSince(anyString(), any(Instant.class)))
             .thenReturn(CompletableFuture.completedFuture(List.of()));
@@ -122,7 +123,7 @@ class FetchSpaceUpdateInfoUseCaseTest {
         
         when(confluenceSpacePort.getAllSpaces())
             .thenReturn(CompletableFuture.completedFuture(List.of(space)));
-        when(scanCheckpointRepository.findLatestBySpace(anyString()))
+        when(scanCheckpointRepository.findLatestBySource(any(SourceType.class), anyString()))
             .thenReturn(Optional.of(checkpoint));
         when(confluenceClient.getModifiedPagesSince(anyString(), any(Instant.class)))
             .thenReturn(CompletableFuture.completedFuture(List.of(
@@ -212,7 +213,7 @@ class FetchSpaceUpdateInfoUseCaseTest {
         
         when(confluenceSpacePort.getAllSpaces())
             .thenReturn(CompletableFuture.completedFuture(List.of(space)));
-        when(scanCheckpointRepository.findLatestBySpace(anyString()))
+        when(scanCheckpointRepository.findLatestBySource(any(SourceType.class), anyString()))
             .thenReturn(Optional.of(newerCheckpoint));
         when(confluenceClient.getModifiedPagesSince(anyString(), any(Instant.class)))
             .thenReturn(CompletableFuture.completedFuture(List.of(
@@ -253,7 +254,8 @@ class FetchSpaceUpdateInfoUseCaseTest {
         LocalDateTime localDateTime = LocalDateTime.ofInstant(scanDate, ZoneId.systemDefault());
         return ScanCheckpoint.builder()
             .scanId("scan-123")
-            .spaceKey("TEST")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("TEST")
             .scanStatus(ScanStatus.COMPLETED)
             .updatedAt(localDateTime)
             .build();

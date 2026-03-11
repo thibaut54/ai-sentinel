@@ -4,7 +4,12 @@ import { ScanProgressService } from '../../../core/services/scan-progress.servic
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfluenceContentPersonallyIdentifiableInformationScanResult } from '../../../core/models/stream-event-type';
 import { SharePointSitesDashboardUtils } from '../sharepoint-sites-dashboard.utils';
-import { coerceSpaceKey, formatEventLog, isAttachmentPayload, StreamEventType } from '../../confluence-dashboard/spaces-dashboard-stream.utils';
+import {
+    coerceSpaceKey,
+    formatEventLog,
+    isAttachmentPayload,
+    StreamEventType
+} from '../../confluence-dashboard/spaces-dashboard-stream.utils';
 import { SharePointSiteDataManagementService } from './sharepoint-site-data-management.service';
 import { SharePointPiiItemsStorageService } from './sharepoint-pii-items-storage.service';
 import { SharePointDashboardUiStateService } from './sharepoint-dashboard-ui-state.service';
@@ -175,9 +180,15 @@ export class SharePointSseEventHandlerService {
       errorType
     });
 
+    this.uiStateService.upsertScanHistory(siteId, 'failed');
     this.dashboardUtils.updateSite(siteId, {
-      lastScanTs: new Date().toISOString()
+      lastScanTs: new Date().toISOString(),
+      status: 'FAILED'
     });
+
+    if (this.uiStateService.activeSiteId() === siteId) {
+      this.uiStateService.activeSiteId.set(null);
+    }
   }
 
   private handleStreamComplete(payload: ConfluenceContentPersonallyIdentifiableInformationScanResult): void {

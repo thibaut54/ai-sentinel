@@ -16,6 +16,6 @@ public class SpaceStatusMapper {
 
     public SpaceScanStateDto toDto(ConfluenceSpaceScanState s) {
         if (s == null) return null;
-        return new SpaceScanStateDto(s.spaceKey(), s.status(), s.pagesDone(), s.attachmentsDone(), s.lastEventTs(), s.progressPercentage());
+        return new SpaceScanStateDto(s.sourceKey(), s.status().name(), s.pagesDone(), s.attachmentsDone(), s.lastEventTs(), s.progressPercentage());
     }
 }

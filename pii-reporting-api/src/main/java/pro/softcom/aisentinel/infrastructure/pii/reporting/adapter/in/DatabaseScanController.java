@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamDatabaseScanPort;
+import pro.softcom.aisentinel.domain.pii.scan.model.DatabaseSourceType;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
-import pro.softcom.aisentinel.domain.pii.scan.model.SourceType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper.ConfluenceContentScanResultToScanEventMapper;
@@ -56,7 +56,7 @@ public class DatabaseScanController {
 
         // Assume internal DB scan for backward compatibility/simplicity for now
         ScanSourceConfig config = new ScanSourceConfig(
-                SourceType.POSTGRES,
+                DatabaseSourceType.POSTGRES,
                 Map.of(
                         "url", dbUrl,
                         "username", dbUsername,

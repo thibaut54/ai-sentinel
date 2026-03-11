@@ -67,7 +67,7 @@ class JpaScanResultQueryAdapterTest {
 
         assertThat(result).isEmpty();
         verify(eventRepository).findLatestScanGrouped(any());
-        verify(eventRepository, never()).countDistinctSpaceKeyByScanId(any());
+        verify(eventRepository, never()).countDistinctSourceKeyByScanId(any());
     }
 
     @Test
@@ -87,7 +87,7 @@ class JpaScanResultQueryAdapterTest {
         };
 
         when(eventRepository.findLatestScanGrouped(any())).thenReturn(List.of(projection));
-        when(eventRepository.countDistinctSpaceKeyByScanId(SCAN_ID)).thenReturn(3);
+        when(eventRepository.countDistinctSourceKeyByScanId(SCAN_ID)).thenReturn(3);
 
         Optional<LastScanMeta> result = adapter.findLatestScan();
 
@@ -114,7 +114,7 @@ class JpaScanResultQueryAdapterTest {
 
         SpaceCountersProjection projection = new SpaceCountersProjection() {
             @Override
-            public String getSpaceKey() {
+            public String getSourceKey() {
                 return SPACE_KEY;
             }
 
@@ -142,7 +142,7 @@ class JpaScanResultQueryAdapterTest {
         SpaceCounter counter = counters.getFirst();
 
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(counter.spaceKey()).isEqualTo(SPACE_KEY);
+        softly.assertThat(counter.sourceKey()).isEqualTo(SPACE_KEY);
         softly.assertThat(counter.pagesDone()).isEqualTo(10L);
         softly.assertThat(counter.attachmentsDone()).isEqualTo(5L);
         softly.assertThat(counter.lastEventTs()).isEqualTo(lastTs);
@@ -163,8 +163,8 @@ class JpaScanResultQueryAdapterTest {
 
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
@@ -183,15 +183,15 @@ class JpaScanResultQueryAdapterTest {
     void Should_FilterOutNullResults_When_ListItemEventsWithNullPayloadOrError() throws Exception {
         ScanEventEntity nullPayloadEntity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(null)
             .build();
 
         ScanEventEntity errorEntity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
@@ -218,8 +218,8 @@ class JpaScanResultQueryAdapterTest {
         ContentScanResult encrypted = sampleScanResult();
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
@@ -235,21 +235,21 @@ class JpaScanResultQueryAdapterTest {
     }
 
     @Test
-    void Should_ReturnEncryptedResults_When_ListItemEventsEncryptedByScanIdAndSpaceKey() throws Exception {
+    void Should_ReturnEncryptedResults_When_ListItemEventsEncryptedBySourceKey() throws Exception {
         ContentScanResult encrypted = sampleScanResult();
         ScanEventEntity entity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
-        when(eventRepository.findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(SPACE_KEY), any()))
+        when(eventRepository.findByScanIdAndSourceKeyAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(SPACE_KEY), any()))
             .thenReturn(List.of(entity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(
             ContentScanResult.class))).thenReturn(encrypted);
 
-        List<ContentScanResult> results = adapter.listItemEventsEncryptedByScanIdAndSpaceKey(SCAN_ID, SPACE_KEY);
+        List<ContentScanResult> results = adapter.listItemEventsEncryptedBySourceKey(SCAN_ID, SPACE_KEY);
 
         assertThat(results).containsExactly(encrypted);
     }
@@ -264,7 +264,7 @@ class JpaScanResultQueryAdapterTest {
 
     @Test
     void Should_NotAudit_When_NoDecryptedResultsFound() {
-        when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
+        when(eventRepository.findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of());
 
         List<ContentScanResult> results = adapter.listItemEventsDecrypted(SCAN_ID, PAGE_ID, AccessPurpose.USER_DISPLAY);
@@ -287,19 +287,19 @@ class JpaScanResultQueryAdapterTest {
 
         ScanEventEntity entity1 = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
         ScanEventEntity entity2 = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
-        when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
+        when(eventRepository.findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of(entity1, entity2));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(ContentScanResult.class)))
             .thenReturn(encrypted1, encrypted2);
@@ -324,19 +324,19 @@ class JpaScanResultQueryAdapterTest {
     void Should_FilterOutNullResults_When_DecryptedEventsHaveInvalidPayloadOrError() throws Exception {
         ScanEventEntity nullPayload = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(null)
             .build();
 
         ScanEventEntity errorEntity = ScanEventEntity.builder()
             .scanId(SCAN_ID)
-            .spaceKey(SPACE_KEY)
-            .pageId(PAGE_ID)
+            .sourceType("CONFLUENCE").sourceKey(SPACE_KEY)
+            .contentId(PAGE_ID)
             .payload(samplePayloadNode())
             .build();
 
-        when(eventRepository.findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
+        when(eventRepository.findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(eq(SCAN_ID), eq(PAGE_ID), any()))
             .thenReturn(List.of(nullPayload, errorEntity));
         when(objectMapper.treeToValue(any(JsonNode.class), eq(ContentScanResult.class)))
             .thenThrow(new RuntimeException("boom"));

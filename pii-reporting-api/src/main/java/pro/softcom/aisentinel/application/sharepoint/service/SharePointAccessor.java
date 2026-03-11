@@ -7,7 +7,6 @@ import pro.softcom.aisentinel.domain.sharepoint.SharePointDriveItem;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointSite;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -35,16 +34,24 @@ public class SharePointAccessor {
             return CompletableFuture.completedFuture(List.copyOf(cachedSites));
         }
 
-        log.debug("Cache miss - fetching sites from SharePoint API");
-        return sharePointClient.searchSites("*")
-                .thenApply(sites -> {
-                    if (sites != null && !sites.isEmpty()) {
-                        cachedSites.clear();
-                        cachedSites.addAll(sites);
-                        log.info("Cached {} sites from SharePoint API", sites.size());
-                    }
-                    return sites;
-                });
+        synchronized (cachedSites) {
+            if (!cachedSites.isEmpty()) {
+                return CompletableFuture.completedFuture(List.copyOf(cachedSites));
+            }
+
+            log.debug("Cache miss - fetching sites from SharePoint API");
+            return sharePointClient.searchSites("*")
+                    .thenApply(sites -> {
+                        if (sites != null && !sites.isEmpty()) {
+                            synchronized (cachedSites) {
+                                cachedSites.clear();
+                                cachedSites.addAll(sites);
+                            }
+                            log.info("Cached {} sites from SharePoint API", sites.size());
+                        }
+                        return sites;
+                    });
+        }
     }
 
     /**
@@ -60,7 +67,7 @@ public class SharePointAccessor {
      */
     public CompletableFuture<List<SharePointDriveItem>> getAllFilesInSite(String siteId) {
         return sharePointClient.listAllDrivesRootItems(siteId)
-                .thenCompose(rootItems -> collectFilesRecursively(rootItems, new ArrayList<>()));
+                .thenCompose(rootItems -> collectFilesRecursively(rootItems, new CopyOnWriteArrayList<>()));
     }
 
     /**

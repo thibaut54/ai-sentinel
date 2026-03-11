@@ -10,6 +10,7 @@ import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrche
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -124,7 +125,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
         log.info("[SCAN] Creating new scan with scanId: {}", scanCorrelationId);
         
         // Purge previous scan data to ensure clean state
-        contentScanOrchestrator.purgePreviousScanData();
+        contentScanOrchestrator.purgePreviousScanData(SourceType.CONFLUENCE);
 
         // Opening segment: a single "MULTI_START" event
         Flux<ContentScanResult> header = buildAllSpaceScanFluxHeader(scanCorrelationId);
@@ -150,7 +151,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
         log.info("[SCAN] Creating new selected spaces scan with scanId: {}", scanCorrelationId);
 
         // Purge previous scan data for selected spaces to ensure clean state
-        contentScanOrchestrator.purgePreviousScanDataForSpaces(spaceKeys);
+        contentScanOrchestrator.purgePreviousScanDataForSources(SourceType.CONFLUENCE, spaceKeys);
 
         // Opening segment: a single "MULTI_START" event
         Flux<ContentScanResult> header = buildAllSpaceScanFluxHeader(scanCorrelationId);

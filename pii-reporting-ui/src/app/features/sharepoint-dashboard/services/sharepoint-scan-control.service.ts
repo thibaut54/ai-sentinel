@@ -223,7 +223,7 @@ export class SharePointScanControlService {
       }
     });
 
-    this.dataManagement.loadLastSpaceStatuses(true, true).subscribe();
+    this.dataManagement.loadLastSiteStatuses(true, true).subscribe();
   }
 
   reset(): void {

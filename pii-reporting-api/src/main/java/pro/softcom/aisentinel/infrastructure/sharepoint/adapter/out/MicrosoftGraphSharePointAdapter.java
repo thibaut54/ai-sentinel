@@ -128,9 +128,9 @@ public class MicrosoftGraphSharePointAdapter implements SharePointClient {
                 if (drivesResponse == null || drivesResponse.getValue() == null) {
                     return List.of();
                 }
-                log.info("[SHAREPOINT] Found {} drives for site {}", drivesResponse.getValue().size(), siteId);
+                log.debug("[SHAREPOINT] Found {} drives for site {}", drivesResponse.getValue().size(), siteId);
                 drivesResponse.getValue().forEach(d ->
-                    log.info("[SHAREPOINT]   drive: name={}, id={}, driveType={}", d.getName(), d.getId(), d.getDriveType())
+                    log.debug("[SHAREPOINT]   drive: name={}, id={}, driveType={}", d.getName(), d.getId(), d.getDriveType())
                 );
                 return drivesResponse.getValue().stream()
                     .filter(drive -> drive.getId() != null)

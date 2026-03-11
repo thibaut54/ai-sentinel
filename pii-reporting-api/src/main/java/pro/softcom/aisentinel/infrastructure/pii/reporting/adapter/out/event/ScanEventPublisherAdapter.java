@@ -20,6 +20,6 @@ public class ScanEventPublisherAdapter implements PublishEventPort {
     @Override
     public void publishCompleteEvent(SpaceScanCompleted spaceScanCompleted) {
         applicationEventPublisher.publishEvent(spaceScanCompleted);
-        log.debug("Published scanId={}, spaceKey={}, sourceType={}", spaceScanCompleted.scanId(), spaceScanCompleted.spaceKey(), spaceScanCompleted.sourceType());
+        log.debug("Published scanId={}, sourceKey={}, sourceType={}", spaceScanCompleted.scanId(), spaceScanCompleted.sourceKey(), spaceScanCompleted.sourceType());
     }
 }

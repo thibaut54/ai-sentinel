@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { tap, map, catchError, finalize } from 'rxjs/operators';
-import { SentinelleApiService, LastScanMeta, SpaceScanStateDto } from '../../../core/services/sentinelle-api.service';
+import { catchError, finalize, map, tap } from 'rxjs/operators';
+import { LastScanMeta, SentinelleApiService, SpaceScanStateDto } from '../../../core/services/sentinelle-api.service';
 import { SharePointSite } from '../../../core/models/sharepoint-site.model';
 import { SharePointSitesDashboardUtils } from '../sharepoint-sites-dashboard.utils';
 import { ScanProgressService } from '../../../core/services/scan-progress.service';
@@ -79,7 +79,7 @@ export class SharePointSiteDataManagementService {
     });
   }
 
-  loadLastSpaceStatuses(isActive: boolean, alsoLoadItems: boolean = true): Observable<void> {
+  loadLastSiteStatuses(isActive: boolean, alsoLoadItems: boolean = true): Observable<void> {
     return new Observable(observer => {
       this.sentinelleApiService.getDashboardSpacesSummary().subscribe({
         next: (summary) => {

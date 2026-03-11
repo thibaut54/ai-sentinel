@@ -150,9 +150,9 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => {
       this.jiraConfigMissing.set(false);
-      if (this.projects().length === 0) {
-        this.dataManagement.fetchProjects().subscribe();
-      }
+      this.dataManagement.fetchProjects().subscribe({
+        error: () => { /* handled by service */ }
+      });
     });
   }
 

@@ -12,6 +12,7 @@ import pro.softcom.aisentinel.application.jira.service.JiraAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -76,7 +77,7 @@ class StreamJiraScanUseCaseTest {
             assertThat(result)
                 .as("scanAllProjects should return a non-null Flux")
                 .isNotNull();
-            verify(contentScanOrchestrator).purgePreviousScanData();
+            verify(contentScanOrchestrator).purgePreviousScanData(SourceType.JIRA);
             verify(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
             verify(scanExecutionOrchestrator).subscribeScan(anyString());
         }
@@ -142,7 +143,7 @@ class StreamJiraScanUseCaseTest {
             useCase.scanSelectedProjects(projectKeys);
 
             // Assert
-            verify(contentScanOrchestrator).purgePreviousScanDataForSpaces(projectKeys);
+            verify(contentScanOrchestrator).purgePreviousScanDataForSources(SourceType.JIRA, projectKeys);
         }
 
         @Test

@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
@@ -36,13 +37,14 @@ class ScanCheckpointServiceStatusTransitionTest {
         // Given: An existing COMPLETED checkpoint
         ScanCheckpoint existingCheckpoint = ScanCheckpoint.builder()
             .scanId("scan-123")
-            .spaceKey("TEST")
-            .lastProcessedPageId("page-456")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("TEST")
+            .lastProcessedContentId("page-456")
             .scanStatus(ScanStatus.COMPLETED)
             .progressPercentage(100.0)
             .build();
 
-        when(scanCheckpointRepository.findByScanAndSpace("scan-123", "TEST"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-123", SourceType.CONFLUENCE, "TEST"))
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A new scan event trying to update to RUNNING (invalid transition)
@@ -54,7 +56,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Attempting to persist checkpoint with RUNNING status
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save should NOT be called (transition blocked)
         verify(scanCheckpointRepository, never()).save(any(ScanCheckpoint.class));
@@ -65,13 +67,14 @@ class ScanCheckpointServiceStatusTransitionTest {
         // Given: An existing FAILED checkpoint
         ScanCheckpoint existingCheckpoint = ScanCheckpoint.builder()
             .scanId("scan-456")
-            .spaceKey("PROD")
-            .lastProcessedPageId("page-100")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("PROD")
+            .lastProcessedContentId("page-100")
             .scanStatus(ScanStatus.FAILED)
             .progressPercentage(45.0)
             .build();
 
-        when(scanCheckpointRepository.findByScanAndSpace("scan-456", "PROD"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-456", SourceType.CONFLUENCE, "PROD"))
             .thenReturn(Optional.of(existingCheckpoint));
 
         // And: A scan event trying to complete the space (invalid transition)
@@ -82,7 +85,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Attempting to persist checkpoint with COMPLETED status
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save should NOT be called (transition blocked)
         verify(scanCheckpointRepository, never()).save(any(ScanCheckpoint.class));
@@ -93,16 +96,17 @@ class ScanCheckpointServiceStatusTransitionTest {
         // Given: An existing RUNNING checkpoint
         ScanCheckpoint existingCheckpoint = ScanCheckpoint.builder()
             .scanId("scan-789")
-            .spaceKey("DEV")
-            .lastProcessedPageId("page-200")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("DEV")
+            .lastProcessedContentId("page-200")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(75.0)
             .build();
 
-        when(scanCheckpointRepository.findByScanAndSpace("scan-789", "DEV"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-789", SourceType.CONFLUENCE, "DEV"))
             .thenReturn(Optional.of(existingCheckpoint));
 
-        // And: A scan event completing the space (valid transition: RUNNING → COMPLETED)
+        // And: A scan event completing the space (valid transition: RUNNING -> COMPLETED)
         ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-789")
             .sourceId("DEV")
@@ -111,7 +115,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Attempting to persist checkpoint with COMPLETED status
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save SHOULD be called (transition allowed)
         verify(scanCheckpointRepository).save(any(ScanCheckpoint.class));
@@ -120,7 +124,7 @@ class ScanCheckpointServiceStatusTransitionTest {
     @Test
     void Should_AllowFirstCheckpoint_When_NoExistingCheckpoint() {
         // Given: No existing checkpoint
-        when(scanCheckpointRepository.findByScanAndSpace("scan-new", "SPACE"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-new", SourceType.CONFLUENCE, "SPACE"))
             .thenReturn(Optional.empty());
 
         // And: A scan event starting a new scan
@@ -132,7 +136,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Persisting first checkpoint
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save SHOULD be called (first checkpoint allowed)
         verify(scanCheckpointRepository).save(any(ScanCheckpoint.class));
@@ -143,16 +147,17 @@ class ScanCheckpointServiceStatusTransitionTest {
         // Given: An existing RUNNING checkpoint
         ScanCheckpoint existingCheckpoint = ScanCheckpoint.builder()
             .scanId("scan-same")
-            .spaceKey("SAME")
-            .lastProcessedPageId("page-50")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SAME")
+            .lastProcessedContentId("page-50")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(50.0)
             .build();
 
-        when(scanCheckpointRepository.findByScanAndSpace("scan-same", "SAME"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-same", SourceType.CONFLUENCE, "SAME"))
             .thenReturn(Optional.of(existingCheckpoint));
 
-        // And: A scan event with same status (idempotent: RUNNING → RUNNING)
+        // And: A scan event with same status (idempotent: RUNNING -> RUNNING)
         ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-same")
             .sourceId("SAME")
@@ -162,7 +167,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Persisting checkpoint with same status
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save SHOULD be called (idempotent transition allowed)
         verify(scanCheckpointRepository).save(any(ScanCheckpoint.class));
@@ -173,17 +178,18 @@ class ScanCheckpointServiceStatusTransitionTest {
         // Given: A checkpoint that just transitioned to COMPLETED
         ScanCheckpoint completedCheckpoint = ScanCheckpoint.builder()
             .scanId("scan-race")
-            .spaceKey("RACE")
-            .lastProcessedPageId("page-final")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("RACE")
+            .lastProcessedContentId("page-final")
             .scanStatus(ScanStatus.COMPLETED)
             .progressPercentage(100.0)
             .build();
 
-        when(scanCheckpointRepository.findByScanAndSpace("scan-race", "RACE"))
+        when(scanCheckpointRepository.findByScanAndSource("scan-race", SourceType.CONFLUENCE, "RACE"))
             .thenReturn(Optional.of(completedCheckpoint));
 
         // And: A pause event arrives late (race condition scenario)
-        // In reality, PauseScanUseCase would try to transition COMPLETED → PAUSED
+        // In reality, PauseScanUseCase would try to transition COMPLETED -> PAUSED
         // This test simulates if a RUNNING event tries to overwrite COMPLETED
         ContentScanResult scanResult = ContentScanResult.builder()
             .scanId("scan-race")
@@ -193,7 +199,7 @@ class ScanCheckpointServiceStatusTransitionTest {
             .build();
 
         // When: Attempting to persist checkpoint (would create RUNNING status)
-        scanCheckpointService.persistCheckpoint(scanResult);
+        scanCheckpointService.persistCheckpoint(scanResult, SourceType.CONFLUENCE);
 
         // Then: Repository save should NOT be called (final state is immutable)
         verify(scanCheckpointRepository, never()).save(any(ScanCheckpoint.class));

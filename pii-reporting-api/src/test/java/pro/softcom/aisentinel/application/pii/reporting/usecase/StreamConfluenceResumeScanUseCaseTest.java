@@ -23,6 +23,7 @@ import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.DataOwners;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
@@ -40,7 +41,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -141,12 +142,13 @@ class StreamConfluenceResumeScanUseCaseTest {
 
         ScanCheckpoint cp = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
-            .lastProcessedPageId("p1")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey(spaceKey)
+            .lastProcessedContentId("p1")
             .lastProcessedAttachmentName("att.bin")
             .scanStatus(ScanStatus.RUNNING)
             .build();
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("p1").title("P1").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("content"))
             .build();
@@ -175,7 +177,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t","http://test.com", "d",
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.empty());
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.empty());
 
         CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
         failing.completeExceptionally(new RuntimeException("resume-pages-fail"));
@@ -200,7 +202,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
 
-        when(scanCheckpointRepository.findByScanAndSpace(anyString(), anyString())).thenThrow(new RuntimeException("prep-fail"));
+        when(scanCheckpointRepository.findByScanAndSource(anyString(), any(SourceType.class), anyString())).thenThrow(new RuntimeException("prep-fail"));
 
         Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
 
@@ -238,11 +240,12 @@ class StreamConfluenceResumeScanUseCaseTest {
 
         ScanCheckpoint cp = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
-            .lastProcessedPageId("UNKNOWN")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey(spaceKey)
+            .lastProcessedContentId("UNKNOWN")
             .scanStatus(ScanStatus.RUNNING)
             .build();
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("pA").title("A").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("contentA"))
             .build();

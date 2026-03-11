@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.domain.pii.scan.model.DatabaseSourceType;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
-import pro.softcom.aisentinel.domain.pii.scan.model.SourceType;
 import pro.softcom.aisentinel.infrastructure.database.util.DynamicDataSourceUtils;
 import reactor.test.StepVerifier;
 
@@ -26,13 +26,13 @@ class PostgresContentProviderTest {
 
     @Test
     void supports_ShouldReturnTrue_ForPostgres() {
-        assertThat(provider.supports(SourceType.POSTGRES)).isTrue();
-        assertThat(provider.supports(SourceType.MONGO)).isFalse();
+        assertThat(provider.supports(DatabaseSourceType.POSTGRES)).isTrue();
+        assertThat(provider.supports(DatabaseSourceType.MONGO)).isFalse();
     }
 
     @Test
     void fetch_ShouldReturnError_WhenTableIsInvalid() {
-        ScanSourceConfig config = new ScanSourceConfig(SourceType.POSTGRES, Map.of("table", "invalid;drop table users"));
+        ScanSourceConfig config = new ScanSourceConfig(DatabaseSourceType.POSTGRES, Map.of("table", "invalid;drop table users"));
         
         try (MockedStatic<DynamicDataSourceUtils> utilities = mockStatic(DynamicDataSourceUtils.class)) {
             HikariDataSource mockDataSource = mock(HikariDataSource.class);

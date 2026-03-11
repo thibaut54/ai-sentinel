@@ -10,6 +10,7 @@ import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.ModifiedAttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ModifiedPageInfo;
 import pro.softcom.aisentinel.domain.confluence.SpaceUpdateInfo;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
 import java.time.Instant;
@@ -133,7 +134,7 @@ public class FetchSpaceUpdateInfoUseCase implements ConfluenceSpaceUpdateInfoPor
      */
     private Optional<Instant> findLastScanDate(String spaceKey) {
         try {
-            return scanCheckpointRepository.findLatestBySpace(spaceKey)
+            return scanCheckpointRepository.findLatestBySource(SourceType.CONFLUENCE, spaceKey)
                 .map(ScanCheckpoint::updatedAt)
                 .map(localDateTime -> localDateTime.atZone(ZoneId.systemDefault()).toInstant());
         } catch (Exception e) {

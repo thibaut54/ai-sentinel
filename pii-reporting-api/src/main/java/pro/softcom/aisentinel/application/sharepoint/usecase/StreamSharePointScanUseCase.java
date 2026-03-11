@@ -2,13 +2,14 @@ package pro.softcom.aisentinel.application.sharepoint.usecase;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
-import pro.softcom.aisentinel.application.sharepoint.service.SharePointAccessor;
-import pro.softcom.aisentinel.application.sharepoint.service.SharePointTextExtractorPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReportingEventType;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
+import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointAccessor;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointTextExtractorPort;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ScanProgress;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointDriveItem;
@@ -19,7 +20,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
-import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -46,7 +46,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
         String scanId = UUID.randomUUID().toString();
         log.info("[SHAREPOINT-SCAN] Creating new scan with scanId: {}", scanId);
 
-        contentScanOrchestrator.purgePreviousScanData();
+        contentScanOrchestrator.purgePreviousScanData(SourceType.SHAREPOINT);
 
         Flux<ContentScanResult> header = buildHeader(scanId);
         Flux<ContentScanResult> body = buildAllSitesScanBody(scanId);
@@ -63,7 +63,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
         String scanId = UUID.randomUUID().toString();
         log.info("[SHAREPOINT-SCAN] Creating new selected sites scan with scanId: {}", scanId);
 
-        contentScanOrchestrator.purgePreviousScanDataForSpaces(siteIds);
+        contentScanOrchestrator.purgePreviousScanDataForSources(SourceType.SHAREPOINT, siteIds);
 
         Flux<ContentScanResult> header = buildHeader(scanId);
         Flux<ContentScanResult> body = buildSelectedSitesScanBody(scanId, siteIds);
@@ -139,8 +139,8 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
                             .doOnEach(signal -> {
                                 if (signal.isOnNext() && signal.get() != null) {
                                     ContentScanResult event = signal.get();
-                                    contentScanOrchestrator.persistCheckpointSynchronously(event);
-                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, "SHAREPOINT"))
+                                    contentScanOrchestrator.persistCheckpointSynchronously(event, SourceType.SHAREPOINT);
+                                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, SourceType.SHAREPOINT))
                                             .subscribeOn(Schedulers.boundedElastic())
                                             .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
                                             .onErrorResume(e -> {

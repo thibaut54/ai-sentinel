@@ -12,5 +12,5 @@ public interface SharePointConnectionConfigRepository {
     Optional<SharePointConnectionSettings> findSettings();
     SharePointConnectionSettings save(SharePointConnectionSettings settings);
     void saveEncryptedClientSecret(String plainClientSecret);
-    Optional<String> findDecryptedClientSecret();
+    Optional<String> findEncryptedClientSecret();
 }

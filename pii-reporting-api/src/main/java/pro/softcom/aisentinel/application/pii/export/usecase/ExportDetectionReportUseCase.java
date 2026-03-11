@@ -76,7 +76,7 @@ public class ExportDetectionReportUseCase implements ExportDetectionReportPort {
             String sourceIdentifier
     ) {
         try {
-            var scanResults = readScanEventsPort.streamByScanIdAndSpaceKey(scanId, sourceIdentifier);
+            var scanResults = readScanEventsPort.streamByScanIdAndSourceKey(scanId, sourceIdentifier);
 
             for (ContentScanResult result : scanResults.toList()) {
                 writeEntriesForScanResult(reportSession, result);

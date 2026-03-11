@@ -53,29 +53,29 @@ public interface ScanResultQuery {
      * Automatically logs access for GDPR/nLPD compliance.
      *
      * @param scanId scan identifier
-     * @param pageId page ID
+     * @param contentId content ID (page, issue, file, etc.)
      * @param purpose access purpose (for audit trail)
      * @return list of scan results with decrypted PII
      */
-    List<ContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose);
+    List<ContentScanResult> listItemEventsDecrypted(String scanId, String contentId, AccessPurpose purpose);
 
     /**
-     * Lists item events with ENCRYPTED PII data filtered by space.
+     * Lists item events with ENCRYPTED PII data filtered by source.
      * Use when PII values don't need to be viewed.
      *
      * @param scanId scan identifier
-     * @param spaceKey Confluence space key to filter results
-     * @return list of scan results with encrypted PII for the specified space
+     * @param sourceKey source key to filter results (space key, project key, site id, etc.)
+     * @return list of scan results with encrypted PII for the specified source
      */
-    List<ContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey);
+    List<ContentScanResult> listItemEventsEncryptedBySourceKey(String scanId, String sourceKey);
 
     /**
-     * Read-side projection representing per-space progress within a scan.
+     * Read-side projection representing per-source progress within a scan.
      *
-     * @param spaceKey the business key of the space
-     * @param pagesDone number of pages processed in this space
-     * @param attachmentsDone number of attachments processed in this space
-     * @param lastEventTs timestamp of the last event observed for this space
+     * @param sourceKey the business key of the source (space key, project key, site id, etc.)
+     * @param pagesDone number of pages/items processed in this source
+     * @param attachmentsDone number of attachments processed in this source
+     * @param lastEventTs timestamp of the last event observed for this source
      */
-    record SpaceCounter(String spaceKey, long pagesDone, long attachmentsDone, Instant lastEventTs) {}
+    record SpaceCounter(String sourceKey, long pagesDone, long attachmentsDone, Instant lastEventTs) {}
 }

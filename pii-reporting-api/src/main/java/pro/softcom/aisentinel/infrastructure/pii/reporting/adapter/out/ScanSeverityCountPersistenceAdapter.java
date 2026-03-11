@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.ScanSeverityCountJpaRepository;
@@ -14,10 +15,10 @@ import java.util.Optional;
 
 /**
  * JPA adapter implementing {@link ScanSeverityCountRepository} port.
- * 
+ *
  * <p>Bridges the hexagonal architecture boundary between application layer
  * (domain-focused use cases) and infrastructure layer (JPA persistence).
- * 
+ *
  * <p>Responsibilities:
  * <ul>
  *   <li>Maps domain objects (ScanSeverityCount, SeverityCounts) to/from JPA entities</li>
@@ -32,10 +33,11 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
     private final ScanSeverityCountJpaRepository jpaRepository;
 
     @Override
-    public void incrementCounts(String scanId, String spaceKey, SeverityCounts delta) {
+    public void incrementCounts(String scanId, SourceType sourceType, String sourceKey, SeverityCounts delta) {
         jpaRepository.incrementCounts(
             scanId,
-            spaceKey,
+            sourceType.name(),
+            sourceKey,
             delta.high(),
             delta.medium(),
             delta.low()
@@ -43,19 +45,20 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
     }
 
     @Override
-    public Optional<SeverityCounts> findByScanIdAndSpaceKey(String scanId, String spaceKey) {
+    public Optional<SeverityCounts> findByScanIdAndSource(String scanId, SourceType sourceType, String sourceKey) {
         var id = ScanSeverityCountId.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceType(sourceType.name())
+            .sourceKey(sourceKey)
             .build();
-        
+
         return jpaRepository.findById(id)
             .map(this::toDomainCounts);
     }
 
     @Override
     public List<ScanSeverityCount> findByScanId(String scanId) {
-        return jpaRepository.findById_ScanIdOrderById_SpaceKey(scanId).stream()
+        return jpaRepository.findById_ScanIdOrderById_SourceKey(scanId).stream()
             .map(this::toDomain)
             .toList();
     }
@@ -82,7 +85,8 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
     private ScanSeverityCount toDomain(ScanSeverityCountEntity entity) {
         return new ScanSeverityCount(
             entity.getScanId(),
-            entity.getSpaceKey(),
+            SourceType.fromValue(entity.getSourceType()),
+            entity.getSourceKey(),
             toDomainCounts(entity)
         );
     }

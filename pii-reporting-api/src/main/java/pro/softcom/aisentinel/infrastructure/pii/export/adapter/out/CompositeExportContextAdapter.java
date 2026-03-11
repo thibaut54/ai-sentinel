@@ -36,9 +36,10 @@ public class CompositeExportContextAdapter implements ReadExportContextPort {
     @Override
     public ExportContext findContext(SourceType sourceType, String sourceIdentifier) {
         return switch (sourceType) {
-            case SHAREPOINT -> sharePointExportContextAdapter.findContext(sourceIdentifier, sourceType);
+            case SHAREPOINT -> sharePointExportContextAdapter.findContext(sourceType, sourceIdentifier);
             case JIRA -> buildJiraContext(sourceIdentifier);
             case CONFLUENCE -> buildConfluenceContext(sourceIdentifier);
+            case DATABASE -> throw new UnsupportedSourceTypeException(sourceType.getValue());
         };
     }
 

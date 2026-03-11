@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 
 import java.net.SocketException;
@@ -62,7 +63,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO, not WARN
         assertThat(listAppender.list)
@@ -90,7 +91,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO
         assertThat(listAppender.list)
@@ -117,7 +118,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO
         assertThat(listAppender.list)
@@ -143,7 +144,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as WARN
         assertThat(listAppender.list)
@@ -171,7 +172,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
             .build();
 
         // When: Persisting invalid checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should not call repository
         verify(scanCheckpointRepository, never()).save(any());

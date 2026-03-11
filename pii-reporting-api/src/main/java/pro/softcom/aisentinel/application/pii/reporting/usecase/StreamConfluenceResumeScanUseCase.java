@@ -11,6 +11,7 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanRemainingPages;
@@ -63,7 +64,7 @@ public class StreamConfluenceResumeScanUseCase extends
 
     private Flux<ContentScanResult> resumeScanResultFlux(String scanId, ConfluenceSpace space) {
         try {
-            var scanCheckpoint = scanCheckpointRepository.findByScanAndSpace(scanId, space.key())
+            var scanCheckpoint = scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, space.key())
                 .orElse(null);
             Flux<ContentScanResult> empty = checkScanCompletionAndGenerateFlux(scanCheckpoint);
             return Objects.requireNonNullElseGet(empty, () -> Mono.fromFuture(

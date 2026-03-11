@@ -60,7 +60,7 @@ public class SharePointConnectionConfigController {
             Principal principal) {
 
         String updatedBy = principal != null ? principal.getName() : SYSTEM_USER;
-        log.info("PUT /api/v1/sharepoint/connection-config - Updating: tenantId={}, clientId={}, enabled={}, updatedBy={}",
+        log.debug("PUT /api/v1/sharepoint/connection-config - Updating: tenantId={}, clientId={}, enabled={}, updatedBy={}",
                 request.tenantId(), request.clientId(), request.enabled(), updatedBy);
 
         return CompletableFuture.supplyAsync(() -> {
@@ -96,7 +96,7 @@ public class SharePointConnectionConfigController {
     public CompletableFuture<ResponseEntity<@NonNull ConnectionTestResultDto>> testConnection(
             @Valid @RequestBody TestSharePointConnectionRequestDto request) {
 
-        log.info("POST /api/v1/sharepoint/connection-config/test - Testing connection: tenantId={}", request.tenantId());
+        log.debug("POST /api/v1/sharepoint/connection-config/test - Testing connection: tenantId={}", request.tenantId());
 
         return CompletableFuture.supplyAsync(() -> {
             try {

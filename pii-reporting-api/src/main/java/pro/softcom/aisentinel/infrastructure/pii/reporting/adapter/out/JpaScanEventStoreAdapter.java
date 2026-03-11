@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
 import pro.softcom.aisentinel.application.pii.reporting.service.PiiContextExtractor;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanEventEntity;
@@ -36,10 +37,11 @@ public class JpaScanEventStoreAdapter implements ScanEventStore {
     private final ConcurrentHashMap<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
     /**
-     * Append an event to the event store. Best-effort: logs on failure but does not throw.
+     * Append an event to the event store with its source type discriminator.
+     * Best-effort: logs on failure but does not throw.
      */
     @Override
-    public void append(ContentScanResult result) {
+    public void append(ContentScanResult result, SourceType sourceType) {
         try {
             Objects.requireNonNull(result, "scanResult cannot be null");
             if (StringUtils.isBlank(result.scanId())) {
@@ -60,11 +62,12 @@ public class JpaScanEventStoreAdapter implements ScanEventStore {
             ScanEventEntity entity = ScanEventEntity.builder()
                     .scanId(scanId)
                     .eventSeq(seq)
-                    .spaceKey(result.sourceId())
+                    .sourceType(sourceType != null ? sourceType.name() : null)
+                    .sourceKey(result.sourceId())
                     .eventType(result.eventType())
                     .ts(scanRecordedAt != null ? scanRecordedAt : Instant.now())
-                    .pageId(result.contentId())
-                    .pageTitle(result.contentTitle())
+                    .contentId(result.contentId())
+                    .contentTitle(result.contentTitle())
                     .attachmentName(result.attachmentName())
                     .attachmentType(result.attachmentType())
                     .payload(payload)

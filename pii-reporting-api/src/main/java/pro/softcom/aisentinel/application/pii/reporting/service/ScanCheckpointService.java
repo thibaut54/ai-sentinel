@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.scan.Initiator;
@@ -22,13 +23,14 @@ public class ScanCheckpointService {
     private final ScanCheckpointRepository scanCheckpointRepository;
 
     /**
-     * Persists checkpoint based on scan event.
+     * Persists checkpoint based on scan event and source type.
      * Protected against thread interruptions to ensure checkpoint persistence
      * even when SSE client disconnects.
      *
-     * @param result the scan event to persist
+     * @param result     the scan event to persist
+     * @param sourceType the type of the datasource being scanned
      */
-    public void persistCheckpoint(ContentScanResult result) {
+    public void persistCheckpoint(ContentScanResult result, SourceType sourceType) {
         if (!isValidForCheckpoint(result)) {
             return;
         }
@@ -40,8 +42,8 @@ public class ScanCheckpointService {
                 wasInterrupted = true;
                 log.debug("[CHECKPOINT] Thread interrupted, clearing flag to persist checkpoint");
             }
-            
-            ScanCheckpoint checkpoint = buildCheckpoint(result);
+
+            ScanCheckpoint checkpoint = buildCheckpoint(result, sourceType);
             if (checkpoint != null) {
                 scanCheckpointRepository.save(checkpoint);
                 log.debug("[CHECKPOINT] Saved checkpoint for scan {}", result.scanId());
@@ -49,12 +51,12 @@ public class ScanCheckpointService {
         } catch (OptimisticLockException _) {
             // Concurrent modification detected - another thread updated this checkpoint first
             // This is expected behavior with optimistic locking, not an error
-            log.info("[CHECKPOINT] Concurrent update detected for scan {} space {}, skipping (another process already updated)",
+            log.info("[CHECKPOINT] Concurrent update detected for scan {} source {}, skipping (another process already updated)",
                 result.scanId(), result.sourceId());
         } catch (Exception exception) {
             // Check if this is a DB error caused by thread interruption (normal on SSE disconnect)
             if (isInterruptionCausedError(exception)) {
-                log.info("[CHECKPOINT] Checkpoint persistence interrupted (SSE disconnection): {}", 
+                log.info("[CHECKPOINT] Checkpoint persistence interrupted (SSE disconnection): {}",
                          exception.getMessage());
             } else {
                 log.warn("[CHECKPOINT] Unable to persist checkpoint: {}", exception.getMessage());
@@ -77,7 +79,7 @@ public class ScanCheckpointService {
         return !StringUtils.isBlank(scanId) && !StringUtils.isBlank(sourceId);
     }
 
-    private ScanCheckpoint buildCheckpoint(ContentScanResult result) {
+    private ScanCheckpoint buildCheckpoint(ContentScanResult result, SourceType sourceType) {
         String eventType = result.eventType();
         if (eventType == null) {
             return null;
@@ -85,7 +87,7 @@ public class ScanCheckpointService {
 
         CheckpointData data = extractCheckpointData(eventType, result);
         ScanCheckpoint existingCheckpoint = scanCheckpointRepository
-            .findByScanAndSpace(result.scanId(), result.sourceId())
+            .findByScanAndSource(result.scanId(), sourceType, result.sourceId())
             .orElse(null);
 
         if (existingCheckpoint != null) {
@@ -96,7 +98,7 @@ public class ScanCheckpointService {
 
             boolean isTransitionForbidden = data != null && !transition.isTransitionAllowed(data.status());
             if (isTransitionForbidden) {
-                log.warn("[CHECKPOINT] Transition {} → {} not allowed, skipping",
+                log.warn("[CHECKPOINT] Transition {} -> {} not allowed, skipping",
                          existingCheckpoint.scanStatus(), data.status());
                 return null;
             }
@@ -108,8 +110,9 @@ public class ScanCheckpointService {
 
         return ScanCheckpoint.builder()
             .scanId(result.scanId())
-            .spaceKey(result.sourceId()) // Mapping sourceId to spaceKey
-            .lastProcessedPageId(data.lastPage()) // Mapping contentId to lastProcessedPageId
+            .sourceType(sourceType)
+            .sourceKey(result.sourceId())
+            .lastProcessedContentId(data.lastPage())
             .lastProcessedAttachmentName(data.lastAttachment())
             .scanStatus(data.status())
             .progressPercentage(result.analysisProgressPercentage())
@@ -120,17 +123,17 @@ public class ScanCheckpointService {
         return switch (eventType) {
             case "item" ->
                 // Interim page item: persist checkpoint with RUNNING status
-                // Pass null for lastProcessedPageId - repository merge strategy preserves existing value
+                // Pass null for lastProcessedContentId - repository merge strategy preserves existing value
                 new CheckpointData(null, null, ScanStatus.RUNNING);
-            case "attachmentItem" -> 
-                // Persist attachment progress but do NOT advance lastProcessedPageId
-                // Repository merge strategy preserves existing lastProcessedPageId
+            case "attachmentItem" ->
+                // Persist attachment progress but do NOT advance lastProcessedContentId
+                // Repository merge strategy preserves existing lastProcessedContentId
                 new CheckpointData(null, result.attachmentName(), ScanStatus.RUNNING);
-            case "pageComplete" -> 
-                // Persist progress at end of page - advance lastProcessedPageId
+            case "pageComplete" ->
+                // Persist progress at end of page - advance lastProcessedContentId
                 new CheckpointData(result.contentId(), null, ScanStatus.RUNNING);
-            case "complete" -> 
-                // Space-level completion - reset lastProcessedPageId
+            case "complete" ->
+                // Source-level completion - reset lastProcessedContentId
                 new CheckpointData(null, null, ScanStatus.COMPLETED);
             default -> null; // Ignore other events
         };
@@ -139,40 +142,40 @@ public class ScanCheckpointService {
     /**
      * Checks if an exception was caused by thread interruption.
      * This is normal when SSE client disconnects during a scan.
-     * 
+     *
      * @param exception The exception to check
      * @return true if the exception was caused by thread interruption
      */
     private boolean isInterruptionCausedError(Exception exception) {
         // Check exception message for interrupt-related keywords
-        if (exception.getMessage() != null && 
+        if (exception.getMessage() != null &&
             exception.getMessage().toLowerCase().contains("interrupt")) {
             return true;
         }
-        
+
         // Walk through the cause chain looking for interruption-related exceptions
         Throwable cause = exception.getCause();
         while (cause != null) {
             // Check for SocketException with interrupt message (PostgreSQL connection interrupted)
-            if (cause instanceof java.net.SocketException && 
-                cause.getMessage() != null && 
+            if (cause instanceof java.net.SocketException &&
+                cause.getMessage() != null &&
                 cause.getMessage().toLowerCase().contains("interrupt")) {
                 return true;
             }
-            
+
             // Check for direct InterruptedException
             if (cause instanceof InterruptedException) {
                 return true;
             }
-            
+
             // Avoid infinite loops in circular cause chains
             if (cause.getCause() == cause) {
                 break;
             }
-            
+
             cause = cause.getCause();
         }
-        
+
         return false;
     }
 
@@ -182,11 +185,22 @@ public class ScanCheckpointService {
     private record CheckpointData(String lastPage, String lastAttachment, ScanStatus status) {
     }
 
-    public void deleteActiveScanCheckpoints() {
-        scanCheckpointRepository.deleteActiveScanCheckpoints();
+    /**
+     * Deletes all active scan checkpoints for a given source type.
+     *
+     * @param sourceType the type of the datasource to clean up
+     */
+    public void deleteActiveScanCheckpoints(SourceType sourceType) {
+        scanCheckpointRepository.deleteActiveScanCheckpointsBySourceType(sourceType);
     }
 
-    public void deleteActiveScanCheckpointsForSpaces(java.util.List<String> spaceKeys) {
-        scanCheckpointRepository.deleteActiveScanCheckpointsForSpaces(spaceKeys);
+    /**
+     * Deletes active scan checkpoints for specific sources of a given type.
+     *
+     * @param sourceType the type of the datasource
+     * @param sourceKeys list of source keys to purge
+     */
+    public void deleteActiveScanCheckpointsForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
+        scanCheckpointRepository.deleteActiveScanCheckpointsForSources(sourceType, sourceKeys);
     }
 }

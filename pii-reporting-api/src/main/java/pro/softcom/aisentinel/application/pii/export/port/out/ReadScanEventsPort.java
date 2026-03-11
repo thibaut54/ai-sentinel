@@ -5,5 +5,5 @@ import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import java.util.stream.Stream;
 
 public interface ReadScanEventsPort {
-    Stream<ContentScanResult> streamByScanIdAndSpaceKey(String scanId, String spaceKey);
+    Stream<ContentScanResult> streamByScanIdAndSourceKey(String scanId, String sourceKey);
 }

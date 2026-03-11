@@ -180,11 +180,12 @@ class RevealPiiSecretsUseCaseTest {
         ScanEventEntity event = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(1L)
-            .spaceKey("SPACE-1")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-1")
             .eventType("item")
             .ts(Instant.parse("2024-01-01T10:00:00Z"))
-            .pageId(pageId)
-            .pageTitle("Page 1")
+            .contentId(pageId)
+            .contentTitle("Page 1")
             .payload(payload)
             .build();
 

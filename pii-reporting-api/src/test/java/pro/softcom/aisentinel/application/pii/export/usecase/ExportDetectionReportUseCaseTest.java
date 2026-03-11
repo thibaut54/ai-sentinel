@@ -102,7 +102,7 @@ class ExportDetectionReportUseCaseTest {
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
         when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
-        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST")).thenReturn(Stream.of(
+        when(readScanEventsPort.streamByScanIdAndSourceKey("scan-123", "TEST")).thenReturn(Stream.of(
             confluenceContentScanResult));
         when(detectionReportMapper.toDetectionReportEntries(
             confluenceContentScanResult)).thenReturn(List.of(entry));
@@ -132,7 +132,7 @@ class ExportDetectionReportUseCaseTest {
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
         when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
-        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST"))
+        when(readScanEventsPort.streamByScanIdAndSourceKey("scan-123", "TEST"))
                 .thenReturn(Stream.of(confluenceContentScanResult1, confluenceContentScanResult2));
         when(detectionReportMapper.toDetectionReportEntries(
             confluenceContentScanResult1)).thenReturn(List.of(entry1));
@@ -156,7 +156,7 @@ class ExportDetectionReportUseCaseTest {
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
         when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
-        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST")).thenReturn(Stream.empty());
+        when(readScanEventsPort.streamByScanIdAndSourceKey("scan-123", "TEST")).thenReturn(Stream.empty());
 
         // When
         useCase.export("scan-123", SourceType.CONFLUENCE, "TEST");
@@ -199,7 +199,7 @@ class ExportDetectionReportUseCaseTest {
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
         when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
-        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST")).thenReturn(Stream.of(
+        when(readScanEventsPort.streamByScanIdAndSourceKey("scan-123", "TEST")).thenReturn(Stream.of(
             confluenceContentScanResult));
         when(detectionReportMapper.toDetectionReportEntries(
             confluenceContentScanResult)).thenReturn(List.of(entry));
@@ -226,7 +226,7 @@ class ExportDetectionReportUseCaseTest {
 
         when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
         when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
-        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST")).thenReturn(Stream.of(
+        when(readScanEventsPort.streamByScanIdAndSourceKey("scan-123", "TEST")).thenReturn(Stream.of(
             confluenceContentScanResult));
         when(detectionReportMapper.toDetectionReportEntries(confluenceContentScanResult))
                 .thenReturn(List.of(entry1, entry2, entry3));

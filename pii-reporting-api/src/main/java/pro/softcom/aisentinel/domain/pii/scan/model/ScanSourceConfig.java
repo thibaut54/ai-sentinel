@@ -3,7 +3,7 @@ package pro.softcom.aisentinel.domain.pii.scan.model;
 import java.util.Map;
 
 public record ScanSourceConfig(
-    SourceType type,
+    DatabaseSourceType type,
     Map<String, String> properties
 ) {
     public ScanSourceConfig {

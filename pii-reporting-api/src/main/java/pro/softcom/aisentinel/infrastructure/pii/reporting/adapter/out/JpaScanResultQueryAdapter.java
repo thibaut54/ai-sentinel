@@ -20,8 +20,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Adapter JPA implémentant le port de lecture ScanResultQuery.
- * Mappe les entités/projections JPA vers des modèles du domaine.
+ * Adapter JPA implementant le port de lecture ScanResultQuery.
+ * Mappe les entites/projections JPA vers des modeles du domaine.
  */
 @Component
 @RequiredArgsConstructor
@@ -44,8 +44,8 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
         }
         var row = rows.getFirst();
         String scanId = row.getScanId();
-        int spaces = eventRepository.countDistinctSpaceKeyByScanId(scanId);
-        return Optional.of(new LastScanMeta(scanId, row.getLastUpdated(), spaces));
+        int sources = eventRepository.countDistinctSourceKeyByScanId(scanId);
+        return Optional.of(new LastScanMeta(scanId, row.getLastUpdated(), sources));
     }
 
     @Override
@@ -54,7 +54,7 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
             return List.of();
         }
         return eventRepository.aggregateSpaceCounters(scanId).stream()
-            .map(p -> new SpaceCounter(p.getSpaceKey(), p.getPagesDone(), p.getAttachmentsDone(), p.getLastEventTs()))
+            .map(projection -> new SpaceCounter(projection.getSourceKey(), projection.getPagesDone(), projection.getAttachmentsDone(), projection.getLastEventTs()))
             .toList();
     }
 
@@ -95,22 +95,24 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
     }
 
     @Override
-    public List<ContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey) {
-        if (scanId == null || scanId.isBlank()) return List.of();
-        return eventRepository.findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(scanId, spaceKey, ITEM_EVENT_TYPES).stream()
+    public List<ContentScanResult> listItemEventsEncryptedBySourceKey(String scanId, String sourceKey) {
+        if (scanId == null || scanId.isBlank() || sourceKey == null || sourceKey.isBlank()) {
+            return List.of();
+        }
+        return eventRepository.findByScanIdAndSourceKeyAndEventTypeInOrderByEventSeqAsc(scanId, sourceKey, ITEM_EVENT_TYPES).stream()
                 .map(this::toEncryptedDomain)
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     @Override
-    public List<ContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose) {
+    public List<ContentScanResult> listItemEventsDecrypted(String scanId, String contentId, AccessPurpose purpose) {
         if (scanId == null || scanId.isBlank()) {
             return List.of();
         }
 
         List<ContentScanResult> results = eventRepository
-            .findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(scanId, pageId, ITEM_EVENT_TYPES).stream()
+            .findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(scanId, contentId, ITEM_EVENT_TYPES).stream()
             .map(this::toDecryptedDomain)
             .filter(Objects::nonNull)
             .toList();
@@ -124,9 +126,9 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
             .mapToInt(r -> r.detectedPIIList() != null ? r.detectedPIIList().size() : 0)
             .sum();
 
-        var spaceKey = results.getFirst().sourceId();
-        var pageTitle = results.getFirst().contentTitle();
-        auditService.auditPiiAccess(scanId, spaceKey, pageId, pageTitle, purpose, totalPiiCount);
+        var sourceKey = results.getFirst().sourceId();
+        var contentTitle = results.getFirst().contentTitle();
+        auditService.auditPiiAccess(scanId, sourceKey, contentId, contentTitle, purpose, totalPiiCount);
 
         return results;
     }

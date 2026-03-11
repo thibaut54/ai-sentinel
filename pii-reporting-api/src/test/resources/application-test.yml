@@ -4,6 +4,7 @@ spring:
   autoconfigure:
     exclude:
       - com.linecorp.armeria.spring.ArmeriaAutoConfiguration
+      - org.springdoc.core.configuration.SpringDocKotlinConfiguration
   application:
     name: ai-sentinel
   jpa:

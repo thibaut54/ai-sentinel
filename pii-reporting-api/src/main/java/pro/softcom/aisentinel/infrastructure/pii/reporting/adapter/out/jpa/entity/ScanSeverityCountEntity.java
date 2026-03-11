@@ -7,12 +7,12 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 /**
- * JPA entity for persisting PII severity counts aggregated by scan and space.
- * 
+ * JPA entity for persisting PII severity counts aggregated by scan and source.
+ *
  * <p>Maps to the {@code scan_severity_counts} table, storing pre-calculated
  * severity statistics for performance-optimized dashboard display.
- * 
- * <p>The composite primary key ensures one record per scan-space combination,
+ *
+ * <p>The composite primary key ensures one record per scan-source combination,
  * with atomic increment operations supporting concurrent scan workers.
  */
 @Entity
@@ -44,9 +44,16 @@ public class ScanSeverityCountEntity {
     }
 
     /**
-     * Convenience method to get space key from composite key.
+     * Convenience method to get source type from composite key.
      */
-    public String getSpaceKey() {
-        return id != null ? id.getSpaceKey() : null;
+    public String getSourceType() {
+        return id != null ? id.getSourceType() : null;
+    }
+
+    /**
+     * Convenience method to get source key from composite key.
+     */
+    public String getSourceKey() {
+        return id != null ? id.getSourceKey() : null;
     }
 }

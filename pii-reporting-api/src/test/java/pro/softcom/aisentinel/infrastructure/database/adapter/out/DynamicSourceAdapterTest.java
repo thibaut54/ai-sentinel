@@ -5,9 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.domain.pii.scan.model.DatabaseSourceType;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
-import pro.softcom.aisentinel.domain.pii.scan.model.SourceType;
 import pro.softcom.aisentinel.infrastructure.database.strategy.ContentProviderFactory;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -30,7 +30,7 @@ class DynamicSourceAdapterTest {
     @Test
     void loadContent_ShouldDelegatesToFactory() {
         // Arrange
-        ScanSourceConfig config = new ScanSourceConfig(SourceType.POSTGRES, Map.of("url", "jdbc:postgresql://localhost:5432/db"));
+        ScanSourceConfig config = new ScanSourceConfig(DatabaseSourceType.POSTGRES, Map.of("url", "jdbc:postgresql://localhost:5432/db"));
         ScannableContent content = mock(ScannableContent.class);
         when(contentProviderFactory.fetchContent(config)).thenReturn(Flux.just(content));
 

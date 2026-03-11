@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
@@ -33,19 +34,19 @@ class ScanSeverityCountServiceTest {
         @Test
         void Should_DelegateToRepository_When_ValidInput() {
             String scanId = "scan-123";
-            String spaceKey = "SPACE-A";
+            String sourceKey = "SPACE-A";
             SeverityCounts delta = new SeverityCounts(5, 3, 2);
 
-            service.incrementCounts(scanId, spaceKey, delta);
+            service.incrementCounts(scanId, SourceType.CONFLUENCE, sourceKey, delta);
 
-            verify(repository).incrementCounts(scanId, spaceKey, delta);
+            verify(repository).incrementCounts(scanId, SourceType.CONFLUENCE, sourceKey, delta);
         }
 
         @Test
         void Should_ThrowException_When_ScanIdIsNull() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts(null, "SPACE-A", delta))
+            assertThatThrownBy(() -> service.incrementCounts(null, SourceType.CONFLUENCE, "SPACE-A", delta))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("scanId must not be null or blank");
         }
@@ -54,32 +55,41 @@ class ScanSeverityCountServiceTest {
         void Should_ThrowException_When_ScanIdIsBlank() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("  ", "SPACE-A", delta))
+            assertThatThrownBy(() -> service.incrementCounts("  ", SourceType.CONFLUENCE, "SPACE-A", delta))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("scanId must not be null or blank");
         }
 
         @Test
-        void Should_ThrowException_When_SpaceKeyIsNull() {
+        void Should_ThrowException_When_SourceTypeIsNull() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", null, delta))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", null, "SPACE-A", delta))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("spaceKey must not be null or blank");
+                .hasMessage("sourceType must not be null");
         }
 
         @Test
-        void Should_ThrowException_When_SpaceKeyIsBlank() {
+        void Should_ThrowException_When_SourceKeyIsNull() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", "", delta))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", SourceType.CONFLUENCE, null, delta))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("spaceKey must not be null or blank");
+                .hasMessage("sourceKey must not be null or blank");
+        }
+
+        @Test
+        void Should_ThrowException_When_SourceKeyIsBlank() {
+            SeverityCounts delta = new SeverityCounts(1, 1, 1);
+
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", SourceType.CONFLUENCE, "", delta))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("sourceKey must not be null or blank");
         }
 
         @Test
         void Should_ThrowException_When_DeltaIsNull() {
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", "SPACE-A", null))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", SourceType.CONFLUENCE, "SPACE-A", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("delta must not be null");
         }
@@ -91,42 +101,42 @@ class ScanSeverityCountServiceTest {
         @Test
         void Should_ReturnCounts_When_RecordExists() {
             String scanId = "scan-123";
-            String spaceKey = "SPACE-A";
+            String sourceKey = "SPACE-A";
             SeverityCounts expected = new SeverityCounts(10, 5, 3);
-            when(repository.findByScanIdAndSpaceKey(scanId, spaceKey))
+            when(repository.findByScanIdAndSource(scanId, SourceType.CONFLUENCE, sourceKey))
                 .thenReturn(Optional.of(expected));
 
-            Optional<SeverityCounts> result = service.getCounts(scanId, spaceKey);
+            Optional<SeverityCounts> result = service.getCounts(scanId, SourceType.CONFLUENCE, sourceKey);
 
             assertThat(result).isPresent().contains(expected);
-            verify(repository).findByScanIdAndSpaceKey(scanId, spaceKey);
+            verify(repository).findByScanIdAndSource(scanId, SourceType.CONFLUENCE, sourceKey);
         }
 
         @Test
         void Should_ReturnEmpty_When_RecordDoesNotExist() {
             String scanId = "scan-123";
-            String spaceKey = "SPACE-A";
-            when(repository.findByScanIdAndSpaceKey(scanId, spaceKey))
+            String sourceKey = "SPACE-A";
+            when(repository.findByScanIdAndSource(scanId, SourceType.CONFLUENCE, sourceKey))
                 .thenReturn(Optional.empty());
 
-            Optional<SeverityCounts> result = service.getCounts(scanId, spaceKey);
+            Optional<SeverityCounts> result = service.getCounts(scanId, SourceType.CONFLUENCE, sourceKey);
 
             assertThat(result).isEmpty();
-            verify(repository).findByScanIdAndSpaceKey(scanId, spaceKey);
+            verify(repository).findByScanIdAndSource(scanId, SourceType.CONFLUENCE, sourceKey);
         }
 
         @Test
         void Should_ThrowException_When_ScanIdIsNull() {
-            assertThatThrownBy(() -> service.getCounts(null, "SPACE-A"))
+            assertThatThrownBy(() -> service.getCounts(null, SourceType.CONFLUENCE, "SPACE-A"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("scanId must not be null or blank");
         }
 
         @Test
-        void Should_ThrowException_When_SpaceKeyIsNull() {
-            assertThatThrownBy(() -> service.getCounts("scan-123", null))
+        void Should_ThrowException_When_SourceKeyIsNull() {
+            assertThatThrownBy(() -> service.getCounts("scan-123", SourceType.CONFLUENCE, null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("spaceKey must not be null or blank");
+                .hasMessage("sourceKey must not be null or blank");
         }
     }
 
@@ -137,8 +147,8 @@ class ScanSeverityCountServiceTest {
         void Should_ReturnListOfCounts_When_ScanHasData() {
             String scanId = "scan-123";
             List<ScanSeverityCount> expected = List.of(
-                new ScanSeverityCount(scanId, "SPACE-A", new SeverityCounts(5, 3, 2)),
-                new ScanSeverityCount(scanId, "SPACE-B", new SeverityCounts(8, 4, 1))
+                new ScanSeverityCount(scanId, SourceType.CONFLUENCE, "SPACE-A", new SeverityCounts(5, 3, 2)),
+                new ScanSeverityCount(scanId, SourceType.CONFLUENCE, "SPACE-B", new SeverityCounts(8, 4, 1))
             );
             when(repository.findByScanId(scanId)).thenReturn(expected);
 

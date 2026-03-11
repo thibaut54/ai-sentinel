@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.application.sharepoint.usecase;
 
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.microsoft.graph.serviceclient.GraphServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pro.softcom.aisentinel.application.sharepoint.port.in.ManageSharePointConnectionPort;
@@ -7,9 +9,6 @@ import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointConnecti
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointConnectionSettings;
-
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
 
 import java.time.Instant;
 
@@ -44,14 +43,14 @@ public class ManageSharePointConnectionUseCase implements ManageSharePointConnec
 
     @Override
     public boolean isConfigured() {
-        return repository.findDecryptedClientSecret()
+        return repository.findEncryptedClientSecret()
                 .filter(secret -> !secret.isBlank())
                 .isPresent();
     }
 
     @Override
     public SharePointConnectionSettings updateConnectionSettings(UpdateSharePointConnectionCommand command) {
-        log.info("Updating SharePoint connection settings: tenantId={}, clientId={}, enabled={}",
+        log.debug("Updating SharePoint connection settings: tenantId={}, clientId={}, enabled={}",
                 command.tenantId(), command.clientId(), command.enabled());
 
         var newSettings = new SharePointConnectionSettings(
@@ -73,18 +72,18 @@ public class ManageSharePointConnectionUseCase implements ManageSharePointConnec
 
         onConfigUpdated.run();
 
-        log.info("SharePoint connection settings updated successfully by user: {}", command.updatedBy());
+        log.debug("SharePoint connection settings updated successfully by user: {}", command.updatedBy());
         return newSettings;
     }
 
     @Override
     public boolean testConnection(TestSharePointConnectionCommand command) {
-        log.info("Testing SharePoint connection: tenantId={}, clientId={}", command.tenantId(), command.clientId());
+        log.debug("Testing SharePoint connection: tenantId={}, clientId={}", command.tenantId(), command.clientId());
 
         try {
             String clientSecret = command.clientSecret();
             if (clientSecret == null || clientSecret.isBlank()) {
-                clientSecret = repository.findDecryptedClientSecret()
+                clientSecret = repository.findEncryptedClientSecret()
                         .map(encrypted -> encryptionService.decrypt(encrypted, SECRET_METADATA))
                         .orElse("");
             }

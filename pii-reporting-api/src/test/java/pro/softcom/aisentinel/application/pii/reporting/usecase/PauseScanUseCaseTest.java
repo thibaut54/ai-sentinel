@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
 import java.util.Optional;
@@ -42,7 +43,8 @@ class PauseScanUseCaseTest {
         
         ScanCheckpoint runningSpace = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-RUNNING")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-RUNNING")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(50.0)
             .build();
@@ -57,9 +59,9 @@ class PauseScanUseCaseTest {
 
         // Then: The RUNNING checkpoint should be updated to PAUSED
         verify(scanCheckpointRepository).save(
-            argThat(checkpoint -> 
+            argThat(checkpoint ->
                 checkpoint.scanStatus() == ScanStatus.PAUSED &&
-                checkpoint.spaceKey().equals("SPACE-RUNNING")
+                checkpoint.sourceKey().equals("SPACE-RUNNING")
             )
         );
     }
@@ -88,8 +90,9 @@ class PauseScanUseCaseTest {
         
         ScanCheckpoint runningSpace = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-A")
-            .lastProcessedPageId("page-123")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-A")
+            .lastProcessedContentId("page-123")
             .lastProcessedAttachmentName("attachment.pdf")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(75.5)
@@ -105,10 +108,10 @@ class PauseScanUseCaseTest {
 
         // Then: The checkpoint should be saved with PAUSED status but preserve all other data
         verify(scanCheckpointRepository).save(
-            argThat(checkpoint -> 
+            argThat(checkpoint ->
                 checkpoint.scanStatus() == ScanStatus.PAUSED &&
-                checkpoint.spaceKey().equals("SPACE-A") &&
-                checkpoint.lastProcessedPageId().equals("page-123") &&
+                checkpoint.sourceKey().equals("SPACE-A") &&
+                checkpoint.lastProcessedContentId().equals("page-123") &&
                 checkpoint.lastProcessedAttachmentName().equals("attachment.pdf") &&
                 checkpoint.progressPercentage() == 75.5
             )
@@ -135,7 +138,8 @@ class PauseScanUseCaseTest {
         
         ScanCheckpoint runningSpace = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-X")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-X")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(30.0)
             .build();

@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
-import pro.softcom.aisentinel.domain.pii.export.DataSourceContact;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
 import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointSite;
@@ -23,17 +22,15 @@ public class SharePointExportContextAdapter {
 
     private final SharePointClient sharePointClient;
 
-    public boolean supports(SourceType sourceType) {
-        return sourceType == SourceType.SHAREPOINT;
-    }
-
-    public ExportContext findContext(String sourceIdentifier, SourceType sourceType) {
+    public ExportContext findContext(SourceType sourceType, String sourceIdentifier) {
         log.debug("Retrieving export context for SharePoint site: {}", sourceIdentifier);
 
         SharePointSite site = sharePointClient.getSite(sourceIdentifier).join();
 
-        String siteName = site != null ? site.name() : sourceIdentifier;
-        String siteUrl = site != null ? site.webUrl() : "";
+        String siteName = (site != null && site.name() != null && !site.name().isBlank())
+                ? site.name() : sourceIdentifier;
+        String siteUrl = (site != null && site.webUrl() != null)
+                ? site.webUrl() : "";
 
         return ExportContext.builder()
                 .reportName(siteName)

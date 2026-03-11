@@ -59,12 +59,12 @@ public class SharePointGraphClientHolder {
         SharePointConnectionSettings settings = configRepository.findSettings()
                 .orElseThrow(() -> new IllegalStateException("SharePoint configuration not found in database"));
 
-        String encryptedSecret = configRepository.findDecryptedClientSecret()
+        String encryptedSecret = configRepository.findEncryptedClientSecret()
                 .orElseThrow(() -> new IllegalStateException("SharePoint client secret not found in database"));
 
         String clientSecret = encryptionService.decrypt(encryptedSecret, SECRET_METADATA);
 
-        log.info("Creating GraphServiceClient from DB config: tenantId={}, clientId={}",
+        log.debug("Creating GraphServiceClient from DB config: tenantId={}, clientId={}",
                 settings.tenantId(), settings.clientId());
 
         var credential = new ClientSecretCredentialBuilder()

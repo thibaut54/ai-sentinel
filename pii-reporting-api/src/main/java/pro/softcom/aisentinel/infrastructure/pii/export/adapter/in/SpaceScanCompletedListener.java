@@ -5,11 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.export.port.in.ExportDetectionReportPort;
-import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.scan.SpaceScanCompleted;
 
 /**
- * Listens for space scan completion events and triggers the export of detection reports.
+ * Listens for source scan completion events and triggers the export of detection reports.
  * This adapter connects the event-driven architecture to the export use case.
  */
 @Component
@@ -26,18 +25,18 @@ public class SpaceScanCompletedListener {
             return;
         }
 
-        log.info("Received SpaceScanCompleted: scanId={}, spaceKey={}",
-                spaceScanCompleted.scanId(), spaceScanCompleted.spaceKey());
+        log.info("Received SpaceScanCompleted: scanId={}, sourceKey={}, sourceType={}",
+                spaceScanCompleted.scanId(), spaceScanCompleted.sourceKey(), spaceScanCompleted.sourceType());
 
         try {
             exportDetectionReportPort.export(
                     spaceScanCompleted.scanId(),
-                    SourceType.fromValue(spaceScanCompleted.sourceType()),
-                    spaceScanCompleted.spaceKey()
+                    spaceScanCompleted.sourceType(),
+                    spaceScanCompleted.sourceKey()
             );
         } catch (Exception ex) {
-            log.error("Failed to export for scanId={}, spaceKey={}: {}",
-                    spaceScanCompleted.scanId(), spaceScanCompleted.spaceKey(), ex.getMessage(), ex);
+            log.error("Failed to export for scanId={}, sourceKey={}: {}",
+                    spaceScanCompleted.scanId(), spaceScanCompleted.sourceKey(), ex.getMessage(), ex);
         }
     }
 }

@@ -46,6 +46,11 @@ public class SharePointController {
                 return Boolean.TRUE.equals(isConnected)
                     ? ResponseEntity.ok(response)
                     : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+            })
+            .exceptionally(ex -> {
+                log.error("Error checking SharePoint connection", ex);
+                var response = new SharePointHealthCheckResponse("DOWN", "SharePoint connection check failed");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
             });
     }
 

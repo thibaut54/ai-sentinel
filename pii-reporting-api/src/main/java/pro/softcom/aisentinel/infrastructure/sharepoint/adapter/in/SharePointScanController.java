@@ -61,7 +61,7 @@ public class SharePointScanController {
     public Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> streamSelectedSitesScan(
             @Parameter(description = "List of site IDs to scan") @RequestParam List<String> siteIds
     ) {
-        log.info("[SSE][SharePoint] Starting multi-site stream for selected sites: {}", siteIds);
+        log.debug("[SSE][SharePoint] Starting multi-site stream for selected sites: {}", siteIds);
 
         Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> keepalive = buildKeepalive();
 

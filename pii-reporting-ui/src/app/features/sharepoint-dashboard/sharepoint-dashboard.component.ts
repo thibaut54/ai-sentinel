@@ -160,7 +160,7 @@ export class SharePointDashboardComponent implements OnInit, OnDestroy {
     this.dataManagement.loadLastScan().subscribe();
     this.dataManagement.fetchSites().subscribe({
       next: () => {
-        this.dataManagement.loadLastSpaceStatuses(false, true).subscribe({
+        this.dataManagement.loadLastSiteStatuses(false, true).subscribe({
           next: () => {
             setTimeout(() => {
               this.scanControl.checkAndReconnectToRunningScan();

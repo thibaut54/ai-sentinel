@@ -10,7 +10,8 @@ public enum SourceType {
      */
     CONFLUENCE("CONFLUENCE"),
     JIRA("JIRA"),
-    SHAREPOINT("SHAREPOINT");
+    SHAREPOINT("SHAREPOINT"),
+    DATABASE("DATABASE");
 
     private final String value;
 
@@ -30,6 +31,9 @@ public enum SourceType {
      * @throws IllegalArgumentException if the value doesn't match any SourceType
      */
     public static SourceType fromValue(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Unknown source type: null");
+        }
         for (SourceType type : values()) {
             if (type.value.equalsIgnoreCase(value)) {
                 return type;

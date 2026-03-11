@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ItemsBySpace } from '../../../core/models/item-by-space';
 import {
-  PersonallyIdentifiableInformationScanResult
+    PersonallyIdentifiableInformationScanResult
 } from '../../../core/models/personally-identifiable-information-scan-result';
 import { DetectorSource } from '../../../core/models/detected-personally-identifiable-information';
 import { ConfluenceContentPersonallyIdentifiableInformationScanResult } from '../../../core/models/stream-event-type';
@@ -65,10 +65,11 @@ export class SharePointPiiItemsStorageService {
       return false;
     }
 
-    const nextItems = [...previous, piiItem];
-    if (nextItems.length > 400) {
-      nextItems.length = 400;
+    if (previous.length >= 400) {
+      return false;
     }
+
+    const nextItems = [...previous, piiItem];
 
     this.itemsBySite.set({ ...this.itemsBySite(), [siteId]: nextItems });
     return true;

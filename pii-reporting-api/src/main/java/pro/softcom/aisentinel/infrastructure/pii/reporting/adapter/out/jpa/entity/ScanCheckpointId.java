@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.io.Serializable;
 
 /**
- * Composite identifier for ScanCheckpointEntity (scanId, spaceKey).
+ * Composite identifier for ScanCheckpointEntity (scanId, sourceType, sourceKey).
  * Infrastructure-level ID used by JPA; not exposed to the domain.
  */
 @Getter
@@ -17,5 +17,6 @@ import java.io.Serializable;
 @RequiredArgsConstructor
 public class ScanCheckpointId implements Serializable {
     private String scanId;
-    private String spaceKey;
+    private String sourceType;
+    private String sourceKey;
 }

@@ -7,8 +7,8 @@ import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConf
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
 import pro.softcom.aisentinel.application.pii.scan.port.out.LoadContentPort;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
-import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScanSourceConfig;
 import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
 import reactor.core.publisher.Flux;
@@ -78,7 +78,7 @@ public class StreamDatabaseScanUseCase implements StreamDatabaseScanPort {
         );
 
         return Flux.concat(startEvent, itemEvents, completeEvent)
-                .doOnNext(contentScanOrchestrator::persistEventAsyncOperations);
+                .doOnNext(event -> contentScanOrchestrator.persistEventAsyncOperations(event, SourceType.DATABASE));
     }
 
     private Mono<ContentScanResult> processContentItem(String scanId, String sourceId, ScannableContent content,
