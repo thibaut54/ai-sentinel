@@ -598,6 +598,11 @@ export class PiiSettingsComponent implements OnInit {
       this.confluenceSettings()!.onSave();
     }
 
+    // If only Confluence changed, it handles its own saving signal — nothing else to do
+    if (!hasDetectorChanges && !hasTypeChanges) {
+      return;
+    }
+
     this.saving.set(true);
 
     const requests: Observable<any>[] = [];
