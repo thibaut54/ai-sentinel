@@ -76,7 +76,7 @@ jobs:
           path: pii-reporting-api/target/surefire-reports/
 
   test-ui:
-    name: Test Reporting UI (Angular Jest)
+    name: Test Reporting UI (Angular Vitest)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -94,7 +94,7 @@ jobs:
           cd pii-reporting-ui
           npm ci
 
-      - name: Run Jest tests with coverage
+      - name: Run Vitest tests with coverage
         run: |
           cd pii-reporting-ui
           npm run test:coverage
@@ -104,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-test-coverage
-          path: pii-reporting-ui/coverage/jest/
+          path: pii-reporting-ui/coverage/vitest/
 
   tests-status:
     name: Tests Status Check
