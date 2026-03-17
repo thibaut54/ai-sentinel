@@ -21,6 +21,7 @@
       "primeng/inputtext": ["node_modules/primeng/types/primeng-inputtext.d.ts"],
       "primeng/message": ["node_modules/primeng/types/primeng-message.d.ts"],
       "primeng/multiselect": ["node_modules/primeng/types/primeng-multiselect.d.ts"],
+      "primeng/types/multiselect": ["node_modules/primeng/types/primeng-types-multiselect.d.ts"],
       "primeng/password": ["node_modules/primeng/types/primeng-password.d.ts"],
       "primeng/progressspinner": ["node_modules/primeng/types/primeng-progressspinner.d.ts"],
       "primeng/select": ["node_modules/primeng/types/primeng-select.d.ts"],

@@ -36,6 +36,7 @@ const config: Config = {
     '^primeng/inputtext$': '<rootDir>/node_modules/primeng/fesm2022/primeng-inputtext.mjs',
     '^primeng/message$': '<rootDir>/node_modules/primeng/fesm2022/primeng-message.mjs',
     '^primeng/multiselect$': '<rootDir>/node_modules/primeng/fesm2022/primeng-multiselect.mjs',
+    '^primeng/types/multiselect$': '<rootDir>/node_modules/primeng/fesm2022/primeng-types-multiselect.mjs',
     '^primeng/password$': '<rootDir>/node_modules/primeng/fesm2022/primeng-password.mjs',
     '^primeng/progressspinner$': '<rootDir>/node_modules/primeng/fesm2022/primeng-progressspinner.mjs',
     '^primeng/select$': '<rootDir>/node_modules/primeng/fesm2022/primeng-select.mjs',
