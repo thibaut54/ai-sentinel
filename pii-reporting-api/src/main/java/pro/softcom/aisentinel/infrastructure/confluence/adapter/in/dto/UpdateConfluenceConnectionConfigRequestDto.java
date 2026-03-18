@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 
 /**
  * DTO for updating Confluence connection configuration via REST API.
@@ -58,6 +59,6 @@ public record UpdateConfluenceConnectionConfigRequestDto(
         Integer maxPages,
 
         @JsonProperty("deploymentType")
-        String deploymentType
+        ConfluenceDeploymentType deploymentType
 ) {
 }

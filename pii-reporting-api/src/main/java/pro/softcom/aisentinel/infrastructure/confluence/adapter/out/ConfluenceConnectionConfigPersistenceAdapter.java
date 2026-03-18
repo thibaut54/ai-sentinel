@@ -100,7 +100,7 @@ public class ConfluenceConnectionConfigPersistenceAdapter implements ConfluenceC
                 entity.getMaxRetries(),
                 entity.getPagesLimit(),
                 entity.getMaxPages(),
-                parseDeploymentType(entity.getDeploymentType()),
+                entity.getDeploymentType(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -120,20 +120,10 @@ public class ConfluenceConnectionConfigPersistenceAdapter implements ConfluenceC
                 .maxRetries(settings.maxRetries())
                 .pagesLimit(settings.pagesLimit())
                 .maxPages(settings.maxPages())
-                .deploymentType(settings.deploymentType() != null ? settings.deploymentType().name() : "CLOUD")
+                .deploymentType(settings.deploymentType() != null ? settings.deploymentType() : ConfluenceDeploymentType.CLOUD)
                 .updatedAt(settings.updatedAt() != null ? settings.updatedAt() : Instant.now())
                 .updatedBy(settings.updatedBy())
                 .build();
     }
 
-    private ConfluenceDeploymentType parseDeploymentType(String value) {
-        if (value == null || value.isBlank()) {
-            return ConfluenceDeploymentType.CLOUD;
-        }
-        try {
-            return ConfluenceDeploymentType.valueOf(value);
-        } catch (IllegalArgumentException _) {
-            return ConfluenceDeploymentType.CLOUD;
-        }
-    }
 }

@@ -70,11 +70,15 @@ public interface ManageConfluenceConnectionPort {
     ) {
         public UpdateConfluenceConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
-            if (username == null) username = "";
             Objects.requireNonNull(updatedBy, "updatedBy must not be null");
             if (deploymentType == null) {
                 deploymentType = ConfluenceDeploymentType.CLOUD;
             }
+            if (deploymentType == ConfluenceDeploymentType.CLOUD
+                    && (username == null || username.isBlank())) {
+                throw new IllegalArgumentException("username must not be blank for CLOUD deployment");
+            }
+            if (username == null) username = "";
         }
     }
 
@@ -94,10 +98,14 @@ public interface ManageConfluenceConnectionPort {
     ) {
         public TestConfluenceConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
-            if (username == null) username = "";
             if (deploymentType == null) {
                 deploymentType = ConfluenceDeploymentType.CLOUD;
             }
+            if (deploymentType == ConfluenceDeploymentType.CLOUD
+                    && (username == null || username.isBlank())) {
+                throw new IllegalArgumentException("username must not be blank for CLOUD deployment");
+            }
+            if (username == null) username = "";
         }
     }
 }

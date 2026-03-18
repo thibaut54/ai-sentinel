@@ -13,7 +13,6 @@ import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceCon
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.TestConfluenceConnectionCommand;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.UpdateConfluenceConnectionCommand;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
-import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.ConfluenceConnectionConfigResponseDto;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.TestConfluenceConnectionRequestDto;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.UpdateConfluenceConnectionConfigRequestDto;
@@ -61,7 +60,7 @@ public class ConfluenceConnectionConfigController {
 
             } catch (Exception ex) {
                 log.error("Failed to retrieve Confluence connection configuration: {}", ex.getMessage(), ex);
-                return ResponseEntity.internalServerError().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.internalServerError().build();
             }
         });
     }
@@ -96,7 +95,7 @@ public class ConfluenceConnectionConfigController {
                         request.maxRetries(),
                         request.pagesLimit(),
                         request.maxPages(),
-                        parseDeploymentType(request.deploymentType()),
+                        request.deploymentType(),
                         updatedBy
                 );
 
@@ -108,11 +107,11 @@ public class ConfluenceConnectionConfigController {
 
             } catch (IllegalArgumentException ex) {
                 log.warn("Invalid configuration request: {}", ex.getMessage());
-                return ResponseEntity.badRequest().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.badRequest().build();
 
             } catch (Exception ex) {
                 log.error("Failed to update Confluence connection configuration: {}", ex.getMessage(), ex);
-                return ResponseEntity.internalServerError().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.internalServerError().build();
             }
         });
     }
@@ -137,7 +136,7 @@ public class ConfluenceConnectionConfigController {
                         request.baseUrl(),
                         request.username(),
                         request.apiToken(),
-                        parseDeploymentType(request.deploymentType())
+                        request.deploymentType()
                 );
 
                 boolean success = manageConfluenceConnectionPort.testConnection(command);
@@ -173,21 +172,6 @@ public class ConfluenceConnectionConfigController {
                 settings.updatedBy(),
                 manageConfluenceConnectionPort.isConfigured()
         );
-    }
-
-    /**
-     * Parses deployment type string to enum with CLOUD as default fallback.
-     */
-    private ConfluenceDeploymentType parseDeploymentType(String value) {
-        if (value == null || value.isBlank()) {
-            return ConfluenceDeploymentType.CLOUD;
-        }
-        try {
-            return ConfluenceDeploymentType.valueOf(value);
-        } catch (IllegalArgumentException _) {
-            log.warn("Unknown deployment type '{}', falling back to CLOUD", value);
-            return ConfluenceDeploymentType.CLOUD;
-        }
     }
 
     /**

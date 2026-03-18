@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 
 /**
  * DTO for testing Confluence connection via REST API.
@@ -26,6 +27,6 @@ public record TestConfluenceConnectionRequestDto(
         String apiToken,
 
         @JsonProperty("deploymentType")
-        String deploymentType
+        ConfluenceDeploymentType deploymentType
 ) {
 }

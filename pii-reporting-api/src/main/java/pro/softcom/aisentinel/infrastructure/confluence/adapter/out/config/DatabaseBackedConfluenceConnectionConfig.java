@@ -69,7 +69,7 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
         return encryptionService.decrypt(encrypted, TOKEN_METADATA);
     }
 
-    // --- Timeouts, retries and proxy ---
+    // --- Timeouts and retries ---
 
     @Override
     public int connectTimeout() {
@@ -84,31 +84,6 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
     @Override
     public int maxRetries() {
         return getSettings().maxRetries();
-    }
-
-    @Override
-    public boolean enableProxy() {
-        return false;
-    }
-
-    @Override
-    public String proxyHost() {
-        return null;
-    }
-
-    @Override
-    public int proxyPort() {
-        return 0;
-    }
-
-    @Override
-    public String proxyUsername() {
-        return null;
-    }
-
-    @Override
-    public String proxyPassword() {
-        return null;
     }
 
     // --- Deployment type ---
