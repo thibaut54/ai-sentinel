@@ -33,11 +33,11 @@ class ConfluenceBaseUrlTest {
     }
 
     @Test
-    @DisplayName("Should reject URL when host is loopback 127.x.x.x")
+    @DisplayName("Should reject URL when host is loopback 127.0.0.1")
     void Should_RejectUrl_When_HostIsLoopback127() {
         assertThatThrownBy(() -> new ConfluenceBaseUrl("https://127.0.0.1/wiki"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+                .hasMessageContaining("localhost");
     }
 
     @Test
@@ -45,31 +45,16 @@ class ConfluenceBaseUrlTest {
     void Should_RejectUrl_When_HostIsLocalhost() {
         assertThatThrownBy(() -> new ConfluenceBaseUrl("https://localhost/wiki"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+                .hasMessageContaining("localhost");
     }
 
     @Test
-    @DisplayName("Should reject URL when host is in 10.x.x.x private network")
-    void Should_RejectUrl_When_HostIsPrivate10Network() {
-        assertThatThrownBy(() -> new ConfluenceBaseUrl("https://10.0.0.1/wiki"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
-    }
-
-    @Test
-    @DisplayName("Should reject URL when host is in 172.16-31.x.x private network")
-    void Should_RejectUrl_When_HostIsPrivate172Network() {
-        assertThatThrownBy(() -> new ConfluenceBaseUrl("https://172.16.0.1/wiki"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
-    }
-
-    @Test
-    @DisplayName("Should reject URL when host is in 192.168.x.x private network")
-    void Should_RejectUrl_When_HostIsPrivate192Network() {
-        assertThatThrownBy(() -> new ConfluenceBaseUrl("https://192.168.1.1/wiki"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+    @DisplayName("Should accept URL when host is in private network")
+    void Should_AcceptUrl_When_HostIsPrivateNetwork() {
+        // Corporate Confluence instances often resolve to private IPs
+        assertThat(new ConfluenceBaseUrl("https://10.0.0.1/wiki").value()).isEqualTo("https://10.0.0.1/wiki");
+        assertThat(new ConfluenceBaseUrl("https://172.16.0.1/wiki").value()).isEqualTo("https://172.16.0.1/wiki");
+        assertThat(new ConfluenceBaseUrl("https://192.168.1.1/wiki").value()).isEqualTo("https://192.168.1.1/wiki");
     }
 
     @Test
@@ -77,7 +62,7 @@ class ConfluenceBaseUrlTest {
     void Should_RejectUrl_When_HostIsIpv6Loopback() {
         assertThatThrownBy(() -> new ConfluenceBaseUrl("https://[::1]/wiki"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+                .hasMessageContaining("localhost");
     }
 
     @ParameterizedTest
@@ -103,8 +88,9 @@ class ConfluenceBaseUrlTest {
         var withoutSlash = new ConfluenceBaseUrl("https://mycompany.atlassian.net/wiki");
 
         // Then
-        assertThat(withSlash.value()).isEqualTo(withoutSlash.value());
-        assertThat(withSlash.value()).doesNotEndWith("/");
+        assertThat(withSlash.value())
+                .isEqualTo(withoutSlash.value())
+                .doesNotEndWith("/");
     }
 
     @Test
@@ -127,14 +113,13 @@ class ConfluenceBaseUrlTest {
     void Should_RejectUrl_When_HostIsZeroAddress() {
         assertThatThrownBy(() -> new ConfluenceBaseUrl("https://0.0.0.0/wiki"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+                .hasMessageContaining("localhost");
     }
 
     @Test
-    @DisplayName("Should reject URL when host is 169.254.x.x link-local")
-    void Should_RejectUrl_When_HostIsLinkLocal() {
-        assertThatThrownBy(() -> new ConfluenceBaseUrl("https://169.254.1.1/wiki"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("private");
+    @DisplayName("Should accept URL when host is link-local address")
+    void Should_AcceptUrl_When_HostIsLinkLocal() {
+        assertThat(new ConfluenceBaseUrl("https://169.254.1.1/wiki").value())
+                .isEqualTo("https://169.254.1.1/wiki");
     }
 }
