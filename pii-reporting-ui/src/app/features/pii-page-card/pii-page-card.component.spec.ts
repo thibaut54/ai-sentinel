@@ -56,7 +56,7 @@ describe('PiiPageCardComponent', () => {
         }),
       ],
       providers: [
-        { provide: SentinelleApiService, useValue: { revealAllowed: signal(false), revealPageSecrets: jest.fn() } },
+        { provide: SentinelleApiService, useValue: { revealAllowed: signal(false), revealPageSecrets: vi.fn() } },
       ],
     }).compileComponents();
   });

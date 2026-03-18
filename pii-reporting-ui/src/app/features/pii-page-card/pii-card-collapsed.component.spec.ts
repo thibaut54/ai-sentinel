@@ -102,7 +102,7 @@ describe('PiiCardCollapsedComponent', () => {
     fixture = TestBed.createComponent(PiiCardCollapsedComponent);
     fixture.componentRef.setInput('item', MOCK_ITEM);
     fixture.detectChanges();
-    const spy = jest.spyOn(fixture.componentInstance.expand, 'emit');
+    const spy = vi.spyOn(fixture.componentInstance.expand, 'emit');
     fixture.nativeElement.querySelector('.collapsed-card').click();
     expect(spy).toHaveBeenCalled();
   });
@@ -111,7 +111,7 @@ describe('PiiCardCollapsedComponent', () => {
     fixture = TestBed.createComponent(PiiCardCollapsedComponent);
     fixture.componentRef.setInput('item', MOCK_ITEM);
     fixture.detectChanges();
-    const spy = jest.spyOn(fixture.componentInstance.expand, 'emit');
+    const spy = vi.spyOn(fixture.componentInstance.expand, 'emit');
     const card = fixture.nativeElement.querySelector('.collapsed-card');
     card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     expect(spy).toHaveBeenCalled();
@@ -121,7 +121,7 @@ describe('PiiCardCollapsedComponent', () => {
     fixture = TestBed.createComponent(PiiCardCollapsedComponent);
     fixture.componentRef.setInput('item', MOCK_ITEM);
     fixture.detectChanges();
-    const spy = jest.spyOn(fixture.componentInstance.expand, 'emit');
+    const spy = vi.spyOn(fixture.componentInstance.expand, 'emit');
     const card = fixture.nativeElement.querySelector('.collapsed-card');
     card.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     expect(spy).toHaveBeenCalled();
