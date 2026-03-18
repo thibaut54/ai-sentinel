@@ -16,6 +16,7 @@ import java.time.Instant;
  * @param maxRetries     Maximum number of retry attempts
  * @param pagesLimit     Number of pages per pagination request
  * @param maxPages       Maximum total pages to retrieve
+ * @param deploymentType Type of Confluence deployment ("CLOUD" or "DATA_CENTER")
  * @param updatedAt      Timestamp of last configuration update
  * @param updatedBy      User who last updated the configuration
  * @param configured     Whether real credentials have been saved (non-placeholder values)
@@ -29,6 +30,7 @@ public record ConfluenceConnectionConfigResponseDto(
         int maxRetries,
         int pagesLimit,
         int maxPages,
+        String deploymentType,
         Instant updatedAt,
         String updatedBy,
         boolean configured

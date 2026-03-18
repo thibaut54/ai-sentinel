@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config;
 
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
+
 /**
  * Vendor-agnostic contract for Confluence connection and API settings.
  * Exposes scalar values to avoid coupling with vendor-specific config records.
@@ -23,6 +25,11 @@ public interface ConfluenceConnectionConfig {
     // Pagination
     int pagesLimit();
     int maxPages();
+
+    // Deployment type
+    default ConfluenceDeploymentType deploymentType() {
+        return ConfluenceDeploymentType.CLOUD;
+    }
 
     // API paths — defaults match Confluence REST API v2 contract
     default String contentPath() { return "/content/"; }

@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.confluence.port.in;
 
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 
 import java.util.Objects;
 
@@ -52,6 +53,7 @@ public interface ManageConfluenceConnectionPort {
      * @param maxRetries     Maximum number of retry attempts
      * @param pagesLimit     Number of pages per pagination request
      * @param maxPages       Maximum total pages to retrieve
+     * @param deploymentType Type of Confluence deployment (CLOUD or DATA_CENTER)
      * @param updatedBy      User identifier who is updating the configuration
      */
     record UpdateConfluenceConnectionCommand(
@@ -63,30 +65,39 @@ public interface ManageConfluenceConnectionPort {
             int maxRetries,
             int pagesLimit,
             int maxPages,
+            ConfluenceDeploymentType deploymentType,
             String updatedBy
     ) {
         public UpdateConfluenceConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
-            Objects.requireNonNull(username, "username must not be null");
+            if (username == null) username = "";
             Objects.requireNonNull(updatedBy, "updatedBy must not be null");
+            if (deploymentType == null) {
+                deploymentType = ConfluenceDeploymentType.CLOUD;
+            }
         }
     }
 
     /**
      * Command to test Confluence connection.
      *
-     * @param baseUrl  Base URL of the Confluence instance
-     * @param username Username for Confluence authentication
-     * @param apiToken Plain-text API token for testing
+     * @param baseUrl        Base URL of the Confluence instance
+     * @param username       Username for Confluence authentication
+     * @param apiToken       Plain-text API token for testing
+     * @param deploymentType Type of Confluence deployment (CLOUD or DATA_CENTER)
      */
     record TestConfluenceConnectionCommand(
             String baseUrl,
             String username,
-            String apiToken
+            String apiToken,
+            ConfluenceDeploymentType deploymentType
     ) {
         public TestConfluenceConnectionCommand {
             Objects.requireNonNull(baseUrl, "baseUrl must not be null");
-            Objects.requireNonNull(username, "username must not be null");
+            if (username == null) username = "";
+            if (deploymentType == null) {
+                deploymentType = ConfluenceDeploymentType.CLOUD;
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.jpa.ConfluenceConnectionConfigJpaRepository;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.jpa.entity.ConfluenceConnectionConfigEntity;
 
@@ -80,6 +81,7 @@ public class ConfluenceConnectionConfigPersistenceAdapter implements ConfluenceC
                 3,
                 50,
                 100,
+                ConfluenceDeploymentType.CLOUD,
                 Instant.now(),
                 "system"
         );
@@ -98,6 +100,7 @@ public class ConfluenceConnectionConfigPersistenceAdapter implements ConfluenceC
                 entity.getMaxRetries(),
                 entity.getPagesLimit(),
                 entity.getMaxPages(),
+                parseDeploymentType(entity.getDeploymentType()),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -117,8 +120,20 @@ public class ConfluenceConnectionConfigPersistenceAdapter implements ConfluenceC
                 .maxRetries(settings.maxRetries())
                 .pagesLimit(settings.pagesLimit())
                 .maxPages(settings.maxPages())
+                .deploymentType(settings.deploymentType() != null ? settings.deploymentType().name() : "CLOUD")
                 .updatedAt(settings.updatedAt() != null ? settings.updatedAt() : Instant.now())
                 .updatedBy(settings.updatedBy())
                 .build();
+    }
+
+    private ConfluenceDeploymentType parseDeploymentType(String value) {
+        if (value == null || value.isBlank()) {
+            return ConfluenceDeploymentType.CLOUD;
+        }
+        try {
+            return ConfluenceDeploymentType.valueOf(value);
+        } catch (IllegalArgumentException _) {
+            return ConfluenceDeploymentType.CLOUD;
+        }
     }
 }
