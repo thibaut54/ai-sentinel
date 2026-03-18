@@ -228,8 +228,10 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 switch (checkpointStatus) {
                     case "COMPLETED", "FAILED", "RUNNING":
                         return checkpointStatus;
-                    case "CANCELLED":
+                    case "CANCELLED", "PAUSED":
                         return "PAUSED";
+                    case "NOT_STARTED":
+                        return "PENDING";
                     default:
                         // fall-through to compute from progress
                 }
