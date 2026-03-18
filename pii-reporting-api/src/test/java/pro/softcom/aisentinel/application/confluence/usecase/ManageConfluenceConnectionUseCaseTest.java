@@ -131,8 +131,7 @@ class ManageConfluenceConnectionUseCaseTest {
         @ParameterizedTest(name = "Should reject unsafe URL: {0}")
         @CsvSource({
                 "http://mycompany.atlassian.net/wiki, HTTPS",
-                "https://192.168.1.1/wiki, private",
-                "https://127.0.0.1/wiki, private"
+                "https://127.0.0.1/wiki, localhost"
         })
         void Should_RejectUrl_When_UrlIsUnsafe(String url, String expectedMessage) {
             var command = createUpdateCommand(url, "token");
@@ -165,13 +164,14 @@ class ManageConfluenceConnectionUseCaseTest {
     class TestConnection {
 
         @Test
-        @DisplayName("Should reject URL when host is private address (SSRF protection)")
-        void Should_RejectUrl_When_HostIsPrivateAddress() {
+        @DisplayName("Should accept URL when host is private address")
+        void Should_AcceptUrl_When_HostIsPrivateAddress() {
             var command = new TestConfluenceConnectionCommand("https://10.0.0.1/wiki", "user", "token");
 
-            assertThatThrownBy(() -> useCase.testConnection(command))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("private");
+            // Private network addresses are valid for corporate Confluence
+            // URL validation passes, connection fails gracefully returning false
+            boolean result = useCase.testConnection(command);
+            assertThat(result).isFalse();
         }
 
         @Test
@@ -191,7 +191,7 @@ class ManageConfluenceConnectionUseCaseTest {
 
             assertThatThrownBy(() -> useCase.testConnection(command))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("private");
+                    .hasMessageContaining("localhost");
         }
     }
 

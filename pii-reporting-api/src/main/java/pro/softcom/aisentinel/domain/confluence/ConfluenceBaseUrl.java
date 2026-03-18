@@ -1,8 +1,6 @@
 package pro.softcom.aisentinel.domain.confluence;
 
-import java.net.InetAddress;
 import java.net.URI;
-import java.net.UnknownHostException;
 
 /**
  * Value object representing a validated Confluence base URL.
@@ -52,20 +50,12 @@ public record ConfluenceBaseUrl(String value) {
             host = host.substring(1, host.length() - 1);
         }
 
-        if ("localhost".equalsIgnoreCase(host)) {
-            throw new IllegalArgumentException("Confluence base URL must not point to a private or loopback address");
-        }
-
-        try {
-            InetAddress address = InetAddress.getByName(host);
-            if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()
-                    || address.isAnyLocalAddress()) {
-                throw new IllegalArgumentException(
-                        "Confluence base URL must not point to a private or loopback address: " + host);
-            }
-        } catch (UnknownHostException _) {
-            // If we can't resolve, allow it — DNS resolution may succeed at runtime
-            // The important check is the structural IP-based validation above
+        if ("localhost".equalsIgnoreCase(host)
+                || "127.0.0.1".equals(host)
+                || "::1".equals(host)
+                || "0.0.0.0".equals(host)) {
+            throw new IllegalArgumentException(
+                    "Confluence base URL must not point to localhost or loopback address");
         }
     }
 
