@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
@@ -45,6 +45,9 @@ export class AppShellComponent {
   readonly showSettingsDialog = signal(false);
   readonly settingsInitialTab = signal(0);
 
+  // Child component reference for triggering refresh after settings save
+  private readonly confluenceDashboard = viewChild(ConfluenceDashboardComponent);
+
   openSettingsDialog(tab: number = 0): void {
     this.settingsInitialTab.set(tab);
     this.showSettingsDialog.set(true);
@@ -52,5 +55,13 @@ export class AppShellComponent {
 
   closeSettingsDialog(): void {
     this.showSettingsDialog.set(false);
+  }
+
+  /**
+   * Handle settings saved event from PiiSettingsComponent.
+   * Triggers dashboard refresh to reflect configuration changes.
+   */
+  onSettingsSaved(): void {
+    this.confluenceDashboard()?.refreshAfterSettingsSave();
   }
 }

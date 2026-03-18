@@ -77,10 +77,10 @@
                                 </div>
                                 <div class="detector-desc">{{ 'settings.detectors.gliner.description' | transloco }}</div>
                             </div>
-                            <p-toggleSwitch
+                            <p-toggleswitch
                                 formControlName="glinerEnabled"
                                 [ariaLabel]="'settings.detectors.gliner.label' | transloco">
-                            </p-toggleSwitch>
+                            </p-toggleswitch>
                         </div>
 
                         <!-- Presidio -->
@@ -96,10 +96,10 @@
                                 </div>
                                 <div class="detector-desc">{{ 'settings.detectors.presidio.description' | transloco }}</div>
                             </div>
-                            <p-toggleSwitch
+                            <p-toggleswitch
                                 formControlName="presidioEnabled"
                                 [ariaLabel]="'settings.detectors.presidio.label' | transloco">
-                            </p-toggleSwitch>
+                            </p-toggleswitch>
                         </div>
 
                         <!-- Regex -->
@@ -115,10 +115,10 @@
                                 </div>
                                 <div class="detector-desc">{{ 'settings.detectors.regex.description' | transloco }}</div>
                             </div>
-                            <p-toggleSwitch
+                            <p-toggleswitch
                                 formControlName="regexEnabled"
                                 [ariaLabel]="'settings.detectors.regex.label' | transloco">
-                            </p-toggleSwitch>
+                            </p-toggleswitch>
                         </div>
                     </div>
 
@@ -267,8 +267,7 @@
                                 </button>
                                 <span class="detector-badge"
                                       [class.gliner]="detectorGroup.detector === 'GLINER'"
-                                      [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
-                                      [class.regex]="detectorGroup.detector === 'REGEX'">
+                                      [class.presidio]="detectorGroup.detector === 'PRESIDIO'">
                                     {{ detectorGroup.detector }}
                                 </span>
                                 @if (detectorGroup.detector === 'GLINER') {
@@ -321,11 +320,11 @@
                                         </div>
 
                                         <div class="pii-type-controls">
-                                            <p-toggleSwitch
+                                            <p-toggleswitch
                                                 [(ngModel)]="type.enabled"
                                                 (ngModelChange)="onPiiTypeToggleChange(type, $event)"
                                                 [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
-                                            </p-toggleSwitch>
+                                            </p-toggleswitch>
                                             @if (type.enabled) {
                                                 <p-inputNumber
                                                     [(ngModel)]="type.threshold"
@@ -364,7 +363,7 @@
 
             <!-- ===== SECTION: CONFLUENCE ===== -->
             @if (activeSection() === 'confluence') {
-                <app-confluence-settings></app-confluence-settings>
+                <app-confluence-settings (saved)="settingsSaved.emit()"></app-confluence-settings>
             }
         </div>
     </div>
@@ -416,7 +415,7 @@
     [showHeader]="false"
     [style]="{ width: '440px' }"
     (onHide)="closeAddCustomLabelDialog()"
-    [ariaLabel]="'settings.customLabels.dialogTitle' | transloco"
+    [attr.aria-label]="'settings.customLabels.dialogTitle' | transloco"
     styleClass="custom-label-dialog">
 
     <!-- Custom header -->

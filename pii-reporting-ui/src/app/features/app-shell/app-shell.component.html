@@ -54,7 +54,8 @@
             [header]="'settings.title' | transloco">
     <app-pii-settings [dialogMode]="true"
                       [initialTab]="settingsInitialTab()"
-                      (closeDialog)="closeSettingsDialog()">
+                      (closeDialog)="closeSettingsDialog()"
+                      (settingsSaved)="onSettingsSaved()">
     </app-pii-settings>
   </p-dialog>
 </div>
