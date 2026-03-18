@@ -206,6 +206,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   // ===== Sleep/wake recovery =====
 
   private setupVisibilityChangeListener(): void {
+    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
     document.addEventListener('visibilitychange', this.visibilityChangeHandler);
   }
 
