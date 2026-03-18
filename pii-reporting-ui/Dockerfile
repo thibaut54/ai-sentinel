@@ -1,15 +1,19 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20 AS build
+FROM node:22-alpine AS build
+
+# Activer corepack pour utiliser pnpm (lu depuis packageManager dans package.json)
+RUN corepack enable
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+# Copier d'abord les fichiers de dependances pour maximiser le cache Docker
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN corepack install
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-
-RUN npm run build -- --configuration production
+RUN pnpm build --configuration production
 
 FROM nginx:alpine AS runtime
 

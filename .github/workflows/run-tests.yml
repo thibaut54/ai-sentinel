@@ -76,35 +76,49 @@ jobs:
           path: pii-reporting-api/target/surefire-reports/
 
   test-ui:
-    name: Test Reporting UI (Angular Jest)
+    name: Test Reporting UI (Angular Vitest)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js with corepack
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-          cache: 'npm'
-          cache-dependency-path: pii-reporting-ui/package-lock.json
+
+      - name: Enable corepack and install pnpm
+        run: |
+          corepack enable
+          corepack install
+        working-directory: pii-reporting-ui
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+        working-directory: pii-reporting-ui
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ hashFiles('pii-reporting-ui/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-
 
       - name: Install dependencies
-        run: |
-          cd pii-reporting-ui
-          npm ci
+        run: pnpm install --frozen-lockfile
+        working-directory: pii-reporting-ui
 
-      - name: Run Jest tests with coverage
-        run: |
-          cd pii-reporting-ui
-          npm run test:coverage
+      - name: Run Vitest tests with coverage
+        run: pnpm test:coverage
+        working-directory: pii-reporting-ui
 
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-test-coverage
-          path: pii-reporting-ui/coverage/jest/
+          path: pii-reporting-ui/coverage/vitest/
 
   tests-status:
     name: Tests Status Check
