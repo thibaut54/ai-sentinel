@@ -25,6 +25,7 @@ const MOCK_CONFLUENCE_CONFIG: ConfluenceConnectionConfig = {
   maxRetries: 3,
   pagesLimit: 25,
   maxPages: 1000,
+  deploymentType: 'CLOUD',
   configured: true,
 };
 
