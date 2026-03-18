@@ -20,6 +20,9 @@ public class ConfluenceDataCenterHttpClientAdapter extends AbstractConfluenceHtt
 
     @Override
     protected String getAuthHeader() {
+        if (config.apiToken() == null || config.apiToken().isBlank()) {
+            throw new IllegalStateException("Confluence Data Center requires a Personal Access Token");
+        }
         return BEARER_AUTH_PREFIX + config.apiToken().trim();
     }
 }

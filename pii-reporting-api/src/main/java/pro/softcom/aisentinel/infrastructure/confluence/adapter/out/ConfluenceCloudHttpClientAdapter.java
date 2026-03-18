@@ -22,6 +22,12 @@ public class ConfluenceCloudHttpClientAdapter extends AbstractConfluenceHttpClie
 
     @Override
     protected String getAuthHeader() {
+        if (config.username() == null || config.username().isBlank()) {
+            throw new IllegalStateException("Confluence Cloud requires a username/email");
+        }
+        if (config.apiToken() == null || config.apiToken().isBlank()) {
+            throw new IllegalStateException("Confluence Cloud requires an API token");
+        }
         var credentials = config.username().trim() + ":" + config.apiToken().trim();
         return BASIC_AUTH_PREFIX + Base64.getEncoder()
             .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));

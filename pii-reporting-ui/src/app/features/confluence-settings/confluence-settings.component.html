@@ -10,7 +10,7 @@
 
       <!-- Deployment Type Fieldset -->
       <p-fieldset [legend]="'settings.confluence.connection.deploymentType' | transloco" [toggleable]="true">
-        <div class="deployment-type-options" role="radiogroup" aria-label="Deployment type">
+        <div class="deployment-type-options" role="radiogroup" [attr.aria-label]="'settings.confluence.connection.deploymentType' | transloco">
           <div class="deployment-type-option">
             <p-radioButton
               inputId="deploymentCloud"

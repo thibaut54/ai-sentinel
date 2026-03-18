@@ -120,10 +120,11 @@ export class ConfluenceSettingsComponent implements OnInit {
     this.configService.getConfig().subscribe({
       next: (config) => {
         this.currentConfig.set(config);
+        const deploymentType = config.deploymentType || 'CLOUD';
         this.configForm.patchValue({
-          deploymentType: config.deploymentType || 'CLOUD',
+          deploymentType,
           baseUrl: config.baseUrl,
-          username: config.username,
+          username: deploymentType === 'CLOUD' ? config.username : '',
           apiToken: '',
           connectTimeout: config.connectTimeout,
           readTimeout: config.readTimeout,
@@ -264,10 +265,11 @@ export class ConfluenceSettingsComponent implements OnInit {
   onReset(): void {
     if (this.currentConfig()) {
       const config = this.currentConfig()!;
+      const deploymentType = config.deploymentType || 'CLOUD';
       this.configForm.patchValue({
-        deploymentType: config.deploymentType || 'CLOUD',
+        deploymentType,
         baseUrl: config.baseUrl,
-        username: config.username,
+        username: deploymentType === 'CLOUD' ? config.username : '',
         apiToken: '',
         connectTimeout: config.connectTimeout,
         readTimeout: config.readTimeout,

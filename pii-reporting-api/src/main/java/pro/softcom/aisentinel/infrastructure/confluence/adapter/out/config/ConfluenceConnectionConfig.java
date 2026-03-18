@@ -12,15 +12,10 @@ public interface ConfluenceConnectionConfig {
     String username();
     String apiToken();
 
-    // Timeouts, retries and proxy
+    // Timeouts and retries
     int connectTimeout();
     int readTimeout();
     int maxRetries();
-    boolean enableProxy();
-    String proxyHost();
-    int proxyPort();
-    String proxyUsername();
-    String proxyPassword();
 
     // Pagination
     int pagesLimit();
@@ -41,7 +36,10 @@ public interface ConfluenceConnectionConfig {
 
     // Convenience
     default boolean isValid() {
-        return notBlank(baseUrl()) && notBlank(username()) && notBlank(apiToken());
+        if (!notBlank(baseUrl()) || !notBlank(apiToken())) {
+            return false;
+        }
+        return deploymentType() == ConfluenceDeploymentType.DATA_CENTER || notBlank(username());
     }
 
     default String getRestApiUrl() {
