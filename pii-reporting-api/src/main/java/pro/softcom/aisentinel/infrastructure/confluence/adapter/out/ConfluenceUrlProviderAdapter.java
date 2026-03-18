@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.confluence.adapter.out;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 /**
@@ -36,6 +37,9 @@ public class ConfluenceUrlProviderAdapter implements ConfluenceUrlProvider {
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
-        return base + "/pages/viewpage.action?pageId=" + pageId;
+        if (confluenceConnectionConfig.deploymentType() == ConfluenceDeploymentType.DATA_CENTER) {
+            return base + "/pages/viewpage.action?pageId=" + pageId;
+        }
+        return base + "/pages/" + pageId;
     }
 }

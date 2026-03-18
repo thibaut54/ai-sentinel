@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.in;
 
+import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -8,11 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.TestConfluenceConnectionCommand;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.UpdateConfluenceConnectionCommand;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.ConfluenceConnectionConfigResponseDto;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.TestConfluenceConnectionRequestDto;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto.UpdateConfluenceConnectionConfigRequestDto;
@@ -95,6 +96,7 @@ public class ConfluenceConnectionConfigController {
                         request.maxRetries(),
                         request.pagesLimit(),
                         request.maxPages(),
+                        parseDeploymentType(request.deploymentType()),
                         updatedBy
                 );
 
@@ -134,7 +136,8 @@ public class ConfluenceConnectionConfigController {
                 TestConfluenceConnectionCommand command = new TestConfluenceConnectionCommand(
                         request.baseUrl(),
                         request.username(),
-                        request.apiToken()
+                        request.apiToken(),
+                        parseDeploymentType(request.deploymentType())
                 );
 
                 boolean success = manageConfluenceConnectionPort.testConnection(command);
@@ -165,10 +168,26 @@ public class ConfluenceConnectionConfigController {
                 settings.maxRetries(),
                 settings.pagesLimit(),
                 settings.maxPages(),
+                settings.deploymentType() != null ? settings.deploymentType().name() : "CLOUD",
                 settings.updatedAt(),
                 settings.updatedBy(),
                 manageConfluenceConnectionPort.isConfigured()
         );
+    }
+
+    /**
+     * Parses deployment type string to enum with CLOUD as default fallback.
+     */
+    private ConfluenceDeploymentType parseDeploymentType(String value) {
+        if (value == null || value.isBlank()) {
+            return ConfluenceDeploymentType.CLOUD;
+        }
+        try {
+            return ConfluenceDeploymentType.valueOf(value);
+        } catch (IllegalArgumentException _) {
+            log.warn("Unknown deployment type '{}', falling back to CLOUD", value);
+            return ConfluenceDeploymentType.CLOUD;
+        }
     }
 
     /**

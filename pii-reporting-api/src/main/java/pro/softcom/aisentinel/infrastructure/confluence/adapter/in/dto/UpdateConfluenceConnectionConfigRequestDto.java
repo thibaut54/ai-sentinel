@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
  * @param maxRetries     Maximum number of retry attempts
  * @param pagesLimit     Number of pages per pagination request
  * @param maxPages       Maximum total pages to retrieve
+ * @param deploymentType Type of Confluence deployment ("CLOUD" or "DATA_CENTER")
  */
 public record UpdateConfluenceConnectionConfigRequestDto(
         @JsonProperty("baseUrl")
@@ -26,7 +27,6 @@ public record UpdateConfluenceConnectionConfigRequestDto(
         String baseUrl,
 
         @JsonProperty("username")
-        @NotBlank(message = "username is required")
         String username,
 
         @JsonProperty("apiToken")
@@ -55,6 +55,9 @@ public record UpdateConfluenceConnectionConfigRequestDto(
         @JsonProperty("maxPages")
         @NotNull(message = "maxPages is required")
         @Min(value = 1, message = "maxPages must be positive")
-        Integer maxPages
+        Integer maxPages,
+
+        @JsonProperty("deploymentType")
+        String deploymentType
 ) {
 }

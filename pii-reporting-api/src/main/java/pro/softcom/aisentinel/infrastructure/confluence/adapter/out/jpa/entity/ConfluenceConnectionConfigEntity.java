@@ -69,6 +69,10 @@ public class ConfluenceConnectionConfigEntity {
     private Integer maxPages;
 
     @NotNull
+    @Column(name = "deployment_type", nullable = false, length = 20)
+    private String deploymentType;
+
+    @NotNull
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

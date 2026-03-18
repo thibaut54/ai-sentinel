@@ -44,7 +44,7 @@ class ConfluenceHttpClientAdapterTest {
     @Mock
     private HttpResponse<String> httpResponse;
 
-    private ConfluenceHttpClientAdapter confluenceService;
+    private ConfluenceCloudHttpClientAdapter confluenceService;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -71,13 +71,13 @@ class ConfluenceHttpClientAdapterTest {
         lenient().when(config.defaultSpaceExpands()).thenReturn("permissions,metadata");
 
         // Create service with mocks
-        confluenceService = new ConfluenceHttpClientAdapter(config, objectMapper);
+        confluenceService = new ConfluenceCloudHttpClientAdapter(config, objectMapper);
 
         // Inject mocked HttpClient into HttpRetryExecutor via reflection
-        Field retryExecutorField = ConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
+        Field retryExecutorField = AbstractConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
         retryExecutorField.setAccessible(true);
         Object retryExecutor = retryExecutorField.get(confluenceService);
-        
+
         Field retryExecutorHttpClientField = retryExecutor.getClass().getDeclaredField("httpClient");
         retryExecutorHttpClientField.setAccessible(true);
         retryExecutorHttpClientField.set(retryExecutor, httpClient);

@@ -6,6 +6,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
@@ -108,6 +109,13 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
     @Override
     public String proxyPassword() {
         return null;
+    }
+
+    // --- Deployment type ---
+
+    @Override
+    public ConfluenceDeploymentType deploymentType() {
+        return getSettings().deploymentType();
     }
 
     // --- Pagination ---

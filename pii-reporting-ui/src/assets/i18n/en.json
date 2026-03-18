@@ -183,9 +183,18 @@
       "title": "Confluence Connection Configuration",
       "connection": {
         "title": "Connection",
+        "deploymentType": "Deployment Type",
+        "deploymentCloud": "Confluence Cloud",
+        "deploymentCloudDesc": "Instances hosted by Atlassian (*.atlassian.net) — REST API v1, Basic Auth",
+        "deploymentDataCenter": "Confluence Data Center / Server",
+        "deploymentDataCenterDesc": "Self-hosted instances — REST API v1, Bearer Token (PAT)",
         "baseUrl": "Base URL",
         "username": "Username",
+        "usernameCloud": "Email",
+        "usernameDc": "Username",
         "apiToken": "API Token",
+        "apiTokenCloud": "API Token",
+        "apiTokenDc": "Personal Access Token (PAT)",
         "apiTokenHint": "Current token:"
       },
       "timeouts": {
@@ -211,8 +220,14 @@
       },
       "placeholders": {
         "baseUrl": "https://your-instance.atlassian.net/wiki",
+        "baseUrlCloud": "https://your-domain.atlassian.net/wiki",
+        "baseUrlDc": "https://confluence.your-company.com",
         "username": "your.email@domain.com",
+        "usernameCloud": "user@company.com",
+        "usernameDc": "admin",
         "apiToken": "Enter your Confluence API token",
+        "apiTokenCloud": "Generated from id.atlassian.com",
+        "apiTokenDc": "Generated from your Confluence instance",
         "apiTokenExisting": "Leave empty to keep current token"
       },
       "validation": {

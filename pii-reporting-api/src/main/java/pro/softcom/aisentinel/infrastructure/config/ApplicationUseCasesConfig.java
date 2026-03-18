@@ -1,29 +1,34 @@
 package pro.softcom.aisentinel.infrastructure.config;
 
+import pro.softcom.aisentinel.application.confluence.port.out.*;
+import pro.softcom.aisentinel.application.pii.reporting.port.in.*;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.*;
+import pro.softcom.aisentinel.application.pii.reporting.service.*;
+import pro.softcom.aisentinel.application.pii.reporting.usecase.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
 import pro.softcom.aisentinel.application.config.port.in.GetPollingConfigPort;
 import pro.softcom.aisentinel.application.config.port.out.ReadConfluenceConfigPort;
 import pro.softcom.aisentinel.application.config.usecase.GetPollingConfigUseCase;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpacePort;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpaceUpdateInfoPort;
-import pro.softcom.aisentinel.application.confluence.port.out.*;
+import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceSpaceCacheRefreshService;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchConfluenceSpaceContentUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchSpaceUpdateInfoUseCase;
+import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiDetectionConfigUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiTypeConfigsUseCase;
-import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
-import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
-import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
 import pro.softcom.aisentinel.application.pii.export.DetectionReportMapper;
 import pro.softcom.aisentinel.application.pii.export.port.in.ExportDetectionReportPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextPort;
@@ -32,19 +37,20 @@ import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionRepo
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
-import pro.softcom.aisentinel.application.pii.reporting.port.in.*;
-import pro.softcom.aisentinel.application.pii.reporting.port.out.*;
-import pro.softcom.aisentinel.application.pii.reporting.service.*;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.PlainTextParser;
-import pro.softcom.aisentinel.application.pii.reporting.usecase.*;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceCloudHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceDataCenterHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.DelegatingConfluenceClient;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 /**
  * Spring configuration that wires application use cases as beans from the infrastructure layer.
@@ -53,6 +59,15 @@ import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
  */
 @Configuration
 public class ApplicationUseCasesConfig {
+
+    @Bean
+    public ConfluenceClient delegatingConfluenceClient(
+            @Qualifier("confluenceConfig") ConfluenceConnectionConfig confluenceConfig,
+            ObjectMapper objectMapper) {
+        var cloudAdapter = new ConfluenceCloudHttpClientAdapter(confluenceConfig, objectMapper);
+        var dataCenterAdapter = new ConfluenceDataCenterHttpClientAdapter(confluenceConfig, objectMapper);
+        return new DelegatingConfluenceClient(confluenceConfig, cloudAdapter, dataCenterAdapter);
+    }
 
     @Bean
     public ConfluenceSpacePort confluenceUseCase(ConfluenceClient confluenceClient,

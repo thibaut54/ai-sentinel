@@ -18,12 +18,12 @@ import static org.mockito.Mockito.when;
 class ConfluenceHttpClientAdapterDateExtractionTest {
 
     private ObjectMapper objectMapper;
-    private ConfluenceHttpClientAdapter adapter;
+    private ConfluenceCloudHttpClientAdapter adapter;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        
+
         // Create minimal config mock
         var config = mock(ConfluenceConnectionConfig.class);
         when(config.username()).thenReturn("test");
@@ -41,8 +41,8 @@ class ConfluenceHttpClientAdapterDateExtractionTest {
         when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
         when(config.defaultPageExpands()).thenReturn("body.storage");
         when(config.defaultSpaceExpands()).thenReturn("permissions");
-        
-        adapter = new ConfluenceHttpClientAdapter(config, objectMapper);
+
+        adapter = new ConfluenceCloudHttpClientAdapter(config, objectMapper);
     }
 
     // ===== Tests pour tryExtractFromHistoryWhen =====
@@ -206,14 +206,14 @@ class ConfluenceHttpClientAdapterDateExtractionTest {
 
     @SuppressWarnings("unchecked")
     private Optional<Instant> invokeTryExtractFromHistoryWhen(JsonNode page) throws Exception {
-        Method method = ConfluenceHttpClientAdapter.class.getDeclaredMethod("tryExtractFromHistoryWhen", JsonNode.class);
+        Method method = AbstractConfluenceHttpClientAdapter.class.getDeclaredMethod("tryExtractFromHistoryWhen", JsonNode.class);
         method.setAccessible(true);
         return (Optional<Instant>) method.invoke(adapter, page);
     }
 
     @SuppressWarnings("unchecked")
     private Optional<Instant> invokeTryExtractFromVersionWhen(JsonNode page) throws Exception {
-        Method method = ConfluenceHttpClientAdapter.class.getDeclaredMethod("tryExtractFromVersionWhen", JsonNode.class);
+        Method method = AbstractConfluenceHttpClientAdapter.class.getDeclaredMethod("tryExtractFromVersionWhen", JsonNode.class);
         method.setAccessible(true);
         return (Optional<Instant>) method.invoke(adapter, page);
     }

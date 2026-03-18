@@ -6,6 +6,7 @@ import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceCon
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceBaseUrl;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
@@ -69,6 +70,7 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
                 command.maxRetries(),
                 command.pagesLimit(),
                 command.maxPages(),
+                command.deploymentType(),
                 Instant.now(),
                 command.updatedBy()
         );
@@ -93,17 +95,16 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
     @Override
     public boolean testConnection(TestConfluenceConnectionCommand command) {
         var validatedUrl = new ConfluenceBaseUrl(command.baseUrl());
-        log.info("Testing Confluence connection to: {}", validatedUrl.value());
+        log.info("Testing Confluence connection to: {} (deployment type: {})",
+                validatedUrl.value(), command.deploymentType());
 
         try {
             String baseUrl = validatedUrl.value() + "/rest/api/space";
-
-            String credentials = Base64.getEncoder()
-                    .encodeToString((command.username() + ":" + command.apiToken()).getBytes());
+            String authHeader = buildAuthHeader(command);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "?limit=1"))
-                    .header("Authorization", "Basic " + credentials)
+                    .header("Authorization", authHeader)
                     .header("Accept", "application/json")
                     .timeout(Duration.ofSeconds(10))
                     .GET()
@@ -126,6 +127,16 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
             log.warn("Confluence connection test failed: {}", e.getMessage());
             return false;
         }
+    }
+
+    // Package-visible for testability
+    String buildAuthHeader(TestConfluenceConnectionCommand command) {
+        if (command.deploymentType() == ConfluenceDeploymentType.DATA_CENTER) {
+            return "Bearer " + command.apiToken();
+        }
+        String credentials = Base64.getEncoder()
+                .encodeToString((command.username() + ":" + command.apiToken()).getBytes());
+        return "Basic " + credentials;
     }
 
     private String encryptToken(String plainToken) {
