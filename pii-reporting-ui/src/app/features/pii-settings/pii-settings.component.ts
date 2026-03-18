@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Input, OnInit, Output, SecurityContext, signal, viewChild } from '@angular/core';
+import { Component, computed, EventEmitter, Input, OnChanges, OnInit, Output, SecurityContext, signal, SimpleChanges, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -34,6 +34,8 @@ import {
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
 
+type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
+
 /**
  * Settings page for PII detection configuration.
  * Manages detector-level settings and individual PII type configurations.
@@ -64,7 +66,7 @@ import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-s
     ],
   providers: [MessageService, ConfirmationService]
 })
-export class PiiSettingsComponent implements OnInit {
+export class PiiSettingsComponent implements OnInit, OnChanges {
   /**
    * Dialog mode flag.
    * When true, component is displayed inside a modal dialog.
@@ -82,6 +84,12 @@ export class PiiSettingsComponent implements OnInit {
    */
   @Output() closeDialog = new EventEmitter<void>();
 
+  /**
+   * Event emitted when settings are saved successfully.
+   * Allows parent to trigger dashboard refresh after save.
+   */
+  @Output() settingsSaved = new EventEmitter<void>();
+
   readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
 
   configForm!: FormGroup;
@@ -95,7 +103,7 @@ export class PiiSettingsComponent implements OnInit {
   modifiedPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
 
   // Sidebar navigation
-  activeSection = signal<'detectors' | 'thresholds' | 'pii_types' | 'confluence'>('detectors');
+  activeSection = signal<SettingsSection>('detectors');
 
   // Collapsible detector groups in PII types section
   collapsedDetectors = signal<Set<string>>(new Set());
@@ -189,6 +197,21 @@ export class PiiSettingsComponent implements OnInit {
   ) {
     this.initForm();
     this.initCustomLabelForm();
+  }
+
+  /** Maps tab indices to sidebar section identifiers. */
+  private static readonly TAB_TO_SECTION: ReadonlyArray<SettingsSection> = [
+    'detectors', 'thresholds', 'pii_types', 'confluence'
+  ];
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['initialTab']) {
+      const tabIndex = changes['initialTab'].currentValue as number;
+      const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
+      if (section) {
+        this.activeSection.set(section);
+      }
+    }
   }
 
   ngOnInit(): void {
@@ -652,6 +675,7 @@ export class PiiSettingsComponent implements OnInit {
         });
 
         this.saving.set(false);
+        this.settingsSaved.emit();
       },
       error: (err) => {
         console.error('Failed to save configurations:', err);
@@ -787,7 +811,7 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Set the active sidebar section.
    */
-  setActiveSection(section: 'detectors' | 'thresholds' | 'pii_types' | 'confluence'): void {
+  setActiveSection(section: SettingsSection): void {
     this.activeSection.set(section);
   }
 

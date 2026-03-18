@@ -308,6 +308,25 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
     this.confluenceConfigMissing.set(false);
   }
 
+  /**
+   * Refresh dashboard after settings have been saved from the settings modal.
+   * Re-checks Confluence configuration status and reloads data if no scan is active.
+   */
+  refreshAfterSettingsSave(): void {
+    this.confluenceConfigService.getConfig().subscribe({
+      next: (config) => {
+        this.confluenceConfigMissing.set(!config.configured);
+
+        if (config.configured && !this.isStreaming()) {
+          this.initializeDataLoading();
+        }
+      },
+      error: () => {
+        this.confluenceConfigMissing.set(true);
+      }
+    });
+  }
+
   // ===== Paginator navigation =====
 
   onPageChange(event: { first: number; rows: number }): void {

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -37,6 +37,11 @@ import {
   providers: [MessageService]
 })
 export class ConfluenceSettingsComponent implements OnInit {
+  /**
+   * Event emitted when Confluence settings are saved successfully.
+   */
+  @Output() saved = new EventEmitter<void>();
+
   configForm!: FormGroup;
   loading = signal(false);
   saving = signal(false);
@@ -139,6 +144,7 @@ export class ConfluenceSettingsComponent implements OnInit {
           life: 3000
         });
         this.saving.set(false);
+        this.saved.emit();
       },
       error: (err) => {
         console.error('Failed to save Confluence connection config:', err);
