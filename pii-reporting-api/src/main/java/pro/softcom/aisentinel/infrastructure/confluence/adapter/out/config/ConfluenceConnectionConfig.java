@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config;
 
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
+
 /**
  * Vendor-agnostic contract for Confluence connection and API settings.
  * Exposes scalar values to avoid coupling with vendor-specific config records.
@@ -10,19 +12,19 @@ public interface ConfluenceConnectionConfig {
     String username();
     String apiToken();
 
-    // Timeouts, retries and proxy
+    // Timeouts and retries
     int connectTimeout();
     int readTimeout();
     int maxRetries();
-    boolean enableProxy();
-    String proxyHost();
-    int proxyPort();
-    String proxyUsername();
-    String proxyPassword();
 
     // Pagination
     int pagesLimit();
     int maxPages();
+
+    // Deployment type
+    default ConfluenceDeploymentType deploymentType() {
+        return ConfluenceDeploymentType.CLOUD;
+    }
 
     // API paths — defaults match Confluence REST API v2 contract
     default String contentPath() { return "/content/"; }
@@ -34,7 +36,10 @@ public interface ConfluenceConnectionConfig {
 
     // Convenience
     default boolean isValid() {
-        return notBlank(baseUrl()) && notBlank(username()) && notBlank(apiToken());
+        if (!notBlank(baseUrl()) || !notBlank(apiToken())) {
+            return false;
+        }
+        return deploymentType() == ConfluenceDeploymentType.DATA_CENTER || notBlank(username());
     }
 
     default String getRestApiUrl() {

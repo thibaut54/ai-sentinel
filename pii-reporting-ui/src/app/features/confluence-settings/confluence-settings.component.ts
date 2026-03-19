@@ -8,11 +8,13 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { RadioButtonModule } from 'primeng/radiobutton';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ConfluenceConnectionConfigService } from '../../core/services/confluence-connection-config.service';
 import {
   ConfluenceConnectionConfig,
+  ConfluenceDeploymentType,
   UpdateConfluenceConnectionConfigRequest,
   TestConnectionRequest
 } from '../../core/models/confluence-connection-config.model';
@@ -32,6 +34,7 @@ import {
     InputTextModule,
     PasswordModule,
     ProgressSpinnerModule,
+    RadioButtonModule,
     ToastModule
   ],
   providers: [MessageService]
@@ -61,8 +64,43 @@ export class ConfluenceSettingsComponent implements OnInit {
     this.loadConfig();
   }
 
+  get isCloud(): boolean {
+    return this.configForm.get('deploymentType')?.value === 'CLOUD';
+  }
+
+  get baseUrlPlaceholder(): string {
+    return this.isCloud
+      ? this.translocoService.translate('settings.confluence.placeholders.baseUrlCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.baseUrlDc');
+  }
+
+  get usernamePlaceholder(): string {
+    return this.isCloud
+      ? this.translocoService.translate('settings.confluence.placeholders.usernameCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.usernameDc');
+  }
+
+  get deploymentType(): ConfluenceDeploymentType {
+    return this.configForm.get('deploymentType')?.value || 'CLOUD';
+  }
+
+  get hasExistingTokenForCurrentType(): boolean {
+    const config = this.currentConfig();
+    return !!config && config.deploymentType === this.deploymentType;
+  }
+
+  get apiTokenPlaceholder(): string {
+    if (this.hasExistingTokenForCurrentType) {
+      return this.translocoService.translate('settings.confluence.placeholders.apiTokenExisting');
+    }
+    return this.isCloud
+      ? this.translocoService.translate('settings.confluence.placeholders.apiTokenCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.apiTokenDc');
+  }
+
   private initForm(): void {
     this.configForm = this.fb.group({
+      deploymentType: ['CLOUD' as ConfluenceDeploymentType, [Validators.required]],
       baseUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
       username: ['', [Validators.required]],
       apiToken: [''],
@@ -72,6 +110,17 @@ export class ConfluenceSettingsComponent implements OnInit {
       pagesLimit: [25, [Validators.required, Validators.min(1), Validators.max(1000)]],
       maxPages: [1000, [Validators.required, Validators.min(1), Validators.max(10000)]]
     });
+
+    this.configForm.get('deploymentType')?.valueChanges.subscribe((type: ConfluenceDeploymentType) => {
+      const usernameControl = this.configForm.get('username');
+      if (type === 'DATA_CENTER') {
+        usernameControl?.clearValidators();
+        usernameControl?.setValue('');
+      } else {
+        usernameControl?.setValidators([Validators.required]);
+      }
+      usernameControl?.updateValueAndValidity();
+    });
   }
 
   private loadConfig(): void {
@@ -80,9 +129,11 @@ export class ConfluenceSettingsComponent implements OnInit {
     this.configService.getConfig().subscribe({
       next: (config) => {
         this.currentConfig.set(config);
+        const deploymentType = config.deploymentType || 'CLOUD';
         this.configForm.patchValue({
+          deploymentType,
           baseUrl: config.baseUrl,
-          username: config.username,
+          username: deploymentType === 'CLOUD' ? config.username : '',
           apiToken: '',
           connectTimeout: config.connectTimeout,
           readTimeout: config.readTimeout,
@@ -113,7 +164,7 @@ export class ConfluenceSettingsComponent implements OnInit {
 
     // If config already exists and apiToken is empty, require user to confirm
     const formValue = this.configForm.value;
-    if (!this.currentConfig() && !formValue.apiToken) {
+    if (!this.hasExistingTokenForCurrentType && !formValue.apiToken) {
       this.configForm.get('apiToken')?.setErrors({required: true});
       this.configForm.get('apiToken')?.markAsTouched();
       return;
@@ -129,7 +180,8 @@ export class ConfluenceSettingsComponent implements OnInit {
       readTimeout: formValue.readTimeout,
       maxRetries: formValue.maxRetries,
       pagesLimit: formValue.pagesLimit,
-      maxPages: formValue.maxPages
+      maxPages: formValue.maxPages,
+      deploymentType: formValue.deploymentType
     };
 
     this.configService.updateConfig(request).subscribe({
@@ -164,15 +216,15 @@ export class ConfluenceSettingsComponent implements OnInit {
     const username = this.configForm.get('username');
     const apiToken = this.configForm.get('apiToken');
 
-    // Validate only connection fields
-    if (baseUrl?.invalid || username?.invalid) {
+    // Validate only connection fields (username not required for DC)
+    if (baseUrl?.invalid || (this.isCloud && username?.invalid)) {
       baseUrl?.markAsTouched();
-      username?.markAsTouched();
+      if (this.isCloud) username?.markAsTouched();
       return;
     }
 
     // Token is required for testing
-    if (!apiToken?.value && !this.currentConfig()) {
+    if (!apiToken?.value && !this.hasExistingTokenForCurrentType) {
       apiToken?.setErrors({required: true});
       apiToken?.markAsTouched();
       return;
@@ -183,7 +235,8 @@ export class ConfluenceSettingsComponent implements OnInit {
     const request: TestConnectionRequest = {
       baseUrl: baseUrl?.value,
       username: username?.value,
-      apiToken: apiToken?.value
+      apiToken: apiToken?.value,
+      deploymentType: this.configForm.get('deploymentType')?.value || 'CLOUD'
     };
 
     this.configService.testConnection(request).subscribe({
@@ -221,9 +274,11 @@ export class ConfluenceSettingsComponent implements OnInit {
   onReset(): void {
     if (this.currentConfig()) {
       const config = this.currentConfig()!;
+      const deploymentType = config.deploymentType || 'CLOUD';
       this.configForm.patchValue({
+        deploymentType,
         baseUrl: config.baseUrl,
-        username: config.username,
+        username: deploymentType === 'CLOUD' ? config.username : '',
         apiToken: '',
         connectTimeout: config.connectTimeout,
         readTimeout: config.readTimeout,

@@ -1,5 +1,5 @@
-import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -25,6 +25,7 @@ const MOCK_CONFLUENCE_CONFIG: ConfluenceConnectionConfig = {
   maxRetries: 3,
   pagesLimit: 25,
   maxPages: 1000,
+  deploymentType: 'CLOUD',
   configured: true,
 };
 
@@ -76,7 +77,7 @@ describe('PiiSettingsComponent', () => {
     httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
     // Confluence child may or may not load depending on section visibility
     httpMock.match('/api/v1/confluence/connection-config').forEach(
-      (req: { flush: (body: ConfluenceConnectionConfig) => void }) => req.flush(MOCK_CONFLUENCE_CONFIG)
+      (req: TestRequest) => req.flush(MOCK_CONFLUENCE_CONFIG)
     );
 
     fixture.detectChanges();
@@ -86,14 +87,14 @@ describe('PiiSettingsComponent', () => {
     httpMock.verify();
   });
 
-  it('Should_NotStickOnSpinner_When_OnlyConfluenceSettingsChanged', fakeAsync(() => {
+  it('Should_NotStickOnSpinner_When_OnlyConfluenceSettingsChanged', () => {
     // Given - Navigate to Confluence section to render child component
     component.setActiveSection('confluence');
     fixture.detectChanges();
 
     // Handle Confluence config load triggered by section change
     httpMock.match('/api/v1/confluence/connection-config').forEach(
-      (req: { flush: (body: ConfluenceConnectionConfig) => void }) => req.flush(MOCK_CONFLUENCE_CONFIG)
+      (req: TestRequest) => req.flush(MOCK_CONFLUENCE_CONFIG)
     );
     fixture.detectChanges();
 
@@ -110,25 +111,24 @@ describe('PiiSettingsComponent', () => {
     // When - User clicks "Save All"
     component.onSaveAll();
 
-    // Then - Parent saving signal should NOT be stuck on true
-    // (Before fix: forkJoin([]) completed without emitting, leaving saving=true forever)
+    // Then - Parent saving signal should remain false (nothing to save on parent side)
+    // onSaveAll() returns immediately when neither configForm is dirty nor types have changed
     expect(component.saving()).toBe(false);
 
     // Confluence child handles its own save via its own HTTP call
     const confluencePutReqs = httpMock.match('/api/v1/confluence/connection-config');
     confluencePutReqs.forEach(
-      (req: { flush: (body: ConfluenceConnectionConfig) => void }) =>
+      (req: TestRequest) =>
         req.flush({ ...MOCK_CONFLUENCE_CONFIG, baseUrl: 'https://new-url.example.com' })
     );
 
-    tick();
     fixture.detectChanges();
 
     // Verify Confluence child saving is also resolved
     expect(confluenceChild!.saving()).toBe(false);
-  }));
+  });
 
-  it('Should_SaveDetectorChanges_When_DetectorConfigModified', fakeAsync(() => {
+  it('Should_SaveDetectorChanges_When_DetectorConfigModified', () => {
     // Given - Detector config changed
     component.configForm.patchValue({ defaultThreshold: 0.9 });
     component.configForm.markAsDirty();
@@ -143,9 +143,7 @@ describe('PiiSettingsComponent', () => {
     expect(req.request.method).toBe('PUT');
     req.flush({ ...MOCK_DETECTOR_CONFIG, defaultThreshold: 0.9 });
 
-    tick();
-
-    // saving should be false after response
+    // saving should be false after response (flush is synchronous)
     expect(component.saving()).toBe(false);
-  }));
+  });
 });

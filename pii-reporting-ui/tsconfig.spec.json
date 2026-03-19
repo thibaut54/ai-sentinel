@@ -2,33 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist/out-tsc/spec",
-    "types": ["jest", "node"],
+    "types": ["vitest/globals", "node"],
     "esModuleInterop": true,
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "paths": {
-      "@angular/core/testing": ["node_modules/@angular/core/types/testing.d.ts"],
-      "@angular/common/http": ["node_modules/@angular/common/types/http.d.ts"],
-      "@angular/common/http/testing": ["node_modules/@angular/common/types/http-testing.d.ts"],
-      "primeng/api": ["node_modules/primeng/types/primeng-api.d.ts"],
-      "primeng/button": ["node_modules/primeng/types/primeng-button.d.ts"],
-      "primeng/confirmdialog": ["node_modules/primeng/types/primeng-confirmdialog.d.ts"],
-      "primeng/dialog": ["node_modules/primeng/types/primeng-dialog.d.ts"],
-      "primeng/fieldset": ["node_modules/primeng/types/primeng-fieldset.d.ts"],
-      "primeng/iconfield": ["node_modules/primeng/types/primeng-iconfield.d.ts"],
-      "primeng/inputicon": ["node_modules/primeng/types/primeng-inputicon.d.ts"],
-      "primeng/inputnumber": ["node_modules/primeng/types/primeng-inputnumber.d.ts"],
-      "primeng/inputtext": ["node_modules/primeng/types/primeng-inputtext.d.ts"],
-      "primeng/message": ["node_modules/primeng/types/primeng-message.d.ts"],
-      "primeng/multiselect": ["node_modules/primeng/types/primeng-multiselect.d.ts"],
-      "primeng/types/multiselect": ["node_modules/primeng/types/primeng-types-multiselect.d.ts"],
-      "primeng/password": ["node_modules/primeng/types/primeng-password.d.ts"],
-      "primeng/progressspinner": ["node_modules/primeng/types/primeng-progressspinner.d.ts"],
-      "primeng/select": ["node_modules/primeng/types/primeng-select.d.ts"],
-      "primeng/toast": ["node_modules/primeng/types/primeng-toast.d.ts"],
-      "primeng/toggleswitch": ["node_modules/primeng/types/primeng-toggleswitch.d.ts"],
-      "@angular/platform-browser/animations": ["node_modules/@angular/platform-browser/fesm2022/animations.mjs"]
-    }
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "src/**/*.spec.ts",

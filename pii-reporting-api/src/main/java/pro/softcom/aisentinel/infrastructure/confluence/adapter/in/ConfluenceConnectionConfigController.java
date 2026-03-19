@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.in;
 
+import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -8,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.TestConfluenceConnectionCommand;
 import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort.UpdateConfluenceConnectionCommand;
@@ -60,7 +60,7 @@ public class ConfluenceConnectionConfigController {
 
             } catch (Exception ex) {
                 log.error("Failed to retrieve Confluence connection configuration: {}", ex.getMessage(), ex);
-                return ResponseEntity.internalServerError().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.internalServerError().build();
             }
         });
     }
@@ -95,6 +95,7 @@ public class ConfluenceConnectionConfigController {
                         request.maxRetries(),
                         request.pagesLimit(),
                         request.maxPages(),
+                        request.deploymentType(),
                         updatedBy
                 );
 
@@ -106,11 +107,11 @@ public class ConfluenceConnectionConfigController {
 
             } catch (IllegalArgumentException ex) {
                 log.warn("Invalid configuration request: {}", ex.getMessage());
-                return ResponseEntity.badRequest().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.badRequest().build();
 
             } catch (Exception ex) {
                 log.error("Failed to update Confluence connection configuration: {}", ex.getMessage(), ex);
-                return ResponseEntity.internalServerError().<ConfluenceConnectionConfigResponseDto>build();
+                return ResponseEntity.internalServerError().build();
             }
         });
     }
@@ -134,7 +135,8 @@ public class ConfluenceConnectionConfigController {
                 TestConfluenceConnectionCommand command = new TestConfluenceConnectionCommand(
                         request.baseUrl(),
                         request.username(),
-                        request.apiToken()
+                        request.apiToken(),
+                        request.deploymentType()
                 );
 
                 boolean success = manageConfluenceConnectionPort.testConnection(command);
@@ -165,6 +167,7 @@ public class ConfluenceConnectionConfigController {
                 settings.maxRetries(),
                 settings.pagesLimit(),
                 settings.maxPages(),
+                settings.deploymentType() != null ? settings.deploymentType().name() : "CLOUD",
                 settings.updatedAt(),
                 settings.updatedBy(),
                 manageConfluenceConnectionPort.isConfigured()

@@ -8,6 +8,36 @@
   <div class="confluence-settings-content">
     <form [formGroup]="configForm">
 
+      <!-- Deployment Type Fieldset -->
+      <p-fieldset [legend]="'settings.confluence.connection.deploymentType' | transloco" [toggleable]="true">
+        <div class="deployment-type-options" role="radiogroup" [attr.aria-label]="'settings.confluence.connection.deploymentType' | transloco">
+          <div class="deployment-type-option">
+            <p-radioButton
+              inputId="deploymentCloud"
+              name="deploymentType"
+              value="CLOUD"
+              formControlName="deploymentType">
+            </p-radioButton>
+            <label for="deploymentCloud" class="deployment-type-label">
+              <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentCloud' | transloco }}</span>
+              <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentCloudDesc' | transloco }}</span>
+            </label>
+          </div>
+          <div class="deployment-type-option">
+            <p-radioButton
+              inputId="deploymentDataCenter"
+              name="deploymentType"
+              value="DATA_CENTER"
+              formControlName="deploymentType">
+            </p-radioButton>
+            <label for="deploymentDataCenter" class="deployment-type-label">
+              <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentDataCenter' | transloco }}</span>
+              <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentDataCenterDesc' | transloco }}</span>
+            </label>
+          </div>
+        </div>
+      </p-fieldset>
+
       <!-- Connection Fieldset -->
       <p-fieldset [legend]="'settings.confluence.connection.title' | transloco" [toggleable]="true">
         <div class="form-field">
@@ -19,37 +49,39 @@
             type="text"
             pInputText
             formControlName="baseUrl"
-            [placeholder]="'settings.confluence.placeholders.baseUrl' | transloco"
+            [placeholder]="baseUrlPlaceholder"
             class="field-input" />
           @if (configForm.get('baseUrl')?.invalid && configForm.get('baseUrl')?.touched) {
             <small class="field-error">{{ 'settings.confluence.validation.baseUrlRequired' | transloco }}</small>
           }
         </div>
 
-        <div class="form-field">
-          <label for="username">
-            <span class="field-label">{{ 'settings.confluence.connection.username' | transloco }}</span>
-          </label>
-          <input
-            id="username"
-            type="text"
-            pInputText
-            formControlName="username"
-            [placeholder]="'settings.confluence.placeholders.username' | transloco"
-            class="field-input" />
-          @if (configForm.get('username')?.invalid && configForm.get('username')?.touched) {
-            <small class="field-error">{{ 'settings.confluence.validation.usernameRequired' | transloco }}</small>
-          }
-        </div>
+        @if (isCloud) {
+          <div class="form-field">
+            <label for="username">
+              <span class="field-label">{{ 'settings.confluence.connection.usernameCloud' | transloco }}</span>
+            </label>
+            <input
+              id="username"
+              type="text"
+              pInputText
+              formControlName="username"
+              [placeholder]="usernamePlaceholder"
+              class="field-input" />
+            @if (configForm.get('username')?.invalid && configForm.get('username')?.touched) {
+              <small class="field-error">{{ 'settings.confluence.validation.usernameRequired' | transloco }}</small>
+            }
+          </div>
+        }
 
         <div class="form-field">
           <label for="apiToken">
-            <span class="field-label">{{ 'settings.confluence.connection.apiToken' | transloco }}</span>
+            <span class="field-label">{{ isCloud ? ('settings.confluence.connection.apiTokenCloud' | transloco) : ('settings.confluence.connection.apiTokenDc' | transloco) }}</span>
           </label>
           <p-password
             inputId="apiToken"
             formControlName="apiToken"
-            [placeholder]="currentConfig() ? ('settings.confluence.placeholders.apiTokenExisting' | transloco) : ('settings.confluence.placeholders.apiToken' | transloco)"
+            [placeholder]="apiTokenPlaceholder"
             [toggleMask]="true"
             [feedback]="false"
             styleClass="field-input">
