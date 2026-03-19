@@ -80,8 +80,17 @@ export class ConfluenceSettingsComponent implements OnInit {
       : this.translocoService.translate('settings.confluence.placeholders.usernameDc');
   }
 
+  get deploymentType(): ConfluenceDeploymentType {
+    return this.configForm.get('deploymentType')?.value || 'CLOUD';
+  }
+
+  get hasExistingTokenForCurrentType(): boolean {
+    const config = this.currentConfig();
+    return !!config && config.deploymentType === this.deploymentType;
+  }
+
   get apiTokenPlaceholder(): string {
-    if (this.currentConfig()) {
+    if (this.hasExistingTokenForCurrentType) {
       return this.translocoService.translate('settings.confluence.placeholders.apiTokenExisting');
     }
     return this.isCloud
@@ -155,7 +164,7 @@ export class ConfluenceSettingsComponent implements OnInit {
 
     // If config already exists and apiToken is empty, require user to confirm
     const formValue = this.configForm.value;
-    if (!this.currentConfig() && !formValue.apiToken) {
+    if (!this.hasExistingTokenForCurrentType && !formValue.apiToken) {
       this.configForm.get('apiToken')?.setErrors({required: true});
       this.configForm.get('apiToken')?.markAsTouched();
       return;
@@ -215,7 +224,7 @@ export class ConfluenceSettingsComponent implements OnInit {
     }
 
     // Token is required for testing
-    if (!apiToken?.value && !this.currentConfig()) {
+    if (!apiToken?.value && !this.hasExistingTokenForCurrentType) {
       apiToken?.setErrors({required: true});
       apiToken?.markAsTouched();
       return;
