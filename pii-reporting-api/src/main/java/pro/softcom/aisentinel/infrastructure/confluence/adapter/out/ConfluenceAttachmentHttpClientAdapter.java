@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 import java.net.URI;
@@ -52,6 +53,9 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     }
 
     private String getAuthHeader() {
+        if (config.deploymentType() == ConfluenceDeploymentType.DATA_CENTER) {
+            return "Bearer " + config.apiToken();
+        }
         return createAuthHeader(config.username(), config.apiToken());
     }
 

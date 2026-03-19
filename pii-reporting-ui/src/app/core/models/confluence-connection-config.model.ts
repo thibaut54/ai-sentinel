@@ -1,3 +1,5 @@
+export type ConfluenceDeploymentType = 'CLOUD' | 'DATA_CENTER';
+
 export interface ConfluenceConnectionConfig {
   baseUrl: string;
   username: string;
@@ -7,6 +9,7 @@ export interface ConfluenceConnectionConfig {
   maxRetries: number;
   pagesLimit: number;
   maxPages: number;
+  deploymentType: ConfluenceDeploymentType;
   updatedAt?: string;
   updatedBy?: string;
   configured: boolean;
@@ -21,12 +24,14 @@ export interface UpdateConfluenceConnectionConfigRequest {
   maxRetries: number;
   pagesLimit: number;
   maxPages: number;
+  deploymentType: ConfluenceDeploymentType;
 }
 
 export interface TestConnectionRequest {
   baseUrl: string;
   username: string;
   apiToken: string;
+  deploymentType: ConfluenceDeploymentType;
 }
 
 export interface TestConnectionResponse {

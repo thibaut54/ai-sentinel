@@ -6,6 +6,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceConnectionSettings;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
@@ -68,7 +69,7 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
         return encryptionService.decrypt(encrypted, TOKEN_METADATA);
     }
 
-    // --- Timeouts, retries and proxy ---
+    // --- Timeouts and retries ---
 
     @Override
     public int connectTimeout() {
@@ -85,29 +86,11 @@ public class DatabaseBackedConfluenceConnectionConfig implements ConfluenceConne
         return getSettings().maxRetries();
     }
 
-    @Override
-    public boolean enableProxy() {
-        return false;
-    }
+    // --- Deployment type ---
 
     @Override
-    public String proxyHost() {
-        return null;
-    }
-
-    @Override
-    public int proxyPort() {
-        return 0;
-    }
-
-    @Override
-    public String proxyUsername() {
-        return null;
-    }
-
-    @Override
-    public String proxyPassword() {
-        return null;
+    public ConfluenceDeploymentType deploymentType() {
+        return getSettings().deploymentType();
     }
 
     // --- Pagination ---

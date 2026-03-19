@@ -183,9 +183,18 @@
       "title": "Configuration de la connexion Confluence",
       "connection": {
         "title": "Connexion",
+        "deploymentType": "Type de déploiement",
+        "deploymentCloud": "Confluence Cloud",
+        "deploymentCloudDesc": "Instances hébergées par Atlassian (*.atlassian.net) — API REST v1, Basic Auth",
+        "deploymentDataCenter": "Confluence Data Center / Server",
+        "deploymentDataCenterDesc": "Instances auto-hébergées — API REST v1, Bearer Token (PAT)",
         "baseUrl": "URL de base",
         "username": "Nom d'utilisateur",
+        "usernameCloud": "Email",
+        "usernameDc": "Nom d'utilisateur",
         "apiToken": "Jeton API",
+        "apiTokenCloud": "Jeton API",
+        "apiTokenDc": "Personal Access Token (PAT)",
         "apiTokenHint": "Jeton actuel :"
       },
       "timeouts": {
@@ -211,8 +220,14 @@
       },
       "placeholders": {
         "baseUrl": "https://votre-instance.atlassian.net/wiki",
+        "baseUrlCloud": "https://votre-domaine.atlassian.net/wiki",
+        "baseUrlDc": "https://confluence.votre-entreprise.com",
         "username": "votre.email@domaine.com",
+        "usernameCloud": "utilisateur@entreprise.com",
+        "usernameDc": "admin",
         "apiToken": "Entrez votre jeton API Confluence",
+        "apiTokenCloud": "Généré depuis id.atlassian.com",
+        "apiTokenDc": "Généré depuis votre instance Confluence",
         "apiTokenExisting": "Laisser vide pour conserver le jeton actuel"
       },
       "validation": {

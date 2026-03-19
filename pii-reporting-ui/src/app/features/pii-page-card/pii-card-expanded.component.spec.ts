@@ -123,7 +123,7 @@ describe('PiiCardExpandedComponent', () => {
     fixture.componentRef.setInput('revealed', false);
     fixture.componentRef.setInput('isRevealing', false);
     fixture.detectChanges();
-    const spy = jest.spyOn(fixture.componentInstance.collapse, 'emit');
+    const spy = vi.spyOn(fixture.componentInstance.collapse, 'emit');
     fixture.nativeElement.querySelector('.expanded-header').click();
     expect(spy).toHaveBeenCalled();
   });
@@ -134,7 +134,7 @@ describe('PiiCardExpandedComponent', () => {
     fixture.componentRef.setInput('revealed', false);
     fixture.componentRef.setInput('isRevealing', false);
     fixture.detectChanges();
-    const spy = jest.spyOn(fixture.componentInstance.revealRequested, 'emit');
+    const spy = vi.spyOn(fixture.componentInstance.revealRequested, 'emit');
     fixture.nativeElement.querySelector('.btn-reveal').click();
     expect(spy).toHaveBeenCalled();
   });

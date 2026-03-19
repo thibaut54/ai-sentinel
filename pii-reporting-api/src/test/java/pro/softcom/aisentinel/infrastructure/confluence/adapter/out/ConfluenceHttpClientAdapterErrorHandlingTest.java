@@ -44,7 +44,7 @@ class ConfluenceHttpClientAdapterErrorHandlingTest {
     @Mock
     private HttpResponse<String> httpResponse;
 
-    private ConfluenceHttpClientAdapter confluenceService;
+    private ConfluenceCloudHttpClientAdapter confluenceService;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -72,9 +72,9 @@ class ConfluenceHttpClientAdapterErrorHandlingTest {
 
     private void setupHttpClient() throws Exception {
         final ObjectMapper objectMapper = new ObjectMapper();
-        confluenceService = new ConfluenceHttpClientAdapter(config, objectMapper);
+        confluenceService = new ConfluenceCloudHttpClientAdapter(config, objectMapper);
 
-        Field retryExecutorField = ConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
+        Field retryExecutorField = AbstractConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
         retryExecutorField.setAccessible(true);
         Object retryExecutor = retryExecutorField.get(confluenceService);
 

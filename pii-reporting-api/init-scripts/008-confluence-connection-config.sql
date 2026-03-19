@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS confluence_connection_config
     pages_limit         INTEGER                  NOT NULL DEFAULT 50,
     max_pages           INTEGER                  NOT NULL DEFAULT 100,
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deployment_type     VARCHAR(20)              NOT NULL DEFAULT 'CLOUD',
     updated_by          VARCHAR(255)                      DEFAULT 'system',
     CONSTRAINT check_single_row CHECK (id = 1)
 );
