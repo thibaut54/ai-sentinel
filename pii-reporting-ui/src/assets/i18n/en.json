@@ -232,7 +232,8 @@
       },
       "validation": {
         "baseUrlRequired": "Base URL is required and must start with http:// or https://",
-        "usernameRequired": "Username is required",
+        "usernameRequired": "Email address is required",
+        "usernameEmail": "Please enter a valid email address",
         "apiTokenRequired": "API token is required for new connections"
       },
       "messages": {
@@ -742,7 +743,50 @@
     "scanError": "Scan error",
     "connectionError": "Connection error",
     "timeout": "Timeout",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "confluence": {
+      "authFailed": "Confluence authentication failed. Check your credentials in Settings > Confluence.",
+      "connectionFailed": "Unable to connect to Confluence. Verify that the server is reachable.",
+      "resourceNotFound": "The requested Confluence resource was not found.",
+      "apiError": "Error communicating with the Confluence API.",
+      "dateParseFailed": "Date format error in the Confluence response.",
+      "deserializationFailed": "Error reading the Confluence response.",
+      "spaceNotFound": "The requested Confluence space was not found.",
+      "spaceCacheError": "Error refreshing the spaces cache. Please try again shortly."
+    },
+    "pii": {
+      "detectionConnectionFailed": "The PII analysis service is unreachable. Verify that the service is running.",
+      "detectionServiceError": "PII analysis service error.",
+      "detectionTimeout": "The PII analysis service did not respond in time.",
+      "detectorError": "Error during PII detection."
+    },
+    "encryption": {
+      "failed": "Encryption error. Contact the administrator."
+    },
+    "crypto": {
+      "operationFailed": "Cryptographic error. Contact the administrator."
+    },
+    "access": {
+      "denied": "Access denied. You do not have the required permissions for this operation."
+    },
+    "scan": {
+      "invalidStatusTransition": "Invalid scan status transition.",
+      "notFound": "The requested scan was not found."
+    },
+    "export": {
+      "failed": "Report export failed. Please try again.",
+      "contextNotFound": "Export context not found for this source.",
+      "unsupportedSourceType": "Unsupported source type for export."
+    },
+    "validation": {
+      "invalidArgument": "Invalid data. Please check the form fields.",
+      "constraintViolation": "Invalid data. Please check the required fields and expected formats.",
+      "malformedRequest": "The request is malformed. Please check the data format."
+    },
+    "state": {
+      "invalid": "Operation not possible in the current state."
+    },
+    "internal": "An unexpected error occurred. Contact the administrator if the issue persists."
   },
   "piiTypes": {
     "PERSON_NAME": "Person Name",

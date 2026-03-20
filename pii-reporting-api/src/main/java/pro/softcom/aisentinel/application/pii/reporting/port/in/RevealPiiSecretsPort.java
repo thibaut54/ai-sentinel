@@ -28,7 +28,7 @@ public interface RevealPiiSecretsPort {
      * @param scanId the scan identifier
      * @param pageId the Confluence page identifier
      * @return the page secrets if found and authorized, empty if not found
-     * @throws SecurityException if revelation is not allowed by configuration
+     * @throws pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException if revelation is not allowed by configuration
      */
     Optional<PageSecretsResponse> revealPageSecrets(String scanId, String pageId);
 }

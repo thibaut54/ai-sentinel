@@ -10,7 +10,8 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { providePrimeNG } from 'primeng/config';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { errorInterceptor } from './core/interceptors/error.interceptor';
 import Aura from '@primeuix/themes/aura';
 import { ConfluenceSpacesPollingService } from './core/services/confluence-spaces-polling.service';
 import { provideTransloco } from '@jsverse/transloco';
@@ -34,7 +35,7 @@ export const appConfig: ApplicationConfig = {
     }),
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([errorInterceptor])),
     provideRouter(routes),
     provideTransloco({
       config: {

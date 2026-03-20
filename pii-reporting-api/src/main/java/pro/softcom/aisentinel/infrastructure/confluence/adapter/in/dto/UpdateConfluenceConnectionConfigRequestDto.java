@@ -59,6 +59,7 @@ public record UpdateConfluenceConnectionConfigRequestDto(
         Integer maxPages,
 
         @JsonProperty("deploymentType")
+        @NotNull(message = "deploymentType is required")
         ConfluenceDeploymentType deploymentType
 ) {
 }

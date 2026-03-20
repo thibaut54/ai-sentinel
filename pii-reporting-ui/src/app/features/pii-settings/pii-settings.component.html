@@ -394,7 +394,7 @@
                 type="button"
                 [label]="'settings.actions.saveAll' | transloco"
                 icon="pi pi-save"
-                [disabled]="saving() || !hasUnsavedChanges"
+                [disabled]="saving() || !hasUnsavedChanges || !isFormValid"
                 [loading]="saving()"
                 (click)="onSaveAll()"
                 (keydown.enter)="onSaveAll()"
