@@ -6,222 +6,227 @@
   </div>
 } @else {
   <div class="confluence-settings-content">
-    <form [formGroup]="configForm">
 
-      <!-- Deployment Type Fieldset -->
-      <p-fieldset [legend]="'settings.confluence.connection.deploymentType' | transloco" [toggleable]="true">
-        <div class="deployment-type-options" role="radiogroup" [attr.aria-label]="'settings.confluence.connection.deploymentType' | transloco">
-          <div class="deployment-type-option">
-            <p-radioButton
-              inputId="deploymentCloud"
-              name="deploymentType"
-              value="CLOUD"
-              formControlName="deploymentType">
-            </p-radioButton>
-            <label for="deploymentCloud" class="deployment-type-label">
-              <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentCloud' | transloco }}</span>
-              <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentCloudDesc' | transloco }}</span>
-            </label>
-          </div>
-          <div class="deployment-type-option">
-            <p-radioButton
-              inputId="deploymentDataCenter"
-              name="deploymentType"
-              value="DATA_CENTER"
-              formControlName="deploymentType">
-            </p-radioButton>
-            <label for="deploymentDataCenter" class="deployment-type-label">
-              <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentDataCenter' | transloco }}</span>
-              <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentDataCenterDesc' | transloco }}</span>
-            </label>
-          </div>
+    <!-- Deployment Type Fieldset -->
+    <p-fieldset [legend]="'settings.confluence.connection.deploymentType' | transloco" [toggleable]="true">
+      <div class="deployment-type-options" role="radiogroup" [attr.aria-label]="'settings.confluence.connection.deploymentType' | transloco">
+        <div class="deployment-type-option">
+          <p-radioButton
+            inputId="deploymentCloud"
+            name="deploymentType"
+            value="CLOUD"
+            [formField]="configForm.deploymentType">
+          </p-radioButton>
+          <label for="deploymentCloud" class="deployment-type-label">
+            <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentCloud' | transloco }}</span>
+            <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentCloudDesc' | transloco }}</span>
+          </label>
         </div>
-      </p-fieldset>
+        <div class="deployment-type-option">
+          <p-radioButton
+            inputId="deploymentDataCenter"
+            name="deploymentType"
+            value="DATA_CENTER"
+            [formField]="configForm.deploymentType">
+          </p-radioButton>
+          <label for="deploymentDataCenter" class="deployment-type-label">
+            <span class="deployment-type-name">{{ 'settings.confluence.connection.deploymentDataCenter' | transloco }}</span>
+            <span class="deployment-type-desc">{{ 'settings.confluence.connection.deploymentDataCenterDesc' | transloco }}</span>
+          </label>
+        </div>
+      </div>
+    </p-fieldset>
 
-      <!-- Connection Fieldset -->
-      <p-fieldset [legend]="'settings.confluence.connection.title' | transloco" [toggleable]="true">
+    <!-- Connection Fieldset -->
+    <p-fieldset [legend]="'settings.confluence.connection.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="baseUrl">
+          <span class="field-label">{{ 'settings.confluence.connection.baseUrl' | transloco }}</span>
+        </label>
+        <input
+          id="baseUrl"
+          type="text"
+          pInputText
+          [formField]="configForm.baseUrl"
+          [placeholder]="baseUrlPlaceholder()"
+          class="field-input" />
+        @if (configForm.baseUrl().invalid() && configForm.baseUrl().touched()) {
+          <small class="field-error">{{ 'settings.confluence.validation.baseUrlRequired' | transloco }}</small>
+        }
+      </div>
+
+      @if (!configForm.username().hidden()) {
         <div class="form-field">
-          <label for="baseUrl">
-            <span class="field-label">{{ 'settings.confluence.connection.baseUrl' | transloco }}</span>
+          <label for="username">
+            <span class="field-label">{{ 'settings.confluence.connection.usernameCloud' | transloco }}</span>
           </label>
           <input
-            id="baseUrl"
-            type="text"
+            id="username"
+            type="email"
             pInputText
-            formControlName="baseUrl"
-            [placeholder]="baseUrlPlaceholder"
+            [formField]="configForm.username"
+            [placeholder]="usernamePlaceholder()"
             class="field-input" />
-          @if (configForm.get('baseUrl')?.invalid && configForm.get('baseUrl')?.touched) {
-            <small class="field-error">{{ 'settings.confluence.validation.baseUrlRequired' | transloco }}</small>
-          }
-        </div>
-
-        @if (isCloud) {
-          <div class="form-field">
-            <label for="username">
-              <span class="field-label">{{ 'settings.confluence.connection.usernameCloud' | transloco }}</span>
-            </label>
-            <input
-              id="username"
-              type="text"
-              pInputText
-              formControlName="username"
-              [placeholder]="usernamePlaceholder"
-              class="field-input" />
-            @if (configForm.get('username')?.invalid && configForm.get('username')?.touched) {
-              <small class="field-error">{{ 'settings.confluence.validation.usernameRequired' | transloco }}</small>
+          @if (configForm.username().errors().length && configForm.username().touched()) {
+            @for (error of configForm.username().errors(); track error.kind) {
+              @if (error.kind === 'required') {
+                <small class="field-error">{{ 'settings.confluence.validation.usernameRequired' | transloco }}</small>
+              }
+              @if (error.kind === 'email') {
+                <small class="field-error">{{ 'settings.confluence.validation.usernameEmail' | transloco }}</small>
+              }
             }
-          </div>
-        }
-
-        <div class="form-field">
-          <label for="apiToken">
-            <span class="field-label">{{ isCloud ? ('settings.confluence.connection.apiTokenCloud' | transloco) : ('settings.confluence.connection.apiTokenDc' | transloco) }}</span>
-          </label>
-          <p-password
-            inputId="apiToken"
-            formControlName="apiToken"
-            [placeholder]="apiTokenPlaceholder"
-            [toggleMask]="true"
-            [feedback]="false"
-            styleClass="field-input">
-          </p-password>
-          @if (currentConfig()) {
-            <small class="field-hint">
-              {{ 'settings.confluence.connection.apiTokenHint' | transloco }}
-              <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
-            </small>
           }
-          @if (configForm.get('apiToken')?.hasError('required') && configForm.get('apiToken')?.touched && !currentConfig()) {
-            <small class="field-error">{{ 'settings.confluence.validation.apiTokenRequired' | transloco }}</small>
-          }
-        </div>
-      </p-fieldset>
-
-      <!-- Timeouts Fieldset -->
-      <p-fieldset [legend]="'settings.confluence.timeouts.title' | transloco" [toggleable]="true">
-        <div class="form-field">
-          <label for="connectTimeout">
-            <span class="field-label">{{ 'settings.confluence.timeouts.connectTimeout' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.confluence.timeouts.connectTimeoutDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="connectTimeout"
-            formControlName="connectTimeout"
-            [min]="1000"
-            [max]="120000"
-            [step]="1000"
-            suffix=" ms"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="readTimeout">
-            <span class="field-label">{{ 'settings.confluence.timeouts.readTimeout' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.confluence.timeouts.readTimeoutDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="readTimeout"
-            formControlName="readTimeout"
-            [min]="5000"
-            [max]="300000"
-            [step]="5000"
-            suffix=" ms"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="maxRetries">
-            <span class="field-label">{{ 'settings.confluence.timeouts.maxRetries' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.confluence.timeouts.maxRetriesDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="maxRetries"
-            formControlName="maxRetries"
-            [min]="0"
-            [max]="10"
-            [step]="1"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-      </p-fieldset>
-
-      <!-- Pagination Fieldset -->
-      <p-fieldset [legend]="'settings.confluence.pagination.title' | transloco" [toggleable]="true">
-        <div class="form-field">
-          <label for="pagesLimit">
-            <span class="field-label">{{ 'settings.confluence.pagination.pagesLimit' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.confluence.pagination.pagesLimitDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="pagesLimit"
-            formControlName="pagesLimit"
-            [min]="1"
-            [max]="1000"
-            [step]="5"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="maxPages">
-            <span class="field-label">{{ 'settings.confluence.pagination.maxPages' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.confluence.pagination.maxPagesDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="maxPages"
-            formControlName="maxPages"
-            [min]="1"
-            [max]="10000"
-            [step]="100"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-      </p-fieldset>
-
-      <!-- Info Card -->
-      @if (currentConfig()?.updatedAt) {
-        <div class="info-card">
-          <div class="info-content">
-            <div class="info-item">
-              <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
-              {{ currentConfig()!.updatedAt | date:'medium' }}
-            </div>
-          </div>
         </div>
       }
 
-      <!-- Action Buttons -->
-      <div class="section-actions">
-        <p-button
-          type="button"
-          [label]="'settings.confluence.buttons.test' | transloco"
-          icon="pi pi-wifi"
-          [loading]="testing()"
-          [disabled]="testing() || saving()"
-          (click)="onTestConnection()"
-          (keydown.enter)="onTestConnection()"
-          styleClass="p-button-outlined">
-        </p-button>
+      <div class="form-field">
+        <label for="apiToken">
+          <span class="field-label">{{ isCloud() ? ('settings.confluence.connection.apiTokenCloud' | transloco) : ('settings.confluence.connection.apiTokenDc' | transloco) }}</span>
+        </label>
+        <p-password
+          inputId="apiToken"
+          [formField]="configForm.apiToken"
+          [placeholder]="apiTokenPlaceholder()"
+          [toggleMask]="true"
+          [feedback]="false"
+          class="field-input">
+        </p-password>
+        @if (hasExistingTokenForCurrentType()) {
+          <small class="field-hint">
+            {{ 'settings.confluence.connection.apiTokenHint' | transloco }}
+            <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
+          </small>
+        }
+        @if (configForm.apiToken().errors().length && configForm.apiToken().touched()) {
+          <small class="field-error">{{ 'settings.confluence.validation.apiTokenRequired' | transloco }}</small>
+        }
+      </div>
+    </p-fieldset>
+
+    <!-- Timeouts Fieldset -->
+    <p-fieldset [legend]="'settings.confluence.timeouts.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="connectTimeout">
+          <span class="field-label">{{ 'settings.confluence.timeouts.connectTimeout' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.confluence.timeouts.connectTimeoutDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="connectTimeout"
+          [formField]="configForm.connectTimeout"
+          [min]="1000"
+          [max]="120000"
+          [step]="1000"
+          suffix=" ms"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
       </div>
 
-    </form>
+      <div class="form-field">
+        <label for="readTimeout">
+          <span class="field-label">{{ 'settings.confluence.timeouts.readTimeout' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.confluence.timeouts.readTimeoutDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="readTimeout"
+          [formField]="configForm.readTimeout"
+          [min]="5000"
+          [max]="300000"
+          [step]="5000"
+          suffix=" ms"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+
+      <div class="form-field">
+        <label for="maxRetries">
+          <span class="field-label">{{ 'settings.confluence.timeouts.maxRetries' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.confluence.timeouts.maxRetriesDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="maxRetries"
+          [formField]="configForm.maxRetries"
+          [min]="0"
+          [max]="10"
+          [step]="1"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+    </p-fieldset>
+
+    <!-- Pagination Fieldset -->
+    <p-fieldset [legend]="'settings.confluence.pagination.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="pagesLimit">
+          <span class="field-label">{{ 'settings.confluence.pagination.pagesLimit' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.confluence.pagination.pagesLimitDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="pagesLimit"
+          [formField]="configForm.pagesLimit"
+          [min]="1"
+          [max]="1000"
+          [step]="5"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+
+      <div class="form-field">
+        <label for="maxPages">
+          <span class="field-label">{{ 'settings.confluence.pagination.maxPages' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.confluence.pagination.maxPagesDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="maxPages"
+          [formField]="configForm.maxPages"
+          [min]="1"
+          [max]="10000"
+          [step]="100"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+    </p-fieldset>
+
+    <!-- Info Card -->
+    @if (currentConfig()?.updatedAt) {
+      <div class="info-card">
+        <div class="info-content">
+          <div class="info-item">
+            <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
+            {{ currentConfig()!.updatedAt | date:'medium' }}
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="section-actions">
+      <p-button
+        type="button"
+        [label]="'settings.confluence.buttons.test' | transloco"
+        icon="pi pi-wifi"
+        [loading]="testing()"
+        [disabled]="testing() || saving()"
+        (click)="onTestConnection()"
+        (keydown.enter)="onTestConnection()"
+        styleClass="p-button-outlined">
+      </p-button>
+    </div>
+
   </div>
 }

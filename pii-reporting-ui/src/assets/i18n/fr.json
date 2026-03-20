@@ -232,7 +232,8 @@
       },
       "validation": {
         "baseUrlRequired": "L'URL de base est requise et doit commencer par http:// ou https://",
-        "usernameRequired": "Le nom d'utilisateur est requis",
+        "usernameRequired": "L'adresse e-mail est requise",
+        "usernameEmail": "Veuillez saisir une adresse e-mail valide",
         "apiTokenRequired": "Le jeton API est requis pour les nouvelles connexions"
       },
       "messages": {
@@ -742,7 +743,50 @@
     "scanError": "Erreur de scan",
     "connectionError": "Erreur de connexion",
     "timeout": "Délai d'attente dépassé",
-    "networkError": "Erreur réseau"
+    "networkError": "Erreur réseau",
+    "confluence": {
+      "authFailed": "L'authentification Confluence a échoué. Vérifiez vos identifiants dans Paramètres > Confluence.",
+      "connectionFailed": "Impossible de se connecter à Confluence. Vérifiez que le serveur est accessible.",
+      "resourceNotFound": "La ressource Confluence demandée est introuvable.",
+      "apiError": "Erreur lors de la communication avec l'API Confluence.",
+      "dateParseFailed": "Erreur de format de date dans la réponse Confluence.",
+      "deserializationFailed": "Erreur de lecture de la réponse Confluence.",
+      "spaceNotFound": "L'espace Confluence demandé est introuvable.",
+      "spaceCacheError": "Erreur lors du rafraîchissement du cache des espaces. Réessayez dans quelques instants."
+    },
+    "pii": {
+      "detectionConnectionFailed": "Le service d'analyse PII est inaccessible. Vérifiez que le service est démarré.",
+      "detectionServiceError": "Erreur du service d'analyse PII.",
+      "detectionTimeout": "Le service d'analyse PII n'a pas répondu dans le délai imparti.",
+      "detectorError": "Erreur lors de la détection PII."
+    },
+    "encryption": {
+      "failed": "Erreur de chiffrement. Contactez l'administrateur."
+    },
+    "crypto": {
+      "operationFailed": "Erreur cryptographique. Contactez l'administrateur."
+    },
+    "access": {
+      "denied": "Accès refusé. Vous n'avez pas les droits nécessaires pour cette opération."
+    },
+    "scan": {
+      "invalidStatusTransition": "Transition de statut de scan invalide.",
+      "notFound": "Le scan demandé est introuvable."
+    },
+    "export": {
+      "failed": "Erreur lors de l'export du rapport. Réessayez.",
+      "contextNotFound": "Contexte d'export introuvable pour cette source.",
+      "unsupportedSourceType": "Type de source non supporté pour l'export."
+    },
+    "validation": {
+      "invalidArgument": "Données invalides. Vérifiez les champs du formulaire.",
+      "constraintViolation": "Données invalides. Vérifiez les champs obligatoires et les formats attendus.",
+      "malformedRequest": "La requête est mal formée. Vérifiez le format des données envoyées."
+    },
+    "state": {
+      "invalid": "Opération impossible dans l'état actuel."
+    },
+    "internal": "Une erreur inattendue est survenue. Contactez l'administrateur si le problème persiste."
   },
   "piiTypes": {
     "EMAIL": "Email",

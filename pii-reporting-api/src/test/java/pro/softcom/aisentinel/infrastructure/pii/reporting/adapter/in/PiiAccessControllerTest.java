@@ -1,7 +1,10 @@
 package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in;
 
 import org.jspecify.annotations.NonNull;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -9,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.RevealPiiSecretsPort;
 import pro.softcom.aisentinel.domain.pii.reporting.PageSecretsResponse;
+import pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException;
 import pro.softcom.aisentinel.domain.pii.reporting.RevealedSecret;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.PiiAccessController.PageRevealRequest;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.PiiAccessController.PageSecretsResponseDto;
@@ -109,11 +113,11 @@ class PiiAccessControllerTest {
         private static final String PAGE_TITLE = "Test Page";
 
         @Test
-        @DisplayName("Should_ReturnForbidden_When_SecurityExceptionThrown")
-        void Should_ReturnForbidden_When_SecurityExceptionThrown() {
+        @DisplayName("Should_ReturnForbidden_When_PiiAccessDeniedExceptionThrown")
+        void Should_ReturnForbidden_When_PiiAccessDeniedExceptionThrown() {
             // Given
             when(revealPiiSecretsPort.revealPageSecrets(any(), any()))
-                    .thenThrow(new SecurityException("Not allowed"));
+                    .thenThrow(new PiiAccessDeniedException("Not allowed"));
             PageRevealRequest request = new PageRevealRequest(SCAN_ID, PAGE_ID);
 
             // When
