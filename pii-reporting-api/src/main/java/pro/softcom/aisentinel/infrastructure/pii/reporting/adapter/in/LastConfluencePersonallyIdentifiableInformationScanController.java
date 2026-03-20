@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.LastScanDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceScanStateDto;
@@ -50,8 +50,8 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
     }
 
     @GetMapping("/last/items")
-    public ResponseEntity<@NonNull List<ConfluenceContentScanResultEventDto>> getLastScanItems() {
-        List<ConfluenceContentScanResultEventDto> items = scanReportingPort.getGlobalScanItemsEncrypted().stream()
+    public ResponseEntity<@NonNull List<ContentScanResultEventDto>> getLastScanItems() {
+        List<ContentScanResultEventDto> items = scanReportingPort.getGlobalScanItemsEncrypted().stream()
                 .map(confluenceContentScanResultToScanEventMapper::toDto)
                 .toList();
         if (items.isEmpty()) {

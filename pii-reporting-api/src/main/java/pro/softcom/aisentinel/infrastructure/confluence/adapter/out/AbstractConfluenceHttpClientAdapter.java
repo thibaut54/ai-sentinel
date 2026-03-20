@@ -25,6 +25,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -210,7 +211,11 @@ public abstract class AbstractConfluenceHttpClientAdapter implements ConfluenceC
             .build();
     }
 
-    // --- HTTP request builders ---
+    private String encodeBasicAuth(String username, String apiToken) {
+        var credentials = username.trim() + ":" + apiToken.trim();
+        var encoded = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        return "Basic " + encoded;
+    }
 
     protected HttpRequest buildGetRequest(URI uri) {
         return HttpRequest.newBuilder()

@@ -125,7 +125,7 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
                         var delay = calculateBackoffDelay(config.maxRetries() - retriesLeft);
                         var delayedExecutor = CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS);
                         return CompletableFuture.runAsync(() -> {}, delayedExecutor)
-                                .thenCompose(_ -> sendBytesWithRetry(request, retriesLeft - 1));
+                                .thenCompose(ignored -> sendBytesWithRetry(request, retriesLeft - 1));
                     }
                     return CompletableFuture.completedFuture(response);
                 });

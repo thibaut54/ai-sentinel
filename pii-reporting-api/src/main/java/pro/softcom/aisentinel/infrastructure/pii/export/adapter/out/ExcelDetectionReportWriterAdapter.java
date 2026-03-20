@@ -55,8 +55,9 @@ public class ExcelDetectionReportWriterAdapter implements WriteDetectionReportPo
             this.exportContext = exportContext;
             this.workbook = new SXSSFWorkbook();
 
+            String sourceSubDir = exportContext.sourceType().getValue().toLowerCase();
             String safeFileName = sanitizeForFileName(exportContext.reportName(), ".xlsx");
-            this.reportPath = Path.of(exportDirectory, safeFileName);
+            this.reportPath = Path.of(exportDirectory, sourceSubDir, safeFileName);
         }
 
         @Override

@@ -12,7 +12,7 @@ import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
 import pro.softcom.aisentinel.domain.pii.export.SourceType;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 
 import java.io.IOException;
 
@@ -76,10 +76,10 @@ public class ExportDetectionReportUseCase implements ExportDetectionReportPort {
             String sourceIdentifier
     ) {
         try {
-            var scanResults = readScanEventsPort.streamByScanIdAndSpaceKey(scanId, sourceIdentifier);
+            var scanResults = readScanEventsPort.streamByScanIdAndSourceKey(scanId, sourceIdentifier);
 
-            for (ConfluenceContentScanResult confluenceContentScanResult : scanResults.toList()) {
-                writeEntriesForScanResult(reportSession, confluenceContentScanResult);
+            for (ContentScanResult result : scanResults.toList()) {
+                writeEntriesForScanResult(reportSession, result);
             }
         } catch (IOException e) {
             throw new ExportException("Failed to write report entries", e);
@@ -88,9 +88,9 @@ public class ExportDetectionReportUseCase implements ExportDetectionReportPort {
 
     private void writeEntriesForScanResult(
             WriteDetectionReportPort.ReportSession reportSession,
-            ConfluenceContentScanResult confluenceContentScanResult
+            ContentScanResult result
     ) throws IOException {
-        var entries = detectionReportMapper.toDetectionReportEntries(confluenceContentScanResult);
+        var entries = detectionReportMapper.toDetectionReportEntries(result);
 
         for (DetectionReportEntry entry : entries) {
             reportSession.writeReportEntry(entry);

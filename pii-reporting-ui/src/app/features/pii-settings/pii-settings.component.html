@@ -53,6 +53,28 @@
                 <i class="pi pi-link"></i>
                 {{ 'settings.nav.confluence' | transloco }}
             </button>
+
+            <button
+                type="button"
+                class="sidebar-nav-item"
+                [class.active]="activeSection() === 'jira'"
+                (click)="setActiveSection('jira')"
+                (keydown.enter)="setActiveSection('jira')"
+            >
+                <i class="pi pi-ticket"></i>
+                {{ 'settings.nav.jira' | transloco }}
+            </button>
+
+            <button
+                type="button"
+                class="sidebar-nav-item"
+                [class.active]="activeSection() === 'sharepoint'"
+                (click)="setActiveSection('sharepoint')"
+                (keydown.enter)="setActiveSection('sharepoint')"
+            >
+                <i class="pi pi-microsoft"></i>
+                {{ 'settings.nav.sharepoint' | transloco }}
+            </button>
         </nav>
 
         <!-- Content Panel -->
@@ -364,6 +386,16 @@
             <!-- ===== SECTION: CONFLUENCE ===== -->
             @if (activeSection() === 'confluence') {
                 <app-confluence-settings (saved)="settingsSaved.emit()"></app-confluence-settings>
+            }
+
+            <!-- ===== SECTION: JIRA ===== -->
+            @if (activeSection() === 'jira') {
+                <app-jira-settings></app-jira-settings>
+            }
+
+            <!-- ===== SECTION: SHAREPOINT ===== -->
+            @if (activeSection() === 'sharepoint') {
+                <app-sharepoint-settings></app-sharepoint-settings>
             }
         </div>
     </div>

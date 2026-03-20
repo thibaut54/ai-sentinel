@@ -2,7 +2,7 @@ package pro.softcom.aisentinel.application.pii.security;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionException;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
@@ -11,56 +11,52 @@ import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import java.util.List;
 
 /**
- * Processor for encrypting/decrypting detectedPIIList in ScanResult.
- * Business intent: orchestrate PII encryption in the business flow.
+ * Service responsible for encrypting and decrypting PII data in scan results.
+ * Business purpose: Ensure sensitive PII data is encrypted at rest (in database)
+ * and only decrypted for authorized access.
+ *
+ * <p>Uses AES-GCM encryption with metadata-bound AAD (Additional Authenticated Data)
+ * to prevent cut-and-paste attacks by binding ciphertext to its context (PII type and position).
  */
 @RequiredArgsConstructor
 @Slf4j
 public class ScanResultEncryptor {
-    private static final int MAX_ENTITIES_SOFT_CAP = 500;
 
     private final EncryptionService encryptionService;
+    private static final int MAX_ENTITIES_SOFT_CAP = 1000;
 
     /**
-     * Encrypts all detected PII entities in the scan result.
-     * Business purpose: Secure sensitive data before storage or transmission.
+     * Encrypts PII fields in the scan result.
+     * Business purpose: Protect sensitive data before storage.
      *
-     * @param confluenceContentScanResult the scan result with plaintext PII values
+     * @param result the scan result with clear-text PII values
      * @return scan result with encrypted PII values
-     * @throws EncryptionException if encryption fails for any entity
      */
-    public ConfluenceContentScanResult encrypt(
-        ConfluenceContentScanResult confluenceContentScanResult) {
-        var entities = confluenceContentScanResult.detectedPIIList();
-        if (entities == null) {
-            return confluenceContentScanResult;
+    public ContentScanResult encrypt(ContentScanResult result) {
+        var entities = result.detectedPIIList();
+        if (entities == null || entities.isEmpty()) {
+            return result;
         }
 
-        try {
-            var encryptedEntities = encryptEntities(entities);
-            return confluenceContentScanResult.toBuilder()
-                    .detectedPIIList(encryptedEntities)
-                    .build();
-        } catch (EncryptionException e) {
-            log.error("Failed to encrypt PII entities for scanId={}, entityCount={}",
-                      confluenceContentScanResult.scanId(), entities.size(), e);
-            throw e;
-        }
+        var encryptedEntities = encryptEntities(entities);
+
+        return result.toBuilder()
+            .detectedPIIList(encryptedEntities)
+            .build();
     }
 
     /**
      * Decrypts encrypted PII entities in the scan result.
      * Business purpose: Restore original values for authorized access and display.
      *
-     * @param confluenceContentScanResult the scan result with encrypted PII values
+     * @param result the scan result with encrypted PII values
      * @return scan result with decrypted PII values
      * @throws EncryptionException if decryption fails for any entity
      */
-    public ConfluenceContentScanResult decrypt(
-        ConfluenceContentScanResult confluenceContentScanResult) {
-        var entities = confluenceContentScanResult.detectedPIIList();
-        if (entities == null) {
-            return confluenceContentScanResult;
+    public ContentScanResult decrypt(ContentScanResult result) {
+        var entities = result.detectedPIIList();
+        if (entities == null || entities.isEmpty()) {
+            return result;
         }
 
         try {
@@ -68,12 +64,12 @@ public class ScanResultEncryptor {
                     .map(this::decryptEntity)
                     .toList();
 
-            return confluenceContentScanResult.toBuilder()
+            return result.toBuilder()
                     .detectedPIIList(decryptedEntities)
                     .build();
         } catch (EncryptionException e) {
             log.error("Failed to decrypt PII entities for scanId={}, entityCount={}",
-                      confluenceContentScanResult.scanId(), entities.size(), e);
+                      result.scanId(), entities.size(), e);
             throw e;
         }
     }

@@ -22,7 +22,9 @@ import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
+import pro.softcom.aisentinel.domain.pii.reporting.ReportingScanStatus;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
@@ -146,17 +148,18 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("scanId", scanId);
-        payload.put("spaceKey", "SPACE-A");
+        payload.put("sourceId", "SPACE-A");
         payload.put("eventType", "item");
 
         ScanEventEntity event = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(1L)
-            .spaceKey("SPACE-A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
             .eventType("item")
             .ts(now)
-            .pageId("page-1")
-            .pageTitle("Page 1")
+            .contentId("page-1")
+            .contentTitle("Page 1")
             .payload(payload)
             .build();
         detectionEventRepository.save(event);
@@ -168,12 +171,12 @@ class ScanReportingUseCaseTest {
         assertThat(meta.scanId()).isEqualTo(scanId);
         assertThat(meta.spacesCount()).isOne();
 
-        List<ConfluenceContentScanResult> results = scanReportingUseCase.getLatestSpaceScanResultList();
+        List<ContentScanResult> results = scanReportingUseCase.getLatestSpaceScanResultList();
         assertThat(results).hasSize(1);
-        ConfluenceContentScanResult result = results.getFirst();
+        ContentScanResult result = results.getFirst();
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(result.scanId()).isEqualTo(scanId);
-        softly.assertThat(result.spaceKey()).isEqualTo("SPACE-A");
+        softly.assertThat(result.sourceId()).isEqualTo("SPACE-A");
         softly.assertThat(result.eventType()).isEqualTo("item");
         softly.assertAll();
     }
@@ -185,24 +188,26 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("scanId", scanId);
-        payload.put("spaceKey", "SPACE-1");
+        payload.put("sourceId", "SPACE-1");
         payload.put("eventType", "item");
 
         ScanEventEntity event = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(1L)
-            .spaceKey("SPACE-1")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-1")
             .eventType("item")
             .ts(now)
-            .pageId("page-1")
-            .pageTitle("Page 1")
+            .contentId("page-1")
+            .contentTitle("Page 1")
             .payload(payload)
             .build();
         detectionEventRepository.save(event);
 
         ScanCheckpoint checkpoint = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-1")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-1")
             .scanStatus(ScanStatus.RUNNING)
             .updatedAt(LocalDateTime.of(2024, 2, 1, 10, 0))
             .progressPercentage(25.0)
@@ -214,8 +219,8 @@ class ScanReportingUseCaseTest {
         assertThat(states).hasSize(1);
         var state = states.getFirst();
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(state.spaceKey()).isEqualTo("SPACE-1");
-        softly.assertThat(state.status()).isEqualTo("RUNNING");
+        softly.assertThat(state.sourceKey()).isEqualTo("SPACE-1");
+        softly.assertThat(state.status()).isEqualTo(ReportingScanStatus.RUNNING);
         softly.assertThat(state.progressPercentage()).isEqualTo(25.0);
         softly.assertAll();
     }
@@ -229,17 +234,18 @@ class ScanReportingUseCaseTest {
         // Arrange - Create events for SPACE-A (2 pages, 1 attachment)
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "item");
 
         ScanEventEntity event1 = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(1L)
-            .spaceKey("SPACE-A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
             .eventType("pageComplete")
             .ts(event1Ts)
-            .pageId("page-1")
-            .pageTitle("Page 1")
+            .contentId("page-1")
+            .contentTitle("Page 1")
             .payload(payload1)
             .build();
         detectionEventRepository.save(event1);
@@ -247,27 +253,29 @@ class ScanReportingUseCaseTest {
         ScanEventEntity event2 = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(2L)
-            .spaceKey("SPACE-A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
             .eventType("pageComplete")
             .ts(event1Ts)
-            .pageId("page-2")
-            .pageTitle("Page 2")
+            .contentId("page-2")
+            .contentTitle("Page 2")
             .payload(payload1)
             .build();
         detectionEventRepository.save(event2);
 
         ObjectNode attachmentPayload = objectMapper.createObjectNode();
         attachmentPayload.put("scanId", scanId);
-        attachmentPayload.put("spaceKey", "SPACE-A");
+        attachmentPayload.put("sourceId", "SPACE-A");
         attachmentPayload.put("eventType", "attachment");
 
         ScanEventEntity event3 = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(3L)
-            .spaceKey("SPACE-A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
             .eventType("attachmentItem")
             .ts(event1Ts)
-            .pageId("page-1")
+            .contentId("page-1")
             .attachmentName("Attachment 1")
             .attachmentType("application/pdf")
             .payload(attachmentPayload)
@@ -277,7 +285,8 @@ class ScanReportingUseCaseTest {
         // Create checkpoint for SPACE-A with COMPLETED status and 100% progress
         ScanCheckpoint checkpointA = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-A")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-A")
             .scanStatus(ScanStatus.COMPLETED)
             .updatedAt(LocalDateTime.of(2024, 3, 1, 10, 30))
             .progressPercentage(100.0)
@@ -287,17 +296,18 @@ class ScanReportingUseCaseTest {
         // Create events for SPACE-B (1 page)
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "item");
 
         ScanEventEntity event4 = ScanEventEntity.builder()
             .scanId(scanId)
             .eventSeq(4L)
-            .spaceKey("SPACE-B")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-B")
             .eventType("pageComplete")
             .ts(event2Ts)
-            .pageId("page-b1")
-            .pageTitle("Page B1")
+            .contentId("page-b1")
+            .contentTitle("Page B1")
             .payload(payload2)
             .build();
         detectionEventRepository.save(event4);
@@ -305,7 +315,8 @@ class ScanReportingUseCaseTest {
         // Create checkpoint for SPACE-B with RUNNING status and 33% progress
         ScanCheckpoint checkpointB = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey("SPACE-B")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-B")
             .scanStatus(ScanStatus.RUNNING)
             .updatedAt(LocalDateTime.of(2024, 3, 1, 10, 30))
             .progressPercentage(33.0)
@@ -331,7 +342,7 @@ class ScanReportingUseCaseTest {
         
         // Find SPACE-A in nbOfDetectedPIIBySeverity
         var spaceA = scanSummary.spaces().stream()
-            .filter(s -> "SPACE-A".equals(s.spaceKey()))
+            .filter(s -> "SPACE-A".equals(s.sourceKey()))
             .findFirst()
             .orElseThrow();
         
@@ -340,7 +351,7 @@ class ScanReportingUseCaseTest {
             .as("SPACE-A progress must be 100.0 from checkpoint, not from events")
             .isEqualTo(100.0);
         
-        softly.assertThat(spaceA.status()).isEqualTo("COMPLETED");
+        softly.assertThat(spaceA.status()).isEqualTo(ReportingScanStatus.COMPLETED);
         
         // Counters come from events
         softly.assertThat(spaceA.pagesDone())
@@ -351,7 +362,7 @@ class ScanReportingUseCaseTest {
         
         // Find SPACE-B in nbOfDetectedPIIBySeverity
         var spaceB = scanSummary.spaces().stream()
-            .filter(s -> "SPACE-B".equals(s.spaceKey()))
+            .filter(s -> "SPACE-B".equals(s.sourceKey()))
             .findFirst()
             .orElseThrow();
         
@@ -360,7 +371,7 @@ class ScanReportingUseCaseTest {
             .as("SPACE-B progress must be 33.0 from checkpoint")
             .isEqualTo(33.0);
         
-        softly.assertThat(spaceB.status()).isEqualTo("RUNNING");
+        softly.assertThat(spaceB.status()).isEqualTo(ReportingScanStatus.RUNNING);
         
         // Counters come from events
         softly.assertThat(spaceB.pagesDone())
@@ -380,17 +391,17 @@ class ScanReportingUseCaseTest {
         // Scan 1 events for Space A
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId1);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "pageComplete");
 
         ScanEventEntity event1 = ScanEventEntity.builder()
-            .scanId(scanId1).eventSeq(1L).spaceKey("SPACE-A").eventType("pageComplete")
-            .ts(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
+            .scanId(scanId1).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-A").eventType("pageComplete")
+            .ts(ts1).contentId("p1").contentTitle("Page 1").payload(payload1).build();
         detectionEventRepository.save(event1);
 
         // Scan 1 checkpoint for Space A
         ScanCheckpoint cp1 = ScanCheckpoint.builder()
-            .scanId(scanId1).spaceKey("SPACE-A").scanStatus(ScanStatus.COMPLETED)
+            .scanId(scanId1).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-A").scanStatus(ScanStatus.COMPLETED)
             .updatedAt(LocalDateTime.of(2024, 1, 1, 10, 0))
             .progressPercentage(100.0).build();
         scanCheckpointRepository.save(cp1);
@@ -402,17 +413,17 @@ class ScanReportingUseCaseTest {
         // Scan 2 events for Space B
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId2);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "pageComplete");
 
         ScanEventEntity event2 = ScanEventEntity.builder()
-            .scanId(scanId2).eventSeq(1L).spaceKey("SPACE-B").eventType("pageComplete")
-            .ts(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
+            .scanId(scanId2).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-B").eventType("pageComplete")
+            .ts(ts2).contentId("p2").contentTitle("Page 2").payload(payload2).build();
         detectionEventRepository.save(event2);
 
         // Scan 2 checkpoint for Space B
         ScanCheckpoint cp2 = ScanCheckpoint.builder()
-            .scanId(scanId2).spaceKey("SPACE-B").scanStatus(ScanStatus.RUNNING)
+            .scanId(scanId2).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-B").scanStatus(ScanStatus.RUNNING)
             .updatedAt(LocalDateTime.of(2024, 1, 2, 10, 0))
             .progressPercentage(50.0).build();
         scanCheckpointRepository.save(cp2);
@@ -429,13 +440,13 @@ class ScanReportingUseCaseTest {
         assertThat(globalSummary.spacesCount()).isEqualTo(2);
 
         // Space A should be from Scan 1
-        var spaceA = globalSummary.spaces().stream().filter(s -> s.spaceKey().equals("SPACE-A")).findFirst().get();
-        assertThat(spaceA.status()).isEqualTo("COMPLETED");
+        var spaceA = globalSummary.spaces().stream().filter(s -> s.sourceKey().equals("SPACE-A")).findFirst().get();
+        assertThat(spaceA.status()).isEqualTo(ReportingScanStatus.COMPLETED);
         assertThat(spaceA.pagesDone()).isOne();
 
         // Space B should be from Scan 2
-        var spaceB = globalSummary.spaces().stream().filter(s -> s.spaceKey().equals("SPACE-B")).findFirst().get();
-        assertThat(spaceB.status()).isEqualTo("RUNNING");
+        var spaceB = globalSummary.spaces().stream().filter(s -> s.sourceKey().equals("SPACE-B")).findFirst().get();
+        assertThat(spaceB.status()).isEqualTo(ReportingScanStatus.RUNNING);
         assertThat(spaceB.pagesDone()).isOne();
     }
 
@@ -447,17 +458,17 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload1 = objectMapper.createObjectNode();
         payload1.put("scanId", scanId1);
-        payload1.put("spaceKey", "SPACE-A");
+        payload1.put("sourceId", "SPACE-A");
         payload1.put("eventType", "item");
         payload1.put("maskedContent", "EncryptedContentA");
 
         ScanEventEntity event1 = ScanEventEntity.builder()
-            .scanId(scanId1).eventSeq(1L).spaceKey("SPACE-A").eventType("item")
-            .ts(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
+            .scanId(scanId1).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-A").eventType("item")
+            .ts(ts1).contentId("p1").contentTitle("Page 1").payload(payload1).build();
         detectionEventRepository.save(event1);
 
         ScanCheckpoint cp1 = ScanCheckpoint.builder()
-            .scanId(scanId1).spaceKey("SPACE-A").scanStatus(ScanStatus.COMPLETED)
+            .scanId(scanId1).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-A").scanStatus(ScanStatus.COMPLETED)
             .updatedAt(LocalDateTime.of(2024, 1, 1, 10, 0))
             .progressPercentage(100.0).build();
         scanCheckpointRepository.save(cp1);
@@ -468,27 +479,27 @@ class ScanReportingUseCaseTest {
 
         ObjectNode payload2 = objectMapper.createObjectNode();
         payload2.put("scanId", scanId2);
-        payload2.put("spaceKey", "SPACE-B");
+        payload2.put("sourceId", "SPACE-B");
         payload2.put("eventType", "item");
         payload2.put("maskedContent", "EncryptedContentB");
 
         ScanEventEntity event2 = ScanEventEntity.builder()
-            .scanId(scanId2).eventSeq(1L).spaceKey("SPACE-B").eventType("item")
-            .ts(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
+            .scanId(scanId2).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-B").eventType("item")
+            .ts(ts2).contentId("p2").contentTitle("Page 2").payload(payload2).build();
         detectionEventRepository.save(event2);
 
         ScanCheckpoint cp2 = ScanCheckpoint.builder()
-            .scanId(scanId2).spaceKey("SPACE-B").scanStatus(ScanStatus.COMPLETED)
+            .scanId(scanId2).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-B").scanStatus(ScanStatus.COMPLETED)
             .updatedAt(LocalDateTime.of(2024, 1, 2, 10, 0))
             .progressPercentage(100.0).build();
         scanCheckpointRepository.save(cp2);
 
         // DEBUG: Verify direct access
-        var itemsDirect = scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(scanId2, "SPACE-B");
+        var itemsDirect = scanResultQuery.listItemEventsEncryptedBySourceKey(scanId2, "SPACE-B");
         assertThat(itemsDirect).hasSize(1);
 
         // Act
-        List<ConfluenceContentScanResult> items = scanReportingUseCase.getGlobalScanItemsEncrypted();
+        List<ContentScanResult> items = scanReportingUseCase.getGlobalScanItemsEncrypted();
 
         // Assert
         assertThat(items)
@@ -496,12 +507,12 @@ class ScanReportingUseCaseTest {
                 // Should contain item from Scan 1 (Space A)
                 .anyMatch(i ->
                         i.scanId().equals(scanId1) &&
-                                i.spaceKey().equals("SPACE-A")
+                                i.sourceId().equals("SPACE-A")
                 )
                 // Should contain item from Scan 2 (Space B)
                 .anyMatch(i ->
                         i.scanId().equals(scanId2) &&
-                                i.spaceKey().equals("SPACE-B")
+                                i.sourceId().equals("SPACE-B")
                 );
     }
 }

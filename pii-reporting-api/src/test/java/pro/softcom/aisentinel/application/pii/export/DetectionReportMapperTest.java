@@ -7,7 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import pro.softcom.aisentinel.application.pii.export.dto.DetectionReportEntry;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 
 import java.util.List;
@@ -29,7 +29,7 @@ class DetectionReportMapperTest {
     @MethodSource("provideEmptyScenarios")
     @DisplayName("Should_ReturnEmptyList_When_NoEntitiesToMap")
     void Should_ReturnEmptyList_When_NoEntitiesToMap(
-        ConfluenceContentScanResult confluenceContentScanResult) {
+        ContentScanResult confluenceContentScanResult) {
         // Given (provided by parameter)
 
         // When
@@ -45,7 +45,7 @@ class DetectionReportMapperTest {
     void Should_MapSingleEntity_When_OneEntityDetected() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createPiiEntity("EMAIL", "Email", "john@example.com", 0.95);
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+        ContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
 
         // When
         List<DetectionReportEntry> result = mapper.toDetectionReportEntries(
@@ -62,7 +62,7 @@ class DetectionReportMapperTest {
     @DisplayName("Should_MapAllEntities_When_MultipleEntitiesDetected")
     void Should_MapAllEntities_When_MultipleEntitiesDetected(List<DetectedPersonallyIdentifiableInformation> entities, int expectedCount) {
         // Given
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(entities);
+        ContentScanResult confluenceContentScanResult = createScanResult(entities);
 
         // When
         List<DetectionReportEntry> result = mapper.toDetectionReportEntries(
@@ -77,7 +77,7 @@ class DetectionReportMapperTest {
     void Should_MapEntityFields_When_Mapping() {
         // Given
         DetectedPersonallyIdentifiableInformation entity = createPiiEntity("EMAIL", "Email Label", "masked@example.com", 0.92);
-        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+        ContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
 
         // When
         List<DetectionReportEntry> result = mapper.toDetectionReportEntries(
@@ -96,12 +96,12 @@ class DetectionReportMapperTest {
     @DisplayName("Should_MapScanResultMetadata_When_Mapping")
     void Should_MapScanResultMetadata_When_Mapping() {
         // Given
-        ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
+        ContentScanResult confluenceContentScanResult = ContentScanResult.builder()
                 .scanId("custom-scan-id")
-                .spaceKey("CUSTOM-KEY")
+                .sourceId("CUSTOM-KEY")
                 .emittedAt("2024-12-31T23:59:59Z")
-                .pageTitle("Custom Page")
-                .pageUrl("https://custom.com/page")
+                .contentTitle("Custom Page")
+                .contentUrl("https://custom.com/page")
                 .attachmentName("custom.doc")
                 .attachmentUrl("https://custom.com/att")
                 .detectedPIIList(List.of(createPiiEntity("EMAIL", "Email", "test@test.com", 0.9)))
@@ -121,11 +121,11 @@ class DetectionReportMapperTest {
 
     private static Stream<Arguments> provideEmptyScenarios() {
         return Stream.of(
-                Arguments.of((ConfluenceContentScanResult) null),
+                Arguments.of((ContentScanResult) null),
                 Arguments.of(
-                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIList(null).build()),
+                    ContentScanResult.builder().scanId("scan-123").sourceId("TEST").detectedPIIList(null).build()),
                 Arguments.of(
-                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIList(List.of()).build())
+                    ContentScanResult.builder().scanId("scan-123").sourceId("TEST").detectedPIIList(List.of()).build())
         );
     }
 
@@ -159,13 +159,13 @@ class DetectionReportMapperTest {
                 .build();
     }
 
-    private ConfluenceContentScanResult createScanResult(List<DetectedPersonallyIdentifiableInformation> entities) {
-        return ConfluenceContentScanResult.builder()
+    private ContentScanResult createScanResult(List<DetectedPersonallyIdentifiableInformation> entities) {
+        return ContentScanResult.builder()
                 .scanId("scan-123")
-                .spaceKey("TEST")
+                .sourceId("TEST")
                 .emittedAt("2024-01-15T10:00:00Z")
-                .pageTitle("Test Page")
-                .pageUrl("https://example.com/page")
+                .contentTitle("Test Page")
+                .contentUrl("https://example.com/page")
                 .attachmentName("doc.pdf")
                 .attachmentUrl("https://example.com/attachment")
                 .detectedPIIList(entities)

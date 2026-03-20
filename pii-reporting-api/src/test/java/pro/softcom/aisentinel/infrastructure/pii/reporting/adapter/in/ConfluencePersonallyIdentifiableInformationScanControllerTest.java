@@ -10,8 +10,8 @@ import org.springframework.http.codec.ServerSentEvent;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.PauseScanPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceResumeScanPort;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.StreamConfluenceScanUseCase;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper.ConfluenceContentScanResultToScanEventMapper;
 import reactor.core.publisher.Flux;
@@ -46,16 +46,16 @@ class ConfluencePersonallyIdentifiableInformationScanControllerTest {
     @DisplayName("streamSpaceScan - maps eventType to SSE event and preserves data")
     void streamSpaceScan_mapsEvents() {
         String spaceKey = "S1";
-        Flux<ConfluenceContentScanResult> events = Flux.just(
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.START.toJson()).build(),
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.PAGE_START.toJson()).build(),
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.ITEM.toJson()).build(),
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.PAGE_COMPLETE.toJson()).build(),
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.COMPLETE.toJson()).build()
+        Flux<ContentScanResult> events = Flux.just(
+            ContentScanResult.builder().eventType(ScanEventType.START.toJson()).build(),
+            ContentScanResult.builder().eventType(ScanEventType.PAGE_START.toJson()).build(),
+            ContentScanResult.builder().eventType(ScanEventType.ITEM.toJson()).build(),
+            ContentScanResult.builder().eventType(ScanEventType.PAGE_COMPLETE.toJson()).build(),
+            ContentScanResult.builder().eventType(ScanEventType.COMPLETE.toJson()).build()
         );
         when(streamConfluenceScanUseCase.streamSpace(anyString())).thenReturn(events);
 
-        Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> flux = controller.streamSpaceScan(spaceKey)
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamSpaceScan(spaceKey)
                 .filter(sse -> List.of(ScanEventType.START.toJson(),ScanEventType.PAGE_START.toJson(),ScanEventType.ITEM.toJson(),ScanEventType.PAGE_COMPLETE.toJson(),ScanEventType.COMPLETE.toJson()).contains(sse.event()))
                 .take(5)
                 .timeout(Duration.ofSeconds(5));
@@ -73,10 +73,10 @@ class ConfluencePersonallyIdentifiableInformationScanControllerTest {
     @DisplayName("streamSpaceScan - space not found emits error")
     void streamSpaceScan_spaceNotFound() {
         when(streamConfluenceScanUseCase.streamSpace("MISS")).thenReturn(Flux.just(
-            ConfluenceContentScanResult.builder().spaceKey("MISS").eventType(ScanEventType.ERROR.toJson()).message("Espace non trouvé").build()
+            ContentScanResult.builder().sourceId("MISS").eventType(ScanEventType.ERROR.toJson()).message("Espace non trouvé").build()
         ));
 
-        Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> flux = controller.streamSpaceScan("MISS")
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamSpaceScan("MISS")
                 .filter(sse -> ScanEventType.ERROR.toJson().equals(sse.event()))
                 .take(1)
                 .timeout(Duration.ofSeconds(3));
@@ -94,11 +94,11 @@ class ConfluencePersonallyIdentifiableInformationScanControllerTest {
     @DisplayName("streamAllSpacesScan - no spaces emits error then multi_complete")
     void streamAllSpacesScan_noSpaces() {
         when(streamConfluenceScanUseCase.streamAllSpaces()).thenReturn(Flux.just(
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.ERROR.toJson()).build(),
-            ConfluenceContentScanResult.builder().eventType(ScanEventType.MULTI_COMPLETE.toJson()).build()
+            ContentScanResult.builder().eventType(ScanEventType.ERROR.toJson()).build(),
+            ContentScanResult.builder().eventType(ScanEventType.MULTI_COMPLETE.toJson()).build()
         ));
 
-        Flux<ServerSentEvent<@NonNull ConfluenceContentScanResultEventDto>> flux = controller.streamAllSpacesScan(null)
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllSpacesScan(null)
                 .filter(sse -> List.of(ScanEventType.ERROR.toJson(),ScanEventType.MULTI_COMPLETE.toJson()).contains(sse.event()))
                 .take(2)
                 .timeout(Duration.ofSeconds(5));

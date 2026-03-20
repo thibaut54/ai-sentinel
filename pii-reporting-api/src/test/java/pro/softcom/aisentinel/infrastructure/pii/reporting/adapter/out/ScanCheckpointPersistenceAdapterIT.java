@@ -14,6 +14,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionCheckpointRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanCheckpointEntity;
@@ -66,8 +67,9 @@ class ScanCheckpointPersistenceAdapterIT {
         var ts = LocalDateTime.of(2024, 1, 1, 12, 0, 0);
         var cp = ScanCheckpoint.builder()
             .scanId("scan-10")
-            .spaceKey("SPACE-A")
-            .lastProcessedPageId("p1")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-A")
+            .lastProcessedContentId("p1")
             .lastProcessedAttachmentName("a1")
             .scanStatus(ScanStatus.RUNNING)
             .updatedAt(ts)
@@ -75,13 +77,14 @@ class ScanCheckpointPersistenceAdapterIT {
 
         scanCheckpointPersistenceAdapter.save(cp);
 
-        var saved = jpaRepository.findByScanIdAndSpaceKey("scan-10", "SPACE-A");
+        var saved = jpaRepository.findByScanIdAndSourceTypeAndSourceKey("scan-10", "CONFLUENCE", "SPACE-A");
         assertThat(saved).isPresent();
         var e = saved.orElseThrow();
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(e.getScanId()).isEqualTo("scan-10");
-        softly.assertThat(e.getSpaceKey()).isEqualTo("SPACE-A");
-        softly.assertThat(e.getLastProcessedPageId()).isEqualTo("p1");
+        softly.assertThat(e.getSourceType()).isEqualTo("CONFLUENCE");
+        softly.assertThat(e.getSourceKey()).isEqualTo("SPACE-A");
+        softly.assertThat(e.getLastProcessedContentId()).isEqualTo("p1");
         softly.assertThat(e.getLastProcessedAttachmentName()).isEqualTo("a1");
         softly.assertThat(e.getStatus()).isEqualTo("RUNNING");
         softly.assertThat(e.getUpdatedAt()).isEqualTo(ts);
@@ -93,8 +96,9 @@ class ScanCheckpointPersistenceAdapterIT {
         // seed existing entity with both fields set
         var base = ScanCheckpointEntity.builder()
             .scanId("scan-11")
-            .spaceKey("SPACE-A")
-            .lastProcessedPageId("p-last")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-A")
+            .lastProcessedContentId("p-last")
             .lastProcessedAttachmentName("a-last")
             .status("COMPLETED")
             .updatedAt(LocalDateTime.of(2024, 1, 1, 10, 0))
@@ -105,8 +109,9 @@ class ScanCheckpointPersistenceAdapterIT {
         // now save a checkpoint with null last* fields => they must be preserved (merge semantics)
         var incoming = ScanCheckpoint.builder()
             .scanId("scan-11")
-            .spaceKey("SPACE-A")
-            .lastProcessedPageId(null)
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE-A")
+            .lastProcessedContentId(null)
             .lastProcessedAttachmentName(null)
             .scanStatus(ScanStatus.FAILED)
             .updatedAt(LocalDateTime.of(2024, 1, 1, 11, 0))
@@ -114,9 +119,9 @@ class ScanCheckpointPersistenceAdapterIT {
 
         scanCheckpointPersistenceAdapter.save(incoming);
 
-        var after = jpaRepository.findByScanIdAndSpaceKey("scan-11", "SPACE-A").orElseThrow();
+        var after = jpaRepository.findByScanIdAndSourceTypeAndSourceKey("scan-11", "CONFLUENCE", "SPACE-A").orElseThrow();
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(after.getLastProcessedPageId()).isEqualTo("p-last");
+        softly.assertThat(after.getLastProcessedContentId()).isEqualTo("p-last");
         softly.assertThat(after.getLastProcessedAttachmentName()).isEqualTo("a-last");
         // status updated to latest
         softly.assertThat(after.getStatus()).isEqualTo("FAILED");
@@ -125,11 +130,12 @@ class ScanCheckpointPersistenceAdapterIT {
     }
 
     @Test
-    void Should_FindByScanAndSpace_ReturnDomain_When_Existing() {
+    void Should_FindByScanAndSource_ReturnDomain_When_Existing() {
         var entity = ScanCheckpointEntity.builder()
             .scanId("scan-12")
-            .spaceKey("SPACE-B")
-            .lastProcessedPageId("p-1")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-B")
+            .lastProcessedContentId("p-1")
             .lastProcessedAttachmentName("a-1")
             .status("COMPLETED")
             .updatedAt(LocalDateTime.of(2024, 2, 1, 9, 0))
@@ -137,13 +143,13 @@ class ScanCheckpointPersistenceAdapterIT {
         em.persist(entity);
         em.flush();
 
-        var opt = scanCheckpointPersistenceAdapter.findByScanAndSpace("scan-12", "SPACE-B");
+        var opt = scanCheckpointPersistenceAdapter.findByScanAndSource("scan-12", SourceType.CONFLUENCE, "SPACE-B");
         assertThat(opt).isPresent();
         var cp = opt.orElseThrow();
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(cp.scanId()).isEqualTo("scan-12");
-        softly.assertThat(cp.spaceKey()).isEqualTo("SPACE-B");
-        softly.assertThat(cp.lastProcessedPageId()).isEqualTo("p-1");
+        softly.assertThat(cp.sourceKey()).isEqualTo("SPACE-B");
+        softly.assertThat(cp.lastProcessedContentId()).isEqualTo("p-1");
         softly.assertThat(cp.lastProcessedAttachmentName()).isEqualTo("a-1");
         softly.assertThat(cp.scanStatus()).isEqualTo(ScanStatus.COMPLETED);
         softly.assertAll();
@@ -153,13 +159,15 @@ class ScanCheckpointPersistenceAdapterIT {
     void Should_FindByScan_ReturnOrderedList_When_Existing() {
         var e1 = ScanCheckpointEntity.builder()
             .scanId("scan-13")
-            .spaceKey("A")
+            .sourceType("CONFLUENCE")
+            .sourceKey("A")
             .status("COMPLETED")
             .updatedAt(LocalDateTime.now().minusMinutes(2))
             .build();
         var e2 = ScanCheckpointEntity.builder()
             .scanId("scan-13")
-            .spaceKey("B")
+            .sourceType("CONFLUENCE")
+            .sourceKey("B")
             .status("FAILED")
             .updatedAt(LocalDateTime.now())
             .build();
@@ -170,25 +178,27 @@ class ScanCheckpointPersistenceAdapterIT {
         var list = scanCheckpointPersistenceAdapter.findByScan("scan-13");
         assertThat(list).hasSize(2);
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(list.get(0).spaceKey()).isEqualTo("A");
+        softly.assertThat(list.get(0).sourceKey()).isEqualTo("A");
         softly.assertThat(list.get(0).scanStatus()).isEqualTo(ScanStatus.COMPLETED);
-        softly.assertThat(list.get(1).spaceKey()).isEqualTo("B");
+        softly.assertThat(list.get(1).sourceKey()).isEqualTo("B");
         softly.assertThat(list.get(1).scanStatus()).isEqualTo(ScanStatus.FAILED);
         softly.assertAll();
     }
 
     @Test
-    void Should_FindBySpace_ReturnOrderedList_When_Existing() {
+    void Should_FindBySource_ReturnOrderedList_When_Existing() {
         var now = LocalDateTime.now();
         var older = ScanCheckpointEntity.builder()
             .scanId("scan-14-1")
-            .spaceKey("SPACE-C")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-C")
             .status("RUNNING")
             .updatedAt(now.minusMinutes(10))
             .build();
         var newer = ScanCheckpointEntity.builder()
             .scanId("scan-14-2")
-            .spaceKey("SPACE-C")
+            .sourceType("CONFLUENCE")
+            .sourceKey("SPACE-C")
             .status("FAILED")
             .updatedAt(now)
             .build();
@@ -196,16 +206,16 @@ class ScanCheckpointPersistenceAdapterIT {
         em.persist(newer);
         em.flush();
 
-        var list = scanCheckpointPersistenceAdapter.findBySpace("SPACE-C");
+        var list = scanCheckpointPersistenceAdapter.findBySource(SourceType.CONFLUENCE, "SPACE-C");
         assertThat(list).extracting(ScanCheckpoint::scanId).isEqualTo(List.of("scan-14-2", "scan-14-1"));
         assertThat(list).extracting(ScanCheckpoint::scanStatus).containsExactly(ScanStatus.FAILED, ScanStatus.RUNNING);
     }
 
     @Test
     void Should_DeleteByScan_RemoveAllRows_When_ScanIdExists() {
-        var e1 = ScanCheckpointEntity.builder().scanId("scan-15").spaceKey("A").status("RUNNING").updatedAt(LocalDateTime.now()).build();
-        var e2 = ScanCheckpointEntity.builder().scanId("scan-15").spaceKey("B").status("RUNNING").updatedAt(LocalDateTime.now()).build();
-        var eOther = ScanCheckpointEntity.builder().scanId("other").spaceKey("C").status("RUNNING").updatedAt(LocalDateTime.now()).build();
+        var e1 = ScanCheckpointEntity.builder().scanId("scan-15").sourceType("CONFLUENCE").sourceKey("A").status("RUNNING").updatedAt(LocalDateTime.now()).build();
+        var e2 = ScanCheckpointEntity.builder().scanId("scan-15").sourceType("CONFLUENCE").sourceKey("B").status("RUNNING").updatedAt(LocalDateTime.now()).build();
+        var eOther = ScanCheckpointEntity.builder().scanId("other").sourceType("CONFLUENCE").sourceKey("C").status("RUNNING").updatedAt(LocalDateTime.now()).build();
         em.persist(e1);
         em.persist(e2);
         em.persist(eOther);
@@ -213,8 +223,8 @@ class ScanCheckpointPersistenceAdapterIT {
 
         scanCheckpointPersistenceAdapter.deleteByScan("scan-15");
 
-        var remainingForScan = jpaRepository.findByScanIdOrderBySpaceKey("scan-15");
-        var remainingOthers = jpaRepository.findByScanIdOrderBySpaceKey("other");
+        var remainingForScan = jpaRepository.findByScanIdOrderBySourceKey("scan-15");
+        var remainingOthers = jpaRepository.findByScanIdOrderBySourceKey("other");
         assertThat(remainingForScan).isEmpty();
         assertThat(remainingOthers).hasSize(1);
     }

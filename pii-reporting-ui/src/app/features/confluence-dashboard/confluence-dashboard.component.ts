@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, EventEmitter, inject, OnDestroy, OnInit, Output, signal } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    DestroyRef,
+    inject,
+    OnDestroy,
+    OnInit,
+    signal
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -6,7 +16,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { PiiPageCardComponent } from '../pii-page-card/pii-page-card.component';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToggleButtonModule } from 'primeng/togglebutton';
-import { BadgeModule } from 'primeng/badge';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -16,11 +25,14 @@ import { Ripple } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ScanProgressBarComponent } from '../../shared/components/scan-progress-bar/scan-progress-bar.component';
+import { PiiHelpDialogComponent } from '../../shared/components/pii-help-dialog/pii-help-dialog.component';
+import { PiiSeverityBadgesComponent } from '../../shared/components/pii-severity-badges/pii-severity-badges.component';
 import { SortEvent } from 'primeng/api';
 import { TestIds } from '../test-ids.constants';
-import { DialogModule } from 'primeng/dialog';
 import { NewSpacesBannerComponent } from '../../shared/components/new-spaces-banner/new-spaces-banner.component';
-import { ConfluenceConfigBannerComponent } from '../../shared/components/confluence-config-banner/confluence-config-banner.component';
+import {
+    ConfluenceConfigBannerComponent
+} from '../../shared/components/confluence-config-banner/confluence-config-banner.component';
 import { ConfluenceConnectionConfigService } from '../../core/services/confluence-connection-config.service';
 import { SpaceFilteringService } from './services/space-filtering.service';
 import { DashboardUiStateService } from './services/dashboard-ui-state.service';
@@ -29,6 +41,7 @@ import { SpaceDataManagementService } from './services/space-data-management.ser
 import { ScanControlService } from './services/scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
+import { SettingsDialogService } from '../../core/services/settings-dialog.service';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -46,7 +59,6 @@ import { SeverityCounts } from '../../core/models/severity-counts';
         ToggleSwitchModule,
         ToggleButtonModule,
         PiiPageCardComponent,
-        BadgeModule,
         InputTextModule,
         SelectModule,
         TableModule,
@@ -54,12 +66,13 @@ import { SeverityCounts } from '../../core/models/severity-counts';
         Ripple,
         TooltipModule,
         SkeletonModule,
-        DialogModule,
         TranslocoModule,
         NewSpacesBannerComponent,
         ConfluenceConfigBannerComponent,
         ScanProgressBarComponent,
-        SeverityCardsComponent
+        SeverityCardsComponent,
+        PiiHelpDialogComponent,
+        PiiSeverityBadgesComponent
     ],
   templateUrl: './confluence-dashboard.component.html',
   styleUrl: './confluence-dashboard.component.css',
@@ -73,12 +86,11 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   private readonly dataManagement = inject(SpaceDataManagementService);
   private readonly scanControl = inject(ScanControlService);
   private readonly confluenceConfigService = inject(ConfluenceConnectionConfigService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly settingsDialog = inject(SettingsDialogService);
 
   // Utility services
   readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
-
-  // Output to request settings dialog from parent (AppShellComponent)
-  @Output() openSettings = new EventEmitter<number>();
 
   // Expose test IDs to template for E2E testing
   readonly testIds = TestIds.dashboard;
@@ -160,7 +172,6 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    // Check if Confluence connection is configured before loading data
     this.confluenceConfigService.getConfig().subscribe({
       next: (config) => {
         if (!config.configured) {
@@ -173,6 +184,15 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
       error: () => {
         this.confluenceConfigMissing.set(true);
         this.dataManagement.isSpacesLoading.set(false);
+      }
+    });
+
+    this.confluenceConfigService.configSaved$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.confluenceConfigMissing.set(false);
+      if (this.spaces().length === 0) {
+        this.initializeDataLoading();
       }
     });
   }
@@ -302,7 +322,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   }
 
   requestOpenSettings(tab: number = 0): void {
-    this.openSettings.emit(tab);
+    this.settingsDialog.open(tab);
   }
 
   dismissConfluenceConfigBanner(): void {

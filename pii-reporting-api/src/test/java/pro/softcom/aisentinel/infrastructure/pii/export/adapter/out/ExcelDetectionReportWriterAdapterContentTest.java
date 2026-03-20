@@ -15,6 +15,7 @@ import pro.softcom.aisentinel.application.pii.export.dto.DetectionReportEntry;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.domain.pii.export.DataSourceContact;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -251,8 +252,8 @@ class ExcelDetectionReportWriterAdapterContentTest {
             session.finishReport();
         }
 
-        // Then
-        assertThat(nonExistentDir).exists().isDirectory();
+        // Then — the source type subdirectory is created inside the export directory
+        assertThat(nonExistentDir.resolve("confluence")).exists().isDirectory();
     }
 
     private ExportContext createExportContext(List<DataSourceContact> contacts) {
@@ -260,6 +261,7 @@ class ExcelDetectionReportWriterAdapterContentTest {
                 .reportName("Test Space")
                 .reportIdentifier("TEST")
                 .sourceUrl("https://example.com/space/TEST")
+                .sourceType(SourceType.CONFLUENCE)
                 .contacts(contacts)
                 .additionalMetadata(Map.of())
                 .build();
@@ -282,7 +284,7 @@ class ExcelDetectionReportWriterAdapterContentTest {
     }
 
     private Workbook openWorkbook() throws IOException {
-        try (var filesStream = Files.list(tempDir)) {
+        try (var filesStream = Files.walk(tempDir)) {
             List<Path> files = filesStream.filter(p -> p.toString().endsWith(".xlsx")).toList();
             assertThat(files).hasSize(1);
             return new XSSFWorkbook(new FileInputStream(files.get(0).toFile()));

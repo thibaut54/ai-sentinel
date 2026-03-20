@@ -4,10 +4,10 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 
 import java.util.List;
@@ -30,20 +30,20 @@ class ConfluenceContentScanResultToScanEventMapperTest {
         // Arrange
         Map<String, Integer> summary = Map.of("EMAIL", 2, "PHONE", 1);
         List<DetectedPersonallyIdentifiableInformation> entities = List.of(entity());
-        ConfluenceContentScanResult sr = ConfluenceContentScanResult.builder()
+        ContentScanResult sr = ContentScanResult.builder()
                 .scanId("sid")
-                .spaceKey("space")
+                .sourceId("space")
                 .eventType(ScanEventType.START.toJson())
                 .isFinal(false)
-                .pagesTotal(10)
-                .pageIndex(3)
-                .pageId("pid")
-                .pageTitle("Title")
+                .contentTotal(10)
+                .contentIndex(3)
+                .contentId("pid")
+                .contentTitle("Title")
                 .detectedPIIList(entities)
                 .nbOfDetectedPIIBySeverity(summary)
                 .sourceContent("abc")
                 .message("msg")
-                .pageUrl("url")
+                .contentUrl("url")
                 .emittedAt("emittedAt")
                 .attachmentName("attName")
                 .attachmentType("attType")
@@ -52,7 +52,7 @@ class ConfluenceContentScanResultToScanEventMapperTest {
                 .build();
 
         // Act
-        ConfluenceContentScanResultEventDto dto = mapper.toDto(sr);
+        ContentScanResultEventDto dto = mapper.toDto(sr);
 
         // Assert (soft)
         SoftAssertions softly = new SoftAssertions();

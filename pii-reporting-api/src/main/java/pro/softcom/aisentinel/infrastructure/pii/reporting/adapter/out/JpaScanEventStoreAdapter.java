@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
 import pro.softcom.aisentinel.application.pii.reporting.service.PiiContextExtractor;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanEventEntity;
 
@@ -36,37 +37,39 @@ public class JpaScanEventStoreAdapter implements ScanEventStore {
     private final ConcurrentHashMap<String, AtomicLong> sequences = new ConcurrentHashMap<>();
 
     /**
-     * Append an event to the event store. Best-effort: logs on failure but does not throw.
+     * Append an event to the event store with its source type discriminator.
+     * Best-effort: logs on failure but does not throw.
      */
     @Override
-    public void append(ConfluenceContentScanResult confluenceContentScanResult) {
+    public void append(ContentScanResult result, SourceType sourceType) {
         try {
-            Objects.requireNonNull(confluenceContentScanResult, "scanResult cannot be null");
-            if (StringUtils.isBlank(confluenceContentScanResult.scanId())) {
+            Objects.requireNonNull(result, "scanResult cannot be null");
+            if (StringUtils.isBlank(result.scanId())) {
                 throw new IllegalArgumentException("scanId cannot be blank");
             }
-            if (StringUtils.isBlank(confluenceContentScanResult.eventType())) {
+            if (StringUtils.isBlank(result.eventType())) {
                 throw new IllegalArgumentException("eventType cannot be blank");
             }
 
-            ConfluenceContentScanResult encryptedResult = scanResultEncryptor.encrypt(
-                confluenceContentScanResult);
+            ContentScanResult encryptedResult = scanResultEncryptor.encrypt(
+                result);
             JsonNode payload = objectMapper.valueToTree(encryptedResult);
 
-            String scanId = confluenceContentScanResult.scanId();
+            String scanId = result.scanId();
             long seq = nextSeq(scanId);
-            Instant scanRecordedAt = parseInstant(confluenceContentScanResult.emittedAt());
+            Instant scanRecordedAt = parseInstant(result.emittedAt());
 
             ScanEventEntity entity = ScanEventEntity.builder()
                     .scanId(scanId)
                     .eventSeq(seq)
-                    .spaceKey(confluenceContentScanResult.spaceKey())
-                    .eventType(confluenceContentScanResult.eventType())
+                    .sourceType(sourceType != null ? sourceType.name() : null)
+                    .sourceKey(result.sourceId())
+                    .eventType(result.eventType())
                     .ts(scanRecordedAt != null ? scanRecordedAt : Instant.now())
-                    .pageId(confluenceContentScanResult.pageId())
-                    .pageTitle(confluenceContentScanResult.pageTitle())
-                    .attachmentName(confluenceContentScanResult.attachmentName())
-                    .attachmentType(confluenceContentScanResult.attachmentType())
+                    .contentId(result.contentId())
+                    .contentTitle(result.contentTitle())
+                    .attachmentName(result.attachmentName())
+                    .attachmentType(result.attachmentType())
                     .payload(payload)
                     .build();
 

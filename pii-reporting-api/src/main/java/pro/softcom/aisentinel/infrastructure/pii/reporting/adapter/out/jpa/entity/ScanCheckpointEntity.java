@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * JPA entity mapped to scan_checkpoints table.
- * Business note: represents the fine-grained resume cursor per scan & space.
+ * Business note: represents the fine-grained resume cursor per scan, source type and source key.
  */
 @Getter
 @Setter
@@ -27,11 +27,15 @@ public class ScanCheckpointEntity {
     private Long version;
 
     @Id
-    @Column(name = "space_key", nullable = false)
-    private String spaceKey;
+    @Column(name = "source_type", nullable = false)
+    private String sourceType;
 
-    @Column(name = "last_processed_page_id")
-    private String lastProcessedPageId;
+    @Id
+    @Column(name = "source_key", nullable = false)
+    private String sourceKey;
+
+    @Column(name = "last_processed_content_id")
+    private String lastProcessedContentId;
 
     @Column(name = "last_processed_attachment_name")
     private String lastProcessedAttachmentName;

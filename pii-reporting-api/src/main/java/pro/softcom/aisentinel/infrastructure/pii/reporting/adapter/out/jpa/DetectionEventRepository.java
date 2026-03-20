@@ -18,21 +18,21 @@ public interface DetectionEventRepository extends
     @Query("select coalesce(max(e.eventSeq),0) from ScanEventEntity e where e.scanId = :scanId")
     long findMaxEventSeqByScanId(@Param("scanId") String scanId);
 
-    @Query("select count(distinct e.spaceKey) from ScanEventEntity e where e.scanId = :scanId")
-    int countDistinctSpaceKeyByScanId(@Param("scanId") String scanId);
+    @Query("select count(distinct e.sourceKey) from ScanEventEntity e where e.scanId = :scanId")
+    int countDistinctSourceKeyByScanId(@Param("scanId") String scanId);
 
     interface SpaceCountersProjection {
-        String getSpaceKey();
+        String getSourceKey();
         long getPagesDone();
         long getAttachmentsDone();
         Instant getLastEventTs();
     }
 
-    @Query("select e.spaceKey as spaceKey, " +
+    @Query("select e.sourceKey as sourceKey, " +
         "sum(case when e.eventType = 'pageComplete' then 1 else 0 end) as pagesDone, " +
         "sum(case when e.eventType = 'attachmentItem' then 1 else 0 end) as attachmentsDone, " +
         "max(e.ts) as lastEventTs " +
-        "from ScanEventEntity e where e.scanId = :scanId group by e.spaceKey")
+        "from ScanEventEntity e where e.scanId = :scanId group by e.sourceKey")
     List<SpaceCountersProjection> aggregateSpaceCounters(@Param("scanId") String scanId);
 
     interface LatestScanProjection {
@@ -46,11 +46,11 @@ public interface DetectionEventRepository extends
 
     List<ScanEventEntity> findByScanIdAndEventTypeInOrderByEventSeqAsc(String scanId, Collection<String> eventTypes);
 
-    List<ScanEventEntity> findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(
-            String scanId, String pageId, Collection<String> eventTypes
+    List<ScanEventEntity> findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(
+            String scanId, String contentId, Collection<String> eventTypes
     );
 
-    List<ScanEventEntity> findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(
-            String scanId, String spaceKey, Collection<String> eventTypes
+    List<ScanEventEntity> findByScanIdAndSourceKeyAndEventTypeInOrderByEventSeqAsc(
+            String scanId, String sourceKey, Collection<String> eventTypes
     );
 }

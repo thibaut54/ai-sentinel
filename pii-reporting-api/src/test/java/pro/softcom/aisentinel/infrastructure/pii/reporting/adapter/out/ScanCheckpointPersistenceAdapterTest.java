@@ -6,6 +6,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionCheckpointRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanCheckpointEntity;
@@ -35,8 +36,9 @@ class ScanCheckpointPersistenceAdapterTest {
         Double expectedProgress = 75.5;
         ScanCheckpoint checkpoint = ScanCheckpoint.builder()
             .scanId("scan-123")
-            .spaceKey("SPACE")
-            .lastProcessedPageId("page-1")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE")
+            .lastProcessedContentId("page-1")
             .lastProcessedAttachmentName("attachment-1")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(expectedProgress)
@@ -49,6 +51,7 @@ class ScanCheckpointPersistenceAdapterTest {
         // Then
         verify(jpaRepository).upsertCheckpoint(
             eq("scan-123"),
+            eq("CONFLUENCE"),
             eq("SPACE"),
             eq("page-1"),
             eq("attachment-1"),
@@ -64,19 +67,20 @@ class ScanCheckpointPersistenceAdapterTest {
         Double expectedProgress = 42.8;
         ScanCheckpointEntity entity = ScanCheckpointEntity.builder()
             .scanId("scan-456")
-            .spaceKey("MYSPACE")
-            .lastProcessedPageId("page-5")
+            .sourceType("CONFLUENCE")
+            .sourceKey("MYSPACE")
+            .lastProcessedContentId("page-5")
             .lastProcessedAttachmentName("file.pdf")
             .status("COMPLETED")
             .progressPercentage(expectedProgress)
             .updatedAt(LocalDateTime.now())
             .build();
 
-        when(jpaRepository.findByScanIdAndSpaceKey("scan-456", "MYSPACE"))
+        when(jpaRepository.findByScanIdAndSourceTypeAndSourceKey("scan-456", "CONFLUENCE", "MYSPACE"))
             .thenReturn(Optional.of(entity));
 
         // When
-        Optional<ScanCheckpoint> result = adapter.findByScanAndSpace("scan-456", "MYSPACE");
+        Optional<ScanCheckpoint> result = adapter.findByScanAndSource("scan-456", SourceType.CONFLUENCE, "MYSPACE");
 
         // Then
         assertThat(result).isPresent();
@@ -88,18 +92,19 @@ class ScanCheckpointPersistenceAdapterTest {
         // Given
         ScanCheckpointEntity entity = ScanCheckpointEntity.builder()
             .scanId("scan-789")
-            .spaceKey("TESTSPACE")
-            .lastProcessedPageId("page-10")
+            .sourceType("CONFLUENCE")
+            .sourceKey("TESTSPACE")
+            .lastProcessedContentId("page-10")
             .status("RUNNING")
             .progressPercentage(null)
             .updatedAt(LocalDateTime.now())
             .build();
 
-        when(jpaRepository.findByScanIdAndSpaceKey("scan-789", "TESTSPACE"))
+        when(jpaRepository.findByScanIdAndSourceTypeAndSourceKey("scan-789", "CONFLUENCE", "TESTSPACE"))
             .thenReturn(Optional.of(entity));
 
         // When
-        Optional<ScanCheckpoint> result = adapter.findByScanAndSpace("scan-789", "TESTSPACE");
+        Optional<ScanCheckpoint> result = adapter.findByScanAndSource("scan-789", SourceType.CONFLUENCE, "TESTSPACE");
 
         // Then
         assertThat(result).isPresent();
@@ -118,6 +123,7 @@ class ScanCheckpointPersistenceAdapterTest {
             anyString(),
             anyString(),
             anyString(),
+            anyString(),
             any(),
             any(LocalDateTime.class)
         );
@@ -128,7 +134,8 @@ class ScanCheckpointPersistenceAdapterTest {
         // Given
         ScanCheckpoint checkpoint = ScanCheckpoint.builder()
             .scanId("")
-            .spaceKey("SPACE")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey("SPACE")
             .scanStatus(ScanStatus.RUNNING)
             .progressPercentage(50.0)
             .build();
@@ -138,6 +145,7 @@ class ScanCheckpointPersistenceAdapterTest {
 
         // Then
         verify(jpaRepository, org.mockito.Mockito.never()).upsertCheckpoint(
+            anyString(),
             anyString(),
             anyString(),
             anyString(),

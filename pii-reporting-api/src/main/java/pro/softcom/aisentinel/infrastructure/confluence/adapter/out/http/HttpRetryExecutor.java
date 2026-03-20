@@ -24,22 +24,29 @@ public class HttpRetryExecutor {
     }
 
     /**
-     * Exécute une requête HTTP avec retry automatique.
+     * Exécute une requête HTTP avec retry automatique (réponse String).
      */
     public CompletableFuture<HttpResponse<String>> executeRequest(HttpRequest request) {
-        return executeRequestWithRetry(request, maxRetries);
+        return executeRequest(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    private CompletableFuture<HttpResponse<String>> executeRequestWithRetry(HttpRequest request, int retriesLeft) {
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .thenCompose(response -> retryIfNeeded(response, request, retriesLeft));
+    /**
+     * Exécute une requête HTTP avec retry automatique et body handler personnalisé.
+     */
+    public <T> CompletableFuture<HttpResponse<T>> executeRequest(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) {
+        return executeRequestWithRetry(request, bodyHandler, maxRetries);
     }
 
-    private CompletableFuture<HttpResponse<String>> retryIfNeeded(
-        HttpResponse<String> response, HttpRequest request, int retriesLeft) {
-        
+    private <T> CompletableFuture<HttpResponse<T>> executeRequestWithRetry(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, int retriesLeft) {
+        return httpClient.sendAsync(request, bodyHandler)
+            .thenCompose(response -> retryIfNeeded(response, request, bodyHandler, retriesLeft));
+    }
+
+    private <T> CompletableFuture<HttpResponse<T>> retryIfNeeded(
+        HttpResponse<T> response, HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, int retriesLeft) {
+
         if (shouldRetryRequest(response.statusCode()) && retriesLeft > 0) {
-            return retryAfterDelay(request, retriesLeft);
+            return retryAfterDelay(request, bodyHandler, retriesLeft);
         }
         return CompletableFuture.completedFuture(response);
     }
@@ -48,13 +55,13 @@ public class HttpRetryExecutor {
         return statusCode >= 500 || statusCode == 429;
     }
 
-    private CompletableFuture<HttpResponse<String>> retryAfterDelay(HttpRequest request, int retriesLeft) {
+    private <T> CompletableFuture<HttpResponse<T>> retryAfterDelay(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler, int retriesLeft) {
         var delay = calculateRetryDelay(maxRetries - retriesLeft);
         log.warn("Retry de la requête après {} ms, tentatives restantes: {}", delay, retriesLeft);
-        
+
         var delayedExecutor = CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS);
         return CompletableFuture.runAsync(() -> {}, delayedExecutor)
-            .thenCompose(_ -> executeRequestWithRetry(request, retriesLeft - 1));
+            .thenCompose(ignored -> executeRequestWithRetry(request, bodyHandler, retriesLeft - 1));
     }
 
     private long calculateRetryDelay(int attemptNumber) {

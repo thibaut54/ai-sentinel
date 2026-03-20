@@ -1,4 +1,16 @@
-import { Component, computed, EventEmitter, Input, OnChanges, OnInit, Output, SecurityContext, signal, SimpleChanges, viewChild } from '@angular/core';
+import {
+    Component,
+    computed,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnInit,
+    Output,
+    SecurityContext,
+    signal,
+    SimpleChanges,
+    viewChild
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -33,6 +45,8 @@ import {
 } from '../../core/models/pii-detection-config.model';
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
+import { JiraSettingsComponent } from '../jira-settings/jira-settings.component';
+import { SharePointSettingsComponent } from '../sharepoint-settings/sharepoint-settings.component';
 
 type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
 
@@ -62,7 +76,9 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
         SelectModule,
         ConfirmDialogModule,
         DialogModule,
-        ConfluenceSettingsComponent
+        ConfluenceSettingsComponent,
+        JiraSettingsComponent,
+        SharePointSettingsComponent
     ],
   providers: [MessageService, ConfirmationService]
 })
@@ -91,6 +107,8 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
   @Output() settingsSaved = new EventEmitter<void>();
 
   readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
+  readonly jiraSettings = viewChild(JiraSettingsComponent);
+  readonly sharePointSettings = viewChild(SharePointSettingsComponent);
 
   configForm!: FormGroup;
   loading = signal(false);
@@ -612,8 +630,10 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
     const hasDetectorChanges = this.configForm.dirty;
     const hasTypeChanges = this.hasUnsavedTypeChanges();
     const hasConfluenceChanges = this.confluenceSettings()?.hasUnsavedChanges ?? false;
+    const hasJiraChanges = this.jiraSettings()?.hasUnsavedChanges ?? false;
+    const hasSharePointChanges = this.sharePointSettings()?.hasUnsavedChanges ?? false;
 
-    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges) {
+    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges && !hasJiraChanges && !hasSharePointChanges) {
       return;
     }
 
@@ -621,12 +641,20 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       this.confluenceSettings()!.onSave();
     }
 
-    // If only Confluence changed, it handles its own saving signal — nothing else to do
-    if (!hasDetectorChanges && !hasTypeChanges) {
-      return;
+      // If only Confluence changed, it handles its own saving signal — nothing else to do
+      if (!hasDetectorChanges && !hasTypeChanges) {
+          return;
+      }
+
+      this.saving.set(true);
+
+    if (hasJiraChanges) {
+      this.jiraSettings()!.onSave();
     }
 
-    this.saving.set(true);
+    if (hasSharePointChanges) {
+      this.sharePointSettings()!.onSave();
+    }
 
     const requests: Observable<any>[] = [];
     let detectorRequestIndex = -1;
@@ -649,15 +677,21 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       requests.push(this.configService.bulkUpdatePiiTypeConfigs(updates));
     }
 
+    // If only child components (Confluence/Jira) had changes, requests is empty.
+    // forkJoin([]) completes without emitting in RxJS 7+, so skip it.
+    if (requests.length === 0) {
+      return;
+    }
+
+    this.saving.set(true);
+
     forkJoin(requests).subscribe({
       next: (results) => {
-        // Update detector config if it was saved
         if (detectorRequestIndex >= 0 && results[detectorRequestIndex]) {
           this.currentConfig.set(results[detectorRequestIndex]);
           this.configForm.markAsPristine();
         }
 
-        // Update PII types if they were saved
         if (typesRequestIndex >= 0 && results[typesRequestIndex]) {
           const piiTypesResult = results[typesRequestIndex];
           piiTypesResult.forEach((config: PiiTypeConfig) => {
@@ -750,10 +784,12 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
     this.onResetDetectorConfig();
     this.onResetPiiTypes();
     this.confluenceSettings()?.onReset();
+    this.jiraSettings()?.onReset();
+    this.sharePointSettings()?.onReset();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false);
+    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false) || (this.jiraSettings()?.hasUnsavedChanges ?? false) || (this.sharePointSettings()?.hasUnsavedChanges ?? false);
   }
 
   get hasDetectorChanges(): boolean {

@@ -45,6 +45,16 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointReposi
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.ManageSharePointConnectionPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.SharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
+import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointClient;
+import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointConnectionConfigRepository;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointAccessor;
+import pro.softcom.aisentinel.application.sharepoint.service.SharePointTextExtractorPort;
+import pro.softcom.aisentinel.application.sharepoint.usecase.FetchSharePointContentUseCase;
+import pro.softcom.aisentinel.application.sharepoint.usecase.ManageSharePointConnectionUseCase;
+import pro.softcom.aisentinel.application.sharepoint.usecase.StreamSharePointScanUseCase;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceCloudHttpClientAdapter;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceDataCenterHttpClientAdapter;
@@ -88,9 +98,10 @@ public class ApplicationUseCasesConfig {
 
     @Bean
     public ScanEventFactory scanEventFactory(ConfluenceUrlProvider confluenceUrlProvider,
+                                             JiraUrlProvider jiraUrlProvider,
                                              PiiContextExtractor piiContextExtractor,
                                              SeverityCalculationService severityCalculationService) {
-        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        return new ScanEventFactory(confluenceUrlProvider, jiraUrlProvider, piiContextExtractor, severityCalculationService);
     }
 
     @Bean
@@ -292,6 +303,126 @@ public class ApplicationUseCasesConfig {
                 confluenceConnectionConfigRepository,
                 encryptionService,
                 () -> eventPublisher.publishEvent(new ConfluenceConfigUpdatedEvent(this))
+        );
+    }
+
+    @Bean
+    public StreamDatabaseScanPort streamDatabaseScanUseCase(
+            LoadContentPort loadContentPort,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            ScanTimeOutConfig scanTimeOutConfig) {
+        return new StreamDatabaseScanUseCase(
+                loadContentPort,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanTimeOutConfig
+        );
+    }
+
+    // ---- Jira beans ----
+
+    @Bean
+    public AdfContentParser adfContentParser() {
+        return new AdfContentParser();
+    }
+
+    @Bean
+    public JiraCloudHttpClientAdapter jiraCloudAdapter(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            ObjectMapper objectMapper,
+            AdfContentParser adfContentParser) {
+        return new JiraCloudHttpClientAdapter(config, objectMapper, adfContentParser);
+    }
+
+    @Bean
+    public JiraDataCenterHttpClientAdapter jiraDataCenterAdapter(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            ObjectMapper objectMapper) {
+        return new JiraDataCenterHttpClientAdapter(config, objectMapper);
+    }
+
+    @Bean
+    public JiraClient jiraClient(
+            @Qualifier("jiraConfig") JiraConnectionConfig config,
+            JiraCloudHttpClientAdapter cloudAdapter,
+            JiraDataCenterHttpClientAdapter dataCenterAdapter) {
+        return new DelegatingJiraClient(config, cloudAdapter, dataCenterAdapter);
+    }
+
+    @Bean
+    public JiraAccessor jiraAccessor(JiraClient jiraClient) {
+        return new JiraAccessor(jiraClient);
+    }
+
+    @Bean
+    public JiraProjectPort jiraProjectPort(JiraAccessor jiraAccessor) {
+        return new FetchJiraProjectUseCase(jiraAccessor);
+    }
+
+    @Bean
+    public ManageJiraConnectionPort manageJiraConnectionPort(
+            JiraConnectionConfigRepository jiraConnectionConfigRepository,
+            EncryptionService encryptionService,
+            @Qualifier("jiraConfig") DatabaseBackedJiraConnectionConfig jiraConfig) {
+        return new ManageJiraConnectionUseCase(
+                jiraConnectionConfigRepository,
+                encryptionService,
+                jiraConfig::invalidateCache
+        );
+    }
+
+    @Bean
+    public StreamJiraScanPort streamJiraScanPort(
+            JiraAccessor jiraAccessor,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestrator) {
+        return new StreamJiraScanUseCase(
+                jiraAccessor,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanExecutionOrchestrator
+        );
+    }
+
+    // ---- SharePoint beans ----
+
+    @Bean
+    public SharePointScanPort sharePointScanPort(SharePointClient sharePointClient) {
+        return new FetchSharePointContentUseCase(sharePointClient);
+    }
+
+    @Bean
+    public SharePointAccessor sharePointAccessor(SharePointClient sharePointClient) {
+        return new SharePointAccessor(sharePointClient);
+    }
+
+    @Bean
+    public ManageSharePointConnectionPort manageSharePointConnectionPort(
+            SharePointConnectionConfigRepository sharePointConnectionConfigRepository,
+            EncryptionService encryptionService,
+            SharePointGraphClientHolder sharePointGraphClientHolder) {
+        return new ManageSharePointConnectionUseCase(
+                sharePointConnectionConfigRepository,
+                encryptionService,
+                sharePointGraphClientHolder::invalidate
+        );
+    }
+
+    @Bean
+    public StreamSharePointScanPort streamSharePointScanPort(
+            SharePointAccessor sharePointAccessor,
+            SharePointTextExtractorPort sharePointTextExtractor,
+            PiiDetectorClient piiDetectorClient,
+            ContentScanOrchestrator contentScanOrchestrator,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestrator) {
+        return new StreamSharePointScanUseCase(
+                sharePointAccessor,
+                sharePointTextExtractor,
+                piiDetectorClient,
+                contentScanOrchestrator,
+                scanExecutionOrchestrator
         );
     }
 }

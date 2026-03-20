@@ -23,7 +23,8 @@ import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.DataOwners;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
@@ -40,7 +41,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -102,7 +103,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, null, piiContextExtractor, severityCalculationService);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -141,12 +142,13 @@ class StreamConfluenceResumeScanUseCaseTest {
 
         ScanCheckpoint cp = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
-            .lastProcessedPageId("p1")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey(spaceKey)
+            .lastProcessedContentId("p1")
             .lastProcessedAttachmentName("att.bin")
             .scanStatus(ScanStatus.RUNNING)
             .build();
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("p1").title("P1").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("content"))
             .build();
@@ -158,7 +160,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
+        Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
             .filter(ev -> "start".equals(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
@@ -175,18 +177,18 @@ class StreamConfluenceResumeScanUseCaseTest {
         ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t","http://test.com", "d",
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.empty());
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.empty());
 
         CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
         failing.completeExceptionally(new RuntimeException("resume-pages-fail"));
         when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(failing);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .assertNext(ev -> {
                 assertThat(ev.eventType()).isEqualTo("scanError");
-                assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                assertThat(ev.sourceId()).isEqualTo(spaceKey);
             })
             .verifyComplete();
     }
@@ -200,14 +202,14 @@ class StreamConfluenceResumeScanUseCaseTest {
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
 
-        when(scanCheckpointRepository.findByScanAndSpace(anyString(), anyString())).thenThrow(new RuntimeException("prep-fail"));
+        when(scanCheckpointRepository.findByScanAndSource(anyString(), any(SourceType.class), anyString())).thenThrow(new RuntimeException("prep-fail"));
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .assertNext(ev -> {
                 assertThat(ev.eventType()).isEqualTo("scanError");
-                assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                assertThat(ev.sourceId()).isEqualTo(spaceKey);
             })
             .verifyComplete();
     }
@@ -220,7 +222,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         failing.completeExceptionally(new RuntimeException("resume-allspaces-fail"));
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(failing);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .assertNext(ev -> assertThat(ev.eventType()).isEqualTo("scanError"))
@@ -238,11 +240,12 @@ class StreamConfluenceResumeScanUseCaseTest {
 
         ScanCheckpoint cp = ScanCheckpoint.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
-            .lastProcessedPageId("UNKNOWN")
+            .sourceType(SourceType.CONFLUENCE)
+            .sourceKey(spaceKey)
+            .lastProcessedContentId("UNKNOWN")
             .scanStatus(ScanStatus.RUNNING)
             .build();
-        when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
+        when(scanCheckpointRepository.findByScanAndSource(scanId, SourceType.CONFLUENCE, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("pA").title("A").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("contentA"))
             .build();
@@ -254,14 +257,14 @@ class StreamConfluenceResumeScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
+        Flux<ContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
             .filter(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()))
             .take(2)
             .timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
-            .expectNextMatches(ev -> "pA".equals(ev.pageId()))
-            .expectNextMatches(ev -> "pB".equals(ev.pageId()))
+            .expectNextMatches(ev -> "pA".equals(ev.contentId()))
+            .expectNextMatches(ev -> "pB".equals(ev.contentId()))
             .verifyComplete();
     }
 }

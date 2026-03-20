@@ -9,7 +9,7 @@ import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanEventEntity;
@@ -20,8 +20,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Adapter JPA implémentant le port de lecture ScanResultQuery.
- * Mappe les entités/projections JPA vers des modèles du domaine.
+ * Adapter JPA implementant le port de lecture ScanResultQuery.
+ * Mappe les entites/projections JPA vers des modeles du domaine.
  */
 @Component
 @RequiredArgsConstructor
@@ -44,8 +44,8 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
         }
         var row = rows.getFirst();
         String scanId = row.getScanId();
-        int spaces = eventRepository.countDistinctSpaceKeyByScanId(scanId);
-        return Optional.of(new LastScanMeta(scanId, row.getLastUpdated(), spaces));
+        int sources = eventRepository.countDistinctSourceKeyByScanId(scanId);
+        return Optional.of(new LastScanMeta(scanId, row.getLastUpdated(), sources));
     }
 
     @Override
@@ -54,12 +54,12 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
             return List.of();
         }
         return eventRepository.aggregateSpaceCounters(scanId).stream()
-            .map(p -> new SpaceCounter(p.getSpaceKey(), p.getPagesDone(), p.getAttachmentsDone(), p.getLastEventTs()))
+            .map(projection -> new SpaceCounter(projection.getSourceKey(), projection.getPagesDone(), projection.getAttachmentsDone(), projection.getLastEventTs()))
             .toList();
     }
 
     @Override
-    public List<ConfluenceContentScanResult> listItemEvents(String scanId) {
+    public List<ContentScanResult> listItemEvents(String scanId) {
         if (scanId == null || scanId.isBlank()) return List.of();
         var types = Set.of("item", "attachmentItem");
         return eventRepository.findByScanIdAndEventTypeInOrderByEventSeqAsc(scanId, types).stream()
@@ -68,14 +68,14 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
             .toList();
     }
 
-    private ConfluenceContentScanResult toDomain(ScanEventEntity scanEventEntity) {
+    private ContentScanResult toDomain(ScanEventEntity scanEventEntity) {
         if (scanEventEntity == null || scanEventEntity.getPayload() == null) {
             log.warn(SCAN_EVENT_ENTITY_NULL_ERROR_MESSAGE);
             return null;
         }
 
         try {
-            ConfluenceContentScanResult encryptedResult = objectMapper.treeToValue(scanEventEntity.getPayload(), ConfluenceContentScanResult.class);
+            ContentScanResult encryptedResult = objectMapper.treeToValue(scanEventEntity.getPayload(), ContentScanResult.class);
             return scanResultEncryptor.decrypt(encryptedResult);
         } catch (Exception e) {
             log.error("Failed to deserialize scan event", e);
@@ -83,7 +83,7 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
         }
     }
     @Override
-    public List<ConfluenceContentScanResult> listItemEventsEncrypted(String scanId) {
+    public List<ContentScanResult> listItemEventsEncrypted(String scanId) {
         if (scanId == null || scanId.isBlank()) {
             return List.of();
         }
@@ -95,22 +95,24 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
     }
 
     @Override
-    public List<ConfluenceContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey) {
-        if (scanId == null || scanId.isBlank()) return List.of();
-        return eventRepository.findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(scanId, spaceKey, ITEM_EVENT_TYPES).stream()
+    public List<ContentScanResult> listItemEventsEncryptedBySourceKey(String scanId, String sourceKey) {
+        if (scanId == null || scanId.isBlank() || sourceKey == null || sourceKey.isBlank()) {
+            return List.of();
+        }
+        return eventRepository.findByScanIdAndSourceKeyAndEventTypeInOrderByEventSeqAsc(scanId, sourceKey, ITEM_EVENT_TYPES).stream()
                 .map(this::toEncryptedDomain)
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     @Override
-    public List<ConfluenceContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose) {
+    public List<ContentScanResult> listItemEventsDecrypted(String scanId, String contentId, AccessPurpose purpose) {
         if (scanId == null || scanId.isBlank()) {
             return List.of();
         }
 
-        List<ConfluenceContentScanResult> results = eventRepository
-            .findByScanIdAndPageIdAndEventTypeInOrderByEventSeqAsc(scanId, pageId, ITEM_EVENT_TYPES).stream()
+        List<ContentScanResult> results = eventRepository
+            .findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(scanId, contentId, ITEM_EVENT_TYPES).stream()
             .map(this::toDecryptedDomain)
             .filter(Objects::nonNull)
             .toList();
@@ -124,14 +126,14 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
             .mapToInt(r -> r.detectedPIIList() != null ? r.detectedPIIList().size() : 0)
             .sum();
 
-        var spaceKey = results.getFirst().spaceKey();
-        var pageTitle = results.getFirst().pageTitle();
-        auditService.auditPiiAccess(scanId, spaceKey, pageId, pageTitle, purpose, totalPiiCount);
+        var sourceKey = results.getFirst().sourceId();
+        var contentTitle = results.getFirst().contentTitle();
+        auditService.auditPiiAccess(scanId, sourceKey, contentId, contentTitle, purpose, totalPiiCount);
 
         return results;
     }
 
-    private ConfluenceContentScanResult toEncryptedDomain(ScanEventEntity entity) {
+    private ContentScanResult toEncryptedDomain(ScanEventEntity entity) {
         if (entity == null || entity.getPayload() == null) {
             log.warn(SCAN_EVENT_ENTITY_NULL_ERROR_MESSAGE);
             return null;
@@ -139,21 +141,21 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
 
         try {
             // Return as-is (already encrypted in DB)
-            return objectMapper.treeToValue(entity.getPayload(), ConfluenceContentScanResult.class);
+            return objectMapper.treeToValue(entity.getPayload(), ContentScanResult.class);
         } catch (Exception e) {
             log.error("Failed to deserialize scan event", e);
             return null;
         }
     }
 
-    private ConfluenceContentScanResult toDecryptedDomain(ScanEventEntity entity) {
+    private ContentScanResult toDecryptedDomain(ScanEventEntity entity) {
         if (entity == null || entity.getPayload() == null) {
             log.warn(SCAN_EVENT_ENTITY_NULL_ERROR_MESSAGE);
             return null;
         }
 
         try {
-            ConfluenceContentScanResult encrypted = objectMapper.treeToValue(entity.getPayload(), ConfluenceContentScanResult.class);
+            ContentScanResult encrypted = objectMapper.treeToValue(entity.getPayload(), ContentScanResult.class);
             return scanResultEncryptor.decrypt(encrypted);
         } catch (Exception e) {
             log.error("Failed to decrypt scan event", e);

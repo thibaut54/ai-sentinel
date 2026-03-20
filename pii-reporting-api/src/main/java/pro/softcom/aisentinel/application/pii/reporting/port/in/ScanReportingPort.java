@@ -1,6 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.in;
 
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
@@ -14,9 +14,9 @@ public interface ScanReportingPort {
 
     List<ConfluenceSpaceScanState> getLatestSpaceScanStateList(String scanId);
 
-    List<ConfluenceContentScanResult> getLatestSpaceScanResultList();
+    List<ContentScanResult> getLatestSpaceScanResultList();
 
-    List<ConfluenceContentScanResult> getGlobalScanItemsEncrypted();
+    List<ContentScanResult> getGlobalScanItemsEncrypted();
 
     /**
      * Returns a complete dashboard nbOfDetectedPIIBySeverity for the specified scan.

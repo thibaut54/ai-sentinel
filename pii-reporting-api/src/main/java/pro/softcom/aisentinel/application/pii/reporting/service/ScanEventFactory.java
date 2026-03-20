@@ -3,15 +3,19 @@ package pro.softcom.aisentinel.application.pii.reporting.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
+import pro.softcom.aisentinel.application.jira.port.out.JiraUrlProvider;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReportingEventType;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
+import pro.softcom.aisentinel.domain.jira.JiraIssue;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
+import pro.softcom.aisentinel.domain.pii.scan.model.ScannableContent;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointScannableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -31,6 +35,7 @@ import java.util.stream.Collectors;
 public class ScanEventFactory {
 
     private final ConfluenceUrlProvider confluenceUrlProvider;
+    private final JiraUrlProvider jiraUrlProvider;
     private final PiiContextExtractor piiContextExtractor;
     private final SeverityCalculationService severityCalculationService;
 
@@ -38,13 +43,13 @@ public class ScanEventFactory {
     /**
      * Creates a scan start event.
      */
-    public ConfluenceContentScanResult createStartEvent(String scanId, String spaceKey, int pagesTotal,
-                                                        double progress) {
-        return ConfluenceContentScanResult.builder()
+    public ContentScanResult createStartEvent(String scanId, String sourceId, int contentTotal,
+                                              double progress) {
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.START.getLabel())
-            .pagesTotal(pagesTotal)
+            .contentTotal(contentTotal)
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -54,10 +59,10 @@ public class ScanEventFactory {
     /**
      * Creates a scan complete event.
      */
-    public ConfluenceContentScanResult createCompleteEvent(String scanId, String spaceKey) {
-        return ConfluenceContentScanResult.builder()
+    public ContentScanResult createCompleteEvent(String scanId, String sourceId) {
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.COMPLETE.getLabel())
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(100.0)
@@ -66,19 +71,19 @@ public class ScanEventFactory {
     }
 
     /**
-     * Creates a page start event.
+     * Creates a content start event.
      */
-    public ConfluenceContentScanResult createPageStartEvent(String scanId, String spaceKey, ConfluencePage page,
-                                                            int pageIndex, int pagesTotal, double progress) {
-        return ConfluenceContentScanResult.builder()
+    public ContentScanResult createContentStartEvent(String scanId, String sourceId, ScannableContent content,
+                                                     int contentIndex, int contentTotal, double progress) {
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.PAGE_START.getLabel())
-            .pagesTotal(pagesTotal)
-            .pageIndex(pageIndex)
-            .pageId(page.id())
-            .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .contentTotal(contentTotal)
+            .contentIndex(contentIndex)
+            .contentId(content.getId())
+            .contentTitle(content.getTitle())
+            .contentUrl(buildContentUrl(content))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -86,17 +91,17 @@ public class ScanEventFactory {
     }
 
     /**
-     * Creates a page complete event.
+     * Creates a content complete event.
      */
-    public ConfluenceContentScanResult createPageCompleteEvent(String scanId, String spaceKey, ConfluencePage page,
-                                                               double progress) {
-        return ConfluenceContentScanResult.builder()
+    public ContentScanResult createContentCompleteEvent(String scanId, String sourceId, ScannableContent content,
+                                                        double progress) {
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.PAGE_COMPLETE.getLabel())
-            .pageId(page.id())
-            .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .contentId(content.getId())
+            .contentTitle(content.getTitle())
+            .contentUrl(buildContentUrl(content))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -104,22 +109,22 @@ public class ScanEventFactory {
     }
 
     /**
-     * Creates an empty page item event when no content is available.
+     * Creates an empty content item event when no content is available.
      */
-    public ConfluenceContentScanResult createEmptyPageItemEvent(
-        String scanId, String spaceKey, ConfluencePage page, double progress
+    public ContentScanResult createEmptyContentItemEvent(
+        String scanId, String sourceId, ScannableContent content, double progress
     ) {
-        return ConfluenceContentScanResult.builder()
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.ITEM.getLabel())
             .isFinal(true)
-            .pageId(page.id())
-            .pageTitle(page.title())
+            .contentId(content.getId())
+            .contentTitle(content.getTitle())
             .detectedPIIList(List.of())
             .nbOfDetectedPIIBySeverity(Map.of())
             .nbOfDetectedPIIByType(Map.of())
-            .pageUrl(buildPageUrl(page.id()))
+            .contentUrl(buildContentUrl(content))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -128,29 +133,29 @@ public class ScanEventFactory {
     }
 
     /**
-     * Creates a page item event with PII detection results.
+     * Creates a content item event with PII detection results.
      */
-    public ConfluenceContentScanResult createPageItemEvent(String scanId, String spaceKey, ConfluencePage page,
-                                                           String content, ContentPiiDetection detection,
-                                                           double progress) {
+    public ContentScanResult createContentItemEvent(String scanId, String sourceId, ScannableContent content,
+                                                    String sourceContent, ContentPiiDetection detection,
+                                                    double progress) {
         List<DetectedPersonallyIdentifiableInformation> entities = mapToEntityList(detection,
-                                                                                   content);
+                                                                                   sourceContent);
         Map<String, Integer> summary = calculateSeveritySummary(entities);
         Map<String, Integer> piiTypeSummary = calculatePiiTypeSummary(entities);
         PersonallyIdentifiableInformationSeverity severity = calculateHighestSeverity(entities);
 
-        return ConfluenceContentScanResult.builder()
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.ITEM.getLabel())
             .isFinal(true)
-            .pageId(page.id())
-            .pageTitle(page.title())
+            .contentId(content.getId())
+            .contentTitle(content.getTitle())
             .detectedPIIList(entities)
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
-            .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .sourceContent(sourceContent)
+            .contentUrl(buildContentUrl(content))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -161,27 +166,27 @@ public class ScanEventFactory {
     /**
      * Creates an attachment item event with PII detection results.
      */
-    public ConfluenceContentScanResult createAttachmentItemEvent(String scanId, String spaceKey, ConfluencePage page,
-                                                                 AttachmentInfo attachment, String content,
-                                                                 ContentPiiDetection detection, double progress) {
+    public ContentScanResult createAttachmentItemEvent(String scanId, String sourceId, ScannableContent content,
+                                                       AttachmentInfo attachment, String sourceContent,
+                                                       ContentPiiDetection detection, double progress) {
         List<DetectedPersonallyIdentifiableInformation> entities = mapToEntityList(detection,
-                                                                                   content);
+                                                                                   sourceContent);
         Map<String, Integer> summary = calculateSeveritySummary(entities);
         Map<String, Integer> piiTypeSummary = calculatePiiTypeSummary(entities);
         PersonallyIdentifiableInformationSeverity severity = calculateHighestSeverity(entities);
 
-        return ConfluenceContentScanResult.builder()
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.ATTACHMENT_ITEM.getLabel())
             .isFinal(true)
-            .pageId(page.id())
-            .pageTitle(page.title())
+            .contentId(content.getId())
+            .contentTitle(content.getTitle())
             .detectedPIIList(entities)
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
-            .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .sourceContent(sourceContent)
+            .contentUrl(buildContentUrl(content))
             .attachmentName(attachment.name())
             .attachmentType(attachment.mimeType())
             .attachmentUrl(attachment.url())
@@ -195,15 +200,15 @@ public class ScanEventFactory {
     /**
      * Creates an error event.
      */
-    public ConfluenceContentScanResult createErrorEvent(String scanId, String spaceKey, String pageId,
-                                                        String errorMessage, double progress) {
-        return ConfluenceContentScanResult.builder()
+    public ContentScanResult createErrorEvent(String scanId, String sourceId, String contentId,
+                                              String errorMessage, double progress) {
+        return ContentScanResult.builder()
             .scanId(scanId)
-            .spaceKey(spaceKey)
+            .sourceId(sourceId)
             .eventType(DetectionReportingEventType.ERROR.getLabel())
-            .pageId(pageId)
+            .contentId(contentId)
             .message(errorMessage)
-            .pageUrl(buildPageUrl(pageId))
+            .contentUrl(buildConfluencePageUrl(contentId))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.FAILED)
@@ -336,7 +341,7 @@ public class ScanEventFactory {
             .collect(
                 Collectors.groupingBy(
                     DetectedPersonallyIdentifiableInformation::piiType,
-                    Collectors.summingInt(_ -> 1)
+                    Collectors.summingInt(ignored -> 1)
                 )
             );
     }
@@ -375,10 +380,30 @@ public class ScanEventFactory {
         }
     }
 
-    private String buildPageUrl(String pageId) {
-        if (confluenceUrlProvider == null || pageId == null) {
+    private String buildContentUrl(ScannableContent content) {
+        if (content instanceof ConfluencePage) {
+            return buildConfluencePageUrl(content.getId());
+        }
+        if (content instanceof JiraIssue jiraIssue) {
+            return buildJiraIssueUrl(jiraIssue.key());
+        }
+        if (content instanceof SharePointScannableFile spFile) {
+            return spFile.driveItem().webUrl();
+        }
+        return null;
+    }
+
+    private String buildConfluencePageUrl(String contentId) {
+        if (confluenceUrlProvider == null || contentId == null) {
             return null;
         }
-        return confluenceUrlProvider.pageUrl(pageId);
+        return confluenceUrlProvider.pageUrl(contentId);
+    }
+
+    private String buildJiraIssueUrl(String issueKey) {
+        if (jiraUrlProvider == null || issueKey == null) {
+            return null;
+        }
+        return jiraUrlProvider.issueUrl(issueKey);
     }
 }

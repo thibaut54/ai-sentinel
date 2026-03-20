@@ -110,7 +110,7 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
                 var delayedExecutor = CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS);
 
                 return CompletableFuture.runAsync(() -> {
-                }, delayedExecutor).thenCompose(_ -> sendRequestWithRetry(request, retriesLeft - 1));
+                }, delayedExecutor).thenCompose(ignored -> sendRequestWithRetry(request, retriesLeft - 1));
             }
             return CompletableFuture.completedFuture(response);
         });

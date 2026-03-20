@@ -13,7 +13,8 @@ import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlConte
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ScanProgress;
 import reactor.core.publisher.Flux;
@@ -49,33 +50,33 @@ public abstract class AbstractStreamConfluenceScanUseCase {
 
     }
 
-    protected Flux<ConfluenceContentScanResult> runScanFlux(String scanId, String spaceKey,
+    protected Flux<ContentScanResult> runScanFlux(String scanId, String spaceKey,
                                                             List<ConfluencePage> pages, int analyzedOffset,
                                                             int originalTotal) {
         int total = pages.size();
         AtomicInteger pageIndex = new AtomicInteger(0);
 
-        Flux<ConfluenceContentScanResult> startEvent = createStartEvent(scanId, spaceKey, total, analyzedOffset,
+        Flux<ContentScanResult> startEvent = createStartEvent(scanId, spaceKey, total, analyzedOffset,
                                                                         originalTotal);
-        Flux<ConfluenceContentScanResult> pageEvents = buildScanResultFluxBody(scanId, spaceKey, pages,
+        Flux<ContentScanResult> pageEvents = buildScanResultFluxBody(scanId, spaceKey, pages,
                                                                                analyzedOffset,
                                                                                originalTotal, pageIndex, total);
-        Flux<ConfluenceContentScanResult> completeEvent = createCompleteEvent(scanId, spaceKey);
+        Flux<ContentScanResult> completeEvent = createCompleteEvent(scanId, spaceKey);
 
         return Flux.concat(startEvent, pageEvents, completeEvent)
             .doOnEach(signal -> {
                 if (signal.isOnNext() && signal.get() != null) {
-                    ConfluenceContentScanResult event = signal.get();
+                    ContentScanResult event = signal.get();
                     
                     // CRITICAL: Persist checkpoint SYNCHRONOUSLY to avoid race conditions
                     // When user refreshes the page, the resume scan must read the latest checkpoint.
                     // If checkpoint persistence were async, stale data could cause pages to be re-scanned,
                     // leading to duplicated severity counts (bug fix for severity counts doubled on refresh).
-                    contentScanOrchestrator.persistCheckpointSynchronously(event);
-                    
+                    contentScanOrchestrator.persistCheckpointSynchronously(event, SourceType.CONFLUENCE);
+
                     // Async operations (severity counts, event store) can safely continue in background
                     // These are additive operations that won't cause issues if the SSE disconnects
-                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event))
+                    Mono.fromRunnable(() -> contentScanOrchestrator.persistEventAsyncOperations(event, SourceType.CONFLUENCE))
                         .subscribeOn(Schedulers.boundedElastic())
                         .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
                         .onErrorResume(e -> {
@@ -87,19 +88,19 @@ public abstract class AbstractStreamConfluenceScanUseCase {
             });
     }
 
-    private Flux<ConfluenceContentScanResult> createStartEvent(String scanId, String spaceKey, int total,
+    private Flux<ContentScanResult> createStartEvent(String scanId, String spaceKey, int total,
                                                                int analyzedOffset, int originalTotal) {
         double progress = contentScanOrchestrator.calculateProgress(analyzedOffset, originalTotal);
-        ConfluenceContentScanResult event = contentScanOrchestrator.createStartEvent(scanId, spaceKey, total, progress);
+        ContentScanResult event = contentScanOrchestrator.createStartEvent(scanId, spaceKey, total, progress);
         return Flux.just(event);
     }
 
-    private Flux<ConfluenceContentScanResult> createCompleteEvent(String scanId, String spaceKey) {
-        ConfluenceContentScanResult event = contentScanOrchestrator.createCompleteEvent(scanId, spaceKey);
+    private Flux<ContentScanResult> createCompleteEvent(String scanId, String spaceKey) {
+        ContentScanResult event = contentScanOrchestrator.createCompleteEvent(scanId, spaceKey);
         return Flux.just(event);
     }
 
-    private Flux<ConfluenceContentScanResult> buildScanResultFluxBody(String scanId, String spaceKey,
+    private Flux<ContentScanResult> buildScanResultFluxBody(String scanId, String spaceKey,
                                                                       List<ConfluencePage> pages, int analyzedOffset,
                                                                       int originalTotal, AtomicInteger index,
                                                                       int total) {
@@ -136,7 +137,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         return future != null ? Mono.fromFuture(future) : Mono.just(List.of());
     }
 
-    private Flux<ConfluenceContentScanResult> processPageStream(ConfluencePageContext confluencePageContext,
+    private Flux<ContentScanResult> processPageStream(ConfluencePageContext confluencePageContext,
                                                                 ConfluencePage page,
                                                                 List<AttachmentInfo> attachments,
                                                                 ScanProgress scanProgress) {
@@ -158,7 +159,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                page, scanProgress));
     }
 
-    private Flux<ConfluenceContentScanResult> attachmentsFlux(String scanId, String spaceKey, ConfluencePage page,
+    private Flux<ContentScanResult> attachmentsFlux(String scanId, String spaceKey, ConfluencePage page,
                                                               List<AttachmentInfo> attachments,
                                                               ScanProgress scanProgress) {
         return attachmentProcessor.extractAttachmentsText(page.id(), attachments)
@@ -166,7 +167,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                        scanProgress));
     }
 
-    private Mono<ConfluenceContentScanResult> analyzeAttachmentText(String scanId, String spaceKey,
+    private Mono<ContentScanResult> analyzeAttachmentText(String scanId, String spaceKey,
                                                                     ConfluencePage page,
                                                                     AttachmentTextExtracted extracted,
                                                                     ScanProgress scanProgress) {
@@ -179,7 +180,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                 progress);
         })
         .timeout(scanTimeoutConfig.getPiiDetection())
-        .onErrorResume(TimeoutException.class, _ -> {
+        .onErrorResume(TimeoutException.class, ignored -> {
             log.warn("[TIMEOUT][REACTOR] Space={}, PageId={}, AttachmentName=\"{}\", ReactorTimeout exceeded",
                     spaceKey, page.id(), extracted.attachment().name());
             
@@ -212,22 +213,22 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     }
 
 
-    private Flux<ConfluenceContentScanResult> processOnePage(String scanId, String spaceKey, ConfluencePage page,
+    private Flux<ContentScanResult> processOnePage(String scanId, String spaceKey, ConfluencePage page,
                                                              ScanProgress scanProgress) {
         String rawContent = extractPageContent(page);
         String content = htmlContentParser.cleanText(rawContent);
         double startProgress = contentScanOrchestrator.calculateProgress(
             scanProgress.analyzedOffset() + (scanProgress.currentIndex() - 1),
             scanProgress.originalTotal());
-        ConfluenceContentScanResult pageStart = contentScanOrchestrator.createPageStartEvent(scanId, spaceKey, page,
+        ContentScanResult pageStart = contentScanOrchestrator.createContentStartEvent(scanId, spaceKey, page,
                                                                                              scanProgress.currentIndex(),
                                                                                              scanProgress.originalTotal(), startProgress);
 
-        Flux<ConfluenceContentScanResult> itemEvent = createPageItemEvent(scanId, spaceKey, page, content, scanProgress);
+        Flux<ContentScanResult> itemEvent = createPageItemEvent(scanId, spaceKey, page, content, scanProgress);
 
         double completeProgress = contentScanOrchestrator.calculateProgress(scanProgress.analyzedOffset() + scanProgress.currentIndex(),
                                                                             scanProgress.originalTotal());
-        ConfluenceContentScanResult pageComplete = contentScanOrchestrator.createPageCompleteEvent(scanId, spaceKey, page,
+        ContentScanResult pageComplete = contentScanOrchestrator.createContentCompleteEvent(scanId, spaceKey, page,
                                                                                                    completeProgress);
         return Flux.just(pageStart)
             .concatWith(itemEvent)
@@ -235,7 +236,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
             .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private Flux<ConfluenceContentScanResult> createPageItemEvent(String scanId, String spaceKey,
+    private Flux<ContentScanResult> createPageItemEvent(String scanId, String spaceKey,
                                                                   ConfluencePage page,
                                                                   String content, ScanProgress scanProgress) {
         if (isBlank(content)) {
@@ -264,23 +265,23 @@ public abstract class AbstractStreamConfluenceScanUseCase {
             .flux();
     }
 
-    private Flux<ConfluenceContentScanResult> createEmptyPageItem(String scanId, String spaceKey,
+    private Flux<ContentScanResult> createEmptyPageItem(String scanId, String spaceKey,
                                                                   ConfluencePage page,
                                                                   ScanProgress scanProgress) {
         double progress = calculateProgressForCurrentItem(scanProgress);
-        ConfluenceContentScanResult event = contentScanOrchestrator.createEmptyPageItemEvent(scanId, spaceKey, page, progress);
+        ContentScanResult event = contentScanOrchestrator.createEmptyContentItemEvent(scanId, spaceKey, page, progress);
         return Flux.just(event);
     }
 
-    private ConfluenceContentScanResult buildPageItemEvent(String scanId, ConfluencePage page,
+    private ContentScanResult buildPageItemEvent(String scanId, ConfluencePage page,
                                                            String content, ContentPiiDetection detection,
                                                            ScanProgress scanProgress) {
         double progress = calculateProgressForCurrentItem(scanProgress);
-        return contentScanOrchestrator.createPageItemEvent(scanId, page.spaceKey(), page, content, detection,
+        return contentScanOrchestrator.createContentItemEvent(scanId, page.spaceKey(), page, content, detection,
                                                            progress);
     }
 
-    private Mono<ConfluenceContentScanResult> handleReactorTimeoutError(String scanId, String spaceKey,
+    private Mono<ContentScanResult> handleReactorTimeoutError(String scanId, String spaceKey,
                                                                         ConfluencePage page,
                                                                         ScanProgress scanProgress) {
         log.warn("[TIMEOUT][REACTOR] Space={}, PageId={}, PageTitle=\"{}\", ReactorTimeout exceeded",
@@ -288,7 +289,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         
         double progress = calculateProgressForCurrentItem(scanProgress);
         
-        ConfluenceContentScanResult errorEvent = contentScanOrchestrator.createErrorEvent(
+        ContentScanResult errorEvent = contentScanOrchestrator.createErrorEvent(
             scanId, spaceKey, page.id(),
             "PII detection timeout (Reactor) for page: " + page.title(),
             progress);
@@ -296,7 +297,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         return Mono.just(errorEvent);
     }
 
-    private Mono<ConfluenceContentScanResult> handleGrpcError(String scanId, String spaceKey,
+    private Mono<ContentScanResult> handleGrpcError(String scanId, String spaceKey,
                                                               ConfluencePage page,
                                                               AttachmentInfo attachment,
                                                               ScanProgress scanProgress,
@@ -323,7 +324,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         return Mono.just(contentScanOrchestrator.createErrorEvent(scanId, spaceKey, page.id(), errorMessage, progress));
     }
 
-    private Mono<ConfluenceContentScanResult> handleDetectionError(String scanId, String spaceKey,
+    private Mono<ContentScanResult> handleDetectionError(String scanId, String spaceKey,
                                                                    ConfluencePage page,
                                                                    ScanProgress scanProgress,
                                                                    Throwable exception) {
@@ -332,7 +333,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         
         double progress = calculateProgressForCurrentItem(scanProgress);
         
-        ConfluenceContentScanResult errorEvent = contentScanOrchestrator.createErrorEvent(
+        ContentScanResult errorEvent = contentScanOrchestrator.createErrorEvent(
             scanId, spaceKey, page.id(),
             "Error analyzing page: " + exception.getMessage(),
             progress);

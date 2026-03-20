@@ -15,6 +15,7 @@ public record ExportContext(
         String reportName,
         String reportIdentifier,
         String sourceUrl,
+        SourceType sourceType,
         List<DataSourceContact> contacts,
         Map<String, String> additionalMetadata
 ) {
@@ -24,6 +25,9 @@ public record ExportContext(
         }
         if (reportIdentifier == null || reportIdentifier.isBlank()) {
             throw new IllegalArgumentException("Report identifier cannot be empty");
+        }
+        if (sourceType == null) {
+            throw new IllegalArgumentException("Source type cannot be null");
         }
         if (contacts == null) {
             contacts = List.of();

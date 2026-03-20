@@ -19,30 +19,37 @@
       <p-button icon="pi pi-cog"
                 [label]="'dashboard.actions.settings' | transloco"
                 styleClass="header-settings-btn"
-                (click)="openSettingsDialog()"
-                (keydown.enter)="openSettingsDialog()"
+                (click)="settingsDialog.open()"
+                (keydown.enter)="settingsDialog.open()"
                 [ariaLabel]="'dashboard.actions.settings' | transloco" />
       <app-language-selector />
     </div>
   </header>
 
-  <!-- Source tabs -->
-  <p-tabs [value]="activeSourceId()">
+  <!-- Source tabs synced with router -->
+  <p-tabs [value]="activeSourceId()" (valueChange)="onTabChange($event)">
     <p-tablist>
       <p-tab value="confluence">
         <i class="pi pi-globe tab-icon"></i>
         <span>{{ 'dashboard.sources.confluence' | transloco }}</span>
       </p-tab>
+      <p-tab value="jira">
+        <i class="pi pi-ticket tab-icon"></i>
+        <span>{{ 'dashboard.sources.jira' | transloco }}</span>
+      </p-tab>
+      <p-tab value="sharepoint">
+        <i class="pi pi-microsoft tab-icon"></i>
+        <span>{{ 'dashboard.sources.sharepoint' | transloco }}</span>
+      </p-tab>
     </p-tablist>
     <p-tabpanels>
-      <p-tabpanel value="confluence">
-        <app-confluence-dashboard (openSettings)="openSettingsDialog($event)" />
-      </p-tabpanel>
+      <router-outlet />
     </p-tabpanels>
   </p-tabs>
 
   <!-- Settings Dialog -->
-  <p-dialog [(visible)]="showSettingsDialog"
+  <p-dialog [visible]="settingsDialog.visible()"
+            (visibleChange)="settingsDialog.close()"
             [modal]="true"
             [closable]="true"
             [dismissableMask]="true"

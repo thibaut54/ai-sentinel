@@ -23,7 +23,7 @@ import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.DataOwners;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
@@ -111,7 +111,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, null, piiContextExtractor, severityCalculationService);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -150,7 +150,7 @@ class StreamConfluenceScanUseCaseTest {
         // lorsque subscribeScan est appelé avec le même identifiant.
         Mockito.lenient().doAnswer(invocation -> {
                     String scanId = invocation.getArgument(0);
-                    Flux<ConfluenceContentScanResult> flux = invocation.getArgument(1);
+                    Flux<ContentScanResult> flux = invocation.getArgument(1);
                     when(
                         personallyIdentifiableInformationScanExecutionOrchestratorPort.subscribeScan(scanId)).thenReturn(flux);
                     return null;
@@ -165,13 +165,13 @@ class StreamConfluenceScanUseCaseTest {
         String spaceKey = "S-NOT-FOUND";
         when(confluenceService.getSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
                 .assertNext(ev -> {
                     assertThat(ev).isNotNull();
                     assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
-                    assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                    assertThat(ev.sourceId()).isEqualTo(spaceKey);
                 })
                 .verifyComplete();
     }
@@ -193,7 +193,7 @@ class StreamConfluenceScanUseCaseTest {
         when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(List.of(page)));
         when(confluenceAttachmentService.getPageAttachments("p-1")).thenReturn(CompletableFuture.completedFuture(List.of()));
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
                 .filter(ev -> List.of(
                         ScanEventType.START.toJson(),
                         ScanEventType.PAGE_START.toJson(),
@@ -205,9 +205,9 @@ class StreamConfluenceScanUseCaseTest {
 
         StepVerifier.create(flux)
                 .expectNextMatches(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
-                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-1".equals(ev.pageId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-1".equals(ev.contentId()))
                 .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && ev.detectedPIIList() != null && ev.detectedPIIList().isEmpty())
-                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-1".equals(ev.pageId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-1".equals(ev.contentId()))
                 .expectNextMatches(ev -> ScanEventType.COMPLETE.toJson().equals(ev.eventType()))
                 .verifyComplete();
     }
@@ -241,7 +241,7 @@ class StreamConfluenceScanUseCaseTest {
                 .build();
         when(piiDetectorClient.analyzeContent(any())).thenReturn(resp);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
                 .filter(ev -> List.of(
                         ScanEventType.START.toJson(),
                         ScanEventType.ATTACHMENT_ITEM.toJson(),
@@ -255,10 +255,10 @@ class StreamConfluenceScanUseCaseTest {
 
         StepVerifier.create(flux)
                 .expectNextMatches(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
-                .expectNextMatches(ev -> ScanEventType.ATTACHMENT_ITEM.toJson().equals(ev.eventType()) && "p-2".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-2".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && "p-2".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-2".equals(ev.pageId()))
+                .expectNextMatches(ev -> ScanEventType.ATTACHMENT_ITEM.toJson().equals(ev.eventType()) && "p-2".equals(ev.contentId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-2".equals(ev.contentId()))
+                .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && "p-2".equals(ev.contentId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-2".equals(ev.contentId()))
                 .expectNextMatches(ev -> ScanEventType.COMPLETE.toJson().equals(ev.eventType()))
                 .verifyComplete();
     }
@@ -282,7 +282,7 @@ class StreamConfluenceScanUseCaseTest {
 
         when(piiDetectorClient.analyzeContent(any())).thenThrow(new RuntimeException("UNAVAILABLE"));
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
                 .filter(ev -> List.of(
                         ScanEventType.START.toJson(),
                         ScanEventType.PAGE_START.toJson(),
@@ -295,9 +295,9 @@ class StreamConfluenceScanUseCaseTest {
 
         StepVerifier.create(flux)
                 .expectNextMatches(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
-                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-3".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.ERROR.toJson().equals(ev.eventType()) && "p-3".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-3".equals(ev.pageId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-3".equals(ev.contentId()))
+                .expectNextMatches(ev -> ScanEventType.ERROR.toJson().equals(ev.eventType()) && "p-3".equals(ev.contentId()))
+                .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-3".equals(ev.contentId()))
                 .expectNextMatches(ev -> ScanEventType.COMPLETE.toJson().equals(ev.eventType()))
                 .verifyComplete();
     }
@@ -309,7 +309,7 @@ class StreamConfluenceScanUseCaseTest {
         when(spaceRepository.findAll()).thenReturn(List.of());
         when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of()));
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .expectNextMatches(ev -> ScanEventType.MULTI_START.toJson().equals(ev.eventType()))
@@ -340,13 +340,13 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) || ScanEventType.ITEM.toJson().equals(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
-            .assertNext(ev -> assertThat(ev.pageUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim"))
-            .assertNext(ev -> assertThat(ev.pageUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim"))
+            .assertNext(ev -> assertThat(ev.contentUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim"))
+            .assertNext(ev -> assertThat(ev.contentUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim"))
             .verifyComplete();
     }
 
@@ -373,7 +373,7 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> List.of(
                 ScanEventType.ATTACHMENT_ITEM.toJson(),
                 ScanEventType.ITEM.toJson(),
@@ -411,7 +411,7 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> List.of(
                 ScanEventType.ATTACHMENT_ITEM.toJson(),
                 ScanEventType.ITEM.toJson(),
@@ -446,7 +446,7 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
@@ -463,12 +463,12 @@ class StreamConfluenceScanUseCaseTest {
         failing.completeExceptionally(new RuntimeException("boom"));
         when(confluenceService.getSpace(spaceKey)).thenReturn(failing);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .assertNext(ev -> {
                 assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
-                assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                assertThat(ev.sourceId()).isEqualTo(spaceKey);
                 assertThat(ev.message()).contains("boom");
             })
             .verifyComplete();
@@ -485,11 +485,11 @@ class StreamConfluenceScanUseCaseTest {
         failing.completeExceptionally(new RuntimeException("pages-fail"));
         when(confluenceService.getAllPagesInSpace("MS1")).thenReturn(failing);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .expectNextMatches(ev -> ScanEventType.MULTI_START.toJson().equals(ev.eventType()))
-            .expectNextMatches(ev -> ScanEventType.ERROR.toJson().equals(ev.eventType()) && "MS1".equals(ev.spaceKey()))
+            .expectNextMatches(ev -> ScanEventType.ERROR.toJson().equals(ev.eventType()) && "MS1".equals(ev.sourceId()))
             .expectNextMatches(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
             .verifyComplete();
     }
@@ -501,7 +501,7 @@ class StreamConfluenceScanUseCaseTest {
         failing.completeExceptionally(new RuntimeException("allspaces-fail"));
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(failing);
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
             .expectNextMatches(ev -> ScanEventType.MULTI_START.toJson().equals(ev.eventType()))
@@ -534,7 +534,7 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> List.of(
                 ScanEventType.START.toJson(),
                 ScanEventType.PAGE_START.toJson(),
@@ -546,9 +546,9 @@ class StreamConfluenceScanUseCaseTest {
 
         StepVerifier.create(flux)
             .expectNextMatches(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
-            .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.pageId()))
-            .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.pageId()))
-            .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.pageId()))
+            .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.contentId()))
+            .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.contentId()))
+            .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-aerr".equals(ev.contentId()))
             .expectNextMatches(ev -> ScanEventType.COMPLETE.toJson().equals(ev.eventType()))
             .verifyComplete();
     }
@@ -576,7 +576,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(blankUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(blankUrlProvider, null, piiContextExtractor, severityCalculationService);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -620,13 +620,13 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = svc.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = svc.streamSpace(spaceKey)
             .filter(ev -> List.of(ScanEventType.PAGE_START.toJson(), ScanEventType.ITEM.toJson()).contains(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
-            .assertNext(ev -> assertThat(ev.pageUrl()).isNull())
-            .assertNext(ev -> assertThat(ev.pageUrl()).isNull())
+            .assertNext(ev -> assertThat(ev.contentUrl()).isNull())
+            .assertNext(ev -> assertThat(ev.contentUrl()).isNull())
             .verifyComplete();
     }
 
@@ -653,7 +653,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, null, piiContextExtractor, severityCalculationService);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -697,13 +697,13 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = svc.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = svc.streamSpace(spaceKey)
             .filter(ev -> List.of(ScanEventType.PAGE_START.toJson(), ScanEventType.ITEM.toJson()).contains(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
-            .assertNext(ev -> assertThat(ev.pageUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim2"))
-            .assertNext(ev -> assertThat(ev.pageUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim2"))
+            .assertNext(ev -> assertThat(ev.contentUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim2"))
+            .assertNext(ev -> assertThat(ev.contentUrl()).isEqualTo("http://confluence.example/pages/viewpage.action?pageId=p-trim2"))
             .verifyComplete();
     }
 
@@ -726,7 +726,7 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey)
             .filter(ev -> List.of(ScanEventType.ITEM.toJson(), ScanEventType.COMPLETE.toJson()).contains(ev.eventType()))
             .timeout(Duration.ofSeconds(5));
 
@@ -740,7 +740,7 @@ class StreamConfluenceScanUseCaseTest {
         // dédiés de ScanCheckpointService et n'est pas vérifié ici.
         verify(scanCheckpointRepository, atLeastOnce()).save(argThat(cp ->
             cp != null &&
-            cp.spaceKey().equals(spaceKey)
+            cp.sourceKey().equals(spaceKey)
         ));
     }
 
@@ -776,13 +776,13 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces()
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces()
             .filter(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
             .timeout(Duration.ofSeconds(10));
 
         StepVerifier.create(flux)
-            .expectNextMatches(ev -> "ABC".equals(ev.spaceKey()))
-            .expectNextMatches(ev -> "DEF".equals(ev.spaceKey()))
+            .expectNextMatches(ev -> "ABC".equals(ev.sourceId()))
+            .expectNextMatches(ev -> "DEF".equals(ev.sourceId()))
             .verifyComplete();
 
         // Verify both spaces were scanned (fail-safe behavior)
@@ -822,13 +822,13 @@ class StreamConfluenceScanUseCaseTest {
             ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build()
         );
 
-        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces()
+        Flux<ContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces()
             .filter(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
             .timeout(Duration.ofSeconds(10));
 
         StepVerifier.create(flux)
-            .expectNextMatches(ev -> "AHVIV".equals(ev.spaceKey()))
-            .expectNextMatches(ev -> "XYZ".equals(ev.spaceKey()))
+            .expectNextMatches(ev -> "AHVIV".equals(ev.sourceId()))
+            .expectNextMatches(ev -> "XYZ".equals(ev.sourceId()))
             .verifyComplete();
 
         // Verify both spaces were scanned

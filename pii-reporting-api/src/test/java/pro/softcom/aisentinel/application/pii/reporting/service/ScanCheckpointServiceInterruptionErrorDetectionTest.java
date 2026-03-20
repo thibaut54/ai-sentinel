@@ -13,7 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 
 import java.net.SocketException;
 import java.sql.SQLException;
@@ -56,13 +57,13 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
     @Test
     void Should_LogInfo_When_ExceptionMessageContainsInterrupt() {
         // Given: Exception with "interrupt" in message
-        ConfluenceContentScanResult result = createValidScanResult();
+        ContentScanResult result = createValidScanResult();
         RuntimeException exception = new RuntimeException("Connection interrupted by user");
         
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO, not WARN
         assertThat(listAppender.list)
@@ -82,7 +83,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
     @Test
     void Should_LogInfo_When_CauseIsSocketExceptionWithInterrupt() {
         // Given: SQLException wrapping SocketException with "interrupt" message
-        ConfluenceContentScanResult result = createValidScanResult();
+        ContentScanResult result = createValidScanResult();
         SocketException socketException = new SocketException("Closed by interrupt");
         SQLException sqlException = new SQLException("I/O error occurred while sending to the backend", socketException);
         RuntimeException exception = new RuntimeException("JDBC exception", sqlException);
@@ -90,7 +91,7 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO
         assertThat(listAppender.list)
@@ -110,14 +111,14 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
     @Test
     void Should_LogInfo_When_CauseIsInterruptedException() {
         // Given: Exception wrapping InterruptedException
-        ConfluenceContentScanResult result = createValidScanResult();
+        ContentScanResult result = createValidScanResult();
         InterruptedException interruptedException = new InterruptedException();
         RuntimeException exception = new RuntimeException("Operation interrupted", interruptedException);
         
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as INFO
         assertThat(listAppender.list)
@@ -137,13 +138,13 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
     @Test
     void Should_LogWarn_When_ExceptionIsNotInterruptionRelated() {
         // Given: Regular exception not related to interruption
-        ConfluenceContentScanResult result = createValidScanResult();
+        ContentScanResult result = createValidScanResult();
         RuntimeException exception = new RuntimeException("Database connection timeout");
         
         doThrow(exception).when(scanCheckpointRepository).save(any());
 
         // When: Persisting checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should log as WARN
         assertThat(listAppender.list)
@@ -164,14 +165,14 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
 
     @Test
     void Should_NotInteractWithRepository_When_ScanResultInvalid() {
-        // Given: Invalid scan result (no spaceKey)
-        ConfluenceContentScanResult result = ConfluenceContentScanResult.builder()
+        // Given: Invalid scan result (no sourceId)
+        ContentScanResult result = ContentScanResult.builder()
             .scanId("scan-123")
             .eventType("pageComplete")
             .build();
 
         // When: Persisting invalid checkpoint
-        scanCheckpointService.persistCheckpoint(result);
+        scanCheckpointService.persistCheckpoint(result, SourceType.CONFLUENCE);
 
         // Then: Should not call repository
         verify(scanCheckpointRepository, never()).save(any());
@@ -182,12 +183,12 @@ class ScanCheckpointServiceInterruptionErrorDetectionTest {
             .isEmpty();
     }
 
-    private ConfluenceContentScanResult createValidScanResult() {
-        return ConfluenceContentScanResult.builder()
+    private ContentScanResult createValidScanResult() {
+        return ContentScanResult.builder()
             .scanId("scan-123")
-            .spaceKey("TEST")
+            .sourceId("TEST")
             .eventType("pageComplete")
-            .pageId("page-456")
+            .contentId("page-456")
             .build();
     }
 }

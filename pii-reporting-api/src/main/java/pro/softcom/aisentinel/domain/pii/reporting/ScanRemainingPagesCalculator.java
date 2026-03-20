@@ -28,7 +28,7 @@ public final class ScanRemainingPagesCalculator {
         if (checkpoint == null) {
             return 0;
         }
-        String lastPageId = checkpoint.lastProcessedPageId();
+        String lastPageId = checkpoint.lastProcessedContentId();
         boolean hadInProgressAttachment =
             checkpoint.scanStatus() == ScanStatus.RUNNING && !isBlank(checkpoint.lastProcessedAttachmentName());
 
@@ -55,12 +55,12 @@ public final class ScanRemainingPagesCalculator {
             return List.of();
         }
 
-        String lastProcessedPageId = checkpoint.lastProcessedPageId();
-        if (isBlank(lastProcessedPageId)) {
+        String lastProcessedContentId = checkpoint.lastProcessedContentId();
+        if (isBlank(lastProcessedContentId)) {
             return pages;
         }
 
-        int lastProcessedIndex = indexOfPage(pages, lastProcessedPageId);
+        int lastProcessedIndex = indexOfPage(pages, lastProcessedContentId);
         if (lastProcessedIndex < 0) {
             return pages;
         }

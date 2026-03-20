@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
-import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -59,14 +59,14 @@ public class ScanTaskManagerAdapter implements
      * @param isCompleted AtomicBoolean flag indicating scan completion (success or error)
      */
     record ManagedScan(
-            Sinks.Many<ConfluenceContentScanResult> sink,
+            Sinks.Many<ContentScanResult> sink,
             Disposable subscription,
             Instant startTime,
             AtomicBoolean isCompleted
     ) {}
 
     @Override
-    public void startScan(String scanId, Flux<ConfluenceContentScanResult> scanDataStream) {
+    public void startScan(String scanId, Flux<ContentScanResult> scanDataStream) {
         if (scanId == null) {
             throw new IllegalArgumentException("scanId cannot be null");
         }
@@ -77,7 +77,7 @@ public class ScanTaskManagerAdapter implements
         log.info("[ScanTaskManager] Starting independent scan with scanId={}", scanId);
         
         // Create a sink with a replay buffer to support SSE reconnection (Last-Event-ID)
-        Sinks.Many<ConfluenceContentScanResult> sink = Sinks.many().replay().limit(REPLAY_BUFFER_SIZE);
+        Sinks.Many<ContentScanResult> sink = Sinks.many().replay().limit(REPLAY_BUFFER_SIZE);
         
         // KEY: independent subscribe() — decouples scan execution from SSE subscribers' lifecycle
         // When the SSE client disconnects, this subscription keeps running
@@ -119,7 +119,7 @@ public class ScanTaskManagerAdapter implements
     }
 
     @Override
-    public Flux<ConfluenceContentScanResult> subscribeScan(String scanId) {
+    public Flux<ContentScanResult> subscribeScan(String scanId) {
         log.info("[ScanTaskManager] SSE client subscribing to scanId={}", scanId);
         
         ManagedScan scan = managedScans.get(scanId);
@@ -131,7 +131,7 @@ public class ScanTaskManagerAdapter implements
         
         // Return a Flux from the sink — provides replay buffer for late subscribers
         return scan.sink().asFlux()
-                .doOnSubscribe(_ -> log.debug("[ScanTaskManager] New subscriber for scanId={}", scanId))
+                .doOnSubscribe(ignored -> log.debug("[ScanTaskManager] New subscriber for scanId={}", scanId))
                 .doOnCancel(() -> log.debug("[ScanTaskManager] Subscriber cancelled for scanId={} " +
                         "(scan continues independently)", scanId));
     }
@@ -157,6 +157,11 @@ public class ScanTaskManagerAdapter implements
         return true;
     }
 
+    @Override
+    public boolean isScanActive(String scanId) {
+        ManagedScan scan = managedScans.get(scanId);
+        return scan != null && !scan.isCompleted().get();
+    }
 
     /**
      * Marks a scan as completed (atomically).

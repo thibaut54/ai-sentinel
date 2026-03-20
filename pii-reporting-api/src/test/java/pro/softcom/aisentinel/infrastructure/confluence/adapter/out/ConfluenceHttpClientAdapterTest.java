@@ -8,6 +8,7 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
@@ -18,12 +19,15 @@ import java.lang.reflect.Field;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -286,6 +290,45 @@ class ConfluenceHttpClientAdapterTest {
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(isConnected).isTrue();
 
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_TrimCredentials_When_WhitespaceIsPresent() throws Exception {
+        // Arrange
+        when(config.username()).thenReturn("  user_with_space  ");
+        when(config.apiToken()).thenReturn("  token_with_space  ");
+        
+        // Re-initialize service to pick up new config values
+        final ObjectMapper objectMapper = new ObjectMapper();
+        confluenceService = new ConfluenceHttpClientAdapter(config, objectMapper);
+        
+        // Inject mocked HttpClient again
+        Field retryExecutorField = ConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
+        retryExecutorField.setAccessible(true);
+        Object retryExecutor = retryExecutorField.get(confluenceService);
+        Field retryExecutorHttpClientField = retryExecutor.getClass().getDeclaredField("httpClient");
+        retryExecutorHttpClientField.setAccessible(true);
+        retryExecutorHttpClientField.set(retryExecutor, httpClient);
+
+        when(httpResponse.statusCode()).thenReturn(200);
+
+        // Act
+        confluenceService.testConnection().get();
+
+        // Assert
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandlers.ofString().getClass()));
+
+        HttpRequest request = requestCaptor.getValue();
+        String authHeader = request.headers().firstValue("Authorization").orElseThrow();
+        
+        String expectedCredentials = "user_with_space:token_with_space";
+        String expectedEncoded = Base64.getEncoder().encodeToString(expectedCredentials.getBytes(StandardCharsets.UTF_8));
+        String expectedHeader = "Basic " + expectedEncoded;
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(authHeader).isEqualTo(expectedHeader);
         softly.assertAll();
     }
 
