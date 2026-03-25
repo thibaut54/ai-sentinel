@@ -92,12 +92,6 @@
           [feedback]="false"
           class="field-input">
         </p-password>
-        @if (hasExistingTokenForCurrentType()) {
-          <small class="field-hint">
-            {{ 'settings.confluence.connection.apiTokenHint' | transloco }}
-            <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
-          </small>
-        }
         @if (configForm.apiToken().errors().length && configForm.apiToken().touched()) {
           <small class="field-error">{{ 'settings.confluence.validation.apiTokenRequired' | transloco }}</small>
         }
@@ -221,7 +215,7 @@
         [label]="'settings.confluence.buttons.test' | transloco"
         icon="pi pi-wifi"
         [loading]="testing()"
-        [disabled]="testing() || saving()"
+        [disabled]="testing() || saving() || !isFormValid"
         (click)="onTestConnection()"
         (keydown.enter)="onTestConnection()"
         styleClass="p-button-outlined">

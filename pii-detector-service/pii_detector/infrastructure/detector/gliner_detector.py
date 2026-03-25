@@ -16,7 +16,6 @@ from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.exception.exceptions import ModelNotLoadedError, PIIDetectionError
 from pii_detector.infrastructure.model_management.gliner_model_manager import \
     GLiNERModelManager
-# FIXME: from service.detector.models import
 from pii_detector.infrastructure.text_processing.semantic_chunker import \
     create_chunker
 
@@ -87,11 +86,24 @@ class GLiNERDetector:
         Returns:
             Tokenizer object (either from model or AutoTokenizer)
         """
-        tokenizer = getattr(self.model.data_processor.config, 'tokenizer', None)
-        if tokenizer is None:
-            # Fallback: try to get from model name
+        data_processor = getattr(self.model, 'data_processor', None)
+        if data_processor is None:
+            self.logger.warning("Model has no data_processor, falling back to HuggingFace download")
             from transformers import AutoTokenizer
             model_name = getattr(self.model.config, 'model_name', 'bert-base-cased')
+            return AutoTokenizer.from_pretrained(model_name)
+
+        tokenizer = getattr(data_processor, 'transformer_tokenizer', None)
+        if tokenizer is None:
+            # Legacy fallback: older GLiNER versions stored tokenizer differently
+            config = getattr(data_processor, 'config', None)
+            if config is not None:
+                tokenizer = getattr(config, 'tokenizer', None)
+        if tokenizer is None:
+            # Last resort: download tokenizer from HuggingFace (requires network)
+            from transformers import AutoTokenizer
+            model_name = getattr(self.model.config, 'model_name', 'bert-base-cased')
+            self.logger.warning("Tokenizer not found in model, downloading from HuggingFace: %s", model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
         return tokenizer
 

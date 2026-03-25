@@ -3,7 +3,6 @@ export type ConfluenceDeploymentType = 'CLOUD' | 'DATA_CENTER';
 export interface ConfluenceConnectionConfig {
   baseUrl: string;
   username: string;
-  apiTokenMasked: string;
   connectTimeout: number;
   readTimeout: number;
   maxRetries: number;

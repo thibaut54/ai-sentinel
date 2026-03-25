@@ -19,7 +19,6 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
 const MOCK_CONFLUENCE_CONFIG: ConfluenceConnectionConfig = {
   baseUrl: 'https://confluence.example.com',
   username: 'user',
-  apiTokenMasked: '****',
   connectTimeout: 30000,
   readTimeout: 60000,
   maxRetries: 3,

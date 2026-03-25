@@ -445,8 +445,8 @@ public abstract class AbstractConfluenceHttpClientAdapter implements ConfluenceC
         HttpResponse<String> response, int startIndex, int pageSize, List<ConfluenceSpaceDto> accumulated) {
 
         if (response.statusCode() != 200) {
-            log.error("HTTP error {} while retrieving spaces (start={})",
-                response.statusCode(), startIndex);
+            log.error("HTTP error {} while retrieving spaces (start={}). Response body: {}",
+                response.statusCode(), startIndex, response.body());
             return CompletableFuture.completedFuture(accumulated);
         }
 
