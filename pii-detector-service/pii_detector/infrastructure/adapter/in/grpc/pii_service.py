@@ -222,16 +222,21 @@ def _create_multi_detector():
 
 
 def _create_single_detector():
-    """Create and return a single-model detector instance, or None if no LLM models are enabled."""
+    """Create and return a single-model detector instance, or None if no LLM models are enabled.
+
+    Returns:
+        A detector instance, or None when no LLM models are enabled.
+        When None is returned, the caller (CompositePIIDetector) falls back
+        to Presidio and/or Regex detection only.
+    """
     from pii_detector.application.config.detection_policy import DetectionConfig, get_enabled_models, _load_llm_config
-    
+
     # Check if any LLM models are enabled
     try:
         config_dict = _load_llm_config()
         enabled_models = get_enabled_models(config_dict)
-        
+
         if not enabled_models:
-            # TODO When no LLM models are enabled, returning None relies on the caller to handle this case correctly. Consider documenting this behavior in the function docstring or adding a check that at least one detection method (Presidio/Regex) is enabled before returning None to prevent a scenario where all detection is disabled.
             # No LLM models enabled - return None to use only Presidio/Regex
             logger.info("No LLM models enabled - will use only Presidio/Regex detection")
             return None

@@ -57,7 +57,7 @@ class AggregatedSpan:
 
     def has_conflict(self) -> bool:
         """Returns True if multiple different labels were detected for this span."""
-        unique_types = set(label for label, _ in self.labels)
+        unique_types = {label for label, _ in self.labels}
         return len(unique_types) > 1
 
 
@@ -235,7 +235,7 @@ class MultiPassGlinerDetector:
         for i in range(0, len(all_labels), limit):
             chunk = all_labels[i:i+limit]
             batch_name = f"BATCH_{i//limit + 1}"
-            batches[batch_name] = {label: pii_type for label, pii_type in chunk}
+            batches[batch_name] = dict(chunk)
             
         if not batches:
              # Fallback if nothing enabled
