@@ -194,7 +194,7 @@ class MultiPassGlinerDetector:
                 f"Loaded {total_types} PII types from database, optimized into {len(self._pass_categories)} passes (limit={limit})"
             )
             for pass_name, labels in sorted(self._pass_categories.items()):
-                self.logger.info(f"  {pass_name}: {len(labels)} labels")
+                self.logger.debug(f"  {pass_name}: {len(labels)} labels")
 
         except Exception as e:
             self.logger.error(f"Failed to load categories from database: {e}")
@@ -374,7 +374,7 @@ class MultiPassGlinerDetector:
         detection_id = self._generate_detection_id()
         categories_to_run = categories or list(pass_categories.keys())
 
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] Starting multi-pass detection on {len(text)} chars "
             f"with {len(categories_to_run)} categories, threshold={threshold}"
         )
@@ -436,7 +436,7 @@ class MultiPassGlinerDetector:
             mask = f"[{entity.pii_type}]"
             masked_text = masked_text[:entity.start] + mask + masked_text[entity.end:]
 
-        self.logger.info(f"Masked {len(entities)} PII entities")
+        self.logger.debug(f"Masked {len(entities)} PII entities")
         return masked_text, entities
 
     def _run_parallel_passes(
@@ -466,7 +466,7 @@ class MultiPassGlinerDetector:
         all_entities: List[PIIEntity] = []
 
         if self.parallel_enabled and self.executor and len(categories) > 1:
-            self.logger.info(
+            self.logger.debug(
                 f"[{detection_id}] Running {len(categories)} passes in parallel "
                 f"with {self.max_workers} workers"
             )
@@ -495,12 +495,12 @@ class MultiPassGlinerDetector:
                     raise
         else:
             # Sequential fallback
-            self.logger.info(f"[{detection_id}] Running {len(categories)} passes sequentially")
+            self.logger.debug(f"[{detection_id}] Running {len(categories)} passes sequentially")
             for category in categories:
                 entities = self._run_single_pass(text, threshold, detection_id, category, pass_categories)
                 all_entities.extend(entities)
 
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] All passes complete: {len(all_entities)} total entities"
         )
         return all_entities
@@ -568,7 +568,7 @@ class MultiPassGlinerDetector:
         # Log pass results
         if entities:
             entity_types = [e.pii_type for e in entities]
-            self.logger.info(
+            self.logger.debug(
                 f"[{detection_id}] Pass {category}: {len(entities)} entities in {pass_time:.2f}s - "
                 f"types: {set(entity_types)}"
             )

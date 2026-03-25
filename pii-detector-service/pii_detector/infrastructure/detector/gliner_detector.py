@@ -164,15 +164,15 @@ class GLiNERDetector:
         threshold = threshold or self.config.threshold
         detection_id = self._generate_detection_id()
         
-        self.logger.info(f"[{detection_id}] Starting GLiNER PII detection for {len(text)} characters")
+        self.logger.debug(f"[{detection_id}] Starting GLiNER PII detection for {len(text)} characters")
         
         try:
             # Fetch fresh configs if not provided
             if pii_type_configs is None:
-                self.logger.info(f"[{detection_id}] Fetching fresh configuration from database")
+                self.logger.debug(f"[{detection_id}] Fetching fresh configuration from database")
                 pii_type_configs = self._load_pii_type_configs_from_database()
             else:
-                self.logger.info(f"[{detection_id}] Using provided fresh configuration")
+                self.logger.debug(f"[{detection_id}] Using provided fresh configuration")
             
             # ALWAYS use chunking for GLiNER to prevent internal truncation warnings
             # GLiNER truncates individual sentences at 768 tokens, regardless of total text size
@@ -200,7 +200,7 @@ class GLiNERDetector:
         entities = self.detect_pii(text, threshold)
         masked_text = self._apply_masks(text, entities)
         
-        self.logger.info(f"Masked {len(entities)} PII entities")
+        self.logger.debug(f"Masked {len(entities)} PII entities")
         return masked_text, entities
 
     def _load_pii_type_configs_from_database(self) -> Optional[Dict]:
@@ -226,7 +226,7 @@ class GLiNERDetector:
                 self.logger.warning("No PII type configs found in database for GLINER")
                 return None
             
-            self.logger.info(f"Loaded {len(pii_type_configs)} PII type configs from database for GLINER")
+            self.logger.debug(f"Loaded {len(pii_type_configs)} PII type configs from database for GLINER")
             return pii_type_configs
             
         except Exception as e:
@@ -585,7 +585,7 @@ class GLiNERDetector:
         Returns:
             List of detected PIIEntity objects with duplicates removed
         """
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] Using parallel processing with {self.max_workers} workers"
         )
         
@@ -651,9 +651,9 @@ class GLiNERDetector:
             List of detected PIIEntity objects with duplicates removed
         """
         if not self.parallel_enabled:
-            self.logger.info(f"[{detection_id}] Parallel processing disabled, using sequential mode")
+            self.logger.debug(f"[{detection_id}] Parallel processing disabled, using sequential mode")
         else:
-            self.logger.info(f"[{detection_id}] Single chunk detected, using sequential mode")
+            self.logger.debug(f"[{detection_id}] Single chunk detected, using sequential mode")
         
         seen_entities: set = set()
         all_entities: List[PIIEntity] = []
@@ -771,7 +771,7 @@ class GLiNERDetector:
         if pii_type_configs:
             pii_type_mapping = self._build_pii_type_mapping_from_configs(pii_type_configs)
             scoring_overrides = self._build_scoring_overrides_from_configs(pii_type_configs)
-            self.logger.info(f"[{detection_id}] Built mapping with {len(pii_type_mapping)} labels and {len(scoring_overrides)} thresholds from fresh configs")
+            self.logger.debug(f"[{detection_id}] Built mapping with {len(pii_type_mapping)} labels and {len(scoring_overrides)} thresholds from fresh configs")
         else:
             # Fallback to defaults if no configs provided
             self.logger.warning(f"[{detection_id}] No configs provided, using default mapping")

@@ -24,12 +24,9 @@ from pii_detector.infrastructure.detector.regex_detector import RegexDetector
 try:
     from pii_detector.infrastructure.detector.presidio_detector import PresidioDetector
     PRESIDIO_AVAILABLE = True
-    print("[PRESIDIO_IMPORT] SUCCESS - PresidioDetector imported successfully")
 except ImportError as e:
     PRESIDIO_AVAILABLE = False
     PresidioDetector = None
-    print(f"[PRESIDIO_IMPORT] FAILED - ImportError: {e}")
-    print(f"[PRESIDIO_IMPORT] PRESIDIO_AVAILABLE set to False")
 
 
 logger = logging.getLogger(__name__)
@@ -245,7 +242,7 @@ class CompositePIIDetector:
             elif detector == self.presidio_detector:
                 presidio_count = len(entities)
         
-        self.logger.info(
+        self.logger.debug(
             f"Composite detection complete: {len(merged_entities)} entities "
             f"(ML: {ml_count}, Regex: {regex_count}, Presidio: {presidio_count})"
         )
@@ -398,7 +395,7 @@ def should_use_composite_detector() -> bool:
     Returns:
         True (always) to enable runtime detector activation via database
     """
-    logger.info(
+    logger.debug(
         "Composite detector always enabled for runtime activation via database config"
     )
     return True
@@ -445,9 +442,9 @@ def _create_regex_detector_if_enabled(regex_enabled: bool) -> Optional[RegexDete
     try:
         detector = RegexDetector()
         if regex_enabled:
-            logger.info("Created RegexDetector for composite (enabled by default in TOML)")
+            logger.debug("Created RegexDetector for composite (enabled by default in TOML)")
         else:
-            logger.info("Created RegexDetector for composite (disabled by default in TOML, can be activated at runtime)")
+            logger.debug("Created RegexDetector for composite (disabled by default in TOML, can be activated at runtime)")
         return detector
     except Exception as e:
         logger.warning(f"Failed to create RegexDetector: {e}")
@@ -479,9 +476,9 @@ def _create_presidio_detector_if_enabled(presidio_enabled: bool) -> Optional[Pre
     try:
         detector = PresidioDetector()
         if presidio_enabled:
-            logger.info("Created PresidioDetector for composite (enabled by default in TOML)")
+            logger.debug("Created PresidioDetector for composite (enabled by default in TOML)")
         else:
-            logger.info("Created PresidioDetector for composite (disabled by default in TOML, can be activated at runtime)")
+            logger.debug("Created PresidioDetector for composite (disabled by default in TOML, can be activated at runtime)")
         return detector
     except Exception as e:
         logger.warning(f"Failed to create PresidioDetector: {e}")
