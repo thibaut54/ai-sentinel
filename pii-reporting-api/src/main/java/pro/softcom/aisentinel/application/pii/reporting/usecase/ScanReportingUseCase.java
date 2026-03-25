@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.*;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 
@@ -33,12 +34,12 @@ public class ScanReportingUseCase implements ScanReportingPort {
         if (scanId == null || scanId.isBlank()) return List.of();
 
         // 1) Load checkpoint statuses and progress percentages (may be empty if no checkpoint yet for a space)
-        Map<String, String> statuses = new HashMap<>();
+        Map<String, ScanStatus> statuses = new HashMap<>();
         Map<String, Double> progressPercentages = new HashMap<>();
         try {
             List<ScanCheckpoint> cps = checkpointRepo.findByScan(scanId);
             for (ScanCheckpoint cp : cps) {
-                statuses.put(cp.spaceKey(), cp.scanStatus().name());
+                statuses.put(cp.spaceKey(), cp.scanStatus());
                 progressPercentages.put(cp.spaceKey(), cp.progressPercentage());
             }
         } catch (Exception ex) {
@@ -106,11 +107,11 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
         try {
             // 1) Load checkpoint statuses and progress percentages
-            Map<String, String> statuses = new HashMap<>();
+            Map<String, ScanStatus> statuses = new HashMap<>();
             Map<String, Double> progressPercentages = new HashMap<>();
             List<ScanCheckpoint> cps = checkpointRepo.findByScan(scanId);
             for (ScanCheckpoint cp : cps) {
-                statuses.put(cp.spaceKey(), cp.scanStatus().name());
+                statuses.put(cp.spaceKey(), cp.scanStatus());
                 progressPercentages.put(cp.spaceKey(), cp.progressPercentage());
             }
 
@@ -189,7 +190,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
                 spaces.add(new SpaceSummary(
                     cp.spaceKey(),
-                    mapPresentationStatus(cp.scanStatus().name(), pagesDone, attachmentsDone),
+                    mapPresentationStatus(cp.scanStatus(), pagesDone, attachmentsDone),
                     cp.progressPercentage(),
                     pagesDone,
                     attachmentsDone,
@@ -222,24 +223,18 @@ public class ScanReportingUseCase implements ScanReportingPort {
         }
     }
 
-    private String mapPresentationStatus(String checkpointStatus, long pagesDone, long attachmentsDone) {
-        try {
-            if (checkpointStatus != null) {
-                switch (checkpointStatus) {
-                    case "COMPLETED", "FAILED", "RUNNING":
-                        return checkpointStatus;
-                    case "CANCELLED", "PAUSED":
-                        return "PAUSED";
-                    case "NOT_STARTED":
-                        return "PENDING";
-                    default:
-                        // fall-through to compute from progress
-                }
+    private String mapPresentationStatus(ScanStatus checkpointStatus, long pagesDone, long attachmentsDone) {
+        if (checkpointStatus != null) {
+            switch (checkpointStatus) {
+                case COMPLETED, FAILED, RUNNING:
+                    return checkpointStatus.name();
+                case PAUSED:
+                    return "PAUSED";
+                case NOT_STARTED:
+                    return "PENDING";
             }
-            long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
-            return progress > 0 ? "PAUSED" : "PENDING";
-        } catch (Exception _) {
-            return "PENDING";
         }
+        long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
+        return progress > 0 ? "PAUSED" : "PENDING";
     }
 }
