@@ -106,7 +106,7 @@ export class SseEventHandlerService {
         break;
       }
       case 'multiComplete': {
-        // Handled externally by scan control
+        // Detection and SSE teardown handled in ScanControlService.subscribeSse()
         break;
       }
       default: {
@@ -142,17 +142,28 @@ export class SseEventHandlerService {
       return;
     }
 
-    // Rebuild queue with all known space keys in their current display order
-    this.spaceDataManagementService.queue.set(spaces.map((s) => s.key));
+    // Determine which spaces are part of the current scan
+    const scanScope = this.spaceDataManagementService.currentScanSpaceKeys();
+    const scannedKeys = scanScope
+      ? new Set(scanScope.map(k => k.trim().toLowerCase()))
+      : null; // null = all spaces
 
-    // Reset status to PENDING to reflect a fresh multi-space scan
+    // Rebuild queue with only the scanned space keys
+    const queueKeys = scannedKeys
+      ? spaces.filter(s => scannedKeys.has(s.key.trim().toLowerCase())).map(s => s.key)
+      : spaces.map(s => s.key);
+    this.spaceDataManagementService.queue.set(queueKeys);
+
+    // Reset status to PENDING only for spaces in scan scope (preserve others)
     for (const space of spaces) {
-      this.spacesDashboardUtils.updateSpace(space.key, { status: 'PENDING' });
+      if (!scannedKeys || scannedKeys.has(space.key.trim().toLowerCase())) {
+        this.spacesDashboardUtils.updateSpace(space.key, { status: 'PENDING' });
+      }
     }
 
-    // Auto-select first space if none selected
-    if (!this.uiStateService.selectedSpaceKey()) {
-      this.uiStateService.selectedSpaceKey.set(spaces[0].key);
+    // Auto-select first scanned space if none selected
+    if (!this.uiStateService.selectedSpaceKey() && queueKeys.length > 0) {
+      this.uiStateService.selectedSpaceKey.set(queueKeys[0]);
     }
   }
 
@@ -234,7 +245,7 @@ export class SseEventHandlerService {
 
     const percent = this.extractPercent(payload);
 
-    this.updateProgress(spaceKey, { total, index, ...(percent != null ? { percent } : {}) });
+    this.updateProgress(spaceKey, { total, index, ...(percent == null ? {} : { percent }) });
   }
 
   /**
