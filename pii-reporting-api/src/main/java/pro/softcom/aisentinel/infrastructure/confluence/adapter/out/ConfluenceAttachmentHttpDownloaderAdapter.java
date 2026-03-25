@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentDownloader;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.ConfluenceApiUrlBuilder;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -23,6 +24,7 @@ import java.util.concurrent.Executors;
 public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAttachmentDownloader {
 
     private final ConfluenceConnectionConfig config;
+    private final ConfluenceApiUrlBuilder urlBuilder;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private static final String RESULTS_FIELD = "results";
@@ -33,6 +35,7 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
 
     public ConfluenceAttachmentHttpDownloaderAdapter(@Qualifier("confluenceConfig") ConfluenceConnectionConfig config, ObjectMapper objectMapper) {
         this.config = config;
+        this.urlBuilder = new ConfluenceApiUrlBuilder(config);
         this.objectMapper = objectMapper;
 
         var executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -61,9 +64,8 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
             return CompletableFuture.completedFuture(Optional.empty());
         }
         log.info("Téléchargement pièce jointe '{}' pour la page {}", attachmentTitle, pageId);
-        String uriStr = config.getRestApiUrl() + config.contentPath() + pageId + config.attachmentChildSuffix() + "?limit=200&expand=results._links";
         var listReq = HttpRequest.newBuilder()
-                .uri(URI.create(uriStr))
+                .uri(urlBuilder.buildAttachmentListUri(pageId))
                 .header(AUTHORIZATION_HEADER_NAME, getAuthHeader())
                 .header(ACCEPT_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
                 .timeout(Duration.ofMillis(config.readTimeout()))

@@ -27,6 +27,9 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
     private static final Logger log = LoggerFactory.getLogger(ManageConfluenceConnectionUseCase.class);
     private static final Integer CONFIG_ID = 1;
     private static final EncryptionMetadata TOKEN_METADATA = new EncryptionMetadata("CONFLUENCE_API_TOKEN", 0, 0);
+    @SuppressWarnings("java:S1075") // Fixed connection test path — not a configurable parameter
+    // NOSONAR
+    private static final String CONNECTION_TEST_PATH = "/rest/api/space";
 
     private final ConfluenceConnectionConfigRepository repository;
     private final EncryptionService encryptionService;
@@ -99,7 +102,7 @@ public class ManageConfluenceConnectionUseCase implements ManageConfluenceConnec
                 validatedUrl.value(), command.deploymentType());
 
         try {
-            String baseUrl = validatedUrl.value() + "/rest/api/space";
+            String baseUrl = validatedUrl.value() + CONNECTION_TEST_PATH;
             String authHeader = buildAuthHeader(command);
 
             HttpRequest request = HttpRequest.newBuilder()
