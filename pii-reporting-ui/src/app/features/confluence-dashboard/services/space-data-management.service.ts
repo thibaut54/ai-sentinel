@@ -58,6 +58,9 @@ export class SpaceDataManagementService {
   readonly lastScanMeta = signal<LastScanMeta | null>(null);
   readonly lastSpaceStatuses = signal<SpaceScanStateDto[]>([]);
 
+  // Current scan scope: null = all spaces, string[] = selected spaces only
+  readonly currentScanSpaceKeys = signal<string[] | null>(null);
+
   // Manual refresh state
   readonly lastRefresh = signal<Date | null>(null);
   readonly isRefreshing = signal<boolean>(false);
@@ -523,6 +526,7 @@ export class SpaceDataManagementService {
     this.queue.set([]);
     this.lastScanMeta.set(null);
     this.lastSpaceStatuses.set([]);
+    this.currentScanSpaceKeys.set(null);
     this.hasNewSpaces.set(false);
     this.newSpacesCount.set(0);
     this.spacesUpdateInfo.set([]);

@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { ConfirmationService } from 'primeng/api';
 import { TranslocoService } from '@jsverse/transloco';
 import { SentinelleApiService } from '../../../core/services/sentinelle-api.service';
@@ -11,6 +11,7 @@ import { DashboardUiStateService } from './dashboard-ui-state.service';
 import { SpaceDataManagementService } from './space-data-management.service';
 import { SseEventHandlerService } from './sse-event-handler.service';
 import { StreamEventType } from '../spaces-dashboard-stream.utils';
+import { StreamEvent } from '../../../core/models/stream-event';
 
 /**
  * Service responsible for controlling scan lifecycle (start, stop, resume).
@@ -135,23 +136,12 @@ export class ScanControlService {
 
   private executeStartSelected(spaceKeys: string[]): void {
     this.disconnectSse();
+    this.dataManagement.currentScanSpaceKeys.set(spaceKeys);
     this.resetDashboardForNewScan(spaceKeys);
 
     this.isStreaming.set(true);
 
-    this.sseSubscription = this.sentinelleApiService.startSelectedSpacesStream(spaceKeys).subscribe({
-      next: (ev) => {
-        this.sseEventHandler.routeStreamEvent(ev.type as StreamEventType, ev.data);
-      },
-      error: (err) => {
-        this.uiStateService.append(
-          this.translocoService.translate('dashboard.logs.sseError', {
-            error: err?.message ?? err
-          })
-        );
-        this.isStreaming.set(false);
-      }
-    });
+    this.subscribeSse(this.sentinelleApiService.startSelectedSpacesStream(spaceKeys));
   }
 
   /**
@@ -167,6 +157,7 @@ export class ScanControlService {
    */
   private executeStartAll(): void {
     this.disconnectSse();
+    this.dataManagement.currentScanSpaceKeys.set(null);
 
     // Clear previous dashboard results before starting a brand-new scan
     this.resetDashboardForNewScan();
@@ -183,19 +174,7 @@ export class ScanControlService {
         this.isStreaming.set(true);
 
         // Open SSE stream - events routed to event handler service
-        this.sseSubscription = this.sentinelleApiService.startAllSpacesStream().subscribe({
-          next: (ev) => {
-            this.sseEventHandler.routeStreamEvent(ev.type as StreamEventType, ev.data);
-          },
-          error: (err) => {
-            this.uiStateService.append(
-              this.translocoService.translate('dashboard.logs.sseError', {
-                error: err?.message ?? err
-              })
-            );
-            this.isStreaming.set(false);
-          }
-        });
+        this.subscribeSse(this.sentinelleApiService.startAllSpacesStream());
       },
       error: (err) => {
         this.uiStateService.append(
@@ -298,10 +277,7 @@ export class ScanControlService {
 
   /**
    * Disconnects SSE stream without marking backend as PAUSED.
-   * Business purpose: Clean SSE teardown during browser close or component destruction.
    * Backend scan continues running independently.
-   *
-   * CRITICAL: Does NOT call backend pauseScan() - scan continues in background.
    */
   private disconnectSse(): void {
     if (this.sseSubscription) {
@@ -309,6 +285,38 @@ export class ScanControlService {
       this.sseSubscription = undefined;
     }
     this.isStreaming.set(false);
+  }
+
+  /**
+   * Subscribes to an SSE stream, routing events and detecting multiComplete.
+   */
+  private subscribeSse(stream$: Observable<StreamEvent>): void {
+    this.sseSubscription = stream$.subscribe({
+      next: (ev) => {
+        this.sseEventHandler.routeStreamEvent(ev.type as StreamEventType, ev.data);
+        if (ev.type === 'multiComplete') {
+          this.onScanComplete();
+        }
+      },
+      error: (err) => {
+        this.uiStateService.append(
+          this.translocoService.translate('dashboard.logs.sseError', {
+            error: err?.message ?? err
+          })
+        );
+        this.isStreaming.set(false);
+      }
+    });
+  }
+
+  /**
+   * Handles scan completion: disconnects SSE and reloads final statuses from backend.
+   */
+  private onScanComplete(): void {
+    this.disconnectSse();
+    this.dataManagement.currentScanSpaceKeys.set(null);
+    this.dataManagement.loadLastSpaceStatuses(false, false).subscribe();
+    this.dataManagement.loadLastScan().subscribe();
   }
 
   /**
@@ -346,19 +354,7 @@ export class ScanControlService {
 
         // Ensure no leftover subscription then open the stream
         this.isStreaming.set(true);
-        this.sseSubscription = this.sentinelleApiService.startAllSpacesStream(meta.scanId).subscribe({
-          next: (ev) => {
-            this.sseEventHandler.routeStreamEvent(ev.type as StreamEventType, ev.data);
-          },
-          error: (err) => {
-            this.uiStateService.append(
-              this.translocoService.translate('dashboard.logs.sseError', {
-                error: err?.message ?? err
-              })
-            );
-            this.isStreaming.set(false);
-          }
-        });
+        this.subscribeSse(this.sentinelleApiService.startAllSpacesStream(meta.scanId));
 
         // Also refresh statuses and backfill persisted items to cover the gap while SSE was disconnected.
         // Duplicates are avoided by PiiItemsStorageService via page_id + attachmentName dedup.
@@ -430,19 +426,7 @@ export class ScanControlService {
     );
 
     this.isStreaming.set(true);
-    this.sseSubscription = this.sentinelleApiService.startAllSpacesStream(meta.scanId).subscribe({
-      next: (ev) => {
-        this.sseEventHandler.routeStreamEvent(ev.type as StreamEventType, ev.data);
-      },
-      error: (err) => {
-        this.uiStateService.append(
-          this.translocoService.translate('dashboard.logs.sseError', {
-            error: err?.message ?? err
-          })
-        );
-        this.isStreaming.set(false);
-      }
-    });
+    this.subscribeSse(this.sentinelleApiService.startAllSpacesStream(meta.scanId));
 
     // Reload statuses to backfill any events missed during disconnection
     // The replay buffer on backend will also provide recent events
