@@ -447,58 +447,92 @@ class ConflictResolver:
             return detected_labels[0]
 
         detected_types = {label for label, _ in detected_labels}
-        scores = {label: score for label, score in detected_labels}
+        scores = dict(detected_labels)
 
-        # Try pattern-based resolution
-        for group in CONFLICT_GROUPS:
-            group_pattern = self._compiled_group_patterns[group.name]
-
-            # Check if text matches this group's pattern
-            if not group_pattern.match(text):
-                continue
-
-            # Check if any detected types belong to this group
-            relevant_types = detected_types & set(group.type_patterns.keys())
-            if not relevant_types:
-                continue
-
-            self.logger.debug(
-                f"[{detection_id}] Matched conflict group: {group.name}"
-            )
-
-            # Test each type-specific pattern
-            matching_types = []
-            for pii_type in relevant_types:
-                if pii_type in self._compiled_type_patterns[group.name]:
-                    type_pattern = self._compiled_type_patterns[group.name][pii_type]
-                    if type_pattern.match(text):
-                        matching_types.append(pii_type)
-                        self.logger.debug(
-                            f"[{detection_id}] Type pattern matched: {pii_type}"
-                        )
-
-            # Exactly one match -> winner
-            if len(matching_types) == 1:
-                winner = matching_types[0]
-                losers = [t for t in detected_types if t != winner]
-                self._log_conflict_resolution(
-                    detection_id, text, detected_labels,
-                    winner, losers, "pattern_match", group.name
-                )
-                return (winner, scores.get(winner, 0.0))
-
-            # Multiple or no matches -> use fallback priority
-            for pii_type in group.fallback_priority:
-                if pii_type in detected_types:
-                    losers = [t for t in detected_types if t != pii_type]
-                    self._log_conflict_resolution(
-                        detection_id, text, detected_labels,
-                        pii_type, losers, "fallback_priority", group.name
-                    )
-                    return (pii_type, scores.get(pii_type, 0.0))
+        # Try pattern-based resolution via conflict groups
+        group_result = self._resolve_by_conflict_groups(
+            text, detected_labels, detected_types, scores, detection_id
+        )
+        if group_result is not None:
+            return group_result
 
         # No conflict group matched -> use category priority
         return self._resolve_by_category_priority(text, detected_labels, detection_id)
+
+    def _resolve_by_conflict_groups(
+        self,
+        text: str,
+        detected_labels: List[Tuple[str, float]],
+        detected_types: set,
+        scores: Dict[str, float],
+        detection_id: str
+    ) -> Optional[Tuple[str, float]]:
+        """Try to resolve conflict using pattern-based conflict groups."""
+        for group in CONFLICT_GROUPS:
+            result = self._try_resolve_with_group(
+                group, text, detected_labels, detected_types, scores, detection_id
+            )
+            if result is not None:
+                return result
+        return None
+
+    def _try_resolve_with_group(
+        self,
+        group,
+        text: str,
+        detected_labels: List[Tuple[str, float]],
+        detected_types: set,
+        scores: Dict[str, float],
+        detection_id: str
+    ) -> Optional[Tuple[str, float]]:
+        """Try to resolve conflict using a single conflict group."""
+        group_pattern = self._compiled_group_patterns[group.name]
+        if not group_pattern.match(text):
+            return None
+
+        relevant_types = detected_types & set(group.type_patterns.keys())
+        if not relevant_types:
+            return None
+
+        self.logger.debug(f"[{detection_id}] Matched conflict group: {group.name}")
+
+        matching_types = self._find_matching_types(group, text, relevant_types, detection_id)
+
+        # Exactly one match -> winner
+        if len(matching_types) == 1:
+            winner = matching_types[0]
+            losers = [t for t in detected_types if t != winner]
+            self._log_conflict_resolution(
+                detection_id, text, detected_labels,
+                winner, losers, "pattern_match", group.name
+            )
+            return (winner, scores.get(winner, 0.0))
+
+        # Multiple or no matches -> use fallback priority
+        for pii_type in group.fallback_priority:
+            if pii_type in detected_types:
+                losers = [t for t in detected_types if t != pii_type]
+                self._log_conflict_resolution(
+                    detection_id, text, detected_labels,
+                    pii_type, losers, "fallback_priority", group.name
+                )
+                return (pii_type, scores.get(pii_type, 0.0))
+
+        return None
+
+    def _find_matching_types(
+        self, group, text: str, relevant_types: set, detection_id: str
+    ) -> List[str]:
+        """Test each type-specific pattern and return matching types."""
+        matching_types = []
+        for pii_type in relevant_types:
+            compiled_patterns = self._compiled_type_patterns.get(group.name, {})
+            if pii_type not in compiled_patterns:
+                continue
+            if compiled_patterns[pii_type].match(text):
+                matching_types.append(pii_type)
+                self.logger.debug(f"[{detection_id}] Type pattern matched: {pii_type}")
+        return matching_types
 
     def _resolve_by_category_priority(
         self,

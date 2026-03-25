@@ -434,7 +434,7 @@ class TestConflictLogging:
             "AVS_NUMBER": "MEDICAL",
         })
 
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.DEBUG):
             resolver.resolve(
                 "192.168.1.1",
                 [("IP_ADDRESS", 0.90), ("AVS_NUMBER", 0.85)],
