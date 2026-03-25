@@ -395,7 +395,7 @@ class ConflictResolver:
         )
 
         # Log the resolution
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] CONFLICT RESOLVED | "
             f"text='{text_preview}' | "
             f"candidates=[{labels_summary}] | "
