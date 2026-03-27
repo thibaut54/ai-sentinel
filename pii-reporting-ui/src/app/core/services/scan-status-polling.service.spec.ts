@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { ScanStatusPollingService } from './scan-status-polling.service';
 import { SentinelleApiService, ScanReportingSummaryDto } from './sentinelle-api.service';
 import { SpacesDashboardUtils } from '../../features/confluence-dashboard/spaces-dashboard.utils';
 import { ScanProgressService } from './scan-progress.service';
 import { DashboardUiStateService } from '../../features/confluence-dashboard/services/dashboard-ui-state.service';
+import { SpaceDataManagementService } from '../../features/confluence-dashboard/services/space-data-management.service';
 import { of } from 'rxjs';
 
 describe('ScanStatusPollingService', () => {
@@ -15,6 +17,11 @@ describe('ScanStatusPollingService', () => {
   let uiStateMock: {
     upsertScanHistory: ReturnType<typeof vi.fn>;
     activeSpaceKey: { set: ReturnType<typeof vi.fn> };
+  };
+  let dataManagementMock: {
+    lastScanMeta: ReturnType<typeof signal>;
+    spaces: ReturnType<typeof signal>;
+    currentScanSpaceKeys: ReturnType<typeof signal>;
   };
 
   const mockSummary: ScanReportingSummaryDto = {
@@ -53,6 +60,11 @@ describe('ScanStatusPollingService', () => {
       upsertScanHistory: vi.fn(),
       activeSpaceKey: { set: vi.fn() }
     };
+    dataManagementMock = {
+      lastScanMeta: signal(null),
+      spaces: signal([]),
+      currentScanSpaceKeys: signal(null)
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -60,14 +72,15 @@ describe('ScanStatusPollingService', () => {
         { provide: SentinelleApiService, useValue: apiMock },
         { provide: SpacesDashboardUtils, useValue: utilsMock },
         { provide: ScanProgressService, useValue: progressMock },
-        { provide: DashboardUiStateService, useValue: uiStateMock }
+        { provide: DashboardUiStateService, useValue: uiStateMock },
+        { provide: SpaceDataManagementService, useValue: dataManagementMock }
       ]
     });
     service = TestBed.inject(ScanStatusPollingService);
   });
 
   afterEach(() => {
-    service.stop();
+    service?.stop();
     vi.useRealTimers();
   });
 
