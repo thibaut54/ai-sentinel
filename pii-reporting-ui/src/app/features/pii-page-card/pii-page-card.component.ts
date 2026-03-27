@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject
 import { PersonallyIdentifiableInformationScanResult } from '../../core/models/personally-identifiable-information-scan-result';
 import { RevealedSecret, SentinelleApiService } from '../../core/services/sentinelle-api.service';
 import { CardExpansionStateService } from '../../core/services/card-expansion-state.service';
+import { CardRevealStateService } from '../../core/services/card-reveal-state.service';
 import { PiiCardCollapsedComponent } from './pii-card-collapsed.component';
 import { PiiCardExpandedComponent } from './pii-card-expanded.component';
 import { TestIds } from '../test-ids.constants';
@@ -24,6 +25,7 @@ export class PiiPageCardComponent implements OnInit {
 
   private readonly sentinelleApi = inject(SentinelleApiService);
   private readonly expansionState = inject(CardExpansionStateService);
+  private readonly revealState = inject(CardRevealStateService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly revealedSecrets = signal<RevealedSecret[]>([]);
   readonly testIds = TestIds;
@@ -34,8 +36,19 @@ export class PiiPageCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.expansionState.isExpanded(this.cardKey())) {
+    const key = this.cardKey();
+
+    if (this.expansionState.isExpanded(key)) {
       this.expanded.set(true);
+    }
+
+    const cachedSecrets = this.revealState.getSecrets(key);
+    if (cachedSecrets.length > 0) {
+      this.revealedSecrets.set(cachedSecrets);
+    }
+
+    if (this.revealState.isRevealed(key)) {
+      this.revealed.set(true);
     }
   }
 
@@ -69,13 +82,17 @@ export class PiiPageCardComponent implements OnInit {
   }
 
   onRevealRequested(): void {
+    const key = this.cardKey();
+
     if (this.revealed()) {
       this.revealed.set(false);
+      this.revealState.mask(key);
       return;
     }
 
     if (this.revealedSecrets().length > 0) {
       this.revealed.set(true);
+      this.revealState.reveal(key, this.revealedSecrets());
       return;
     }
 
@@ -86,6 +103,7 @@ export class PiiPageCardComponent implements OnInit {
 
     if (hasSecrets) {
       this.revealed.set(true);
+      this.revealState.reveal(key, []);
       return;
     }
 
@@ -96,8 +114,10 @@ export class PiiPageCardComponent implements OnInit {
     this.isRevealing.set(true);
     this.sentinelleApi.revealPageSecrets(currentItem.scanId, currentItem.pageId).subscribe({
       next: (response) => {
-        this.revealedSecrets.set(response.secrets ?? []);
+        const secrets = response.secrets ?? [];
+        this.revealedSecrets.set(secrets);
         this.revealed.set(true);
+        this.revealState.reveal(key, secrets);
         this.isRevealing.set(false);
         this.cdr.markForCheck();
       },

@@ -52,7 +52,7 @@ public record ContentPiiDetection(
         PERSON("Personne"),
         NAME("Nom"),
         SURNAME("Nom de famille"),
-        USERNAME("Nom d'utilisateur"),
+        USERNAME("Identifiant système ou compte de connexion"),
         GENDER("Genre"),
         NATIONALITY("Nationalité"),
         MARITAL_STATUS("État civil"),

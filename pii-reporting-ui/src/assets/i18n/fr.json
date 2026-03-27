@@ -56,6 +56,7 @@
       "ok": "Terminé",
       "failed": "Échec",
       "pending": "En attente",
+      "notStarted": "Non démarré",
       "paused": "En pause"
     },
     "actions": {
@@ -106,7 +107,8 @@
     },
     "scanStatus": {
       "active": "Scan en cours",
-      "inactive": "Scan inactif"
+      "inactive": "Scan inactif",
+      "loading": "Chargement..."
     },
     "logs": {
       "purging": "[ui] Purge des résultats précédents ...",
@@ -328,7 +330,7 @@
         "PERSON_NAME": "Nom de personne",
         "PERSONNAME": "Nom de personne",
         "FULLNAME": "Nom complet",
-        "USERNAME": "Nom d'utilisateur",
+        "USERNAME": "Identifiant système / connexion",
         "ACCOUNTNUM": "Numéro de compte",
         "CREDIT_CARD": "Numéro de carte de crédit",
         "CREDITCARDNUMBER": "Numéro de carte de crédit",
@@ -478,7 +480,7 @@
         "PERSON_NAME": "Nom complet de personne (prénom + nom)",
         "PERSONNAME": "Nom de personne générique (non séparé en prénom/nom)",
         "FULLNAME": "Nom complet de la personne",
-        "USERNAME": "Noms de compte utilisateur et identifiants de connexion",
+        "USERNAME": "Identifiants système et noms de compte de connexion",
         "ACCOUNTNUM": "Numéros de compte génériques pour divers services",
         "CREDIT_CARD": "Numéros de carte de crédit (Visa, MasterCard, Amex, etc.)",
         "CREDITCARDNUMBER": "Numéros de carte de paiement avec validation",
@@ -809,7 +811,7 @@
     "STREET": "Rue",
     "SURNAME": "Nom de famille",
     "TAXNUM": "Numéro fiscal",
-    "USERNAME": "Nom d'utilisateur",
+    "USERNAME": "Identifiant système / connexion",
     "ZIPCODE": "Code postal",
     "URL": "URL",
     "IBAN": "IBAN",

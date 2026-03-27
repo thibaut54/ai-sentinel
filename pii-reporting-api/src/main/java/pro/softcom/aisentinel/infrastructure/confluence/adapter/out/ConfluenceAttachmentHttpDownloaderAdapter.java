@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentDownloader;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.ConfluenceApiUrlBuilder;
 
@@ -49,6 +50,9 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
     }
 
     private String getAuthHeader() {
+        if (config.deploymentType() == ConfluenceDeploymentType.DATA_CENTER) {
+            return "Bearer " + config.apiToken();
+        }
         return createAuthHeader(config.username(), config.apiToken());
     }
 

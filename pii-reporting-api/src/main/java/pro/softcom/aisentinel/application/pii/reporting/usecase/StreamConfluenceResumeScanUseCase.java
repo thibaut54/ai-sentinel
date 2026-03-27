@@ -50,6 +50,11 @@ public class StreamConfluenceResumeScanUseCase extends
         if (isBlank(scanId)) {
             return Flux.empty();
         }
+        // Atomically set PAUSED checkpoints back to RUNNING BEFORE emitting scan events,
+        // so the UPSERT guard (which blocks PAUSED → RUNNING from scan events) does not reject them.
+        int resumed = scanCheckpointRepository.resumeAllPausedCheckpoints(scanId);
+        log.info("[RESUME] Scan {} — {} checkpoint(s) updated from PAUSED to RUNNING", scanId, resumed);
+
         return Mono.fromFuture(confluenceAccessor.getAllSpaces())
             .flatMapMany(spaces ->
                              Flux.fromIterable(spaces)

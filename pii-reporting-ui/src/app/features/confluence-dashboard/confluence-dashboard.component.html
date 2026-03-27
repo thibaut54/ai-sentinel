@@ -58,15 +58,20 @@
         </div>
         <div class="caption-right">
           <output class="scan-status-badge"
-                  [class.scanning]="isStreaming()"
-                  [class.inactive]="!isStreaming()"
-                  [attr.aria-live]="isStreaming() ? 'polite' : 'off'"
-                  [attr.aria-label]="(isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
-            {{ (isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
+                  [class.scanning]="scanActive()"
+                  [class.loading]="actionPending()"
+                  [class.inactive]="!scanActive() && !actionPending()"
+                  [attr.aria-live]="scanActive() || actionPending() ? 'polite' : 'off'"
+                  [attr.aria-label]="(actionPending() ? 'dashboard.scanStatus.loading' : scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
+            @if (actionPending()) {
+              <i class="pi pi-spin pi-spinner"></i> {{ 'dashboard.scanStatus.loading' | transloco }}
+            } @else {
+              {{ (scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
+            }
           </output>
           <div class="scan-actions-group">
             <p-button type="button"
-                      icon="pi pi-play"
+                      [icon]="actionPending() ? 'pi pi-spin pi-spinner' : 'pi pi-play'"
                       (click)="selectedSpacesCount() > 0 ? startSelected() : startAll()"
                       (keydown.enter)="selectedSpacesCount() > 0 ? startSelected() : startAll()"
                       [disabled]="!canStartScan()"
@@ -75,16 +80,16 @@
                       [ariaLabel]="(selectedSpacesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSpacesCount() }) : ('dashboard.actions.startScan' | transloco))"
                       [attr.data-testid]="testIds.buttons.startScan" />
             <p-button type="button"
-                      icon="pi pi-pause"
+                      [icon]="actionPending() ? 'pi pi-spin pi-spinner' : 'pi pi-pause'"
                       (click)="pauseScan()"
                       (keydown.enter)="pauseScan()"
-                      [disabled]="!isStreaming()"
+                      [disabled]="!canPauseScan()"
                       [pTooltip]="'dashboard.actions.pauseScan' | transloco"
                       tooltipPosition="bottom"
                       [ariaLabel]="'dashboard.actions.pauseScan' | transloco"
                       [attr.data-testid]="testIds.buttons.pauseScan" />
             <p-button type="button"
-                      icon="pi pi-forward"
+                      [icon]="actionPending() ? 'pi pi-spin pi-spinner' : 'pi pi-forward'"
                       (click)="resumeLastScan()"
                       (keydown.enter)="resumeLastScan()"
                       [disabled]="!canResumeScan()"

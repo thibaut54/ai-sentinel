@@ -4,6 +4,7 @@ import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 /**
  * Parser for HTML content where logical lines are delimited by block-level tags.
@@ -84,6 +85,9 @@ public class HtmlContentParser implements ContentParser {
             // Configure output settings to avoid extra formatting
             doc.outputSettings(new Document.OutputSettings().prettyPrint(false));
 
+            // Remove Confluence storage format metadata elements (macro parameters, resource identifiers)
+            removeConfluenceMetadataElements(doc);
+
             // Line breaks
             doc.select("br").append("\\n");
 
@@ -143,5 +147,19 @@ public class HtmlContentParser implements ContentParser {
     @Override
     public ContentType getContentType() {
         return ContentType.HTML;
+    }
+
+    private static void removeConfluenceMetadataElements(Document doc) {
+        doc.getAllElements().stream()
+            .filter(el -> isConfluenceMetadata(el.tagName()))
+            .toList()
+            .forEach(Element::remove);
+    }
+
+    private static boolean isConfluenceMetadata(String tagName) {
+        return tagName.equals("ac:parameter")
+            || tagName.equals("ac:image")
+            || tagName.equals("ac:emoticon")
+            || tagName.startsWith("ri:");
     }
 }
