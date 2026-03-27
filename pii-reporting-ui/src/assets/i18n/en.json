@@ -56,6 +56,7 @@
       "ok": "Finished",
       "failed": "Failed",
       "pending": "Pending",
+      "notStarted": "Not started",
       "paused": "Paused"
     },
     "actions": {
@@ -106,7 +107,8 @@
     },
     "scanStatus": {
       "active": "Scanning",
-      "inactive": "Scan Inactive"
+      "inactive": "Scan Inactive",
+      "loading": "Loading..."
     },
     "logs": {
       "purging": "[ui] Purging previous results...",
@@ -328,7 +330,7 @@
         "PERSON_NAME": "Person Name",
         "PERSONNAME": "Person Name",
         "FULLNAME": "Full Name",
-        "USERNAME": "Username",
+        "USERNAME": "Login / System Identifier",
         "ACCOUNTNUM": "Account Number",
         "CREDIT_CARD": "Credit Card Number",
         "CREDITCARDNUMBER": "Credit Card Number",
@@ -478,7 +480,7 @@
         "PERSON_NAME": "Full person name (first + last)",
         "PERSONNAME": "Generic person name (not split into first/last)",
         "FULLNAME": "Complete person name",
-        "USERNAME": "User account names and login identifiers",
+        "USERNAME": "System user identifiers and account login names",
         "ACCOUNTNUM": "Generic account numbers for various services",
         "CREDIT_CARD": "Credit card numbers (Visa, MasterCard, Amex, etc.)",
         "CREDITCARDNUMBER": "Payment card numbers with validation",
@@ -802,7 +804,7 @@
     "PHONE_NUMBER": "Phone Number",
     "ADDRESS": "Address",
     "POSTAL_CODE": "Postal Code",
-    "USERNAME": "Username",
+    "USERNAME": "Login / System Identifier",
     "ACCOUNT_ID": "Account ID",
     "URL": "URL",
     "CREDIT_CARD_NUMBER": "Credit Card Number",

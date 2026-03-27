@@ -96,10 +96,6 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   // Confluence config missing warning
   readonly confluenceConfigMissing = signal(false);
 
-  // Visibility change listener for sleep/wake recovery
-  private lastVisibilityRefresh = 0;
-  private readonly visibilityChangeHandler = () => this.onVisibilityChange();
-
   // ===== Computed signals exposing service state to template =====
 
   // Filtering & Sorting
@@ -137,11 +133,14 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   readonly hasNewSpaces = computed(() => this.dataManagement.hasNewSpaces());
   readonly newSpacesCount = computed(() => this.dataManagement.newSpacesCount());
 
-  // Scan Control
+  // Scan Control — backend-authoritative
   readonly isStreaming = computed(() => this.scanControl.isStreaming());
-  readonly isResuming = computed(() => this.scanControl.isResuming());
+  readonly scanActive = computed(() => this.scanControl.scanActive());
+  readonly scanPaused = computed(() => this.scanControl.scanPaused());
+  readonly actionPending = computed(() => this.scanControl.actionPending());
   readonly activeSpaceKey = computed(() => this.uiStateService.activeSpaceKey());
   readonly canStartScan = computed(() => this.scanControl.canStartScan());
+  readonly canPauseScan = computed(() => this.scanControl.canPauseScan());
   readonly canResumeScan = computed(() => this.scanControl.canResumeScan());
 
   // Global severity counts across all displayed spaces
@@ -182,46 +181,20 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
     this.dataManagement.loadLastScan().subscribe();
     this.dataManagement.loadSpacesUpdateInfo().subscribe();
 
-    // Load last scan summary (spaces statuses and PII items) for page refresh
-    // isActive=false initially, but may detect RUNNING scan and reconnect
-    this.dataManagement.loadLastSpaceStatuses(false, true).subscribe({
+    // Load last scan summary for page refresh recovery
+    this.dataManagement.loadLastSpaceStatuses(true).subscribe({
       next: () => {
-        // Phase 2: Auto-reconnect to running scan after page refresh
-        // If a scan was running when browser was closed/refreshed, reconnect SSE stream
+        // Auto-reconnect to running scan (starts polling + SSE for items)
         setTimeout(() => {
-          this.scanControl.checkAndReconnectToRunningScan();
+          this.scanControl.reconnectIfScanRunning();
         }, 100);
       }
     });
-
-    this.setupVisibilityChangeListener();
   }
 
   ngOnDestroy(): void {
-    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
     this.scanControl.reset();
     this.dataManagement.stopBackgroundPolling();
-  }
-
-  // ===== Sleep/wake recovery =====
-
-  private setupVisibilityChangeListener(): void {
-    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
-    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
-  }
-
-  private onVisibilityChange(): void {
-    if (document.visibilityState !== 'visible') {
-      return;
-    }
-    const now = Date.now();
-    if (now - this.lastVisibilityRefresh < 2000) {
-      return;
-    }
-    this.lastVisibilityRefresh = now;
-    this.dataManagement.loadLastSpaceStatuses(false, true).subscribe({
-      next: () => this.scanControl.checkAndReconnectToRunningScan()
-    });
   }
 
   // ===== Template event handlers - delegation to services =====

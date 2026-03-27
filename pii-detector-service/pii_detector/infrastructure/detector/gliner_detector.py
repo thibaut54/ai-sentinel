@@ -250,7 +250,7 @@ class GLiNERDetector:
             "phone number": "PHONE",
             # PERSON_IDENTITY
             "person name": "PERSON_NAME",
-            "username": "USERNAME",
+            "system user identifier or account login identifier": "USERNAME",
             # PERSON_DEMOGRAPHICS
             "date of birth": "DATE_OF_BIRTH",
             "age": "AGE",

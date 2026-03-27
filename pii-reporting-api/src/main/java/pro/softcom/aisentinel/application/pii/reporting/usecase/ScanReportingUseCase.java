@@ -225,16 +225,13 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
     private String mapPresentationStatus(ScanStatus checkpointStatus, long pagesDone, long attachmentsDone) {
         if (checkpointStatus != null) {
-            switch (checkpointStatus) {
-                case COMPLETED, FAILED, RUNNING:
-                    return checkpointStatus.name();
-                case PAUSED:
-                    return "PAUSED";
-                case NOT_STARTED:
-                    return "PENDING";
-            }
+            return switch (checkpointStatus) {
+                case COMPLETED, FAILED, RUNNING -> checkpointStatus.name();
+                case PAUSED -> "PAUSED";
+                case NOT_STARTED -> "NOT_STARTED";
+            };
         }
         long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
-        return progress > 0 ? "PAUSED" : "PENDING";
+        return progress > 0 ? "PAUSED" : "NOT_STARTED";
     }
 }

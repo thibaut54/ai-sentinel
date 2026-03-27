@@ -28,7 +28,7 @@ labels = [
     "address",
     "postal code",
     # DIGITAL (3 types) - Online identifiers
-    "username",
+    "system user identifier or account login identifier",
     "account id",
     "url",
     # FINANCIAL (6 types) - Money/banking
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print(f"{'='*70}")
     print(f"Text length: {len(text)} characters")
     print(f"Labels: {len(labels)} types (CONSOLIDATED from 107)")
-    print(f"Categories: 7 (down from 13)")
+    print("Categories: 7 (down from 13)")
     print(f"{'='*70}\n")
 
     # Single pass - no chunking, full text at once
