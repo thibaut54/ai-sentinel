@@ -13,7 +13,8 @@ export const TestIds = {
     buttons: {
       startScan: 'btn-start-scan',
       pauseScan: 'btn-pause-scan',
-      resumeScan: 'btn-resume-scan'
+      resumeScan: 'btn-resume-scan',
+      purgeData: 'btn-purge-data'
     },
     headers: {
       space: 'header-space',

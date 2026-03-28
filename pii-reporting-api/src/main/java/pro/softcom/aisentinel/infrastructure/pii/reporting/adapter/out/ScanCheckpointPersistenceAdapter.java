@@ -127,22 +127,31 @@ public class ScanCheckpointPersistenceAdapter implements ScanCheckpointRepositor
 
     @Override
     @Transactional
-    public void deleteActiveScanCheckpointsForSources(SourceType sourceType, List<String> sourceKeys) {
+    public void deleteAllCheckpointsForSources(SourceType sourceType, List<String> sourceKeys) {
         if (sourceType == null || sourceKeys == null || sourceKeys.isEmpty()) {
             return;
         }
-        log.info("[PURGE] Deleting active scan checkpoints for sourceType={} and {} sources", sourceType, sourceKeys.size());
-        jpaRepository.deleteActiveScanCheckpointsForSources(sourceType.name(), sourceKeys);
-        log.info("[PURGE] Active scan checkpoints for sources deleted successfully");
+        log.info("[PURGE] Deleting ALL scan checkpoints for sourceType={} and {} sources", sourceType, sourceKeys.size());
+        jpaRepository.deleteAllCheckpointsForSources(sourceType.name(), sourceKeys);
+        log.info("[PURGE] All scan checkpoints for sources deleted successfully");
     }
 
     @Override
-    public Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId) {
+    @Transactional
+    public int pauseAllRunningCheckpoints(String scanId) {
         if (isBlank(scanId)) {
-            return Optional.empty();
+            return 0;
         }
-        return jpaRepository.findRunningScanCheckpoint(scanId)
-            .map(ScanCheckpointPersistenceAdapter::toDomain);
+        return jpaRepository.pauseAllRunningCheckpoints(scanId);
+    }
+
+    @Override
+    @Transactional
+    public int resumeAllPausedCheckpoints(String scanId) {
+        if (isBlank(scanId)) {
+            return 0;
+        }
+        return jpaRepository.resumeAllPausedCheckpoints(scanId);
     }
 
     public static ScanCheckpoint toDomain(ScanCheckpointEntity e) {

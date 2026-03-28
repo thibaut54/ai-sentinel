@@ -102,21 +102,6 @@
   font-size: 11px;
 }
 
-.form-field .field-hint {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--text-color-secondary);
-  font-size: 11px;
-}
-
-.form-field .field-hint .token-masked {
-  font-family: monospace;
-  background: var(--surface-100);
-  padding: 0.1rem 0.3rem;
-  border-radius: 3px;
-  margin-left: 0.25rem;
-  font-size: 11px;
-}
 
 .deployment-type-options {
   display: flex;

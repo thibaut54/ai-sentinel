@@ -100,16 +100,48 @@ public interface DetectionCheckpointRepository extends
     void deleteActiveScanCheckpointsBySourceType(@Param("sourceType") String sourceType);
 
     /**
-     * Deletes active scan checkpoints (RUNNING or PAUSED status) for specific sources.
-     * Business purpose: Clean up active scans for specific sources when starting a fresh selected scan.
+     * Deletes ALL scan checkpoints for specific sources regardless of status.
+     * Business purpose: When re-scanning selected sources, all previous checkpoint data
+     * (including COMPLETED) must be removed so the dashboard summary does not return
+     * stale statuses for those sources before the new scan creates its own checkpoints.
      *
      * @param sourceType the datasource type to filter on
      * @param sourceKeys list of source keys to purge
      */
     @Modifying
     @Transactional
-    @Query("DELETE FROM ScanCheckpointEntity s WHERE s.status IN ('RUNNING', 'PAUSED') AND s.sourceType = :sourceType AND s.sourceKey IN :sourceKeys")
-    void deleteActiveScanCheckpointsForSources(@Param("sourceType") String sourceType, @Param("sourceKeys") List<String> sourceKeys);
+    @Query("DELETE FROM ScanCheckpointEntity s WHERE s.sourceType = :sourceType AND s.sourceKey IN :sourceKeys")
+    void deleteAllCheckpointsForSources(@Param("sourceType") String sourceType, @Param("sourceKeys") List<String> sourceKeys);
+
+    /**
+     * Atomically sets ALL RUNNING checkpoints for a scan to PAUSED.
+     * Uses a single UPDATE statement — no TOCTOU race condition possible.
+     *
+     * @param scanId the scan identifier
+     * @return number of rows updated
+     */
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE scan_checkpoints
+        SET status = 'PAUSED', updated_at = NOW()
+        WHERE scan_id = :scanId AND status = 'RUNNING'
+        """, nativeQuery = true)
+    int pauseAllRunningCheckpoints(@Param("scanId") String scanId);
+
+    /**
+     * Atomically sets ALL PAUSED checkpoints for a scan to RUNNING.
+     * Called by ResumeScanUseCase BEFORE restarting the scan, so the UPSERT guard
+     * does not reject subsequent scan events.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE scan_checkpoints
+        SET status = 'RUNNING', updated_at = NOW()
+        WHERE scan_id = :scanId AND status = 'PAUSED'
+        """, nativeQuery = true)
+    int resumeAllPausedCheckpoints(@Param("scanId") String scanId);
 
     /**
      * Persists or updates a scan checkpoint using PostgreSQL's UPSERT mechanism.
@@ -129,7 +161,9 @@ public interface DetectionCheckpointRepository extends
      *       otherwise preserves existing value to prevent regression in scan progress</li>
      *   <li><strong>last_processed_attachment_name:</strong> Updated only if new value is non-null and non-empty,
      *       otherwise preserves existing value to maintain attachment processing state</li>
-     *   <li><strong>status:</strong> Always updated to reflect current scan state</li>
+     *   <li><strong>status:</strong> Updated to reflect current scan state, EXCEPT when current status
+     *       is PAUSED and incoming status is RUNNING (prevents race condition where in-flight scan events
+     *       overwrite a user-initiated pause)</li>
      *   <li><strong>progress_percentage:</strong> Updated only when a non-null value is provided,
      *       otherwise preserves the existing non-null value to avoid regression of progress</li>
      *   <li><strong>updated_at:</strong> Always updated to track last checkpoint modification</li>
@@ -160,7 +194,7 @@ public interface DetectionCheckpointRepository extends
         ON CONFLICT (scan_id, source_type, source_key) DO UPDATE
         SET last_processed_content_id = CASE WHEN :contentId IS NOT NULL AND :contentId != '' THEN :contentId ELSE scan_checkpoints.last_processed_content_id END,
             last_processed_attachment_name = CASE WHEN :attachmentName IS NOT NULL AND :attachmentName != '' THEN :attachmentName ELSE scan_checkpoints.last_processed_attachment_name END,
-            status = :status,
+            status = CASE WHEN scan_checkpoints.status = 'PAUSED' AND :status = 'RUNNING' THEN 'PAUSED' ELSE :status END,
             progress_percentage = CASE WHEN :progressPercentage IS NOT NULL THEN :progressPercentage ELSE scan_checkpoints.progress_percentage END,
             updated_at = :updatedAt
         """, nativeQuery = true)

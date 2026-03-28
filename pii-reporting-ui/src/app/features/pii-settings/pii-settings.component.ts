@@ -1,16 +1,4 @@
-import {
-    Component,
-    computed,
-    EventEmitter,
-    Input,
-    OnChanges,
-    OnInit,
-    Output,
-    SecurityContext,
-    signal,
-    SimpleChanges,
-    viewChild
-} from '@angular/core';
+import { Component, computed, input, OnInit, output, SecurityContext, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -82,29 +70,11 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
     ],
   providers: [MessageService, ConfirmationService]
 })
-export class PiiSettingsComponent implements OnInit, OnChanges {
-  /**
-   * Dialog mode flag.
-   * When true, component is displayed inside a modal dialog.
-   * When false, component is displayed as standalone page.
-   */
-  @Input() dialogMode: boolean = false;
-
-  /**
-   * Index of the tab to display initially (0 = Detection, 1 = Confluence).
-   */
-  @Input() initialTab: number = 0;
-
-  /**
-   * Event emitted when user closes the dialog (only in dialog mode).
-   */
-  @Output() closeDialog = new EventEmitter<void>();
-
-  /**
-   * Event emitted when settings are saved successfully.
-   * Allows parent to trigger dashboard refresh after save.
-   */
-  @Output() settingsSaved = new EventEmitter<void>();
+export class PiiSettingsComponent implements OnInit {
+  readonly dialogMode = input(false);
+  readonly initialTab = input(0);
+  readonly closeDialog = output();
+  readonly settingsSaved = output();
 
   readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
   readonly jiraSettings = viewChild(JiraSettingsComponent);
@@ -222,17 +192,13 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
     'detectors', 'thresholds', 'pii_types', 'confluence'
   ];
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['initialTab']) {
-      const tabIndex = changes['initialTab'].currentValue as number;
-      const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
-      if (section) {
-        this.activeSection.set(section);
-      }
-    }
-  }
-
   ngOnInit(): void {
+    const tabIndex = this.initialTab();
+    const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
+    if (section) {
+      this.activeSection.set(section);
+    }
+
     this.loadAllConfigs();
   }
 
@@ -730,7 +696,7 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
    * In dialog mode, emits close event. In standalone mode, navigates to home.
    */
   onCancel(): void {
-    if (this.dialogMode) {
+    if (this.dialogMode()) {
       this.closeDialog.emit();
     } else {
       this.router.navigate(['/']);
@@ -790,6 +756,10 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
 
   get hasUnsavedChanges(): boolean {
     return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false) || (this.jiraSettings()?.hasUnsavedChanges ?? false) || (this.sharePointSettings()?.hasUnsavedChanges ?? false);
+  }
+
+  get isFormValid(): boolean {
+    return this.configForm.valid && (this.confluenceSettings()?.isFormValid ?? true);
   }
 
   get hasDetectorChanges(): boolean {

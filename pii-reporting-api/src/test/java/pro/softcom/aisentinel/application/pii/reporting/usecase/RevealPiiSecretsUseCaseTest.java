@@ -25,6 +25,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiabl
 import pro.softcom.aisentinel.domain.pii.reporting.PageSecretsResponse;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
+import pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.domain.pii.security.PiiAuditRecord;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.JpaScanResultQueryAdapter;
@@ -217,14 +218,14 @@ class RevealPiiSecretsUseCaseTest {
     }
 
     @Test
-    void Should_ThrowSecurityException_When_RevealNotAllowedByConfig() {
+    void Should_ThrowPiiAccessDeniedException_When_RevealNotAllowedByConfig() {
         String scanId = "scan-reveal-3";
         String pageId = "page-1";
 
         ((TestReadPiiConfigPort) readPiiConfigPort).setAllow(false);
 
         assertThatThrownBy(() -> revealPiiSecretsUseCase.revealPageSecrets(scanId, pageId))
-            .isInstanceOf(SecurityException.class)
+            .isInstanceOf(PiiAccessDeniedException.class)
             .hasMessage("Secret revelation is not allowed by configuration");
     }
 }

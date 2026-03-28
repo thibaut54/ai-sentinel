@@ -2,19 +2,18 @@ package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
-import pro.softcom.aisentinel.domain.pii.ScanStatus;
-import pro.softcom.aisentinel.domain.pii.export.SourceType;
-import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 
-import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,125 +35,41 @@ class PauseScanUseCaseTest {
     @InjectMocks
     private PauseScanUseCase pauseScanUseCase;
 
-    @Test
-    void Should_PauseRunningCheckpoint_When_ScanHasOneRunningSpace() {
-        // Given: A scan with one RUNNING space
-        String scanId = "scan-running-123";
-        
-        ScanCheckpoint runningSpace = ScanCheckpoint.builder()
-            .scanId(scanId)
-            .sourceType(SourceType.CONFLUENCE)
-            .sourceKey("SPACE-RUNNING")
-            .scanStatus(ScanStatus.RUNNING)
-            .progressPercentage(50.0)
-            .build();
+    @ParameterizedTest(name = "[{index}] scanId={0}, taskDisposed={1}, updatedCount={2}")
+    @MethodSource("providePauseScanCases")
+    void Should_AtomicallyPauseRunningCheckpoints_When_ScanIdIsValid(
+            String scanId, boolean taskDisposed, int updatedCount) {
+        // Given
+        when(personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId))
+            .thenReturn(taskDisposed);
+        when(scanCheckpointRepository.pauseAllRunningCheckpoints(scanId))
+            .thenReturn(updatedCount);
 
-        when(scanCheckpointRepository.findRunningScanCheckpoint(scanId))
-            .thenReturn(Optional.of(runningSpace));
-        when(
-            personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId)).thenReturn(true);
-
-        // When: Pausing the scan
+        // When
         pauseScanUseCase.pauseScan(scanId);
 
-        // Then: The RUNNING checkpoint should be updated to PAUSED
-        verify(scanCheckpointRepository).save(
-            argThat(checkpoint ->
-                checkpoint.scanStatus() == ScanStatus.PAUSED &&
-                checkpoint.sourceKey().equals("SPACE-RUNNING")
-            )
-        );
+        // Then
+        verify(scanCheckpointRepository).pauseAllRunningCheckpoints(scanId);
     }
 
-    @Test
-    void Should_NotSaveAnything_When_NoRunningCheckpointExists() {
-        // Given: A scan where all spaces are COMPLETED (no RUNNING checkpoint)
-        String scanId = "scan-all-completed";
-        
-        when(scanCheckpointRepository.findRunningScanCheckpoint(scanId))
-            .thenReturn(Optional.empty());
-        when(
-            personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId)).thenReturn(true);
-
-        // When: Attempting to pause the scan
-        pauseScanUseCase.pauseScan(scanId);
-
-        // Then: No checkpoints should be saved
-        verify(scanCheckpointRepository, never()).save(any(ScanCheckpoint.class));
-    }
-
-    @Test
-    void Should_PreserveCheckpointData_When_PausingRunningSpace() {
-        // Given: A scan with one RUNNING space with specific progress
-        String scanId = "scan-with-progress";
-        
-        ScanCheckpoint runningSpace = ScanCheckpoint.builder()
-            .scanId(scanId)
-            .sourceType(SourceType.CONFLUENCE)
-            .sourceKey("SPACE-A")
-            .lastProcessedContentId("page-123")
-            .lastProcessedAttachmentName("attachment.pdf")
-            .scanStatus(ScanStatus.RUNNING)
-            .progressPercentage(75.5)
-            .build();
-
-        when(scanCheckpointRepository.findRunningScanCheckpoint(scanId))
-            .thenReturn(Optional.of(runningSpace));
-        when(
-            personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId)).thenReturn(true);
-
-        // When: Pausing the scan
-        pauseScanUseCase.pauseScan(scanId);
-
-        // Then: The checkpoint should be saved with PAUSED status but preserve all other data
-        verify(scanCheckpointRepository).save(
-            argThat(checkpoint ->
-                checkpoint.scanStatus() == ScanStatus.PAUSED &&
-                checkpoint.sourceKey().equals("SPACE-A") &&
-                checkpoint.lastProcessedContentId().equals("page-123") &&
-                checkpoint.lastProcessedAttachmentName().equals("attachment.pdf") &&
-                checkpoint.progressPercentage() == 75.5
-            )
+    static Stream<Arguments> providePauseScanCases() {
+        return Stream.of(
+            Arguments.of("scan-running-123", true, 1),
+            Arguments.of("scan-all-completed", true, 0),
+            Arguments.of("scan-with-progress", true, 3),
+            Arguments.of("scan-task-gone", false, 1)
         );
     }
 
     @Test
     void Should_DoNothing_When_ScanIdIsBlank() {
-        // When: Trying to pause with blank scanId
+        // When
         pauseScanUseCase.pauseScan("");
         pauseScanUseCase.pauseScan(null);
         pauseScanUseCase.pauseScan("   ");
 
-        // Then: No repository calls should be made
-        verify(scanCheckpointRepository, never()).findRunningScanCheckpoint(any());
-        verify(scanCheckpointRepository, never()).save(any());
+        // Then
+        verify(scanCheckpointRepository, never()).pauseAllRunningCheckpoints(any());
         verify(personallyIdentifiableInformationScanExecutionOrchestratorPort, never()).pauseScan(any());
-    }
-
-    @Test
-    void Should_StillUpdateCheckpoint_When_ScanTaskNotFound() {
-        // Given: A scan with a RUNNING checkpoint but task already gone
-        String scanId = "scan-task-gone";
-        
-        ScanCheckpoint runningSpace = ScanCheckpoint.builder()
-            .scanId(scanId)
-            .sourceType(SourceType.CONFLUENCE)
-            .sourceKey("SPACE-X")
-            .scanStatus(ScanStatus.RUNNING)
-            .progressPercentage(30.0)
-            .build();
-
-        when(scanCheckpointRepository.findRunningScanCheckpoint(scanId))
-            .thenReturn(Optional.of(runningSpace));
-        when(
-            personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId)).thenReturn(false); // Task not found
-
-        // When: Pausing the scan
-        pauseScanUseCase.pauseScan(scanId);
-
-        // Then: The checkpoint should still be updated to PAUSED (persist state)
-        verify(scanCheckpointRepository).save(
-            argThat(checkpoint -> checkpoint.scanStatus() == ScanStatus.PAUSED)
-        );
     }
 }

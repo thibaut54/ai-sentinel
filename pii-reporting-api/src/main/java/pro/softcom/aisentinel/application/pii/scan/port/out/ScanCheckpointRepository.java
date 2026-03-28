@@ -93,21 +93,33 @@ public interface ScanCheckpointRepository {
     void deleteActiveScanCheckpointsBySourceType(SourceType sourceType);
 
     /**
-     * Deletes active scan checkpoints (RUNNING or PAUSED status) for specific sources.
-     * Business purpose: Clean up active scans for specific sources when starting a fresh selected scan.
+     * Deletes ALL scan checkpoints for specific sources regardless of status.
+     * Business purpose: When re-scanning selected sources, all previous checkpoint data
+     * (including COMPLETED) must be removed so the dashboard summary does not return
+     * stale statuses before the new scan creates its own checkpoints.
      *
      * @param sourceType the type of the datasource
      * @param sourceKeys list of source keys to purge
      */
-    void deleteActiveScanCheckpointsForSources(SourceType sourceType, List<String> sourceKeys);
+    void deleteAllCheckpointsForSources(SourceType sourceType, List<String> sourceKeys);
 
     /**
-     * Finds the checkpoint with RUNNING status for a given scan.
-     * Business purpose: When pausing a scan, only the RUNNING checkpoint should be paused,
-     * not COMPLETED or other status checkpoints.
+     * Atomically sets ALL RUNNING checkpoints for a scan to PAUSED.
+     * Business purpose: Race-condition-safe pause — uses a single UPDATE statement
+     * so no in-flight scan event can overwrite the PAUSED status between read and write.
      *
      * @param scanId the business identifier of the scan
-     * @return the RUNNING checkpoint if found, otherwise empty
+     * @return the number of checkpoints updated
      */
-    Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId);
+    int pauseAllRunningCheckpoints(String scanId);
+
+    /**
+     * Atomically sets ALL PAUSED checkpoints for a scan to RUNNING.
+     * Business purpose: On resume, update checkpoint status BEFORE the scan emits new events,
+     * so the UPSERT guard (which blocks PAUSED → RUNNING from scan events) does not reject them.
+     *
+     * @param scanId the business identifier of the scan
+     * @return the number of checkpoints updated
+     */
+    int resumeAllPausedCheckpoints(String scanId);
 }

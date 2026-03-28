@@ -57,14 +57,19 @@
           </p-toggleButton>
         </div>
         <div class="caption-right">
-          <output class="scan-status-badge"
-                  [class.scanning]="isStreaming()"
-                  [class.inactive]="!isStreaming()"
-                  [attr.aria-live]="isStreaming() ? 'polite' : 'off'"
-                  [attr.aria-label]="(isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
-            {{ (isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
-          </output>
+          <p-tag [value]="(actionPending() ? 'dashboard.scanStatus.loading' : scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco"
+                 [icon]="actionPending() ? 'pi pi-spin pi-spinner' : scanActive() ? 'pi pi-wave-pulse' : ''"
+                 [severity]="actionPending() ? 'secondary' : scanActive() ? 'info' : 'secondary'"
+                 [styleClass]="'scan-status-badge' + (scanActive() && !actionPending() ? ' scanning' : '') + (!scanActive() && !actionPending() ? ' inactive' : '')"
+                 [attr.aria-live]="scanActive() || actionPending() ? 'polite' : 'off'"
+                 [attr.aria-label]="(actionPending() ? 'dashboard.scanStatus.loading' : scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
+          </p-tag>
           <div class="scan-actions-group">
+            @if (actionPending()) {
+              <div class="scan-actions-overlay" aria-live="polite">
+                <i class="pi pi-spin pi-spinner"></i>
+              </div>
+            }
             <p-button type="button"
                       icon="pi pi-play"
                       (click)="selectedSpacesCount() > 0 ? startSelected() : startAll()"
@@ -78,7 +83,7 @@
                       icon="pi pi-pause"
                       (click)="pauseScan()"
                       (keydown.enter)="pauseScan()"
-                      [disabled]="!isStreaming()"
+                      [disabled]="!canPauseScan()"
                       [pTooltip]="'dashboard.actions.pauseScan' | transloco"
                       tooltipPosition="bottom"
                       [ariaLabel]="'dashboard.actions.pauseScan' | transloco"
@@ -92,6 +97,16 @@
                       tooltipPosition="bottom"
                       [ariaLabel]="'dashboard.actions.resumeScan' | transloco"
                       [attr.data-testid]="testIds.buttons.resumeScan" />
+            <p-button type="button"
+                      icon="pi pi-trash"
+                      (click)="purgeAllData()"
+                      (keydown.enter)="purgeAllData()"
+                      [disabled]="!canPurgeData()"
+                      [pTooltip]="'dashboard.actions.purgeData' | transloco"
+                      tooltipPosition="bottom"
+                      styleClass="purge-button"
+                      [ariaLabel]="'dashboard.actions.purgeData' | transloco"
+                      [attr.data-testid]="testIds.buttons.purgeData" />
           </div>
         </div>
       </div>

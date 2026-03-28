@@ -10,6 +10,7 @@ import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachme
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.ConfluenceApiUrlBuilder;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -36,11 +37,13 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     private static final String TITLE_FIELD = "title";
 
     private final ConfluenceConnectionConfig config;
+    private final ConfluenceApiUrlBuilder urlBuilder;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     public ConfluenceAttachmentHttpClientAdapter(@Qualifier("confluenceConfig") ConfluenceConnectionConfig config, ObjectMapper objectMapper) {
         this.config = config;
+        this.urlBuilder = new ConfluenceApiUrlBuilder(config);
         this.objectMapper = objectMapper;
 
         var executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -63,7 +66,7 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     public CompletableFuture<List<AttachmentInfo>> getPageAttachments(String pageId) {
         logger.info("Récupération des pièces jointes de la page: {}", pageId);
 
-        var uri = URI.create(config.getRestApiUrl() + config.contentPath() + pageId + config.attachmentChildSuffix() + "?limit=200&expand=results._links,results.metadata");
+        var uri = urlBuilder.buildAttachmentListWithMetadataUri(pageId);
 
         var request = HttpRequest.newBuilder().uri(uri)
             .header(AUTHORIZATION_HEADER_NAME, getAuthHeader())
@@ -200,8 +203,9 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
         }
         String normalizedBase = buildNormalizedBaseUrl(base) + "/";
         String path = dp;
-        // Only normalize Confluence Cloud attachment download endpoints
-        if (path.startsWith("/download/attachments/")) {
+        // Only normalize Confluence Cloud attachment download endpoints (Data Center doesn't use /wiki prefix)
+        if (config.deploymentType() != ConfluenceDeploymentType.DATA_CENTER
+                && path.startsWith("/download/attachments/")) {
             path = "/wiki" + path;
         }
         URI baseUri = URI.create(normalizedBase);

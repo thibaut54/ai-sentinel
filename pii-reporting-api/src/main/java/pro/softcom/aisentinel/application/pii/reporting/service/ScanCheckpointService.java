@@ -195,12 +195,15 @@ public class ScanCheckpointService {
     }
 
     /**
-     * Deletes active scan checkpoints for specific sources of a given type.
+     * Deletes ALL scan checkpoints for specific sources of a given type, regardless of status.
+     * Business purpose: When re-scanning selected sources, all previous checkpoint data
+     * (including COMPLETED) must be removed so the dashboard summary does not return
+     * stale statuses before the new scan creates its own checkpoints.
      *
      * @param sourceType the type of the datasource
      * @param sourceKeys list of source keys to purge
      */
-    public void deleteActiveScanCheckpointsForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
-        scanCheckpointRepository.deleteActiveScanCheckpointsForSources(sourceType, sourceKeys);
+    public void deleteAllCheckpointsForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
+        scanCheckpointRepository.deleteAllCheckpointsForSources(sourceType, sourceKeys);
     }
 }

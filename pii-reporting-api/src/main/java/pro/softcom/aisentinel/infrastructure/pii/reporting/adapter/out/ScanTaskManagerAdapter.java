@@ -5,6 +5,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
+import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -125,8 +126,7 @@ public class ScanTaskManagerAdapter implements
         ManagedScan scan = managedScans.get(scanId);
         if (scan == null) {
             log.warn("[ScanTaskManager] Scan not found: {}", scanId);
-            return Flux.error(new ScanNotFoundException(
-                    "Scan not found: " + scanId + ". It may have completed and been cleaned up."));
+            return Flux.error(new ScanNotFoundException(scanId));
         }
         
         // Return a Flux from the sink — provides replay buffer for late subscribers
@@ -210,12 +210,4 @@ public class ScanTaskManagerAdapter implements
         }
     }
 
-    /**
-     * Exception thrown when attempting to subscribe to a non-existent scan.
-     */
-    public static class ScanNotFoundException extends RuntimeException {
-        public ScanNotFoundException(String message) {
-            super(message);
-        }
-    }
 }

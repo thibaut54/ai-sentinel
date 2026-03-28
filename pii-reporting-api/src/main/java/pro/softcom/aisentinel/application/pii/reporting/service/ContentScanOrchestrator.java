@@ -151,8 +151,8 @@ public class ContentScanOrchestrator {
      */
     public void purgePreviousScanDataForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
         try {
-            log.info("[SCAN] Purging previous active scan data for selected sources before starting new scan");
-            scanCheckpointService.deleteActiveScanCheckpointsForSources(sourceType, sourceKeys);
+            log.info("[SCAN] Purging ALL previous scan data for selected sources before starting new scan");
+            scanCheckpointService.deleteAllCheckpointsForSources(sourceType, sourceKeys);
             log.info("[SCAN] Previous scan data for selected sources purged successfully");
         } catch (Exception e) {
             log.error("[SCAN] Failed to purge previous scan data for selected sources: {}", e.getMessage(), e);

@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
+import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import reactor.core.publisher.Flux;
 
 /**
@@ -23,11 +24,16 @@ public interface PersonallyIdentifiableInformationScanExecutionOrchestratorPort 
     void startScan(String scanId, Flux<ContentScanResult> scanDataStream);
 
     /**
-     * Subscribes to an active scan stream.
-     * Returns a Flux that replays recent events (buffer) and streams new ones.
+     * Subscribes to an existing scan to receive its events.
      *
-     * @param scanId The unique identifier of the scan
-     * @return A Flux of scan events
+     * <p>Allows multiple clients to subscribe to the same scan simultaneously.
+     * Past events can be replayed thanks to the replay buffer (up to 1000 events).</p>
+     *
+     * @param scanId the scan identifier (non-null)
+     * @return a Flux of scan events
+     * @throws IllegalArgumentException if scanId is null
+     * @throws ScanNotFoundException
+     *         if the scan does not exist or has been cleaned up
      */
     Flux<ContentScanResult> subscribeScan(String scanId);
 
