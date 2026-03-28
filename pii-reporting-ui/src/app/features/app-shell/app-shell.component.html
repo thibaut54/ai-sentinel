@@ -51,7 +51,8 @@
             [resizable]="false"
             [style]="{width: '75vw', height: '95vh'}"
             styleClass="settings-fullscreen-dialog"
-            [header]="'settings.title' | transloco">
+            [header]="'settings.title' | transloco"
+            (onHide)="onSettingsDialogHide()">
     <app-pii-settings [dialogMode]="true"
                       [initialTab]="settingsInitialTab()"
                       (closeDialog)="closeSettingsDialog()"
