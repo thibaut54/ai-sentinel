@@ -35,10 +35,10 @@ class PauseScanUseCaseTest {
     @InjectMocks
     private PauseScanUseCase pauseScanUseCase;
 
-    @ParameterizedTest(name = "[{index}] {0}")
+    @ParameterizedTest(name = "[{index}] scanId={0}, taskDisposed={1}, updatedCount={2}")
     @MethodSource("providePauseScanCases")
     void Should_AtomicallyPauseRunningCheckpoints_When_ScanIdIsValid(
-            String scenario, String scanId, boolean taskDisposed, int updatedCount) {
+            String scanId, boolean taskDisposed, int updatedCount) {
         // Given
         when(personallyIdentifiableInformationScanExecutionOrchestratorPort.pauseScan(scanId))
             .thenReturn(taskDisposed);
@@ -54,10 +54,10 @@ class PauseScanUseCaseTest {
 
     static Stream<Arguments> providePauseScanCases() {
         return Stream.of(
-            Arguments.of("one running space", "scan-running-123", true, 1),
-            Arguments.of("no running checkpoint", "scan-all-completed", true, 0),
-            Arguments.of("multiple running spaces", "scan-with-progress", true, 3),
-            Arguments.of("task not found", "scan-task-gone", false, 1)
+            Arguments.of("scan-running-123", true, 1),
+            Arguments.of("scan-all-completed", true, 0),
+            Arguments.of("scan-with-progress", true, 3),
+            Arguments.of("scan-task-gone", false, 1)
         );
     }
 

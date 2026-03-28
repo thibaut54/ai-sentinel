@@ -109,7 +109,18 @@ describe('SseEventHandlerService', () => {
     }));
   });
 
-  it('Should_SkipError_When_NoSpaceKey', () => {
+  it('Should_FallbackToActiveSpaceKey_When_ErrorMissingSpaceKey', () => {
+    const payload = { message: 'Error' } as any;
+
+    service.routeStreamEvent('scanError', payload);
+
+    expect(toastMock.showScanError).toHaveBeenCalledWith(expect.objectContaining({
+      spaceKey: 'ACTIVE-SPACE'
+    }));
+  });
+
+  it('Should_SkipError_When_NoSpaceKeyAndNoActiveSpace', () => {
+    uiStateMock.activeSpaceKey.set(null);
     const payload = { message: 'Error' } as any;
 
     service.routeStreamEvent('scanError', payload);

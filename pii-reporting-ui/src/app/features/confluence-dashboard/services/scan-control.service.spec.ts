@@ -289,6 +289,78 @@ describe('ScanControlService', () => {
     expect(pollingMock.start).not.toHaveBeenCalled();
   });
 
+  // ========== canPurgeData ==========
+
+  it('Should_ComputeCanPurgeData_When_Idle', () => {
+    expect(service.canPurgeData()).toBe(true);
+  });
+
+  it('Should_DisablePurge_When_ActionPending', () => {
+    pollingMock.actionPending.set(true);
+    expect(service.canPurgeData()).toBe(false);
+  });
+
+  it('Should_DisablePurge_When_ScanActive', () => {
+    pollingMock.scanActive.set(true);
+    expect(service.canPurgeData()).toBe(false);
+  });
+
+  // ========== purgeAllData ==========
+
+  it('Should_ShowConfirmation_When_PurgeAllData', () => {
+    service.purgeAllData();
+    expect(confirmMock.confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('Should_NotPurge_When_ScanActive', () => {
+    pollingMock.scanActive.set(true);
+    service.purgeAllData();
+    expect(confirmMock.confirm).not.toHaveBeenCalled();
+  });
+
+  it('Should_NotPurge_When_ActionPending', () => {
+    pollingMock.actionPending.set(true);
+    service.purgeAllData();
+    expect(confirmMock.confirm).not.toHaveBeenCalled();
+  });
+
+  it('Should_CallPurgeApi_When_ConfirmAccepted', () => {
+    service.purgeAllData();
+    const confirmCall = confirmMock.confirm.mock.calls[0][0];
+    confirmCall.accept();
+
+    expect(apiMock.purgeAllScans).toHaveBeenCalled();
+    expect(storageMock.clearAllItems).toHaveBeenCalled();
+    expect(pollingMock.actionPending()).toBe(false);
+  });
+
+  it('Should_LogCancellation_When_PurgeRejected', () => {
+    service.purgeAllData();
+    const confirmCall = confirmMock.confirm.mock.calls[0][0];
+    confirmCall.reject();
+
+    expect(uiStateMock.append).toHaveBeenCalled();
+    expect(apiMock.purgeAllScans).not.toHaveBeenCalled();
+  });
+
+  it('Should_HandleError_When_PurgeFails', () => {
+    apiMock.purgeAllScans.mockReturnValue(throwError(() => new Error('purge failed')));
+    service.purgeAllData();
+    const confirmCall = confirmMock.confirm.mock.calls[0][0];
+    confirmCall.accept();
+
+    expect(pollingMock.actionPending()).toBe(false);
+    expect(uiStateMock.append).toHaveBeenCalled();
+  });
+
+  it('Should_UseDangerStyle_When_PurgeConfirmation', () => {
+    service.purgeAllData();
+    const confirmCall = confirmMock.confirm.mock.calls[0][0];
+
+    expect(confirmCall.acceptButtonStyleClass).toBe('p-button-danger');
+    expect(confirmCall.icon).toBe('pi pi-trash');
+  });
+
   // ========== reset ==========
 
   it('Should_StopEverything_When_Reset', () => {

@@ -250,7 +250,7 @@ class GLiNERDetector:
             "phone number": "PHONE",
             # PERSON_IDENTITY
             "person name": "PERSON_NAME",
-            "system user identifier or account login identifier": "USERNAME",
+            "system account name": "USERNAME",
             # PERSON_DEMOGRAPHICS
             "date of birth": "DATE_OF_BIRTH",
             "age": "AGE",
@@ -258,7 +258,7 @@ class GLiNERDetector:
             # FINANCIAL_IDENTIFIER
             "credit card number": "CREDIT_CARD",
             "bank account number": "BANK_ACCOUNT",
-            "iban": "IBAN",
+            "international banking identifier": "IBAN",
             "routing number": "ROUTING_NUMBER",
             "tax identification number": "TAX_ID",
             "cryptocurrency wallet address": "CRYPTO_WALLET",
@@ -274,7 +274,7 @@ class GLiNERDetector:
             "country": "COUNTRY",
             "postal code": "ZIP_CODE",
             # CREDENTIAL_SECRET
-            "password": "PASSWORD",
+            "account password or PIN code": "PASSWORD",
             "api key": "API_KEY",
             "access token": "ACCESS_TOKEN",
             "secret key": "SECRET_KEY",

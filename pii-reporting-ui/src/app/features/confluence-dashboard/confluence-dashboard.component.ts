@@ -142,6 +142,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   readonly canStartScan = computed(() => this.scanControl.canStartScan());
   readonly canPauseScan = computed(() => this.scanControl.canPauseScan());
   readonly canResumeScan = computed(() => this.scanControl.canResumeScan());
+  readonly canPurgeData = computed(() => this.scanControl.canPurgeData());
 
   // Global severity counts across all displayed spaces
   readonly globalSeverityCounts = computed<SeverityCounts>(() => {
@@ -214,6 +215,10 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   resumeLastScan(): void {
     this.scanControl.resumeLastScan();
+  }
+
+  purgeAllData(): void {
+    this.scanControl.purgeAllData();
   }
 
   onGlobalChange(value: string): void {

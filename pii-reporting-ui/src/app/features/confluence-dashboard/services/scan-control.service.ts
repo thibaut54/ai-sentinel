@@ -78,6 +78,12 @@ export class ScanControlService {
     !!this.dataManagement.lastScanMeta()
   );
 
+  // Computed: whether data can be purged (not during active scan or pending action)
+  readonly canPurgeData = computed(() =>
+    !this.actionPending() &&
+    !this.scanActive()
+  );
+
   /**
    * Initiates a global scan of all spaces with user confirmation.
    * Business purpose: ensures user explicitly approves full scan before data purge.
@@ -408,6 +414,73 @@ export class ScanControlService {
     this.isStreaming.set(true);
     this.startPollingWithCompletionDetection();
     this.subscribeSse(this.sentinelleApiService.startAllSpacesStream(meta.scanId));
+  }
+
+  /**
+   * Purges all scan data after user confirmation.
+   * Business purpose: allows user to manually delete all scan results without starting a new scan.
+   */
+  purgeAllData(): void {
+    if (this.scanActive() || this.actionPending()) {
+      return;
+    }
+
+    this.confirmationService.confirm({
+      header: this.translocoService.translate('confirmations.purgeData.header'),
+      message: this.translocoService.translate('confirmations.purgeData.message'),
+      icon: 'pi pi-trash',
+      acceptLabel: this.translocoService.translate('confirmations.purgeData.acceptLabel'),
+      rejectLabel: this.translocoService.translate('confirmations.purgeData.rejectLabel'),
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-secondary',
+      accept: () => {
+        this.executePurgeAllData();
+      },
+      reject: () => {
+        this.uiStateService.append(
+          this.translocoService.translate('dashboard.logs.purgeManualCancelled')
+        );
+      }
+    });
+  }
+
+  private executePurgeAllData(): void {
+    this.statusPolling.actionPending.set(true);
+
+    this.sentinelleApiService.purgeAllScans().subscribe({
+      next: () => {
+        this.piiItemsStorage.clearAllItems();
+        this.scanProgressService.resetAllProgress();
+        this.uiStateService.clearHistory();
+        this.uiStateService.collapseAllRows();
+        this.uiStateService.selectSpace(null);
+        this.uiStateService.activeSpaceKey.set(null);
+
+        try {
+          this.spacesDashboardUtils.setSpaces(this.dataManagement.spaces());
+        } catch {
+          // no-op
+        }
+
+        this.toastService.clearScanErrors();
+        this.statusPolling.actionPending.set(false);
+
+        this.uiStateService.append(
+          this.translocoService.translate('dashboard.logs.purgeManualOk')
+        );
+
+        this.dataManagement.loadLastScan().subscribe();
+        this.statusPolling.forceRefresh();
+      },
+      error: (err) => {
+        this.statusPolling.actionPending.set(false);
+        this.uiStateService.append(
+          this.translocoService.translate('dashboard.logs.purgeManualError', {
+            error: err?.message ?? err
+          })
+        );
+      }
+    });
   }
 
   /**

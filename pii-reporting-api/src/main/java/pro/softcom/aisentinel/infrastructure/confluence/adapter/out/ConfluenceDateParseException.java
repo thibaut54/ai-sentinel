@@ -11,8 +11,8 @@ public final class ConfluenceDateParseException extends ConfluenceException {
     private final String invalidDateString;
 
     public ConfluenceDateParseException(String invalidDateString, Throwable cause) {
-        super(String.format("Échec du parsing du format de date Confluence: '%s'. " +
-            "Cela peut indiquer un changement dans l'API Confluence.", invalidDateString), cause);
+        super(String.format("Failed to parse Confluence date format: '%s'. " +
+            "This may indicate a change in the Confluence API.", invalidDateString), cause);
         this.invalidDateString = invalidDateString;
     }
 }

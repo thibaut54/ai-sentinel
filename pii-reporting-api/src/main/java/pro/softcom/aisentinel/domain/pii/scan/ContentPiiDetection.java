@@ -72,7 +72,7 @@ public record ContentPiiDetection(
         // Financial
         CREDIT_CARD("Carte de crédit"),
         BANK_ACCOUNT("Compte bancaire"),
-        IBAN("IBAN"),
+        IBAN("Identifiant bancaire international (IBAN)"),
         TAX("Numéro fiscal"),
         INVOICE("Facture"),
         SALARY("Salaire"),
@@ -85,7 +85,7 @@ public record ContentPiiDetection(
         DRIVER_LICENSE("Permis de conduire"),
 
         // IT & Credentials
-        PASSWORD("Mot de passe"),
+        PASSWORD("Mot de passe ou code PIN"),
         API_KEY("Clé API"),
         TOKEN("Jeton"),
         SECRET("Secret"),
