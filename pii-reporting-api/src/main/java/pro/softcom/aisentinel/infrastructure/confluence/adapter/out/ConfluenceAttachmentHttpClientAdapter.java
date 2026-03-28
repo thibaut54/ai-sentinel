@@ -186,12 +186,13 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     }
 
     /**
-     * Resolves a Confluence download path against the configured base URL robustly.
+     * Resolves a Confluence download path against the configured base URL.
      * Business rules:
      * - If downloadPath is absolute (http/https), return as-is.
-     * - Confluence Cloud expects download paths under '/wiki/download/...'. If the path starts with '/download/',
-     * we prefix it with '/wiki' to avoid 404 on Cloud when base URL does not contain '/wiki'.
-     * - Otherwise, resolve the path against the base URL using URI resolution.
+     * - Otherwise, concatenate base URL with download path directly.
+     *   Cloud base URL already includes /wiki (e.g., <a href="https://domain.atlassian.net/wiki">...</a>),
+     *   Data Center base URL is the root (e.g., <a href="https://confluence.company.com">...</a>).
+     *   Direct concatenation produces correct URLs for both deployment types.
      */
     private URI resolveAgainstConfluenceBase(String base, String downloadPath) {
         if (isBlank(downloadPath)) {
@@ -201,14 +202,10 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
         if (dp.startsWith("http://") || dp.startsWith("https://")) {
             return URI.create(dp);
         }
-        String normalizedBase = buildNormalizedBaseUrl(base) + "/";
-        String path = dp;
-        // Only normalize Confluence Cloud attachment download endpoints (Data Center doesn't use /wiki prefix)
-        if (config.deploymentType() != ConfluenceDeploymentType.DATA_CENTER
-                && path.startsWith("/download/attachments/")) {
-            path = "/wiki" + path;
+        String normalizedBase = buildNormalizedBaseUrl(base);
+        if (!dp.startsWith("/")) {
+            normalizedBase += "/";
         }
-        URI baseUri = URI.create(normalizedBase);
-        return baseUri.resolve(path);
+        return URI.create(normalizedBase + dp);
     }
 }

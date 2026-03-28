@@ -924,6 +924,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         entity_type_upper = entity_type.upper()
         entity_text_preview = entity.get('text', '')[:30]
         entity_score = float(entity.get('score', 0.0))
+        raw_source = entity.get('source', 'UNKNOWN')
+        entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
 
         logger.debug(
             f"[{request_id}] Entity #{idx+1}: raw_type='{entity_type_raw}' → "
@@ -931,7 +933,11 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             f"text='{entity_text_preview}' | score={entity_score:.3f}"
         )
 
-        type_config = pii_type_configs.get(entity_type_upper)
+        # Prefer detector-specific composite key (e.g. "REGEX:IP_ADDRESS"),
+        # fall back to plain pii_type key for backward compatibility.
+        type_config = pii_type_configs.get(f"{entity_source}:{entity_type_upper}")
+        if not type_config:
+            type_config = pii_type_configs.get(entity_type_upper)
 
         if not type_config:
             logger.debug(
@@ -948,8 +954,6 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         )
 
         config_detector = type_config.get('detector', 'ALL')
-        raw_source = entity.get('source', 'UNKNOWN')
-        entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
 
         if config_detector != 'ALL' and config_detector != entity_source:
             logger.debug(
