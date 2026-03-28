@@ -73,8 +73,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return401WithErrorKey_When_ConfluenceAuthenticationFails")
     void Should_Return401WithErrorKey_When_ConfluenceAuthenticationFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceAuthenticationException("Auth failed", 401);
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceAuthenticationException("Auth failed", 401));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isUnauthorized())
@@ -84,8 +83,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return503WithErrorKey_When_ConfluenceConnectionFails")
     void Should_Return503WithErrorKey_When_ConfluenceConnectionFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceConnectionException("Connection refused", new IOException("refused"));
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceConnectionException("Connection refused", new IOException("refused")));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isServiceUnavailable())
@@ -95,8 +93,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return404WithErrorKey_When_ConfluenceResourceNotFound")
     void Should_Return404WithErrorKey_When_ConfluenceResourceNotFound() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceNotFoundException("123", "Page");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceNotFoundException("123", "Page"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isNotFound())
@@ -106,8 +103,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return502WithErrorKey_When_ConfluenceApiError")
     void Should_Return502WithErrorKey_When_ConfluenceApiError() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceApiException("API error", 500, "Internal Server Error");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceApiException("API error", 500, "Internal Server Error"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadGateway())
@@ -117,8 +113,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return502WithErrorKey_When_ConfluenceDateParseFails")
     void Should_Return502WithErrorKey_When_ConfluenceDateParseFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceDateParseException("2024-99-99", new RuntimeException("parse error"));
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceDateParseException("2024-99-99", new RuntimeException("parse error")));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadGateway())
@@ -130,8 +125,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return502WithErrorKey_When_ConfluenceDeserializationFails")
     void Should_Return502WithErrorKey_When_ConfluenceDeserializationFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceDeserializationException("Bad JSON", new RuntimeException("parse"));
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceDeserializationException("Bad JSON", new RuntimeException("parse")));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadGateway())
@@ -141,8 +135,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return404WithErrorKey_When_ConfluenceSpaceNotFound")
     void Should_Return404WithErrorKey_When_ConfluenceSpaceNotFound() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceSpaceNotFoundException("TEST");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceSpaceNotFoundException("TEST"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isNotFound())
@@ -152,8 +145,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return503WithErrorKey_When_ConfluenceSpaceCacheError")
     void Should_Return503WithErrorKey_When_ConfluenceSpaceCacheError() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ConfluenceSpaceCacheException("Cache refresh failed", "refresh");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ConfluenceSpaceCacheException("Cache refresh failed", "refresh"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isServiceUnavailable())
@@ -165,8 +157,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return503WithErrorKey_When_PiiDetectionConnectionFails")
     void Should_Return503WithErrorKey_When_PiiDetectionConnectionFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                PiiDetectionException.connectionError("Connection failed", new IOException("refused"));
+        ExceptionThrowingTestController.exceptionToThrow.set(PiiDetectionException.connectionError("Connection failed", new IOException("refused")));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isServiceUnavailable())
@@ -176,8 +167,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return502WithErrorKey_When_PiiDetectionServiceError")
     void Should_Return502WithErrorKey_When_PiiDetectionServiceError() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                PiiDetectionException.serviceError("Service error");
+        ExceptionThrowingTestController.exceptionToThrow.set(PiiDetectionException.serviceError("Service error"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadGateway())
@@ -187,8 +177,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return504WithErrorKey_When_PiiDetectionTimeout")
     void Should_Return504WithErrorKey_When_PiiDetectionTimeout() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                PiiDetectionException.timeoutError("Timeout after 30s");
+        ExceptionThrowingTestController.exceptionToThrow.set(PiiDetectionException.timeoutError("Timeout after 30s"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isGatewayTimeout())
@@ -200,8 +189,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return502WithErrorKey_When_PiiDetectorError")
     void Should_Return502WithErrorKey_When_PiiDetectorError() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                PiiDetectorException.serviceError("Detector failed", new RuntimeException("error"));
+        ExceptionThrowingTestController.exceptionToThrow.set(PiiDetectorException.serviceError("Detector failed", new RuntimeException("error")));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadGateway())
@@ -211,8 +199,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return500WithErrorKey_When_EncryptionFails")
     void Should_Return500WithErrorKey_When_EncryptionFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new EncryptionException("Encryption failed");
+        ExceptionThrowingTestController.exceptionToThrow.set(new EncryptionException("Encryption failed"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isInternalServerError())
@@ -222,8 +209,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return500WithErrorKey_When_CryptoOperationFails")
     void Should_Return500WithErrorKey_When_CryptoOperationFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new CryptographicOperationException("Crypto failed");
+        ExceptionThrowingTestController.exceptionToThrow.set(new CryptographicOperationException("Crypto failed"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isInternalServerError())
@@ -233,8 +219,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return403WithErrorKey_When_PiiAccessDenied")
     void Should_Return403WithErrorKey_When_PiiAccessDenied() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new PiiAccessDeniedException("Access denied");
+        ExceptionThrowingTestController.exceptionToThrow.set(new PiiAccessDeniedException("Access denied"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isForbidden())
@@ -246,8 +231,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return409WithErrorKey_When_InvalidScanStatusTransition")
     void Should_Return409WithErrorKey_When_InvalidScanStatusTransition() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new IllegalScanStatusTransitionException(ScanStatus.COMPLETED, ScanStatus.RUNNING, Initiator.USER);
+        ExceptionThrowingTestController.exceptionToThrow.set(new IllegalScanStatusTransitionException(ScanStatus.COMPLETED, ScanStatus.RUNNING, Initiator.USER));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isConflict())
@@ -257,8 +241,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return404WithErrorKey_When_ScanNotFound")
     void Should_Return404WithErrorKey_When_ScanNotFound() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ScanNotFoundException("scan-123");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ScanNotFoundException("scan-123"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isNotFound())
@@ -270,8 +253,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return500WithErrorKey_When_ExportFails")
     void Should_Return500WithErrorKey_When_ExportFails() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ExportException("Export failed");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ExportException("Export failed"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isInternalServerError())
@@ -281,8 +263,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return404WithErrorKey_When_ExportContextNotFound")
     void Should_Return404WithErrorKey_When_ExportContextNotFound() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new ExportContextNotFoundException("CONFLUENCE", "space-1");
+        ExceptionThrowingTestController.exceptionToThrow.set(new ExportContextNotFoundException("CONFLUENCE", "space-1"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isNotFound())
@@ -292,8 +273,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return400WithErrorKey_When_UnsupportedSourceType")
     void Should_Return400WithErrorKey_When_UnsupportedSourceType() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new UnsupportedSourceTypeException("SHAREPOINT");
+        ExceptionThrowingTestController.exceptionToThrow.set(new UnsupportedSourceTypeException("SHAREPOINT"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadRequest())
@@ -305,8 +285,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return400WithErrorKey_When_IllegalArgument")
     void Should_Return400WithErrorKey_When_IllegalArgument() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new IllegalArgumentException("Invalid parameter");
+        ExceptionThrowingTestController.exceptionToThrow.set(new IllegalArgumentException("Invalid parameter"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isBadRequest())
@@ -316,8 +295,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return409WithErrorKey_When_IllegalState")
     void Should_Return409WithErrorKey_When_IllegalState() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new IllegalStateException("Invalid state");
+        ExceptionThrowingTestController.exceptionToThrow.set(new IllegalStateException("Invalid state"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isConflict())
@@ -347,8 +325,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_Return500WithGenericKey_When_UnexpectedException")
     void Should_Return500WithGenericKey_When_UnexpectedException() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new RuntimeException("Something unexpected");
+        ExceptionThrowingTestController.exceptionToThrow.set(new RuntimeException("Something unexpected"));
 
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isInternalServerError())
@@ -360,8 +337,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_LogAtWarnLevel_When_ClientError4xx")
     void Should_LogAtWarnLevel_When_ClientError4xx() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new PiiAccessDeniedException("Access denied for log test");
+        ExceptionThrowingTestController.exceptionToThrow.set(new PiiAccessDeniedException("Access denied for log test"));
 
         mockMvc.perform(get("/test/throw"));
 
@@ -374,8 +350,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should_LogAtErrorLevel_When_ServerError5xx")
     void Should_LogAtErrorLevel_When_ServerError5xx() throws Exception {
-        ExceptionThrowingTestController.exceptionToThrow =
-                new EncryptionException("Encryption failed for log test");
+        ExceptionThrowingTestController.exceptionToThrow.set(new EncryptionException("Encryption failed for log test"));
 
         mockMvc.perform(get("/test/throw"));
 

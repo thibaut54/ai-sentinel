@@ -17,6 +17,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ScanRemainingPages;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanRemainingPagesCalculator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -52,10 +53,12 @@ public class StreamConfluenceResumeScanUseCase extends
         }
         // Atomically set PAUSED checkpoints back to RUNNING BEFORE emitting scan events,
         // so the UPSERT guard (which blocks PAUSED → RUNNING from scan events) does not reject them.
-        int resumed = scanCheckpointRepository.resumeAllPausedCheckpoints(scanId);
-        log.info("[RESUME] Scan {} — {} checkpoint(s) updated from PAUSED to RUNNING", scanId, resumed);
-
-        return Mono.fromFuture(confluenceAccessor.getAllSpaces())
+        // Wrapped in Mono.fromCallable to run on boundedElastic (JPA is blocking).
+        return Mono.fromCallable(() -> scanCheckpointRepository.resumeAllPausedCheckpoints(scanId))
+            .subscribeOn(Schedulers.boundedElastic())
+            .doOnNext(resumed ->
+                log.info("[RESUME] Scan {} — {} checkpoint(s) updated from PAUSED to RUNNING", scanId, resumed))
+            .then(Mono.fromFuture(confluenceAccessor.getAllSpaces()))
             .flatMapMany(spaces ->
                              Flux.fromIterable(spaces)
                                  .concatMap(space -> resumeScanResultFlux(scanId, space)))

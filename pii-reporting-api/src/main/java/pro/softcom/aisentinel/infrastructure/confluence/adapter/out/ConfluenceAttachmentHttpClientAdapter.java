@@ -203,8 +203,9 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
         }
         String normalizedBase = buildNormalizedBaseUrl(base) + "/";
         String path = dp;
-        // Only normalize Confluence Cloud attachment download endpoints
-        if (path.startsWith("/download/attachments/")) {
+        // Only normalize Confluence Cloud attachment download endpoints (Data Center doesn't use /wiki prefix)
+        if (config.deploymentType() != ConfluenceDeploymentType.DATA_CENTER
+                && path.startsWith("/download/attachments/")) {
             path = "/wiki" + path;
         }
         URI baseUri = URI.create(normalizedBase);

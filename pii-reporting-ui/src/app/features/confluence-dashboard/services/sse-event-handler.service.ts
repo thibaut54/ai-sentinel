@@ -87,7 +87,7 @@ export class SseEventHandlerService {
    * - Error displayed as sticky toast notification
    */
   private handleStreamError(payload: ConfluenceContentPersonallyIdentifiableInformationScanResult): void {
-    const spaceKey = payload.spaceKey;
+    const spaceKey = coerceSpaceKey(payload) ?? this.uiStateService.activeSpaceKey();
     if (!spaceKey) return;
 
     const errorMessage = (payload as Record<string, unknown>)?.['message'] as string
