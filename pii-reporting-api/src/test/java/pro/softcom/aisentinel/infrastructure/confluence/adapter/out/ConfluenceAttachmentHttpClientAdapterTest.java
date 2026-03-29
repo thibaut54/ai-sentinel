@@ -36,14 +36,12 @@ class ConfluenceAttachmentHttpClientAdapterTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        when(config.baseUrl()).thenReturn("https://confluence.test.com");
         when(config.username()).thenReturn("testuser");
         when(config.apiToken()).thenReturn("testtoken");
-        when(config.getRestApiUrl()).thenReturn("https://confluence.test.com/rest/api");
         when(config.connectTimeout()).thenReturn(10_000);
         when(config.readTimeout()).thenReturn(10_000);
         when(config.maxRetries()).thenReturn(0);
-        when(config.contentPath()).thenReturn("/content/");
-        when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
 
         final ObjectMapper mapper = new ObjectMapper();
         ConfluenceAttachmentHttpClientAdapter service = new ConfluenceAttachmentHttpClientAdapter(config, mapper);
@@ -56,7 +54,7 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_success_mapping_and_url() throws Exception {
+    void Should_MapAttachmentsAndBuildUrl_When_ResponseSuccess() throws Exception {
         String body = attachmentsJson(List.of(
             attachment("/download/path/file.pdf")
         ));
@@ -78,7 +76,7 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_404_500_and_parseError_returnEmpty() throws Exception {
+    void Should_ReturnEmpty_When_ResponseErrorOrParseFailure() throws Exception {
         var r404 = mock(HttpResponse.class);
         when(r404.statusCode()).thenReturn(404);
         var r500 = mock(HttpResponse.class);
@@ -120,7 +118,7 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_normalizesDownloadPathWithoutLeadingSlash() throws Exception {
+    void Should_NormalizeDownloadPath_When_PathWithoutLeadingSlash() throws Exception {
         String body = attachmentsJson(List.of(
             attachment("download/path/file.pdf") // no leading slash
         ));

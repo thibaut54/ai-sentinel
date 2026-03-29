@@ -6,6 +6,7 @@ import pro.softcom.aisentinel.application.pii.reporting.port.in.RevealPiiSecrets
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ReadPiiConfigPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
+import pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PageSecretsResponse;
 import pro.softcom.aisentinel.domain.pii.reporting.RevealedSecret;
@@ -44,7 +45,7 @@ public class RevealPiiSecretsUseCase implements
         // Business Rule: Check authorization
         if (!readPiiConfigPort.isAllowSecretReveal()) {
             log.warn("[PII_ACCESS] Reveal attempt denied by configuration for pageId={}", pageId);
-            throw new SecurityException("Secret revelation is not allowed by configuration");
+            throw new PiiAccessDeniedException("Secret revelation is not allowed by configuration");
         }
 
         log.info("[PII_ACCESS] Reveal request for pageId={}", pageId);

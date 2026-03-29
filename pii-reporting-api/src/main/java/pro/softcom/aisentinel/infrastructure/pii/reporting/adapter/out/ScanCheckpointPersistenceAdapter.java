@@ -111,22 +111,31 @@ public class ScanCheckpointPersistenceAdapter implements ScanCheckpointRepositor
 
     @Override
     @Transactional
-    public void deleteActiveScanCheckpointsForSpaces(List<String> spaceKeys) {
+    public void deleteAllCheckpointsForSpaces(List<String> spaceKeys) {
         if (spaceKeys == null || spaceKeys.isEmpty()) {
             return;
         }
-        log.info("[PURGE] Deleting active scan checkpoints for {} spaces", spaceKeys.size());
-        jpaRepository.deleteActiveScanCheckpointsForSpaces(spaceKeys);
-        log.info("[PURGE] Active scan checkpoints for spaces deleted successfully");
+        log.info("[PURGE] Deleting ALL scan checkpoints for {} spaces", spaceKeys.size());
+        jpaRepository.deleteAllCheckpointsForSpaces(spaceKeys);
+        log.info("[PURGE] All scan checkpoints for spaces deleted successfully");
     }
 
     @Override
-    public Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId) {
+    @Transactional
+    public int pauseAllRunningCheckpoints(String scanId) {
         if (isBlank(scanId)) {
-            return Optional.empty();
+            return 0;
         }
-        return jpaRepository.findRunningScanCheckpoint(scanId)
-            .map(ScanCheckpointPersistenceAdapter::toDomain);
+        return jpaRepository.pauseAllRunningCheckpoints(scanId);
+    }
+
+    @Override
+    @Transactional
+    public int resumeAllPausedCheckpoints(String scanId) {
+        if (isBlank(scanId)) {
+            return 0;
+        }
+        return jpaRepository.resumeAllPausedCheckpoints(scanId);
     }
 
     public static ScanCheckpoint toDomain(ScanCheckpointEntity e) {

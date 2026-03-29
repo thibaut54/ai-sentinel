@@ -203,12 +203,14 @@ export class DashboardUiStateService {
         return 'dashboard.status.failed';
       case 'PENDING':
         return 'dashboard.status.pending';
+      case 'NOT_STARTED':
+        return 'dashboard.status.notStarted';
       case 'PAUSED':
         return 'dashboard.status.paused';
       case 'COMPLETED' :
         return 'dashboard.status.completed';
       default:
-        return 'dashboard.status.pending';
+        return 'dashboard.status.notStarted';
     }
   }
 

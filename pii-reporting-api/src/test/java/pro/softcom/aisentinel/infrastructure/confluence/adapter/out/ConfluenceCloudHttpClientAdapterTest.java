@@ -46,18 +46,11 @@ class ConfluenceCloudHttpClientAdapterTest {
         lenient().when(config.baseUrl()).thenReturn("https://mycompany.atlassian.net/wiki");
         lenient().when(config.username()).thenReturn("user@example.com");
         lenient().when(config.apiToken()).thenReturn("cloud-api-token");
-        lenient().when(config.getRestApiUrl()).thenReturn("https://mycompany.atlassian.net/wiki/rest/api");
         lenient().when(config.connectTimeout()).thenReturn(5000);
         lenient().when(config.readTimeout()).thenReturn(10000);
         lenient().when(config.maxRetries()).thenReturn(0);
         lenient().when(config.pagesLimit()).thenReturn(50);
         lenient().when(config.maxPages()).thenReturn(100);
-        lenient().when(config.contentPath()).thenReturn("/content/");
-        lenient().when(config.searchContentPath()).thenReturn("/content/search");
-        lenient().when(config.spacePath()).thenReturn("/space");
-        lenient().when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
-        lenient().when(config.defaultPageExpands()).thenReturn("body.storage,version,metadata,ancestors");
-        lenient().when(config.defaultSpaceExpands()).thenReturn("permissions,metadata");
 
         adapter = new ConfluenceCloudHttpClientAdapter(config, new ObjectMapper());
 

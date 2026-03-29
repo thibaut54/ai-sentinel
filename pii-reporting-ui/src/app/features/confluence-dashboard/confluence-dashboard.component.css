@@ -1,9 +1,28 @@
 /* Scan action button group - tightly packed gradient bar */
 .scan-actions-group {
   display: inline-flex;
+  position: relative;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
+}
+
+/* Spinner overlay covering all buttons when an action is pending.
+   Semi-transparent so buttons remain visible underneath. */
+.scan-actions-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(241, 243, 245, 0.75);
+  border-radius: 8px;
+}
+
+.scan-actions-overlay .pi-spinner {
+  font-size: 1.1rem;
+  color: #6b7280;
 }
 
 /* Target p-button host elements inside the group */
@@ -39,6 +58,19 @@
 :host ::ng-deep .scan-actions-group .p-button:disabled {
   background: var(--sentinel-scan-btn-disabled) !important;
   opacity: 0.6;
+}
+
+/* Purge/delete button: danger red theme */
+:host ::ng-deep .scan-actions-group .purge-button.p-button {
+  background: linear-gradient(135deg, #dc3545, #c82333) !important;
+}
+
+:host ::ng-deep .scan-actions-group .purge-button.p-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+:host ::ng-deep .scan-actions-group .purge-button.p-button:disabled {
+  background: var(--sentinel-scan-btn-disabled) !important;
 }
 
 :host ::ng-deep .scan-actions-group .p-button .p-button-icon {
@@ -85,7 +117,7 @@
 }
 
 /* Reset margin-left on badge when placed inside caption */
-.caption-right .scan-status-badge {
+:host .caption-right ::ng-deep .scan-status-badge.p-tag {
   margin-left: 0;
 }
 
@@ -187,11 +219,9 @@
   color: var(--sentinel-status-paused-text) !important;
 }
 
-/* Scan status badge - displayed in table filter row */
-.scan-status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* Scan status badge (p-tag) - displayed in table filter row
+   ::ng-deep needed: PrimeNG p-tag renders its own internal template */
+:host ::ng-deep .scan-status-badge.p-tag {
   margin-left: 0.75rem;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -203,13 +233,13 @@
 }
 
 /* Active state: scan in progress (blue with color pulse animation) */
-.scan-status-badge.scanning {
+:host ::ng-deep .scan-status-badge.scanning.p-tag {
   color: white;
   animation: color-pulse 2s ease-in-out infinite;
 }
 
 /* Inactive state: no scan running (grey) */
-.scan-status-badge.inactive {
+:host ::ng-deep .scan-status-badge.inactive.p-tag {
   background-color: var(--sentinel-status-paused-bg);
   color: var(--sentinel-status-running-text);
 }
@@ -226,7 +256,7 @@
 
 /* Responsive: smaller badge on mobile */
 @media (max-width: 768px) {
-  .scan-status-badge {
+  :host ::ng-deep .scan-status-badge.p-tag {
     font-size: 0.65rem;
     padding: 0.2rem 0.5rem;
     margin-left: 0.5rem;
@@ -366,7 +396,7 @@
   box-sizing: border-box;
 }
 
-.space-filters .scan-status-badge {
+:host .space-filters ::ng-deep .scan-status-badge.p-tag {
   width: 100%;
   height: 2.5rem;
   margin-left: 0;

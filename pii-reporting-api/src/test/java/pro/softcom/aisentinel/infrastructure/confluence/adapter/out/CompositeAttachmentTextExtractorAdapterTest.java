@@ -25,7 +25,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     private AttachmentTextExtractionStrategy ex3;
 
     @Test
-    void should_return_empty_when_info_or_bytes_invalid() {
+    void Should_ReturnEmpty_When_InfoOrBytesInvalid() {
         CompositeAttachmentTextExtractorAdapter service = new CompositeAttachmentTextExtractorAdapter(List.of(ex1));
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
 
@@ -40,7 +40,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     }
 
     @Test
-    void should_return_empty_when_no_extractors_configured_or_null_list() {
+    void Should_ReturnEmpty_When_NoExtractorsConfiguredOrNullList() {
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
         byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
 
@@ -54,7 +54,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     }
 
     @Test
-    void should_skip_non_supporting_and_return_empty_if_none_support() {
+    void Should_ReturnEmpty_When_NoExtractorsSupport() {
         CompositeAttachmentTextExtractorAdapter service = new CompositeAttachmentTextExtractorAdapter(List.of(ex1, ex2));
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
         byte[] bytes = "abc".getBytes(StandardCharsets.UTF_8);
@@ -72,7 +72,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     }
 
     @Test
-    void should_continue_when_first_supporting_returns_empty_and_return_next_present() {
+    void Should_ReturnNextPresent_When_FirstSupportingReturnsEmpty() {
         CompositeAttachmentTextExtractorAdapter service = new CompositeAttachmentTextExtractorAdapter(List.of(ex1, ex2));
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
         byte[] bytes = "abc".getBytes(StandardCharsets.UTF_8);
@@ -92,7 +92,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     }
 
     @Test
-    void should_return_first_present_and_stop_afterwards() {
+    void Should_ReturnFirstPresent_When_MultipleExtractorsSupport() {
         CompositeAttachmentTextExtractorAdapter service = new CompositeAttachmentTextExtractorAdapter(List.of(ex1, ex2, ex3));
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
         byte[] bytes = "abc".getBytes(StandardCharsets.UTF_8);
@@ -110,7 +110,7 @@ class CompositeAttachmentTextExtractorAdapterTest {
     }
 
     @Test
-    void should_swallow_exception_from_extractor_and_try_next() {
+    void Should_TryNextExtractor_When_FirstThrowsException() {
         CompositeAttachmentTextExtractorAdapter service = new CompositeAttachmentTextExtractorAdapter(List.of(ex1, ex2));
         AttachmentInfo info = new AttachmentInfo("a.txt", "txt", "text/plain", "url");
         byte[] bytes = "abc".getBytes(StandardCharsets.UTF_8);
