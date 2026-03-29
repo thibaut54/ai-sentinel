@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 /**
  * Test-only controller that throws configurable exceptions for GlobalExceptionHandler testing.
  */
@@ -17,12 +15,13 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequestMapping("/test")
 class ExceptionThrowingTestController {
 
-    static final AtomicReference<RuntimeException> exceptionToThrow = new AtomicReference<>();
+    static RuntimeException exceptionToThrow;
 
     @GetMapping("/throw")
     String throwException() {
-        RuntimeException ex = exceptionToThrow.getAndSet(null);
-        if (ex != null) {
+        if (exceptionToThrow != null) {
+            RuntimeException ex = exceptionToThrow;
+            exceptionToThrow = null;
             throw ex;
         }
         return "ok";

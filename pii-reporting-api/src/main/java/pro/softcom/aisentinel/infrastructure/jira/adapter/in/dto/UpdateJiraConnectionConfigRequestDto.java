@@ -56,6 +56,7 @@ public record UpdateJiraConnectionConfigRequestDto(
         Integer maxIssues,
 
         @JsonProperty("deploymentType")
+        @NotNull(message = "deploymentType is required")
         JiraDeploymentType deploymentType
 ) {
 }

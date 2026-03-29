@@ -17,4 +17,8 @@ public interface ScanEventStore {
     void append(ContentScanResult event, SourceType sourceType);
 
     void deleteAll();
+
+    void deleteBySourceType(SourceType sourceType);
+
+    void deleteBySourceTypeAndSourceKeys(SourceType sourceType, java.util.List<String> sourceKeys);
 }

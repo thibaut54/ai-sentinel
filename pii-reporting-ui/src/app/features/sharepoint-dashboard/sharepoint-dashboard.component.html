@@ -1,29 +1,17 @@
 <div class="mx-auto p-3">
   <!-- Warning: SharePoint credentials not configured -->
-  @if (spConfigMissing()) {
-    <div class="config-banner" role="alert">
-      <span>{{ 'settings.sharepoint.messages.loadError' | transloco: { error: '' } }}</span>
-      <p-button type="button"
-                [label]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco"
-                icon="pi pi-cog"
-                (click)="requestOpenSettings(2)"
-                (keydown.enter)="requestOpenSettings(2)"
-                styleClass="p-button-sm p-button-outlined"
-                [ariaLabel]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco" />
-      <p-button type="button"
-                icon="pi pi-times"
-                [text]="true"
-                [rounded]="true"
-                (click)="dismissSpConfigBanner()"
-                (keydown.enter)="dismissSpConfigBanner()"
-                [ariaLabel]="'dashboard.notifications.confluenceConfig.closeAriaLabel' | transloco" />
-    </div>
-  }
+  <app-source-config-banner
+    [showBanner]="spConfigMissing()"
+    sourceType="sharepoint"
+    (openSettings)="requestOpenSettings('sharepoint')"
+    (dismiss)="dismissSpConfigBanner()">
+  </app-source-config-banner>
 
   <!-- Severity cards -->
   <app-severity-cards [counts]="globalSeverityCounts()" />
 
   <p-table #dt [value]="sortedSites()"
+           [attr.data-testid]="testIds.table"
            [(selection)]="selectedSites"
            dataKey="id"
            sortField="name" [sortOrder]="1"
@@ -51,31 +39,18 @@
           </div>
         </div>
         <div class="caption-right">
-          <output class="scan-status-badge"
-                  [class.scanning]="isStreaming()"
-                  [class.inactive]="!isStreaming()"
-                  [attr.aria-live]="isStreaming() ? 'polite' : 'off'"
-                  [attr.aria-label]="(isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
-            {{ (isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
-          </output>
-          <div class="scan-actions-group">
-            <p-button type="button"
-                      icon="pi pi-play"
-                      (click)="selectedSitesCount() > 0 ? startSelected() : startAll()"
-                      (keydown.enter)="selectedSitesCount() > 0 ? startSelected() : startAll()"
-                      [disabled]="!canStartScan()"
-                      [pTooltip]="(selectedSitesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSitesCount() }) : ('dashboard.actions.startScan' | transloco))"
-                      tooltipPosition="bottom"
-                      [ariaLabel]="(selectedSitesCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedSitesCount() }) : ('dashboard.actions.startScan' | transloco))" />
-            <p-button type="button"
-                      icon="pi pi-pause"
-                      (click)="pauseScan()"
-                      (keydown.enter)="pauseScan()"
-                      [disabled]="!isStreaming()"
-                      [pTooltip]="'dashboard.actions.pauseScan' | transloco"
-                      tooltipPosition="bottom"
-                      [ariaLabel]="'dashboard.actions.pauseScan' | transloco" />
-          </div>
+          <app-scan-status-badge [isStreaming]="isStreaming()" [testId]="testIds.scanStatusBadge" />
+          <app-scan-actions-group
+            [isStreaming]="isStreaming()"
+            [canStartScan]="canStartScan()"
+            [canResumeScan]="canResumeScan()"
+            [showResume]="true"
+            [selectedCount]="selectedSitesCount()"
+            [testIds]="testIds"
+            (startAll)="startAll()"
+            (startSelected)="startSelected()"
+            (pauseScan)="pauseScan()"
+            (resumeScan)="resumeLastScan()" />
         </div>
       </div>
     </ng-template>
@@ -85,18 +60,18 @@
           <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
         </th>
         <th id="sp-col-toggle" style="width: 3.5rem"></th>
-        <th id="sp-col-site" style="width: 14rem" pSortableColumn="name">
+        <th id="sp-col-site" style="width: 14rem" pSortableColumn="name" [attr.data-testid]="testIds.headers.name">
           {{ 'dashboard.table.headers.space' | transloco }}
           <p-sortIcon field="name" />
         </th>
-        <th id="sp-col-status" style="width: 9.5rem">{{ 'dashboard.table.headers.status' | transloco }}</th>
-        <th id="sp-col-progress" style="width: 6rem">{{ 'dashboard.table.headers.progress' | transloco }}</th>
-        <th id="sp-col-last-scan" style="width: 8rem">{{ 'dashboard.table.headers.lastScan' | transloco }}</th>
-        <th id="sp-col-risk-score" style="width: 6rem" class="text-center" pSortableColumn="piiCount">
+        <th id="sp-col-status" style="width: 9.5rem" [attr.data-testid]="testIds.headers.status">{{ 'dashboard.table.headers.status' | transloco }}</th>
+        <th id="sp-col-progress" style="width: 6rem" [attr.data-testid]="testIds.headers.progress">{{ 'dashboard.table.headers.progress' | transloco }}</th>
+        <th id="sp-col-last-scan" style="width: 8rem" [attr.data-testid]="testIds.headers.lastScan">{{ 'dashboard.table.headers.lastScan' | transloco }}</th>
+        <th id="sp-col-risk-score" style="width: 6rem" class="text-center" pSortableColumn="piiCount" [attr.data-testid]="testIds.headers.riskScore">
           {{ 'dashboard.table.headers.riskScore' | transloco }}
           <p-sortIcon field="piiCount" />
         </th>
-        <th id="sp-col-pii" style="width: 9rem" class="pii-header-cell">
+        <th id="sp-col-pii" style="width: 9rem" class="pii-header-cell" [attr.data-testid]="testIds.headers.pii">
           {{ 'dashboard.table.headers.pii' | transloco }}
           <p-button type="button"
                     icon="pi pi-question-circle"
@@ -110,7 +85,7 @@
                     styleClass="pii-help-button">
           </p-button>
         </th>
-        <th id="sp-col-actions" style="width: 9rem">{{ 'dashboard.table.headers.actions' | transloco }}</th>
+        <th id="sp-col-actions" style="width: 9rem" [attr.data-testid]="testIds.headers.actions">{{ 'dashboard.table.headers.actions' | transloco }}</th>
       </tr>
       <tr>
         <th id="sp-col-select-filter"></th>
@@ -123,9 +98,10 @@
             [placeholder]="'common.search' | transloco"
             [ngModel]="globalFilter()"
             (ngModelChange)="onGlobalChange($event)"
-            [attr.aria-label]="'common.searchGlobally' | transloco" />
+            [attr.aria-label]="'common.searchGlobally' | transloco"
+            [attr.data-testid]="testIds.globalFilter" />
         </th>
-        <th id="sp-col-status-value">
+        <th id="sp-col-status-value" class="filter-status-select">
           <p-select
             [options]="statusOptions()"
             optionLabel="labelKey"
@@ -133,7 +109,8 @@
             [ngModel]="statusFilter()"
             (ngModelChange)="onFilter('status', $event)"
             [showClear]="true"
-            appendTo="body">
+            appendTo="body"
+            [attr.data-testid]="testIds.statusFilter">
             <ng-template pTemplate="item" let-option>
               {{ option.labelKey | transloco }}
             </ng-template>
@@ -150,7 +127,7 @@
       </tr>
     </ng-template>
     <ng-template #body let-site let-expanded="expanded">
-      <tr>
+      <tr [attr.data-testid]="testIds.itemRow">
         <td>
           <p-tableCheckbox [value]="site" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()"></p-tableCheckbox>
         </td>
@@ -161,24 +138,22 @@
                     [text]="true"
                     [rounded]="true"
                     [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-                    [ariaLabel]="(expanded ? 'dashboard.table.collapse' : 'dashboard.table.expand') | transloco">
+                    [ariaLabel]="(expanded ? 'dashboard.table.collapse' : 'dashboard.table.expand') | transloco"
+                    [attr.data-testid]="testIds.expandButton">
           </p-button>
         </td>
-        <td class="space-name-cell" [pRowToggler]="site" tabindex="0">
-          <span class="fw-500">{{ site.name }}</span>
+        <td class="item-name-cell" [pRowToggler]="site" tabindex="0">
+          <span class="fw-500" [attr.data-testid]="testIds.itemName">{{ site.name }}</span>
         </td>
         <td class="col-status">
-          <p-tag [value]="statusLabel(site.status)"
-                 [severity]="statusStyle(site.status)"></p-tag>
+          <app-status-tag [status]="site.status" [attr.data-testid]="testIds.itemStatus" />
         </td>
         <td class="col-progress">
           <app-scan-progress-bar [spaceKey]="site.id" [status]="site.status"></app-scan-progress-bar>
         </td>
         <td class="col-last-scan">{{ site.lastScanTs | date:'short' }}</td>
         <td class="text-center col-risk-score">
-          <span class="pii-total-badge">
-            {{ site?.counts?.total ?? 0 }}
-          </span>
+          <app-risk-score-badge [count]="site?.counts?.total ?? 0" [attr.data-testid]="testIds.badges.total" />
         </td>
         <td>
           <app-pii-severity-badges [high]="site?.counts?.high ?? 0"

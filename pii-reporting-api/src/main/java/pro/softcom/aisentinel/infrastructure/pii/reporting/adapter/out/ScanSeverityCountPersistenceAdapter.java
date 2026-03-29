@@ -68,6 +68,22 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
         jpaRepository.deleteById_ScanId(scanId);
     }
 
+    @Override
+    public void deleteBySourceType(SourceType sourceType) {
+        if (sourceType == null) {
+            return;
+        }
+        jpaRepository.deleteAllBySourceType(sourceType.name());
+    }
+
+    @Override
+    public void deleteBySourceTypeAndSourceKeys(SourceType sourceType, List<String> sourceKeys) {
+        if (sourceType == null || sourceKeys == null || sourceKeys.isEmpty()) {
+            return;
+        }
+        jpaRepository.deleteAllBySourceTypeAndSourceKeys(sourceType.name(), sourceKeys);
+    }
+
     /**
      * Maps JPA entity to domain SeverityCounts.
      */

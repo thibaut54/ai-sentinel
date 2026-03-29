@@ -128,35 +128,39 @@ public class ContentScanOrchestrator {
     }
 
     /**
-     * Purges previous scan data for a given source type to ensure a clean state before starting a new scan.
+     * Purges all previous scan data (checkpoints, events, severity counts) for a given source type
+     * to ensure a clean state before starting a new scan.
      *
      * @param sourceType the type of the datasource to purge
      */
     public void purgePreviousScanData(SourceType sourceType) {
         try {
-            log.info("[SCAN] Purging previous active scan data for source type {} before starting new scan", sourceType);
-            scanCheckpointService.deleteActiveScanCheckpoints(sourceType);
+            log.info("[SCAN] Purging previous scan data for source type {} before starting new scan", sourceType);
+            scanCheckpointService.deleteAllCheckpointsBySourceType(sourceType);
+            scanEventStore.deleteBySourceType(sourceType);
+            scanSeverityCountService.deleteBySourceType(sourceType);
             log.info("[SCAN] Previous scan data purged successfully for source type {}", sourceType);
         } catch (Exception e) {
             log.error("[SCAN] Failed to purge previous scan data for source type {}: {}", sourceType, e.getMessage(), e);
-            // Don't fail the scan if purge fails - log and continue
         }
     }
 
     /**
-     * Purges previous scan data for selected sources to ensure a clean state before starting a new scan.
+     * Purges all previous scan data (checkpoints, events, severity counts) for selected sources
+     * to ensure a clean state before starting a new scan.
      *
      * @param sourceType the type of the datasource
      * @param sourceKeys list of source keys to purge
      */
     public void purgePreviousScanDataForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
         try {
-            log.info("[SCAN] Purging ALL previous scan data for selected sources before starting new scan");
-            scanCheckpointService.deleteAllCheckpointsForSources(sourceType, sourceKeys);
+            log.info("[SCAN] Purging previous scan data for selected sources before starting new scan");
+            scanCheckpointService.deleteAllCheckpointsBySourceTypeAndSourceKeys(sourceType, sourceKeys);
+            scanEventStore.deleteBySourceTypeAndSourceKeys(sourceType, sourceKeys);
+            scanSeverityCountService.deleteBySourceTypeAndSourceKeys(sourceType, sourceKeys);
             log.info("[SCAN] Previous scan data for selected sources purged successfully");
         } catch (Exception e) {
             log.error("[SCAN] Failed to purge previous scan data for selected sources: {}", e.getMessage(), e);
-            // Don't fail the scan if purge fails - log and continue
         }
     }
 }

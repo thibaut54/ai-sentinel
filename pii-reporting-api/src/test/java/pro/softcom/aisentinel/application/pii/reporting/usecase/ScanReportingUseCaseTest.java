@@ -27,6 +27,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ReportingScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
+import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.domain.pii.security.PiiAuditRecord;
@@ -39,6 +40,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entit
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -514,5 +516,146 @@ class ScanReportingUseCaseTest {
                         i.scanId().equals(scanId2) &&
                                 i.sourceId().equals("SPACE-B")
                 );
+    }
+
+    @Test
+    void Should_ReturnOnlyJiraScan_When_GetLatestScanBySourceType() {
+        // Arrange - Confluence scan (older)
+        String confluenceScanId = "confluence-scan-1";
+        Instant confluenceTs = Instant.parse("2024-01-01T10:00:00Z");
+        ScanEventEntity confluenceEvent = ScanEventEntity.builder()
+            .scanId(confluenceScanId).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-A")
+            .eventType("item").ts(confluenceTs).contentId("p1").contentTitle("Page 1")
+            .payload(objectMapper.createObjectNode()).build();
+        detectionEventRepository.save(confluenceEvent);
+
+        // Arrange - Jira scan (newer)
+        String jiraScanId = "jira-scan-1";
+        Instant jiraTs = Instant.parse("2024-01-02T10:00:00Z");
+        ScanEventEntity jiraEvent = ScanEventEntity.builder()
+            .scanId(jiraScanId).eventSeq(1L).sourceType("JIRA").sourceKey("PROJ-A")
+            .eventType("item").ts(jiraTs).contentId("issue-1").contentTitle("Issue 1")
+            .payload(objectMapper.createObjectNode()).build();
+        detectionEventRepository.save(jiraEvent);
+
+        // Act
+        Optional<LastScanMeta> jiraResult = scanReportingUseCase.getLatestScanBySourceType(SourceType.JIRA);
+        Optional<LastScanMeta> confluenceResult = scanReportingUseCase.getLatestScanBySourceType(SourceType.CONFLUENCE);
+
+        // Assert
+        assertThat(jiraResult).isPresent();
+        assertThat(jiraResult.get().scanId()).isEqualTo(jiraScanId);
+
+        assertThat(confluenceResult).isPresent();
+        assertThat(confluenceResult.get().scanId()).isEqualTo(confluenceScanId);
+    }
+
+    @Test
+    void Should_ReturnOnlyJiraSummary_When_GetScanSummaryBySourceType() {
+        // Arrange - Jira events and checkpoints
+        String jiraScanId = "jira-summary-1";
+        Instant jiraTs = Instant.parse("2024-03-01T10:00:00Z");
+
+        ScanEventEntity jiraEvent = ScanEventEntity.builder()
+            .scanId(jiraScanId).eventSeq(1L).sourceType("JIRA").sourceKey("PROJ-A")
+            .eventType("pageComplete").ts(jiraTs).contentId("issue-1").contentTitle("Issue 1")
+            .payload(objectMapper.createObjectNode()).build();
+        detectionEventRepository.save(jiraEvent);
+
+        ScanCheckpoint jiraCp = ScanCheckpoint.builder()
+            .scanId(jiraScanId).sourceType(SourceType.JIRA).sourceKey("PROJ-A")
+            .scanStatus(ScanStatus.COMPLETED).updatedAt(LocalDateTime.of(2024, 3, 1, 10, 0))
+            .progressPercentage(100.0).build();
+        scanCheckpointRepository.save(jiraCp);
+
+        // Arrange - Confluence events and checkpoints
+        String confluenceScanId = "confluence-summary-1";
+        ScanEventEntity confluenceEvent = ScanEventEntity.builder()
+            .scanId(confluenceScanId).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-X")
+            .eventType("pageComplete").ts(jiraTs).contentId("p1").contentTitle("Page 1")
+            .payload(objectMapper.createObjectNode()).build();
+        detectionEventRepository.save(confluenceEvent);
+
+        ScanCheckpoint confluenceCp = ScanCheckpoint.builder()
+            .scanId(confluenceScanId).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-X")
+            .scanStatus(ScanStatus.RUNNING).updatedAt(LocalDateTime.of(2024, 3, 1, 10, 0))
+            .progressPercentage(50.0).build();
+        scanCheckpointRepository.save(confluenceCp);
+
+        // Act
+        Optional<ScanReportingSummary> jiraSummary = scanReportingUseCase.getScanSummaryBySourceType(SourceType.JIRA);
+
+        // Assert
+        assertThat(jiraSummary).isPresent();
+        ScanReportingSummary summary = jiraSummary.get();
+        assertThat(summary.spacesCount()).isEqualTo(1);
+        assertThat(summary.spaces()).hasSize(1);
+        assertThat(summary.spaces().getFirst().sourceKey()).isEqualTo("PROJ-A");
+        assertThat(summary.spaces().getFirst().status()).isEqualTo(ReportingScanStatus.COMPLETED);
+    }
+
+    @Test
+    void Should_ReturnOnlyJiraItems_When_GetScanItemsBySourceType() {
+        // Arrange - Jira items
+        String jiraScanId = "jira-items-1";
+        Instant jiraTs = Instant.parse("2024-03-01T10:00:00Z");
+
+        ObjectNode jiraPayload = objectMapper.createObjectNode();
+        jiraPayload.put("scanId", jiraScanId);
+        jiraPayload.put("sourceId", "PROJ-A");
+        jiraPayload.put("eventType", "item");
+
+        ScanEventEntity jiraEvent = ScanEventEntity.builder()
+            .scanId(jiraScanId).eventSeq(1L).sourceType("JIRA").sourceKey("PROJ-A")
+            .eventType("item").ts(jiraTs).contentId("issue-1").contentTitle("Issue 1")
+            .payload(jiraPayload).build();
+        detectionEventRepository.save(jiraEvent);
+
+        ScanCheckpoint jiraCp = ScanCheckpoint.builder()
+            .scanId(jiraScanId).sourceType(SourceType.JIRA).sourceKey("PROJ-A")
+            .scanStatus(ScanStatus.COMPLETED).updatedAt(LocalDateTime.of(2024, 3, 1, 10, 0))
+            .progressPercentage(100.0).build();
+        scanCheckpointRepository.save(jiraCp);
+
+        // Arrange - Confluence items (should not appear)
+        String confluenceScanId = "confluence-items-1";
+
+        ObjectNode confluencePayload = objectMapper.createObjectNode();
+        confluencePayload.put("scanId", confluenceScanId);
+        confluencePayload.put("sourceId", "SPACE-X");
+        confluencePayload.put("eventType", "item");
+
+        ScanEventEntity confluenceEvent = ScanEventEntity.builder()
+            .scanId(confluenceScanId).eventSeq(1L).sourceType("CONFLUENCE").sourceKey("SPACE-X")
+            .eventType("item").ts(jiraTs).contentId("p1").contentTitle("Page 1")
+            .payload(confluencePayload).build();
+        detectionEventRepository.save(confluenceEvent);
+
+        ScanCheckpoint confluenceCp = ScanCheckpoint.builder()
+            .scanId(confluenceScanId).sourceType(SourceType.CONFLUENCE).sourceKey("SPACE-X")
+            .scanStatus(ScanStatus.COMPLETED).updatedAt(LocalDateTime.of(2024, 3, 1, 10, 0))
+            .progressPercentage(100.0).build();
+        scanCheckpointRepository.save(confluenceCp);
+
+        // Act
+        List<ContentScanResult> jiraItems = scanReportingUseCase.getScanItemsBySourceType(SourceType.JIRA);
+
+        // Assert
+        assertThat(jiraItems).hasSize(1);
+        assertThat(jiraItems.getFirst().scanId()).isEqualTo(jiraScanId);
+        assertThat(jiraItems.getFirst().sourceId()).isEqualTo("PROJ-A");
+    }
+
+    @Test
+    void Should_ReturnEmpty_When_NoDataForSourceType() {
+        // Act
+        Optional<LastScanMeta> result = scanReportingUseCase.getLatestScanBySourceType(SourceType.SHAREPOINT);
+        Optional<ScanReportingSummary> summary = scanReportingUseCase.getScanSummaryBySourceType(SourceType.SHAREPOINT);
+        List<ContentScanResult> items = scanReportingUseCase.getScanItemsBySourceType(SourceType.SHAREPOINT);
+
+        // Assert
+        assertThat(result).isEmpty();
+        assertThat(summary).isEmpty();
+        assertThat(items).isEmpty();
     }
 }

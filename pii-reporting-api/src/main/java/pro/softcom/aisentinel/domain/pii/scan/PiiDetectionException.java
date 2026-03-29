@@ -1,4 +1,4 @@
-package pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out;
+package pro.softcom.aisentinel.domain.pii.scan;
 
 /**
  * Base exception for PII detection service errors.

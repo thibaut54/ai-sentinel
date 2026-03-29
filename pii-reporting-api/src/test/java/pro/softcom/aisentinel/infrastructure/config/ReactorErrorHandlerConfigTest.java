@@ -5,7 +5,7 @@ import io.grpc.StatusRuntimeException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.PiiDetectionException;
+import pro.softcom.aisentinel.domain.pii.scan.PiiDetectionException;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;

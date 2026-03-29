@@ -6,92 +6,90 @@
   </div>
 } @else {
   <div class="sharepoint-settings-content">
-    <form [formGroup]="configForm">
 
-      <!-- Connection Fieldset -->
-      <p-fieldset [legend]="'settings.sharepoint.connection.title' | transloco" [toggleable]="false">
-        <div class="form-field">
-          <label for="spTenantId">
-            <span class="field-label">{{ 'settings.sharepoint.connection.tenantId' | transloco }}</span>
-          </label>
-          <input
-            id="spTenantId"
-            type="text"
-            pInputText
-            formControlName="tenantId"
-            [placeholder]="'settings.sharepoint.placeholders.tenantId' | transloco"
-            class="field-input" />
-          @if (configForm.get('tenantId')?.invalid && configForm.get('tenantId')?.touched) {
-            <small class="field-error">{{ 'settings.sharepoint.validation.tenantIdRequired' | transloco }}</small>
-          }
-        </div>
-
-        <div class="form-field">
-          <label for="spClientId">
-            <span class="field-label">{{ 'settings.sharepoint.connection.clientId' | transloco }}</span>
-          </label>
-          <input
-            id="spClientId"
-            type="text"
-            pInputText
-            formControlName="clientId"
-            [placeholder]="'settings.sharepoint.placeholders.clientId' | transloco"
-            class="field-input" />
-          @if (configForm.get('clientId')?.invalid && configForm.get('clientId')?.touched) {
-            <small class="field-error">{{ 'settings.sharepoint.validation.clientIdRequired' | transloco }}</small>
-          }
-        </div>
-
-        <div class="form-field">
-          <label for="spClientSecret">
-            <span class="field-label">{{ 'settings.sharepoint.connection.clientSecret' | transloco }}</span>
-          </label>
-          <p-password
-            inputId="spClientSecret"
-            formControlName="clientSecret"
-            [placeholder]="currentConfig() ? ('settings.sharepoint.placeholders.clientSecretExisting' | transloco) : ('settings.sharepoint.placeholders.clientSecret' | transloco)"
-            [toggleMask]="true"
-            [feedback]="false"
-            styleClass="field-input">
-          </p-password>
-          @if (currentConfig()?.clientSecretMasked) {
-            <small class="field-hint">
-              {{ 'settings.sharepoint.connection.clientSecretHint' | transloco }}
-              <span class="token-masked">{{ currentConfig()!.clientSecretMasked }}</span>
-            </small>
-          }
-          @if (configForm.get('clientSecret')?.hasError('required') && configForm.get('clientSecret')?.touched && !currentConfig()) {
-            <small class="field-error">{{ 'settings.sharepoint.validation.clientSecretRequired' | transloco }}</small>
-          }
-        </div>
-      </p-fieldset>
-
-      <!-- Info Card -->
-      @if (currentConfig()?.updatedAt) {
-        <div class="info-card">
-          <div class="info-content">
-            <div class="info-item">
-              <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
-              {{ currentConfig()!.updatedAt | date:'medium' }}
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Action Buttons -->
-      <div class="section-actions">
-        <p-button
-          type="button"
-          [label]="'settings.sharepoint.buttons.test' | transloco"
-          icon="pi pi-wifi"
-          [loading]="testing()"
-          [disabled]="testing() || saving()"
-          (click)="onTestConnection()"
-          (keydown.enter)="onTestConnection()"
-          styleClass="p-button-outlined">
-        </p-button>
+    <!-- Connection Fieldset -->
+    <p-fieldset [legend]="'settings.sharepoint.connection.title' | transloco" [toggleable]="false">
+      <div class="form-field">
+        <label for="spTenantId">
+          <span class="field-label">{{ 'settings.sharepoint.connection.tenantId' | transloco }}</span>
+        </label>
+        <input
+          id="spTenantId"
+          type="text"
+          pInputText
+          [formField]="configForm.tenantId"
+          [placeholder]="'settings.sharepoint.placeholders.tenantId' | transloco"
+          class="field-input" />
+        @if (configForm.tenantId().invalid() && configForm.tenantId().touched()) {
+          <small class="field-error">{{ 'settings.sharepoint.validation.tenantIdRequired' | transloco }}</small>
+        }
       </div>
 
-    </form>
+      <div class="form-field">
+        <label for="spClientId">
+          <span class="field-label">{{ 'settings.sharepoint.connection.clientId' | transloco }}</span>
+        </label>
+        <input
+          id="spClientId"
+          type="text"
+          pInputText
+          [formField]="configForm.clientId"
+          [placeholder]="'settings.sharepoint.placeholders.clientId' | transloco"
+          class="field-input" />
+        @if (configForm.clientId().invalid() && configForm.clientId().touched()) {
+          <small class="field-error">{{ 'settings.sharepoint.validation.clientIdRequired' | transloco }}</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="spClientSecret">
+          <span class="field-label">{{ 'settings.sharepoint.connection.clientSecret' | transloco }}</span>
+        </label>
+        <p-password
+          inputId="spClientSecret"
+          [formField]="configForm.clientSecret"
+          [placeholder]="clientSecretPlaceholder()"
+          [toggleMask]="true"
+          [feedback]="false"
+          class="field-input">
+        </p-password>
+        @if (hasExistingSecret()) {
+          <small class="field-hint">
+            {{ 'settings.sharepoint.connection.clientSecretHint' | transloco }}
+            <span class="token-masked">{{ currentConfig()!.clientSecretMasked }}</span>
+          </small>
+        }
+        @if (configForm.clientSecret().errors().length && configForm.clientSecret().touched()) {
+          <small class="field-error">{{ 'settings.sharepoint.validation.clientSecretRequired' | transloco }}</small>
+        }
+      </div>
+    </p-fieldset>
+
+    <!-- Info Card -->
+    @if (currentConfig()?.updatedAt) {
+      <div class="info-card">
+        <div class="info-content">
+          <div class="info-item">
+            <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
+            {{ currentConfig()!.updatedAt | date:'medium' }}
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="section-actions">
+      <p-button
+        type="button"
+        [label]="'settings.sharepoint.buttons.test' | transloco"
+        icon="pi pi-wifi"
+        [loading]="testing()"
+        [disabled]="testing() || saving()"
+        (click)="onTestConnection()"
+        (keydown.enter)="onTestConnection()"
+        styleClass="p-button-outlined">
+      </p-button>
+    </div>
+
   </div>
 }

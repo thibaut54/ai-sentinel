@@ -206,4 +206,12 @@ public class ScanCheckpointService {
     public void deleteAllCheckpointsForSources(SourceType sourceType, java.util.List<String> sourceKeys) {
         scanCheckpointRepository.deleteAllCheckpointsForSources(sourceType, sourceKeys);
     }
+
+    public void deleteAllCheckpointsBySourceType(SourceType sourceType) {
+        scanCheckpointRepository.deleteAllBySourceType(sourceType);
+    }
+
+    public void deleteAllCheckpointsBySourceTypeAndSourceKeys(SourceType sourceType, java.util.List<String> sourceKeys) {
+        scanCheckpointRepository.deleteAllBySourceTypeAndSourceKeys(sourceType, sourceKeys);
+    }
 }

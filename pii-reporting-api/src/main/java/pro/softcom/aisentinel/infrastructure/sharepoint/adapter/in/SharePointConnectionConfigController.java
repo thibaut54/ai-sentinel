@@ -114,9 +114,9 @@ public class SharePointConnectionConfigController {
                 return ResponseEntity.ok(new ConnectionTestResultDto(success, message));
 
             } catch (Exception ex) {
-                log.error("Connection test failed: {}", ex.getMessage(), ex);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(new ConnectionTestResultDto(false, "Connection test failed: " + ex.getMessage()));
+                log.error("SharePoint connection test failed: {}", ex.getMessage(), ex);
+                return ResponseEntity.internalServerError()
+                        .body(new ConnectionTestResultDto(false, "Connection test failed. Check server logs for details."));
             }
         });
     }

@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.jira.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 
 /**
@@ -25,6 +26,7 @@ public record TestJiraConnectionRequestDto(
         String apiToken,
 
         @JsonProperty("deploymentType")
+        @NotNull(message = "deploymentType is required")
         JiraDeploymentType deploymentType
 ) {
 }

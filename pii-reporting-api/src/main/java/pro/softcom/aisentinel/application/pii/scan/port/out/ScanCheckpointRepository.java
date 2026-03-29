@@ -122,4 +122,29 @@ public interface ScanCheckpointRepository {
      * @return the number of checkpoints updated
      */
     int resumeAllPausedCheckpoints(String scanId);
+
+    /**
+     * Finds the running scan checkpoint for a given scan.
+     *
+     * @param scanId the business identifier of the scan
+     * @return the running checkpoint if present, otherwise empty
+     */
+    Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId);
+
+    /**
+     * Deletes all checkpoints (regardless of status) for a given source type.
+     * Business purpose: Full purge before starting a fresh scan.
+     *
+     * @param sourceType the type of the datasource to purge
+     */
+    void deleteAllBySourceType(SourceType sourceType);
+
+    /**
+     * Deletes all checkpoints (regardless of status) for specific sources of a given type.
+     * Business purpose: Full purge before starting a fresh selected scan.
+     *
+     * @param sourceType the type of the datasource
+     * @param sourceKeys list of source keys to purge
+     */
+    void deleteAllBySourceTypeAndSourceKeys(SourceType sourceType, List<String> sourceKeys);
 }

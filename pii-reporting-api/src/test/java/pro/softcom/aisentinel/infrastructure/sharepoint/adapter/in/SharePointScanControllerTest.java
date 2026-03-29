@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.codec.ServerSentEvent;
+import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointResumeScanPort;
 import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
@@ -28,13 +29,16 @@ class SharePointScanControllerTest {
     private StreamSharePointScanPort streamSharePointScanPort;
 
     @Mock
+    private StreamSharePointResumeScanPort streamSharePointResumeScanPort;
+
+    @Mock
     private ConfluenceContentScanResultToScanEventMapper mapper;
 
     private SharePointScanController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new SharePointScanController(streamSharePointScanPort, mapper);
+        controller = new SharePointScanController(streamSharePointScanPort, streamSharePointResumeScanPort, mapper);
     }
 
     @Test
@@ -52,7 +56,7 @@ class SharePointScanControllerTest {
         when(mapper.toDto(any(ContentScanResult.class))).thenReturn(dto);
 
         // Act
-        Flux<ServerSentEvent<ContentScanResultEventDto>> result = controller.streamAllSitesScan();
+        Flux<ServerSentEvent<ContentScanResultEventDto>> result = controller.streamAllSitesScan(null);
 
         // Assert
         StepVerifier.create(result.take(1))
@@ -99,7 +103,7 @@ class SharePointScanControllerTest {
         when(streamSharePointScanPort.scanAllSites()).thenReturn(Flux.empty());
 
         // Act
-        Flux<ServerSentEvent<ContentScanResultEventDto>> result = controller.streamAllSitesScan();
+        Flux<ServerSentEvent<ContentScanResultEventDto>> result = controller.streamAllSitesScan(null);
 
         // Assert - should produce keepalive events
         StepVerifier.create(result.take(1))

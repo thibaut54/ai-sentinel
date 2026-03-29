@@ -99,6 +99,16 @@ public interface DetectionCheckpointRepository extends
     @Query("DELETE FROM ScanCheckpointEntity s WHERE s.status IN ('RUNNING', 'PAUSED') AND s.sourceType = :sourceType")
     void deleteActiveScanCheckpointsBySourceType(@Param("sourceType") String sourceType);
 
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ScanCheckpointEntity s WHERE s.sourceType = :sourceType")
+    void deleteAllBySourceType(@Param("sourceType") String sourceType);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ScanCheckpointEntity s WHERE s.sourceType = :sourceType AND s.sourceKey IN :sourceKeys")
+    void deleteAllBySourceTypeAndSourceKeys(@Param("sourceType") String sourceType, @Param("sourceKeys") List<String> sourceKeys);
+
     /**
      * Deletes ALL scan checkpoints for specific sources regardless of status.
      * Business purpose: When re-scanning selected sources, all previous checkpoint data
@@ -198,6 +208,7 @@ public interface DetectionCheckpointRepository extends
             progress_percentage = CASE WHEN :progressPercentage IS NOT NULL THEN :progressPercentage ELSE scan_checkpoints.progress_percentage END,
             updated_at = :updatedAt
         """, nativeQuery = true)
+    @SuppressWarnings("java:S107") // 8 params maps 1:1 to the SQL UPSERT columns — grouping into an object would add indirection without benefit
     void upsertCheckpoint(@Param("scanId") String scanId,
                           @Param("sourceType") String sourceType,
                           @Param("sourceKey") String sourceKey,

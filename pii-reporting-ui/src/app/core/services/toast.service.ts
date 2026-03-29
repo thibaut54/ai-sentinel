@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
+import { TranslocoService } from '@jsverse/transloco';
+import { toTranslocoKey } from './error-notification.service';
 
 export interface ErrorToastData {
   scanId: string;
@@ -13,6 +15,8 @@ export interface ErrorToastData {
 
 @Injectable()
 export class ToastService {
+  private readonly translocoService = inject(TranslocoService);
+
   constructor(readonly messageService: MessageService) {}
 
   showScanError(data: ErrorToastData): void {
@@ -73,10 +77,17 @@ export class ToastService {
 
     // Message technique uniquement pour non-gRPC errors
     if (data.errorType !== 'ERROR_GRPC') {
-      parts.push(`Message: ${data.errorMessage}`);
+      parts.push(`Message: ${this.translateErrorMessage(data.errorMessage)}`);
     }
 
     return parts.join('\n');
+  }
+
+  private translateErrorMessage(message: string): string {
+    if (message.startsWith('error.')) {
+      return this.translocoService.translate(toTranslocoKey(message));
+    }
+    return message;
   }
 
   detectErrorType(errorMessage: string): ErrorToastData['errorType'] {

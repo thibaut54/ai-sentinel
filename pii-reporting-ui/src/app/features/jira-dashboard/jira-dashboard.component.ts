@@ -18,7 +18,6 @@ import { ToggleButtonModule } from 'primeng/togglebutton';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
 import { Ripple } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -36,6 +35,15 @@ import { JiraProjectDataManagementService } from './services/jira-project-data-m
 import { JiraScanControlService } from './services/jira-scan-control.service';
 import { JiraProjectsDashboardUtils } from './jira-projects-dashboard.utils';
 import { SettingsDialogService } from '../../core/services/settings-dialog.service';
+import type { SettingsSection } from '../pii-settings/pii-settings.component';
+import {
+    SourceConfigBannerComponent
+} from '../../shared/components/source-config-banner/source-config-banner.component';
+import { ScanStatusBadgeComponent } from '../../shared/components/scan-status-badge/scan-status-badge.component';
+import { RiskScoreBadgeComponent } from '../../shared/components/risk-score-badge/risk-score-badge.component';
+import { StatusTagComponent } from '../../shared/components/status-tag/status-tag.component';
+import { ScanActionsGroupComponent } from '../../shared/components/scan-actions-group/scan-actions-group.component';
+import { TestIds } from '../test-ids.constants';
 
 @Component({
   selector: 'app-jira-dashboard',
@@ -49,7 +57,6 @@ import { SettingsDialogService } from '../../core/services/settings-dialog.servi
     InputTextModule,
     SelectModule,
     TableModule,
-    TagModule,
     Ripple,
     TooltipModule,
     SkeletonModule,
@@ -57,10 +64,15 @@ import { SettingsDialogService } from '../../core/services/settings-dialog.servi
     ScanProgressBarComponent,
     SeverityCardsComponent,
     PiiHelpDialogComponent,
-    PiiSeverityBadgesComponent
+    PiiSeverityBadgesComponent,
+    SourceConfigBannerComponent,
+    ScanStatusBadgeComponent,
+    RiskScoreBadgeComponent,
+    StatusTagComponent,
+    ScanActionsGroupComponent
   ],
   templateUrl: './jira-dashboard.component.html',
-  styleUrl: './jira-dashboard.component.css',
+  styleUrls: ['../../shared/styles/dashboard-table.css', './jira-dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class JiraDashboardComponent implements OnInit, OnDestroy {
@@ -73,6 +85,9 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly settingsDialog = inject(SettingsDialogService);
   readonly dashboardUtils = inject(JiraProjectsDashboardUtils);
+
+  // Expose test IDs to template for E2E testing
+  readonly testIds = TestIds.jira;
 
   readonly skeletonRows: number[] = Array.from({ length: 10 }, (_, i) => i);
   readonly showPiiHelpDialog = signal(false);
@@ -138,7 +153,7 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
           this.dataManagement.isProjectsLoading.set(false);
           return;
         }
-        this.dataManagement.fetchProjects().subscribe();
+        this.initializeDataLoading();
       },
       error: () => {
         this.jiraConfigMissing.set(true);
@@ -150,9 +165,24 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => {
       this.jiraConfigMissing.set(false);
-      this.dataManagement.fetchProjects().subscribe({
-        error: () => { /* handled by service */ }
-      });
+      this.initializeDataLoading();
+    });
+  }
+
+  private initializeDataLoading(): void {
+    this.dataManagement.loadLastScan().subscribe({ error: () => {} });
+    this.dataManagement.fetchProjects().subscribe({
+      next: () => {
+        this.dataManagement.loadLastProjectStatuses(false, true).subscribe({
+          next: () => {
+            setTimeout(() => {
+              this.scanControl.checkAndReconnectToRunningScan();
+            }, 100);
+          },
+          error: () => {}
+        });
+      },
+      error: () => {}
     });
   }
 
@@ -171,6 +201,10 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
 
   pauseScan(): void {
     this.scanControl.pauseScan();
+  }
+
+  resumeLastScan(): void {
+    this.scanControl.resumeLastScan();
   }
 
   onGlobalChange(value: string): void {
@@ -197,14 +231,6 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
     this.dataManagement.refreshProjects();
   }
 
-  statusLabel(status?: string): string {
-    return this.uiStateService.statusLabel(status);
-  }
-
-  statusStyle(status?: string): 'danger' | 'warning' | 'success' | 'info' | 'secondary' {
-    return this.uiStateService.statusStyle(status);
-  }
-
   openJira(project: { url?: string }): void {
     if (project.url) {
       window.open(project.url, '_blank', 'noopener');
@@ -215,8 +241,8 @@ export class JiraDashboardComponent implements OnInit, OnDestroy {
     this.showPiiHelpDialog.set(true);
   }
 
-  requestOpenSettings(tab: number = 0): void {
-    this.settingsDialog.open(tab);
+  requestOpenSettings(section: SettingsSection = 'detectors'): void {
+    this.settingsDialog.open(section);
   }
 
   dismissJiraConfigBanner(): void {

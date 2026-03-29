@@ -10,6 +10,9 @@ import pro.softcom.aisentinel.domain.jira.JiraDeploymentType;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 
+import pro.softcom.aisentinel.domain.jira.JiraAuthenticationException;
+import pro.softcom.aisentinel.domain.jira.JiraConnectionException;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -115,17 +118,22 @@ public class ManageJiraConnectionUseCase implements ManageJiraConnectionPort {
                     .build()
                     .send(request, HttpResponse.BodyHandlers.ofString());
 
-            boolean success = response.statusCode() >= 200 && response.statusCode() < 300;
-            log.info("Jira connection test result: {} (HTTP {})", success ? "SUCCESS" : "FAILED", response.statusCode());
+            int statusCode = response.statusCode();
+            if (statusCode == 401 || statusCode == 403) {
+                throw new JiraAuthenticationException(
+                        "Jira authentication failed (HTTP " + statusCode + ")", statusCode);
+            }
+            boolean success = statusCode >= 200 && statusCode < 300;
+            log.info("Jira connection test result: {} (HTTP {})", success ? "SUCCESS" : "FAILED", statusCode);
             return success;
 
+        } catch (JiraAuthenticationException e) {
+            throw e;
         } catch (InterruptedException e) {
-            log.warn("Jira connection test interrupted: {}", e.getMessage());
             Thread.currentThread().interrupt();
-            return false;
+            throw new JiraConnectionException("Jira connection test interrupted", e);
         } catch (Exception e) {
-            log.warn("Jira connection test failed: {}", e.getMessage());
-            return false;
+            throw new JiraConnectionException("Jira connection failed: " + e.getMessage(), e);
         }
     }
 

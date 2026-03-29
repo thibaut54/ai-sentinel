@@ -6,218 +6,230 @@
   </div>
 } @else {
   <div class="jira-settings-content">
-    <form [formGroup]="configForm">
 
-      <!-- Deployment Type -->
-      <p-fieldset [legend]="'settings.jira.deploymentType.title' | transloco" [toggleable]="false">
-        <div class="deployment-type-group">
-          <div class="deployment-type-option">
-            <p-radioButton
-              inputId="deployCloud"
-              formControlName="deploymentType"
-              value="CLOUD">
-            </p-radioButton>
-            <label for="deployCloud" class="deployment-type-label">
-              <span class="deployment-type-name">{{ 'settings.jira.deploymentType.cloud' | transloco }}</span>
-              <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.cloudDesc' | transloco }}</small>
-            </label>
-          </div>
-          <div class="deployment-type-option">
-            <p-radioButton
-              inputId="deployDC"
-              formControlName="deploymentType"
-              value="DATA_CENTER">
-            </p-radioButton>
-            <label for="deployDC" class="deployment-type-label">
-              <span class="deployment-type-name">{{ 'settings.jira.deploymentType.dataCenter' | transloco }}</span>
-              <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.dataCenterDesc' | transloco }}</small>
-            </label>
-          </div>
-        </div>
-      </p-fieldset>
-
-      <!-- Connection Fieldset -->
-      <p-fieldset [legend]="'settings.jira.connection.title' | transloco" [toggleable]="true">
-        <div class="form-field">
-          <label for="jiraBaseUrl">
-            <span class="field-label">{{ 'settings.jira.connection.baseUrl' | transloco }}</span>
+    <!-- Deployment Type -->
+    <p-fieldset [legend]="'settings.jira.deploymentType.title' | transloco" [toggleable]="false">
+      <div class="deployment-type-group" role="radiogroup" [attr.aria-label]="'settings.jira.deploymentType.title' | transloco">
+        <div class="deployment-type-option">
+          <p-radioButton
+            inputId="deployCloud"
+            name="deploymentType"
+            value="CLOUD"
+            [formField]="configForm.deploymentType">
+          </p-radioButton>
+          <label for="deployCloud" class="deployment-type-label">
+            <span class="deployment-type-name">{{ 'settings.jira.deploymentType.cloud' | transloco }}</span>
+            <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.cloudDesc' | transloco }}</small>
           </label>
-          <input
-            id="jiraBaseUrl"
-            type="text"
-            pInputText
-            formControlName="baseUrl"
-            [placeholder]="'settings.jira.placeholders.baseUrl' | transloco"
-            class="field-input" />
-          @if (configForm.get('baseUrl')?.invalid && configForm.get('baseUrl')?.touched) {
-            <small class="field-error">{{ 'settings.jira.validation.baseUrlRequired' | transloco }}</small>
-          }
         </div>
-
-        <div class="form-field">
-          <label for="jiraEmail">
-            <span class="field-label">{{ 'settings.jira.connection.email' | transloco }}</span>
+        <div class="deployment-type-option">
+          <p-radioButton
+            inputId="deployDC"
+            name="deploymentType"
+            value="DATA_CENTER"
+            [formField]="configForm.deploymentType">
+          </p-radioButton>
+          <label for="deployDC" class="deployment-type-label">
+            <span class="deployment-type-name">{{ 'settings.jira.deploymentType.dataCenter' | transloco }}</span>
+            <small class="deployment-type-desc">{{ 'settings.jira.deploymentType.dataCenterDesc' | transloco }}</small>
           </label>
-          <input
-            id="jiraEmail"
-            type="email"
-            pInputText
-            formControlName="email"
-            [placeholder]="'settings.jira.placeholders.email' | transloco"
-            class="field-input" />
-          @if (configForm.get('email')?.invalid && configForm.get('email')?.touched) {
-            <small class="field-error">{{ 'settings.jira.validation.emailRequired' | transloco }}</small>
-          }
         </div>
+      </div>
+    </p-fieldset>
 
-        <div class="form-field">
-          <label for="jiraApiToken">
-            <span class="field-label">{{ 'settings.jira.connection.apiToken' | transloco }}</span>
-          </label>
-          <p-password
-            inputId="jiraApiToken"
-            formControlName="apiToken"
-            [placeholder]="currentConfig() ? ('settings.jira.placeholders.apiTokenExisting' | transloco) : ('settings.jira.placeholders.apiToken' | transloco)"
-            [toggleMask]="true"
-            [feedback]="false"
-            styleClass="field-input">
-          </p-password>
-          @if (currentConfig()) {
-            <small class="field-hint">
-              {{ 'settings.jira.connection.apiTokenHint' | transloco }}
-              <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
-            </small>
-          }
-          @if (configForm.get('apiToken')?.hasError('required') && configForm.get('apiToken')?.touched && !currentConfig()) {
-            <small class="field-error">{{ 'settings.jira.validation.apiTokenRequired' | transloco }}</small>
-          }
-        </div>
-      </p-fieldset>
-
-      <!-- Timeouts Fieldset -->
-      <p-fieldset [legend]="'settings.jira.timeouts.title' | transloco" [toggleable]="true">
-        <div class="form-field">
-          <label for="jiraConnectTimeout">
-            <span class="field-label">{{ 'settings.jira.timeouts.connectTimeout' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.jira.timeouts.connectTimeoutDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="jiraConnectTimeout"
-            formControlName="connectTimeout"
-            [min]="1000"
-            [max]="120000"
-            [step]="1000"
-            suffix=" ms"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="jiraReadTimeout">
-            <span class="field-label">{{ 'settings.jira.timeouts.readTimeout' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.jira.timeouts.readTimeoutDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="jiraReadTimeout"
-            formControlName="readTimeout"
-            [min]="5000"
-            [max]="300000"
-            [step]="5000"
-            suffix=" ms"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="jiraMaxRetries">
-            <span class="field-label">{{ 'settings.jira.timeouts.maxRetries' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.jira.timeouts.maxRetriesDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="jiraMaxRetries"
-            formControlName="maxRetries"
-            [min]="0"
-            [max]="10"
-            [step]="1"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-      </p-fieldset>
-
-      <!-- Pagination Fieldset -->
-      <p-fieldset [legend]="'settings.jira.pagination.title' | transloco" [toggleable]="true">
-        <div class="form-field">
-          <label for="jiraIssuesLimit">
-            <span class="field-label">{{ 'settings.jira.pagination.issuesLimit' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.jira.pagination.issuesLimitDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="jiraIssuesLimit"
-            formControlName="issuesLimit"
-            [min]="1"
-            [max]="1000"
-            [step]="5"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-
-        <div class="form-field">
-          <label for="jiraMaxIssues">
-            <span class="field-label">{{ 'settings.jira.pagination.maxIssues' | transloco }}</span>
-          </label>
-          <p class="field-description">{{ 'settings.jira.pagination.maxIssuesDesc' | transloco }}</p>
-          <p-inputNumber
-            inputId="jiraMaxIssues"
-            formControlName="maxIssues"
-            [min]="1"
-            [max]="10000"
-            [step]="100"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus">
-          </p-inputNumber>
-        </div>
-      </p-fieldset>
-
-      <!-- Info Card -->
-      @if (currentConfig()?.updatedAt) {
-        <div class="info-card">
-          <div class="info-content">
-            <div class="info-item">
-              <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
-              {{ currentConfig()!.updatedAt | date:'medium' }}
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Action Buttons -->
-      <div class="section-actions">
-        <p-button
-          type="button"
-          [label]="'settings.jira.buttons.test' | transloco"
-          icon="pi pi-wifi"
-          [loading]="testing()"
-          [disabled]="testing() || saving()"
-          (click)="onTestConnection()"
-          (keydown.enter)="onTestConnection()"
-          styleClass="p-button-outlined">
-        </p-button>
+    <!-- Connection Fieldset -->
+    <p-fieldset [legend]="'settings.jira.connection.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="jiraBaseUrl">
+          <span class="field-label">{{ 'settings.jira.connection.baseUrl' | transloco }}</span>
+        </label>
+        <input
+          id="jiraBaseUrl"
+          type="text"
+          pInputText
+          [formField]="configForm.baseUrl"
+          [placeholder]="'settings.jira.placeholders.baseUrl' | transloco"
+          class="field-input" />
+        @if (configForm.baseUrl().invalid() && configForm.baseUrl().touched()) {
+          <small class="field-error">{{ 'settings.jira.validation.baseUrlRequired' | transloco }}</small>
+        }
       </div>
 
-    </form>
+      <div class="form-field">
+        <label for="jiraEmail">
+          <span class="field-label">{{ 'settings.jira.connection.email' | transloco }}</span>
+        </label>
+        <input
+          id="jiraEmail"
+          type="email"
+          pInputText
+          [formField]="configForm.email"
+          [placeholder]="'settings.jira.placeholders.email' | transloco"
+          class="field-input" />
+        @if (configForm.email().errors().length && configForm.email().touched()) {
+          @for (error of configForm.email().errors(); track error.kind) {
+            @if (error.kind === 'required') {
+              <small class="field-error">{{ 'settings.jira.validation.emailRequired' | transloco }}</small>
+            }
+            @if (error.kind === 'email') {
+              <small class="field-error">{{ 'settings.jira.validation.emailInvalid' | transloco }}</small>
+            }
+          }
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="jiraApiToken">
+          <span class="field-label">{{ 'settings.jira.connection.apiToken' | transloco }}</span>
+        </label>
+        <p-password
+          inputId="jiraApiToken"
+          [formField]="configForm.apiToken"
+          [placeholder]="apiTokenPlaceholder()"
+          [toggleMask]="true"
+          [feedback]="false"
+          class="field-input">
+        </p-password>
+        @if (hasExistingTokenForCurrentType()) {
+          <small class="field-hint">
+            {{ 'settings.jira.connection.apiTokenHint' | transloco }}
+            <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
+          </small>
+        }
+        @if (configForm.apiToken().errors().length && configForm.apiToken().touched()) {
+          <small class="field-error">{{ 'settings.jira.validation.apiTokenRequired' | transloco }}</small>
+        }
+      </div>
+    </p-fieldset>
+
+    <!-- Timeouts Fieldset -->
+    <p-fieldset [legend]="'settings.jira.timeouts.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="jiraConnectTimeout">
+          <span class="field-label">{{ 'settings.jira.timeouts.connectTimeout' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.jira.timeouts.connectTimeoutDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="jiraConnectTimeout"
+          [formField]="configForm.connectTimeout"
+          [min]="1000"
+          [max]="120000"
+          [step]="1000"
+          suffix=" ms"
+          [useGrouping]="false"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+
+      <div class="form-field">
+        <label for="jiraReadTimeout">
+          <span class="field-label">{{ 'settings.jira.timeouts.readTimeout' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.jira.timeouts.readTimeoutDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="jiraReadTimeout"
+          [formField]="configForm.readTimeout"
+          [min]="5000"
+          [max]="300000"
+          [step]="5000"
+          suffix=" ms"
+          [useGrouping]="false"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+
+      <div class="form-field">
+        <label for="jiraMaxRetries">
+          <span class="field-label">{{ 'settings.jira.timeouts.maxRetries' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.jira.timeouts.maxRetriesDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="jiraMaxRetries"
+          [formField]="configForm.maxRetries"
+          [min]="0"
+          [max]="10"
+          [step]="1"
+          [useGrouping]="false"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+    </p-fieldset>
+
+    <!-- Pagination Fieldset -->
+    <p-fieldset [legend]="'settings.jira.pagination.title' | transloco" [toggleable]="true">
+      <div class="form-field">
+        <label for="jiraIssuesLimit">
+          <span class="field-label">{{ 'settings.jira.pagination.issuesLimit' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.jira.pagination.issuesLimitDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="jiraIssuesLimit"
+          [formField]="configForm.issuesLimit"
+          [min]="1"
+          [max]="1000"
+          [step]="5"
+          [useGrouping]="false"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+
+      <div class="form-field">
+        <label for="jiraMaxIssues">
+          <span class="field-label">{{ 'settings.jira.pagination.maxIssues' | transloco }}</span>
+        </label>
+        <p class="field-description">{{ 'settings.jira.pagination.maxIssuesDesc' | transloco }}</p>
+        <p-inputNumber
+          inputId="jiraMaxIssues"
+          [formField]="configForm.maxIssues"
+          [min]="1"
+          [max]="10000"
+          [step]="100"
+          [useGrouping]="false"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus">
+        </p-inputNumber>
+      </div>
+    </p-fieldset>
+
+    <!-- Info Card -->
+    @if (currentConfig()?.updatedAt) {
+      <div class="info-card">
+        <div class="info-content">
+          <div class="info-item">
+            <strong>{{ 'settings.info.lastUpdated' | transloco }}</strong>
+            {{ currentConfig()!.updatedAt | date:'medium' }}
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="section-actions">
+      <p-button
+        type="button"
+        [label]="'settings.jira.buttons.test' | transloco"
+        icon="pi pi-wifi"
+        [loading]="testing()"
+        [disabled]="testing() || saving()"
+        (click)="onTestConnection()"
+        (keydown.enter)="onTestConnection()"
+        styleClass="p-button-outlined">
+      </p-button>
+    </div>
+
   </div>
 }

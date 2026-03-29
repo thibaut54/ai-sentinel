@@ -5,7 +5,7 @@ import io.grpc.StatusRuntimeException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
-import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.PiiDetectionException;
+import pro.softcom.aisentinel.domain.pii.scan.PiiDetectionException;
 import reactor.core.publisher.Hooks;
 
 import java.util.concurrent.CancellationException;

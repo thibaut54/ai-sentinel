@@ -6,6 +6,7 @@ import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPor
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.*;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 
@@ -223,6 +224,107 @@ public class ScanReportingUseCase implements ScanReportingPort {
         }
         long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);
         return progress > 0 ? ReportingScanStatus.PAUSED : ReportingScanStatus.PENDING;
+    }
+
+    @Override
+    public Optional<LastScanMeta> getLatestScanBySourceType(SourceType sourceType) {
+        try {
+            return scanResultQuery.findLatestScanBySourceType(sourceType);
+        } catch (Exception ex) {
+            log.warn("[LAST_SCAN] Failed to get latest scan for {}: {}", sourceType, ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<ScanReportingSummary> getScanSummaryBySourceType(SourceType sourceType) {
+        try {
+            List<ScanCheckpoint> latestCheckpoints = checkpointRepo.findAllLatestCheckpointsBySourceType(sourceType);
+            if (latestCheckpoints.isEmpty()) {
+                return Optional.empty();
+            }
+
+            Set<String> scanIds = new HashSet<>();
+            for (ScanCheckpoint cp : latestCheckpoints) {
+                scanIds.add(cp.scanId());
+            }
+
+            Map<String, List<ScanResultQuery.SpaceCounter>> countersByScan = new HashMap<>();
+            for (String scanId : scanIds) {
+                countersByScan.put(scanId, scanResultQuery.getSpaceCounters(scanId));
+            }
+
+            List<SpaceSummary> spaces = new ArrayList<>();
+            for (ScanCheckpoint cp : latestCheckpoints) {
+                List<ScanResultQuery.SpaceCounter> scanCounters = countersByScan.get(cp.scanId());
+
+                long pagesDone = 0;
+                long attachmentsDone = 0;
+                Instant lastEventTs = null;
+
+                if (scanCounters != null) {
+                    for (ScanResultQuery.SpaceCounter sc : scanCounters) {
+                        if (sc.sourceKey().equals(cp.sourceKey())) {
+                            pagesDone = sc.pagesDone();
+                            attachmentsDone = sc.attachmentsDone();
+                            lastEventTs = sc.lastEventTs();
+                            break;
+                        }
+                    }
+                }
+
+                spaces.add(new SpaceSummary(
+                    cp.sourceKey(),
+                    mapPresentationStatus(cp.scanStatus(), pagesDone, attachmentsDone),
+                    cp.progressPercentage(),
+                    pagesDone,
+                    attachmentsDone,
+                    lastEventTs
+                ));
+            }
+
+            Optional<LastScanMeta> latestMeta = getLatestScanBySourceType(sourceType);
+            String globalScanId = latestMeta.map(LastScanMeta::scanId).orElse(
+                latestCheckpoints.getFirst().scanId()
+            );
+
+            Instant globalLastUpdated = spaces.stream()
+                .map(SpaceSummary::lastEventTs)
+                .filter(Objects::nonNull)
+                .max(Instant::compareTo)
+                .orElse(Instant.now());
+
+            return Optional.of(new ScanReportingSummary(
+                globalScanId,
+                globalLastUpdated,
+                spaces.size(),
+                spaces
+            ));
+
+        } catch (Exception ex) {
+            log.warn("[SCAN] Failed to get scan summary for {}: {}", sourceType, ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<ContentScanResult> getScanItemsBySourceType(SourceType sourceType) {
+        try {
+            List<ScanCheckpoint> latestCheckpoints = checkpointRepo.findAllLatestCheckpointsBySourceType(sourceType);
+            List<ContentScanResult> allItems = new ArrayList<>();
+
+            for (ScanCheckpoint cp : latestCheckpoints) {
+                List<ContentScanResult> spaceItems = scanResultQuery.listItemEventsEncryptedBySourceKey(
+                    cp.scanId(),
+                    cp.sourceKey()
+                );
+                allItems.addAll(spaceItems);
+            }
+            return allItems;
+        } catch (Exception ex) {
+            log.warn("[SCAN] Failed to get scan items for {}: {}", sourceType, ex.getMessage());
+            return List.of();
+        }
     }
 
     private record CheckpointIndex(Map<String, ScanStatus> statuses, Map<String, Double> progressPercentages) { }

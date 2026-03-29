@@ -1,0 +1,35 @@
+:host ::ng-deep .status-tag.p-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 7.5rem;
+  box-sizing: border-box;
+  border-radius: 20px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+:host ::ng-deep .status-running.p-tag {
+  background-color: var(--sentinel-status-running-bg);
+  border-color: var(--sentinel-status-running-border);
+  color: var(--sentinel-status-running-text);
+}
+
+:host ::ng-deep .status-paused.p-tag {
+  background-color: var(--sentinel-status-paused-bg);
+  border-color: var(--sentinel-status-paused-border);
+  color: var(--sentinel-status-paused-text);
+}
+
+:host ::ng-deep .p-tag.p-tag-success,
+:host ::ng-deep .status-tag.p-tag-success {
+  background-color: var(--sentinel-status-success-bg);
+  color: var(--sentinel-status-success-text);
+}
+
+:host ::ng-deep .p-tag.p-tag-secondary,
+:host ::ng-deep .status-tag.p-tag-secondary {
+  background-color: var(--sentinel-status-pending-bg);
+  color: var(--sentinel-status-pending-text);
+}

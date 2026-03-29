@@ -66,10 +66,24 @@ export class SharePointSseEventHandlerService {
     const sites = this.dataManagement.sites();
     if (!Array.isArray(sites) || sites.length === 0) return;
 
-    this.dataManagement.queue.set(sites.map((s) => s.id));
+    // Identify sites already completed in the current scan cycle
+    // so we don't reset their status when resuming a paused scan
+    const completedKeys = new Set(
+      this.dataManagement.lastSiteStatuses()
+        .filter(s => s.status === 'COMPLETED')
+        .map(s => s.spaceKey.trim().toLowerCase())
+    );
+
+    this.dataManagement.queue.set(
+      sites
+        .filter(s => !completedKeys.has(s.id.trim().toLowerCase()))
+        .map(s => s.id)
+    );
 
     for (const site of sites) {
-      this.dashboardUtils.updateSite(site.id, { status: 'PENDING' });
+      if (!completedKeys.has(site.id.trim().toLowerCase())) {
+        this.dashboardUtils.updateSite(site.id, { status: 'PENDING' });
+      }
     }
 
     if (!this.uiStateService.selectedSiteId()) {

@@ -21,6 +21,7 @@
                 styleClass="header-settings-btn"
                 (click)="settingsDialog.open()"
                 (keydown.enter)="settingsDialog.open()"
+                data-testid="settings-open-button"
                 [ariaLabel]="'dashboard.actions.settings' | transloco" />
       <app-language-selector />
     </div>
@@ -60,7 +61,7 @@
             styleClass="settings-fullscreen-dialog"
             [header]="'settings.title' | transloco">
     <app-pii-settings [dialogMode]="true"
-                      [initialTab]="settingsInitialTab()"
+                      [initialSection]="settingsDialog.initialSection()"
                       (closeDialog)="closeSettingsDialog()"
                       (settingsSaved)="onSettingsSaved()">
     </app-pii-settings>

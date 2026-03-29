@@ -1,8 +1,8 @@
-@if (showBanner) {
-  <div class="confluence-config-banner">
+@if (showBanner()) {
+  <div class="source-config-banner" role="alert">
     <i class="pi pi-exclamation-triangle"></i>
     <span class="banner-message">
-      {{ 'dashboard.notifications.confluenceConfig.message' | transloco }}
+      {{ 'dashboard.notifications.configMissing.message' | transloco: { source: sourceLabel() } }}
     </span>
     <button pButton
             type="button"
@@ -11,7 +11,7 @@
             (keydown.enter)="onOpenSettings()"
             (keydown.space)="$event.preventDefault(); onOpenSettings()"
             [attr.data-testid]="'configure-button'">
-      {{ 'dashboard.notifications.confluenceConfig.settingsButton' | transloco }}
+      {{ 'dashboard.notifications.configMissing.settingsButton' | transloco }}
     </button>
     <button pButton
             type="button"
@@ -20,7 +20,7 @@
             (click)="onDismiss()"
             (keydown.enter)="onDismiss()"
             (keydown.space)="$event.preventDefault(); onDismiss()"
-            [attr.aria-label]="'dashboard.notifications.confluenceConfig.closeAriaLabel' | transloco"
+            [attr.aria-label]="'dashboard.notifications.configMissing.closeAriaLabel' | transloco"
             [attr.data-testid]="'dismiss-button'">
     </button>
   </div>

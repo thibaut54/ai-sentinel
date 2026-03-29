@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.out;
 
+import java.util.Base64;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -209,12 +211,6 @@ public abstract class AbstractConfluenceHttpClientAdapter implements ConfluenceC
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
-    }
-
-    private String encodeBasicAuth(String username, String apiToken) {
-        var credentials = username.trim() + ":" + apiToken.trim();
-        var encoded = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-        return "Basic " + encoded;
     }
 
     protected HttpRequest buildGetRequest(URI uri) {

@@ -73,6 +73,24 @@ public class TestWebContextStubsConfiguration {
             public java.util.Optional<ScanReportingSummary> getGlobalScanSummary() {
                 return java.util.Optional.empty();
             }
+
+            @Override
+            public java.util.Optional<LastScanMeta> getLatestScanBySourceType(
+                pro.softcom.aisentinel.domain.pii.export.SourceType sourceType) {
+                return java.util.Optional.empty();
+            }
+
+            @Override
+            public java.util.Optional<ScanReportingSummary> getScanSummaryBySourceType(
+                pro.softcom.aisentinel.domain.pii.export.SourceType sourceType) {
+                return java.util.Optional.empty();
+            }
+
+            @Override
+            public java.util.List<ContentScanResult> getScanItemsBySourceType(
+                pro.softcom.aisentinel.domain.pii.export.SourceType sourceType) {
+                return java.util.List.of();
+            }
         };
     }
 }

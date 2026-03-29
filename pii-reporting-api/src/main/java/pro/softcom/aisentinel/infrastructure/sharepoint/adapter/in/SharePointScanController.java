@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointResumeScanPort;
 import pro.softcom.aisentinel.application.sharepoint.port.in.StreamSharePointScanPort;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
@@ -34,22 +35,48 @@ import java.util.List;
 public class SharePointScanController {
 
     private final StreamSharePointScanPort streamSharePointScanPort;
+    private final StreamSharePointResumeScanPort streamSharePointResumeScanPort;
     private final ConfluenceContentScanResultToScanEventMapper mapper;
 
     @GetMapping(value = "/sites/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream scan of all SharePoint sites (SSE)")
     @ApiResponse(responseCode = "200", description = "SSE stream started")
-    public Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> streamAllSitesScan() {
-        log.info("[SSE][SharePoint] Starting multi-site stream");
+    public Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> streamAllSitesScan(
+            @RequestParam(name = "scanId", required = false) String scanId
+    ) {
+        boolean resume = scanId != null && !scanId.isBlank();
+        log.info("[SSE][SharePoint] Starting multi-site stream{}", resume ? " (resume scanId=" + scanId + ")" : "");
 
         Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> keepalive = buildKeepalive();
 
-        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> data = streamSharePointScanPort.scanAllSites()
-                .delaySubscription(Duration.ofMillis(50))
-                .map(ev -> ServerSentEvent.<ContentScanResultEventDto>builder()
-                        .event(ev.eventType())
-                        .data(mapper.toDto(ev))
-                        .build());
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> data;
+        if (resume) {
+            Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> header = Flux.just(
+                    ServerSentEvent.<ContentScanResultEventDto>builder()
+                            .event(ScanEventType.MULTI_START.toJson())
+                            .data(ContentScanResultEventDto.builder()
+                                    .scanId(scanId)
+                                    .eventType(ScanEventType.MULTI_START)
+                                    .build())
+                            .build()
+            );
+            Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> body = streamSharePointResumeScanPort.resumeAllSites(scanId)
+                    .map(ev -> ServerSentEvent.<ContentScanResultEventDto>builder()
+                            .event(ev.eventType())
+                            .data(mapper.toDto(ev))
+                            .build());
+            Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> footer = Flux.just(
+                    ServerSentEvent.<ContentScanResultEventDto>builder().event(ScanEventType.MULTI_COMPLETE.toJson()).build()
+            );
+            data = Flux.concat(header, body, footer);
+        } else {
+            data = streamSharePointScanPort.scanAllSites()
+                    .delaySubscription(Duration.ofMillis(50))
+                    .map(ev -> ServerSentEvent.<ContentScanResultEventDto>builder()
+                            .event(ev.eventType())
+                            .data(mapper.toDto(ev))
+                            .build());
+        }
 
         return Flux.merge(data, keepalive)
                 .doFinally(sig -> log.info("[SSE][SharePoint] Connection closed for all sites scan (signal={})", sig));

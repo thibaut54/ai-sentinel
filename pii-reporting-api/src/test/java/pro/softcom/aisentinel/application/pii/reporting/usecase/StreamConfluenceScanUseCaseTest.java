@@ -150,13 +150,13 @@ class StreamConfluenceScanUseCaseTest {
         // lorsque subscribeScan est appelé avec le même identifiant.
         Mockito.lenient().doAnswer(invocation -> {
                     String scanId = invocation.getArgument(0);
-                    Flux<ContentScanResult> flux = invocation.getArgument(1);
+                    Flux<ContentScanResult> flux = invocation.getArgument(2);
                     when(
                         personallyIdentifiableInformationScanExecutionOrchestratorPort.subscribeScan(scanId)).thenReturn(flux);
                     return null;
                 })
                 .when(personallyIdentifiableInformationScanExecutionOrchestratorPort)
-                .startScan(any(), any());
+                .startScan(any(), any(), any());
     }
 
     @Test

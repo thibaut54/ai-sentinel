@@ -139,6 +139,15 @@
   line-height: 1.3;
 }
 
+/* Signal forms: suppress immediate invalid styling on untouched empty fields */
+.form-field ::ng-deep .p-inputtext.p-invalid:placeholder-shown {
+  border-color: var(--p-inputtext-border-color);
+}
+
+.form-field ::ng-deep .p-inputtext.p-invalid:placeholder-shown::placeholder {
+  color: var(--p-inputtext-placeholder-color);
+}
+
 @media (max-width: 768px) {
   .deployment-type-options {
     flex-direction: column;

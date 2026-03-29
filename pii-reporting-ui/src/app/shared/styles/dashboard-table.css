@@ -1,0 +1,267 @@
+/* ======================================================================
+ * Shared dashboard table styles
+ * Imported by all source dashboard components (Confluence, Jira, SharePoint)
+ * ====================================================================== */
+
+/* Caption bar: filter + paginator (left) + scan controls (right) */
+.caption-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.caption-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.caption-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.caption-paginator {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.page-indicator {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sentinel-text-secondary);
+  white-space: nowrap;
+  margin-left: 0.25rem;
+}
+
+/* Toggle cell: no padding-right so chevron sits left, not clipped */
+.toggle-cell {
+  cursor: pointer;
+  padding-right: 0 !important;
+  padding-left: 0.25rem !important;
+  overflow: visible !important;
+}
+
+/* Name cell: clickable for expand/collapse */
+.item-name-cell {
+  cursor: pointer;
+}
+
+/* Row expansion container */
+.row-expansion {
+  padding: .75rem 0;
+}
+
+/* Scroll area: show up to ~10 cards, scroll for more */
+.pii-scroll {
+  max-height: 1200px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: .5rem;
+}
+
+/* Name styling */
+.fw-500 {
+  font-weight: 500;
+  color: var(--sentinel-text-dark);
+}
+
+/* Muted text (empty state, secondary info) */
+.text-muted {
+  color: var(--sentinel-text-muted);
+}
+
+/* PII Header Cell - centered text, relative positioning for help button */
+.pii-header-cell {
+  position: relative;
+  text-align: center;
+}
+
+/* PII Help Button - positioned at top-right of header cell */
+:host ::ng-deep .pii-help-button.p-button {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+:host ::ng-deep .pii-help-button.p-button .p-button-icon {
+  font-size: 0.9rem;
+  color: var(--sentinel-text-secondary);
+}
+
+:host ::ng-deep .pii-help-button.p-button:hover .p-button-icon {
+  color: var(--sentinel-link-hover);
+}
+
+/* Search input - full width, rounded border */
+.search-global {
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--sentinel-border-medium);
+  font-size: 0.8125rem;
+  padding: 0 0.875rem;
+  box-sizing: border-box;
+}
+
+/* ======================================================================
+ * Table container styling
+ * ====================================================================== */
+
+/* Caption area: sticky below app header */
+:host ::ng-deep .p-datatable .p-datatable-header {
+  background: var(--sentinel-bg-page);
+  border-bottom: 1px solid var(--sentinel-border-light);
+  padding: 0.5rem 1rem;
+  position: sticky;
+  top: 4rem;
+  z-index: 11;
+}
+
+/* Table container: rounded corners, white background, subtle border */
+:host ::ng-deep .p-datatable {
+  background: var(--sentinel-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--sentinel-border-top-bar);
+  overflow: visible;
+}
+
+/* Fixed table layout: prevents column widths from shifting on row expand/collapse */
+:host ::ng-deep .p-datatable .p-datatable-table {
+  table-layout: fixed;
+}
+
+/* Prevent text overflow in fixed-width columns */
+:host ::ng-deep .p-datatable .p-datatable-thead > tr > th,
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr > td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Allow wrapping in the expanded row */
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr > td[colspan] {
+  white-space: normal;
+  overflow: visible;
+}
+
+:host ::ng-deep .p-datatable .p-datatable-table-container {
+  border-radius: 12px;
+  overflow: visible !important;
+}
+
+/* Table header: sticky + opaque background to hide scrolling content */
+:host ::ng-deep .p-datatable .p-datatable-thead > tr > th {
+  position: sticky;
+  z-index: 10;
+  background: var(--sentinel-bg-page);
+  color: var(--sentinel-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-color: var(--sentinel-border-light);
+}
+
+/* Fix: establish proper stacking order between thead and tbody */
+:host ::ng-deep .p-datatable .p-datatable-thead {
+  position: relative;
+  z-index: 2;
+}
+
+:host ::ng-deep .p-datatable .p-datatable-tbody {
+  position: relative;
+  z-index: 1;
+}
+
+:host ::ng-deep .p-datatable .p-datatable-thead > tr:first-child > th {
+  top: 7.75rem;
+}
+
+/* Filter row: sticky below column headers, white background, no vertical separators */
+:host ::ng-deep .p-datatable .p-datatable-thead > tr:nth-child(2) > th {
+  top: 10.25rem;
+  background: var(--sentinel-bg-card);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  border: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-color: transparent !important;
+  border-style: none !important;
+  border-width: 0 !important;
+}
+
+/* Table row borders */
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--sentinel-border-light);
+}
+
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr {
+  border-color: var(--sentinel-border-light);
+}
+
+/* Last scan text styling */
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr > td:nth-child(6) {
+  color: var(--sentinel-text-muted);
+  font-size: 0.75rem;
+}
+
+/* ======================================================================
+ * PII Badges: severity (circular)
+ * ====================================================================== */
+
+:host ::ng-deep .p-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sentinel-bg-card);
+  padding: 0;
+  line-height: 1;
+}
+
+:host ::ng-deep .p-badge-danger {
+  background-color: var(--sentinel-severity-high);
+}
+
+:host ::ng-deep .p-badge-warn {
+  background-color: var(--sentinel-severity-medium);
+}
+
+:host ::ng-deep .p-badge-info {
+  background-color: var(--sentinel-severity-low);
+}
+
+/* ======================================================================
+ * Paginator
+ * ====================================================================== */
+
+:host ::ng-deep .p-paginator {
+  border-top: 1px solid var(--sentinel-border-light);
+  background: var(--sentinel-bg-card);
+  border-radius: 0 0 12px 12px;
+  font-size: 0.75rem;
+}
+
+/* ======================================================================
+ * p-select full-width in filter row
+ * ====================================================================== */
+
+:host ::ng-deep .filter-status-select p-select {
+  width: 100%;
+}
+
+:host ::ng-deep .filter-status-select p-select .p-select {
+  width: 100%;
+}

@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { TranslocoService } from '@jsverse/transloco';
 
-export type ErrorCategory = 'transient' | 'configuration' | 'access_denied' | 'validation' | 'not_found' | 'conflict';
+export type ErrorCategory = 'transient' | 'configuration' | 'validation' | 'not_found' | 'conflict';
 
 export interface ErrorNotification {
   errorKey: string;
@@ -17,8 +17,7 @@ export interface ErrorDetails {
 }
 
 export function classifyError(status: number): ErrorCategory {
-  if (status === 401) return 'configuration';
-  if (status === 403) return 'access_denied';
+  if (status === 401 || status === 403) return 'configuration';
   if (status === 400) return 'validation';
   if (status === 404) return 'not_found';
   if (status === 409) return 'conflict';
@@ -36,6 +35,12 @@ export class ErrorNotificationService {
 
   notify(error: ErrorDetails): void {
     const now = Date.now();
+
+    // Prune stale entries to prevent unbounded growth
+    for (const [key, ts] of this.recentKeys) {
+      if (now - ts >= 30_000) this.recentKeys.delete(key);
+    }
+
     const lastTime = this.recentKeys.get(error.errorKey);
     if (lastTime !== undefined && now - lastTime < 3000) return;
     this.recentKeys.set(error.errorKey, now);
@@ -45,8 +50,12 @@ export class ErrorNotificationService {
     if (error.category === 'configuration') {
       this.bannerError.set({ errorKey: error.errorKey, message, status: error.status });
     } else {
-      const summary = this.translocoService.translate('common.error');
-      this.messageService.add({ severity: 'error', summary, detail: message, life: 8000 });
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translocoService.translate('common.error'),
+        detail: message,
+        life: 8000
+      });
     }
   }
 

@@ -19,7 +19,6 @@ import { ToggleButtonModule } from 'primeng/togglebutton';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
 import { SpacesDashboardUtils } from './spaces-dashboard.utils';
 import { Ripple } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
@@ -31,17 +30,22 @@ import { SortEvent } from 'primeng/api';
 import { TestIds } from '../test-ids.constants';
 import { NewSpacesBannerComponent } from '../../shared/components/new-spaces-banner/new-spaces-banner.component';
 import {
-    ConfluenceConfigBannerComponent
-} from '../../shared/components/confluence-config-banner/confluence-config-banner.component';
+    SourceConfigBannerComponent
+} from '../../shared/components/source-config-banner/source-config-banner.component';
 import { ConfluenceConnectionConfigService } from '../../core/services/confluence-connection-config.service';
 import { SpaceFilteringService } from './services/space-filtering.service';
 import { DashboardUiStateService } from './services/dashboard-ui-state.service';
 import { PiiItemsStorageService } from './services/pii-items-storage.service';
 import { SpaceDataManagementService } from './services/space-data-management.service';
-import { ScanControlService } from './services/scan-control.service';
+import { ConfluenceScanControlService } from './services/confluence-scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
 import { SettingsDialogService } from '../../core/services/settings-dialog.service';
+import type { SettingsSection } from '../pii-settings/pii-settings.component';
+import { ScanStatusBadgeComponent } from '../../shared/components/scan-status-badge/scan-status-badge.component';
+import { RiskScoreBadgeComponent } from '../../shared/components/risk-score-badge/risk-score-badge.component';
+import { StatusTagComponent } from '../../shared/components/status-tag/status-tag.component';
+import { ScanActionsGroupComponent } from '../../shared/components/scan-actions-group/scan-actions-group.component';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -62,20 +66,23 @@ import { SettingsDialogService } from '../../core/services/settings-dialog.servi
         InputTextModule,
         SelectModule,
         TableModule,
-        TagModule,
         Ripple,
         TooltipModule,
         SkeletonModule,
         TranslocoModule,
         NewSpacesBannerComponent,
-        ConfluenceConfigBannerComponent,
+        SourceConfigBannerComponent,
         ScanProgressBarComponent,
         SeverityCardsComponent,
         PiiHelpDialogComponent,
-        PiiSeverityBadgesComponent
+        PiiSeverityBadgesComponent,
+        ScanStatusBadgeComponent,
+        RiskScoreBadgeComponent,
+        StatusTagComponent,
+        ScanActionsGroupComponent
     ],
   templateUrl: './confluence-dashboard.component.html',
-  styleUrl: './confluence-dashboard.component.css',
+  styleUrls: ['../../shared/styles/dashboard-table.css', './confluence-dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
@@ -84,7 +91,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   private readonly uiStateService = inject(DashboardUiStateService);
   private readonly piiItemsStorage = inject(PiiItemsStorageService);
   private readonly dataManagement = inject(SpaceDataManagementService);
-  private readonly scanControl = inject(ScanControlService);
+  private readonly scanControl = inject(ConfluenceScanControlService);
   private readonly confluenceConfigService = inject(ConfluenceConnectionConfigService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly settingsDialog = inject(SettingsDialogService);
@@ -93,7 +100,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
 
   // Expose test IDs to template for E2E testing
-  readonly testIds = TestIds.dashboard;
+  readonly testIds = TestIds.confluence;
 
   // 10 placeholder rows for loading skeleton
   readonly skeletonRows: number[] = Array.from({ length: 10 }, (_, i) => i);
@@ -145,16 +152,11 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   readonly hasNewSpaces = computed(() => this.dataManagement.hasNewSpaces());
   readonly newSpacesCount = computed(() => this.dataManagement.newSpacesCount());
 
-  // Scan Control — backend-authoritative
+  // Scan Control
   readonly isStreaming = computed(() => this.scanControl.isStreaming());
-  readonly scanActive = computed(() => this.scanControl.scanActive());
-  readonly scanPaused = computed(() => this.scanControl.scanPaused());
-  readonly actionPending = computed(() => this.scanControl.actionPending());
   readonly activeSpaceKey = computed(() => this.uiStateService.activeSpaceKey());
   readonly canStartScan = computed(() => this.scanControl.canStartScan());
-  readonly canPauseScan = computed(() => this.scanControl.canPauseScan());
   readonly canResumeScan = computed(() => this.scanControl.canResumeScan());
-  readonly canPurgeData = computed(() => this.scanControl.canPurgeData());
 
   // Global severity counts across all displayed spaces
   readonly globalSeverityCounts = computed<SeverityCounts>(() => {
@@ -207,7 +209,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
       next: () => {
         // Auto-reconnect to running scan (starts polling + SSE for items)
         setTimeout(() => {
-          this.scanControl.reconnectIfScanRunning();
+          this.scanControl.checkAndReconnectToRunningScan();
         }, 100);
       }
     });
@@ -235,10 +237,6 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   resumeLastScan(): void {
     this.scanControl.resumeLastScan();
-  }
-
-  purgeAllData(): void {
-    this.scanControl.purgeAllData();
   }
 
   onGlobalChange(value: string): void {
@@ -283,14 +281,6 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   // ===== UI Helper methods =====
 
-  statusLabel(status?: string): string {
-    return this.uiStateService.statusLabel(status);
-  }
-
-  statusStyle(status?: string): 'danger' | 'warning' | 'success' | 'info' | 'secondary' {
-    return this.uiStateService.statusStyle(status);
-  }
-
   openConfluence(space: any): void {
     this.spacesDashboardUtils.openConfluence(space);
   }
@@ -299,8 +289,8 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
     this.showPiiHelpDialog.set(true);
   }
 
-  requestOpenSettings(tab: number = 0): void {
-    this.settingsDialog.open(tab);
+  requestOpenSettings(section: SettingsSection = 'detectors'): void {
+    this.settingsDialog.open(section);
   }
 
   dismissConfluenceConfigBanner(): void {

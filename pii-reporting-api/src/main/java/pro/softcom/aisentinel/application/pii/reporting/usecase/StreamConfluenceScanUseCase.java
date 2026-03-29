@@ -96,7 +96,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
             });
 
         // Start independent scan task and return subscription flux
-        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanId, scanFlux);
+        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanId, SourceType.CONFLUENCE, scanFlux);
         return personallyIdentifiableInformationScanExecutionOrchestratorPort.subscribeScan(scanId);
     }
 
@@ -140,7 +140,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
         // Start independent scan task and return subscription flux
-        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanCorrelationId, scanFlux);
+        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanCorrelationId, SourceType.CONFLUENCE, scanFlux);
         return personallyIdentifiableInformationScanExecutionOrchestratorPort.subscribeScan(scanCorrelationId);
     }
 
@@ -166,7 +166,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
         // Start independent scan task and return subscription flux
-        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanCorrelationId, scanFlux);
+        personallyIdentifiableInformationScanExecutionOrchestratorPort.startScan(scanCorrelationId, SourceType.CONFLUENCE, scanFlux);
         return personallyIdentifiableInformationScanExecutionOrchestratorPort.subscribeScan(scanCorrelationId);
     }
 

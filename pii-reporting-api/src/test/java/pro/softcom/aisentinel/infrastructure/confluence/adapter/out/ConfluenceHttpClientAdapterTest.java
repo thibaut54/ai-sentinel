@@ -292,10 +292,10 @@ class ConfluenceHttpClientAdapterTest {
         
         // Re-initialize service to pick up new config values
         final ObjectMapper objectMapper = new ObjectMapper();
-        confluenceService = new ConfluenceHttpClientAdapter(config, objectMapper);
-        
+        confluenceService = new ConfluenceCloudHttpClientAdapter(config, objectMapper);
+
         // Inject mocked HttpClient again
-        Field retryExecutorField = ConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
+        Field retryExecutorField = AbstractConfluenceHttpClientAdapter.class.getDeclaredField("retryExecutor");
         retryExecutorField.setAccessible(true);
         Object retryExecutor = retryExecutorField.get(confluenceService);
         Field retryExecutorHttpClientField = retryExecutor.getClass().getDeclaredField("httpClient");

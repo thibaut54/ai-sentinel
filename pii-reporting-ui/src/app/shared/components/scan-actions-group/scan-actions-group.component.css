@@ -1,0 +1,42 @@
+.scan-actions-group {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
+}
+
+.scan-actions-group > p-button {
+  display: inline-flex;
+}
+
+.scan-actions-group > p-button + p-button {
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+:host ::ng-deep .scan-actions-group .p-button {
+  border-radius: 0 !important;
+  border: none !important;
+  background: linear-gradient(135deg, var(--sentinel-scan-btn-start), var(--sentinel-scan-btn-end)) !important;
+  color: var(--sentinel-bg-card) !important;
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.15s;
+}
+
+:host ::ng-deep .scan-actions-group .p-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+:host ::ng-deep .scan-actions-group .p-button:disabled {
+  background: var(--sentinel-scan-btn-disabled) !important;
+  opacity: 0.6;
+}
+
+:host ::ng-deep .scan-actions-group .p-button .p-button-icon {
+  font-size: 1rem;
+  color: var(--sentinel-bg-card) !important;
+}

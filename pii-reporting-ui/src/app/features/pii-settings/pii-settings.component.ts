@@ -1,4 +1,14 @@
-import { Component, computed, input, OnInit, output, SecurityContext, signal, viewChild } from '@angular/core';
+import {
+    Component,
+    computed,
+    effect,
+    input,
+    OnInit,
+    output,
+    SecurityContext,
+    signal,
+    viewChild
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -36,7 +46,7 @@ import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-s
 import { JiraSettingsComponent } from '../jira-settings/jira-settings.component';
 import { SharePointSettingsComponent } from '../sharepoint-settings/sharepoint-settings.component';
 
-type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
+export type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'jira' | 'sharepoint';
 
 /**
  * Settings page for PII detection configuration.
@@ -72,7 +82,7 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
 })
 export class PiiSettingsComponent implements OnInit {
   readonly dialogMode = input(false);
-  readonly initialTab = input(0);
+  readonly initialSection = input<SettingsSection>('detectors');
   readonly closeDialog = output();
   readonly settingsSaved = output();
 
@@ -90,8 +100,9 @@ export class PiiSettingsComponent implements OnInit {
   originalPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
   modifiedPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
 
-  // Sidebar navigation
+  // Sidebar navigation — synced with initialSection input via effect
   activeSection = signal<SettingsSection>('detectors');
+  private readonly syncSection = effect(() => this.activeSection.set(this.initialSection()));
 
   // Collapsible detector groups in PII types section
   collapsedDetectors = signal<Set<string>>(new Set());
@@ -187,18 +198,7 @@ export class PiiSettingsComponent implements OnInit {
     this.initCustomLabelForm();
   }
 
-  /** Maps tab indices to sidebar section identifiers. */
-  private static readonly TAB_TO_SECTION: ReadonlyArray<SettingsSection> = [
-    'detectors', 'thresholds', 'pii_types', 'confluence'
-  ];
-
   ngOnInit(): void {
-    const tabIndex = this.initialTab();
-    const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
-    if (section) {
-      this.activeSection.set(section);
-    }
-
     this.loadAllConfigs();
   }
 
@@ -607,19 +607,17 @@ export class PiiSettingsComponent implements OnInit {
       this.confluenceSettings()!.onSave();
     }
 
-      // If only Confluence changed, it handles its own saving signal — nothing else to do
-      if (!hasDetectorChanges && !hasTypeChanges) {
-          return;
-      }
-
-      this.saving.set(true);
-
     if (hasJiraChanges) {
       this.jiraSettings()!.onSave();
     }
 
     if (hasSharePointChanges) {
       this.sharePointSettings()!.onSave();
+    }
+
+    // If only child components changed, they handle their own saving signals — nothing else to do
+    if (!hasDetectorChanges && !hasTypeChanges) {
+      return;
     }
 
     const requests: Observable<any>[] = [];
@@ -759,7 +757,7 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   get isFormValid(): boolean {
-    return this.configForm.valid && (this.confluenceSettings()?.isFormValid ?? true);
+    return this.configForm.valid && (this.confluenceSettings()?.isFormValid ?? true) && (this.jiraSettings()?.isFormValid ?? true) && (this.sharePointSettings()?.isFormValid ?? true);
   }
 
   get hasDetectorChanges(): boolean {

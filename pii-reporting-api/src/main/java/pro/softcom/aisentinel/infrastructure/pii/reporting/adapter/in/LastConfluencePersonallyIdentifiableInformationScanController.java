@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.LastScanDto;
@@ -32,7 +33,7 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
 
     @GetMapping("/last")
     public ResponseEntity<@NonNull LastScanDto> getLastScan() {
-        return scanReportingPort.getLatestScan()
+        return scanReportingPort.getLatestScanBySourceType(SourceType.CONFLUENCE)
                 .map(lastScanMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
@@ -40,7 +41,7 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
 
     @GetMapping("/last/spaces")
     public ResponseEntity<@NonNull List<SpaceScanStateDto>> getLastScanSpaceStatuses() {
-        return scanReportingPort.getLatestScan()
+        return scanReportingPort.getLatestScanBySourceType(SourceType.CONFLUENCE)
                 .map(meta -> {
                     List<ConfluenceSpaceScanState> list = scanReportingPort.getLatestSpaceScanStateList(
                         meta.scanId());
@@ -51,7 +52,7 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
 
     @GetMapping("/last/items")
     public ResponseEntity<@NonNull List<ContentScanResultEventDto>> getLastScanItems() {
-        List<ContentScanResultEventDto> items = scanReportingPort.getGlobalScanItemsEncrypted().stream()
+        List<ContentScanResultEventDto> items = scanReportingPort.getScanItemsBySourceType(SourceType.CONFLUENCE).stream()
                 .map(confluenceContentScanResultToScanEventMapper::toDto)
                 .toList();
         if (items.isEmpty()) {
@@ -68,7 +69,7 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
      */
     @GetMapping("/dashboard/spaces-summary")
     public ResponseEntity<@NonNull ScanReportingSummaryDto> getDashboardSpacesSummary() {
-        return scanReportingPort.getGlobalScanSummary()
+        return scanReportingPort.getScanSummaryBySourceType(SourceType.CONFLUENCE)
                 .map(scanReportingSummaryMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());

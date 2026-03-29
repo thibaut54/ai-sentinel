@@ -88,4 +88,14 @@ public interface ScanSeverityCountJpaRepository extends
      * @param scanId Unique scan identifier
      */
     void deleteById_ScanId(String scanId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ScanSeverityCountEntity e WHERE e.id.sourceType = :sourceType")
+    void deleteAllBySourceType(@Param("sourceType") String sourceType);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ScanSeverityCountEntity e WHERE e.id.sourceType = :sourceType AND e.id.sourceKey IN :sourceKeys")
+    void deleteAllBySourceTypeAndSourceKeys(@Param("sourceType") String sourceType, @Param("sourceKeys") List<String> sourceKeys);
 }

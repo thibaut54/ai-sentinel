@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
@@ -19,6 +20,14 @@ public interface ScanResultQuery {
      * @return an Optional containing the metadata of the latest scan, or empty when no scan exists
      */
     Optional<LastScanMeta> findLatestScan();
+
+    /**
+     * Returns the most recent scan for the given source type, if any.
+     *
+     * @param sourceType the source type to filter by (JIRA, CONFLUENCE, SHAREPOINT)
+     * @return an Optional containing the metadata of the latest scan for that source type
+     */
+    Optional<LastScanMeta> findLatestScanBySourceType(SourceType sourceType);
 
     /**
      * Returns progress counters per space for the given scan.

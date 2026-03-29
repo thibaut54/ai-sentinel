@@ -1,24 +1,11 @@
 <div class="mx-auto p-3">
   <!-- Warning: Jira credentials not configured -->
-  @if (jiraConfigMissing()) {
-    <div class="config-banner" role="alert">
-      <span>{{ 'settings.jira.messages.loadError' | transloco: { error: '' } }}</span>
-      <p-button type="button"
-                [label]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco"
-                icon="pi pi-cog"
-                (click)="requestOpenSettings(1)"
-                (keydown.enter)="requestOpenSettings(1)"
-                styleClass="p-button-sm p-button-outlined"
-                [ariaLabel]="'dashboard.notifications.confluenceConfig.settingsButton' | transloco" />
-      <p-button type="button"
-                icon="pi pi-times"
-                [text]="true"
-                [rounded]="true"
-                (click)="dismissJiraConfigBanner()"
-                (keydown.enter)="dismissJiraConfigBanner()"
-                [ariaLabel]="'dashboard.notifications.confluenceConfig.closeAriaLabel' | transloco" />
-    </div>
-  }
+  <app-source-config-banner
+    [showBanner]="jiraConfigMissing()"
+    sourceType="jira"
+    (openSettings)="requestOpenSettings('jira')"
+    (dismiss)="dismissJiraConfigBanner()">
+  </app-source-config-banner>
 
   <!-- Severity cards -->
   <app-severity-cards [counts]="globalSeverityCounts()" />
@@ -39,7 +26,8 @@
            [expandedRowKeys]="expandedRowKeys()"
            (onRowExpand)="onRowExpand($event)"
            (onRowCollapse)="onRowCollapse($event)"
-           (onSort)="onCustomSort($event)" [customSort]="true">
+           (onSort)="onCustomSort($event)" [customSort]="true"
+           [attr.data-testid]="testIds.table">
     <ng-template #caption>
       <div class="caption-bar">
         <div class="caption-left">
@@ -51,31 +39,18 @@
           </div>
         </div>
         <div class="caption-right">
-          <output class="scan-status-badge"
-                  [class.scanning]="isStreaming()"
-                  [class.inactive]="!isStreaming()"
-                  [attr.aria-live]="isStreaming() ? 'polite' : 'off'"
-                  [attr.aria-label]="(isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
-            {{ (isStreaming() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco }}
-          </output>
-          <div class="scan-actions-group">
-            <p-button type="button"
-                      icon="pi pi-play"
-                      (click)="selectedProjectsCount() > 0 ? startSelected() : startAll()"
-                      (keydown.enter)="selectedProjectsCount() > 0 ? startSelected() : startAll()"
-                      [disabled]="!canStartScan()"
-                      [pTooltip]="(selectedProjectsCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedProjectsCount() }) : ('dashboard.actions.startScan' | transloco))"
-                      tooltipPosition="bottom"
-                      [ariaLabel]="(selectedProjectsCount() > 0 ? ('dashboard.actions.scanSelected' | transloco: { count: selectedProjectsCount() }) : ('dashboard.actions.startScan' | transloco))" />
-            <p-button type="button"
-                      icon="pi pi-pause"
-                      (click)="pauseScan()"
-                      (keydown.enter)="pauseScan()"
-                      [disabled]="!isStreaming()"
-                      [pTooltip]="'dashboard.actions.pauseScan' | transloco"
-                      tooltipPosition="bottom"
-                      [ariaLabel]="'dashboard.actions.pauseScan' | transloco" />
-          </div>
+          <app-scan-status-badge [isStreaming]="isStreaming()" [testId]="testIds.scanStatusBadge" />
+          <app-scan-actions-group
+            [isStreaming]="isStreaming()"
+            [canStartScan]="canStartScan()"
+            [canResumeScan]="canResumeScan()"
+            [showResume]="true"
+            [selectedCount]="selectedProjectsCount()"
+            [testIds]="testIds"
+            (startAll)="startAll()"
+            (startSelected)="startSelected()"
+            (pauseScan)="pauseScan()"
+            (resumeScan)="resumeLastScan()" />
         </div>
       </div>
     </ng-template>
@@ -85,18 +60,22 @@
           <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
         </th>
         <th id="jira-col-toggle" style="width: 3.5rem"></th>
-        <th id="jira-col-project" style="width: 14rem" pSortableColumn="name">
+        <th id="jira-col-project" style="width: 14rem" [attr.data-testid]="testIds.headers.name" pSortableColumn="name">
           {{ 'dashboard.table.headers.space' | transloco }}
           <p-sortIcon field="name" />
         </th>
-        <th id="jira-col-status" style="width: 9.5rem">{{ 'dashboard.table.headers.status' | transloco }}</th>
-        <th id="jira-col-progress" style="width: 6rem">{{ 'dashboard.table.headers.progress' | transloco }}</th>
-        <th id="jira-col-last-scan" style="width: 8rem">{{ 'dashboard.table.headers.lastScan' | transloco }}</th>
-        <th id="jira-col-risk-score" style="width: 6rem" class="text-center" pSortableColumn="piiCount">
+        <th id="jira-col-status" style="width: 9.5rem"
+            [attr.data-testid]="testIds.headers.status">{{ 'dashboard.table.headers.status' | transloco }}</th>
+        <th id="jira-col-progress" style="width: 6rem"
+            [attr.data-testid]="testIds.headers.progress">{{ 'dashboard.table.headers.progress' | transloco }}</th>
+        <th id="jira-col-last-scan" style="width: 8rem"
+            [attr.data-testid]="testIds.headers.lastScan">{{ 'dashboard.table.headers.lastScan' | transloco }}</th>
+        <th id="jira-col-risk-score" style="width: 6rem" class="text-center"
+            [attr.data-testid]="testIds.headers.riskScore" pSortableColumn="piiCount">
           {{ 'dashboard.table.headers.riskScore' | transloco }}
           <p-sortIcon field="piiCount" />
         </th>
-        <th id="jira-col-pii" style="width: 9rem" class="pii-header-cell">
+        <th id="jira-col-pii" style="width: 9rem" class="pii-header-cell" [attr.data-testid]="testIds.headers.pii">
           {{ 'dashboard.table.headers.pii' | transloco }}
           <p-button type="button"
                     icon="pi pi-question-circle"
@@ -110,7 +89,8 @@
                     styleClass="pii-help-button">
           </p-button>
         </th>
-        <th id="jira-col-actions" style="width: 9rem">{{ 'dashboard.table.headers.actions' | transloco }}</th>
+        <th id="jira-col-actions" style="width: 9rem"
+            [attr.data-testid]="testIds.headers.actions">{{ 'dashboard.table.headers.actions' | transloco }}</th>
       </tr>
       <tr>
         <th id="jira-col-select-filter"></th>
@@ -123,9 +103,10 @@
             [placeholder]="'common.search' | transloco"
             [ngModel]="globalFilter()"
             (ngModelChange)="onGlobalChange($event)"
-            [attr.aria-label]="'common.searchGlobally' | transloco" />
+            [attr.aria-label]="'common.searchGlobally' | transloco"
+            [attr.data-testid]="testIds.globalFilter" />
         </th>
-        <th id="jira-col-status-value">
+        <th id="jira-col-status-value" class="filter-status-select">
           <p-select
             [options]="statusOptions()"
             optionLabel="labelKey"
@@ -133,7 +114,8 @@
             [ngModel]="statusFilter()"
             (ngModelChange)="onFilter('status', $event)"
             [showClear]="true"
-            appendTo="body">
+            appendTo="body"
+            [attr.data-testid]="testIds.statusFilter">
             <ng-template pTemplate="item" let-option>
               {{ option.labelKey | transloco }}
             </ng-template>
@@ -150,7 +132,7 @@
       </tr>
     </ng-template>
     <ng-template #body let-project let-expanded="expanded">
-      <tr>
+      <tr [attr.data-testid]="testIds.itemRow">
         <td>
           <p-tableCheckbox [value]="project" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()"></p-tableCheckbox>
         </td>
@@ -161,24 +143,22 @@
                     [text]="true"
                     [rounded]="true"
                     [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-                    [ariaLabel]="(expanded ? 'dashboard.table.collapse' : 'dashboard.table.expand') | transloco">
+                    [ariaLabel]="(expanded ? 'dashboard.table.collapse' : 'dashboard.table.expand') | transloco"
+                    [attr.data-testid]="testIds.expandButton">
           </p-button>
         </td>
-        <td class="space-name-cell" [pRowToggler]="project" tabindex="0">
-          <span class="fw-500">{{ project.name }}</span>
+        <td class="item-name-cell" [pRowToggler]="project" tabindex="0">
+          <span class="fw-500" [attr.data-testid]="testIds.itemName">{{ project.name }}</span>
         </td>
         <td class="col-status">
-          <p-tag [value]="statusLabel(project.status)"
-                 [severity]="statusStyle(project.status)"></p-tag>
+          <app-status-tag [status]="project.status" [attr.data-testid]="testIds.itemStatus" />
         </td>
         <td class="col-progress">
           <app-scan-progress-bar [spaceKey]="project.key" [status]="project.status"></app-scan-progress-bar>
         </td>
         <td class="col-last-scan">{{ project.lastScanTs | date:'short' }}</td>
         <td class="text-center col-risk-score">
-          <span class="pii-total-badge">
-            {{ project?.counts?.total ?? 0 }}
-          </span>
+          <app-risk-score-badge [count]="project?.counts?.total ?? 0" [attr.data-testid]="testIds.badges.total" />
         </td>
         <td>
           <app-pii-severity-badges [high]="project?.counts?.high ?? 0"

@@ -36,6 +36,15 @@ import { SharePointSiteDataManagementService } from './services/sharepoint-site-
 import { SharePointScanControlService } from './services/sharepoint-scan-control.service';
 import { SharePointSitesDashboardUtils } from './sharepoint-sites-dashboard.utils';
 import { SettingsDialogService } from '../../core/services/settings-dialog.service';
+import type { SettingsSection } from '../pii-settings/pii-settings.component';
+import {
+    SourceConfigBannerComponent
+} from '../../shared/components/source-config-banner/source-config-banner.component';
+import { ScanStatusBadgeComponent } from '../../shared/components/scan-status-badge/scan-status-badge.component';
+import { RiskScoreBadgeComponent } from '../../shared/components/risk-score-badge/risk-score-badge.component';
+import { StatusTagComponent } from '../../shared/components/status-tag/status-tag.component';
+import { ScanActionsGroupComponent } from '../../shared/components/scan-actions-group/scan-actions-group.component';
+import { TestIds } from '../test-ids.constants';
 
 @Component({
   selector: 'app-sharepoint-dashboard',
@@ -57,10 +66,15 @@ import { SettingsDialogService } from '../../core/services/settings-dialog.servi
     ScanProgressBarComponent,
     SeverityCardsComponent,
     PiiHelpDialogComponent,
-    PiiSeverityBadgesComponent
+    PiiSeverityBadgesComponent,
+    SourceConfigBannerComponent,
+    ScanStatusBadgeComponent,
+    RiskScoreBadgeComponent,
+    StatusTagComponent,
+    ScanActionsGroupComponent
   ],
   templateUrl: './sharepoint-dashboard.component.html',
-  styleUrl: './sharepoint-dashboard.component.css',
+  styleUrls: ['../../shared/styles/dashboard-table.css', './sharepoint-dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SharePointDashboardComponent implements OnInit, OnDestroy {
@@ -74,6 +88,7 @@ export class SharePointDashboardComponent implements OnInit, OnDestroy {
   private readonly settingsDialog = inject(SettingsDialogService);
   readonly dashboardUtils = inject(SharePointSitesDashboardUtils);
 
+  readonly testIds = TestIds.sharepoint;
   readonly skeletonRows: number[] = Array.from({ length: 10 }, (_, i) => i);
   readonly showPiiHelpDialog = signal(false);
   first = 0;
@@ -188,6 +203,10 @@ export class SharePointDashboardComponent implements OnInit, OnDestroy {
     this.scanControl.pauseScan();
   }
 
+  resumeLastScan(): void {
+    this.scanControl.resumeLastScan();
+  }
+
   onGlobalChange(value: string): void {
     this.filteringService.onGlobalChange(value);
   }
@@ -212,14 +231,6 @@ export class SharePointDashboardComponent implements OnInit, OnDestroy {
     this.dataManagement.refreshSites();
   }
 
-  statusLabel(status?: string): string {
-    return this.uiStateService.statusLabel(status);
-  }
-
-  statusStyle(status?: string): 'danger' | 'warning' | 'success' | 'info' | 'secondary' {
-    return this.uiStateService.statusStyle(status);
-  }
-
   openSharePoint(site: { webUrl?: string }): void {
     if (site.webUrl) {
       window.open(site.webUrl, '_blank', 'noopener');
@@ -230,8 +241,8 @@ export class SharePointDashboardComponent implements OnInit, OnDestroy {
     this.showPiiHelpDialog.set(true);
   }
 
-  requestOpenSettings(tab: number = 0): void {
-    this.settingsDialog.open(tab);
+  requestOpenSettings(section: SettingsSection = 'detectors'): void {
+    this.settingsDialog.open(section);
   }
 
   dismissSpConfigBanner(): void {

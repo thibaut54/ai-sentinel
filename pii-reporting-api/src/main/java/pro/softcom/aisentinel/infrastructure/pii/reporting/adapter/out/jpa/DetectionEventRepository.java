@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanEventEntity;
@@ -44,6 +45,12 @@ public interface DetectionEventRepository extends
     java.util.List<LatestScanProjection> findLatestScanGrouped(
         Pageable pageable);
 
+    @Query("select e.scanId as scanId, max(e.ts) as lastUpdated " +
+           "from ScanEventEntity e where e.sourceType = :sourceType " +
+           "group by e.scanId order by max(e.ts) desc")
+    List<LatestScanProjection> findLatestScanGroupedBySourceType(
+        @Param("sourceType") String sourceType, Pageable pageable);
+
     List<ScanEventEntity> findByScanIdAndEventTypeInOrderByEventSeqAsc(String scanId, Collection<String> eventTypes);
 
     List<ScanEventEntity> findByScanIdAndContentIdAndEventTypeInOrderByEventSeqAsc(
@@ -53,4 +60,12 @@ public interface DetectionEventRepository extends
     List<ScanEventEntity> findByScanIdAndSourceKeyAndEventTypeInOrderByEventSeqAsc(
             String scanId, String sourceKey, Collection<String> eventTypes
     );
+
+    @Modifying
+    @Query("DELETE FROM ScanEventEntity e WHERE e.sourceType = :sourceType")
+    void deleteAllBySourceType(@Param("sourceType") String sourceType);
+
+    @Modifying
+    @Query("DELETE FROM ScanEventEntity e WHERE e.sourceType = :sourceType AND e.sourceKey IN :sourceKeys")
+    void deleteAllBySourceTypeAndSourceKeys(@Param("sourceType") String sourceType, @Param("sourceKeys") List<String> sourceKeys);
 }

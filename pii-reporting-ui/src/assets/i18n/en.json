@@ -82,8 +82,8 @@
       "modifiedOnlyLabel": "Spaces to rescan"
     },
     "notifications": {
-      "confluenceConfig": {
-        "message": "Confluence credentials are not configured. Please configure your connection settings before starting a scan.",
+      "configMissing": {
+        "message": "{{source}} credentials are not configured. Please configure your connection settings before starting a scan.",
         "settingsButton": "Configure",
         "closeAriaLabel": "Close notification"
       },
@@ -312,6 +312,7 @@
       "validation": {
         "baseUrlRequired": "Base URL is required and must start with http:// or https://",
         "emailRequired": "Email address is required",
+        "emailInvalid": "Please enter a valid email address",
         "apiTokenRequired": "API token is required for new connections"
       },
       "messages": {
@@ -866,6 +867,18 @@
       "deserializationFailed": "Error reading the Confluence response.",
       "spaceNotFound": "The requested Confluence space was not found.",
       "spaceCacheError": "Error refreshing the spaces cache. Please try again shortly."
+    },
+    "jira": {
+      "authFailed": "Jira authentication failed. Check your credentials in Settings > Jira.",
+      "connectionFailed": "Unable to connect to Jira. Verify that the server is reachable.",
+      "resourceNotFound": "The requested Jira resource was not found.",
+      "apiError": "Error communicating with the Jira API."
+    },
+    "sharepoint": {
+      "authFailed": "SharePoint authentication failed. Check your credentials in Settings > SharePoint.",
+      "connectionFailed": "Unable to connect to SharePoint. Verify your tenant configuration.",
+      "resourceNotFound": "The requested SharePoint resource was not found.",
+      "apiError": "Error communicating with the SharePoint API."
     },
     "pii": {
       "detectionConnectionFailed": "The PII analysis service is unreachable. Verify that the service is running.",

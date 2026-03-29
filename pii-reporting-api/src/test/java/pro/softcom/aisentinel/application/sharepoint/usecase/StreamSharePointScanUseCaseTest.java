@@ -21,7 +21,6 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,7 +62,7 @@ class StreamSharePointScanUseCaseTest {
                 .build();
         when(sharePointAccessor.getAllSites())
                 .thenReturn(CompletableFuture.completedFuture(List.of()));
-        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
         when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.just(mockResult));
 
         // Act
@@ -72,7 +71,7 @@ class StreamSharePointScanUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         verify(contentScanOrchestrator).purgePreviousScanData(SourceType.SHAREPOINT);
-        verify(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+        verify(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
         verify(scanExecutionOrchestrator).subscribeScan(anyString());
     }
 
@@ -86,7 +85,7 @@ class StreamSharePointScanUseCaseTest {
                 .build();
         when(sharePointAccessor.getAllSites())
                 .thenReturn(CompletableFuture.completedFuture(List.of()));
-        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
         when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.just(mockResult));
 
         // Act
@@ -94,8 +93,8 @@ class StreamSharePointScanUseCaseTest {
 
         // Assert
         assertThat(result).isNotNull();
-        verify(contentScanOrchestrator).purgePreviousScanDataForSources(eq(SourceType.SHAREPOINT), eq(siteIds));
-        verify(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+        verify(contentScanOrchestrator).purgePreviousScanDataForSources(SourceType.SHAREPOINT, siteIds);
+        verify(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
     }
 
     @Test
@@ -104,14 +103,14 @@ class StreamSharePointScanUseCaseTest {
         ArgumentCaptor<String> scanIdCaptor = ArgumentCaptor.forClass(String.class);
         when(sharePointAccessor.getAllSites())
                 .thenReturn(CompletableFuture.completedFuture(List.of()));
-        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+        doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
         when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.empty());
 
         // Act
         useCase.scanAllSites();
 
         // Assert
-        verify(scanExecutionOrchestrator).startScan(scanIdCaptor.capture(), any(Flux.class));
+        verify(scanExecutionOrchestrator).startScan(scanIdCaptor.capture(), any(SourceType.class), any(Flux.class));
         assertThat(scanIdCaptor.getValue())
                 .as("Scan ID should be a valid UUID")
                 .isNotBlank()

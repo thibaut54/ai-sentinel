@@ -199,17 +199,6 @@ export class SentinelleApiService {
     });
   }
 
-  /** Purge all previous scan data on the server. */
-  purgeAllScans(): Observable<void> {
-    return new Observable<void>((observer) => {
-      const sub = this.http.post<void>('/api/v1/scans/purge', {}).subscribe({
-        next: () => { observer.next(); observer.complete(); },
-        error: (err) => observer.error(err)
-      });
-      return () => sub.unsubscribe();
-    });
-  }
-
   /** Start SSE stream for multi-space scanning and expose as Observable of events. */
   startAllSpacesStream(scanId?: string): Observable<StreamEvent> {
     return new Observable<StreamEvent>((observer) => {
@@ -330,6 +319,38 @@ export class SentinelleApiService {
       return () => sub.unsubscribe();
     });
   }
+  // --- Jira scoped reporting ---
+
+  getJiraLastScanMeta(): Observable<LastScanMeta | null> {
+    return new Observable<LastScanMeta | null>((observer) => {
+      const sub = this.http.get<LastScanMeta>('/api/v1/jira/scans/last').subscribe({
+        next: (meta) => { observer.next(meta ?? null); observer.complete(); },
+        error: () => { observer.next(null); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  getJiraDashboardSummary(): Observable<ScanReportingSummaryDto | null> {
+    return new Observable<ScanReportingSummaryDto | null>((observer) => {
+      const sub = this.http.get<ScanReportingSummaryDto>('/api/v1/jira/scans/dashboard/summary').subscribe({
+        next: (summary) => { observer.next(summary ?? null); observer.complete(); },
+        error: () => { observer.next(null); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  getJiraLastScanItems(): Observable<ConfluenceContentPersonallyIdentifiableInformationScanResult[]> {
+    return new Observable<ConfluenceContentPersonallyIdentifiableInformationScanResult[]>((observer) => {
+      const sub = this.http.get<ConfluenceContentPersonallyIdentifiableInformationScanResult[]>('/api/v1/jira/scans/last/items').subscribe({
+        next: (list) => { observer.next(Array.isArray(list) ? list : []); observer.complete(); },
+        error: () => { observer.next([]); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
   // --- Jira ---
 
   getJiraProjects(): Observable<JiraProject[]> {
@@ -405,6 +426,38 @@ export class SentinelleApiService {
           // ignore
         }
       };
+    });
+  }
+
+  // --- SharePoint scoped reporting ---
+
+  getSharePointLastScanMeta(): Observable<LastScanMeta | null> {
+    return new Observable<LastScanMeta | null>((observer) => {
+      const sub = this.http.get<LastScanMeta>('/api/v1/sharepoint/scans/last').subscribe({
+        next: (meta) => { observer.next(meta ?? null); observer.complete(); },
+        error: () => { observer.next(null); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  getSharePointDashboardSummary(): Observable<ScanReportingSummaryDto | null> {
+    return new Observable<ScanReportingSummaryDto | null>((observer) => {
+      const sub = this.http.get<ScanReportingSummaryDto>('/api/v1/sharepoint/scans/dashboard/summary').subscribe({
+        next: (summary) => { observer.next(summary ?? null); observer.complete(); },
+        error: () => { observer.next(null); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
+    });
+  }
+
+  getSharePointLastScanItems(): Observable<ConfluenceContentPersonallyIdentifiableInformationScanResult[]> {
+    return new Observable<ConfluenceContentPersonallyIdentifiableInformationScanResult[]>((observer) => {
+      const sub = this.http.get<ConfluenceContentPersonallyIdentifiableInformationScanResult[]>('/api/v1/sharepoint/scans/last/items').subscribe({
+        next: (list) => { observer.next(Array.isArray(list) ? list : []); observer.complete(); },
+        error: () => { observer.next([]); observer.complete(); }
+      });
+      return () => sub.unsubscribe();
     });
   }
 

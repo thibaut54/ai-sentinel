@@ -1,6 +1,9 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  form, required, email, pattern, min, max, validate,
+  FormField, FieldTree
+} from '@angular/forms/signals';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { FieldsetModule } from 'primeng/fieldset';
@@ -13,11 +16,35 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { JiraConnectionConfigService } from '../../core/services/jira-connection-config.service';
 import {
-    JiraConnectionConfig,
-    JiraDeploymentType,
-    TestJiraConnectionRequest,
-    UpdateJiraConnectionConfigRequest
+  JiraConnectionConfig,
+  JiraDeploymentType,
+  TestJiraConnectionRequest,
+  UpdateJiraConnectionConfigRequest
 } from '../../core/models/jira-connection-config.model';
+
+interface JiraFormModel {
+  deploymentType: JiraDeploymentType;
+  baseUrl: string;
+  email: string;
+  apiToken: string;
+  connectTimeout: number;
+  readTimeout: number;
+  maxRetries: number;
+  issuesLimit: number;
+  maxIssues: number;
+}
+
+const DEFAULT_MODEL: JiraFormModel = {
+  deploymentType: 'CLOUD',
+  baseUrl: '',
+  email: '',
+  apiToken: '',
+  connectTimeout: 30000,
+  readTimeout: 60000,
+  maxRetries: 3,
+  issuesLimit: 25,
+  maxIssues: 1000
+};
 
 @Component({
   selector: 'app-jira-settings',
@@ -26,7 +53,7 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormField,
     TranslocoModule,
     ButtonModule,
     FieldsetModule,
@@ -40,37 +67,80 @@ import {
   providers: [MessageService]
 })
 export class JiraSettingsComponent implements OnInit {
-  configForm!: FormGroup;
-  loading = signal(false);
-  saving = signal(false);
-  testing = signal(false);
-  currentConfig = signal<JiraConnectionConfig | null>(null);
+  readonly saved = output();
 
-  constructor(
-    private readonly fb: FormBuilder,
-    private readonly configService: JiraConnectionConfigService,
-    private readonly messageService: MessageService,
-    private readonly translocoService: TranslocoService
-  ) {
-    this.initForm();
-  }
+  private readonly configService = inject(JiraConnectionConfigService);
+  private readonly messageService = inject(MessageService);
+  private readonly translocoService = inject(TranslocoService);
+
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly testing = signal(false);
+  readonly currentConfig = signal<JiraConnectionConfig | null>(null);
+
+  readonly model = signal<JiraFormModel>({...DEFAULT_MODEL});
+
+  readonly configForm: FieldTree<JiraFormModel> = form(this.model, (path) => {
+    // Deployment type
+    required(path.deploymentType);
+
+    // Base URL
+    required(path.baseUrl);
+    pattern(path.baseUrl, /^https?:\/\/.+/);
+
+    // Email (always visible for Jira, unlike Confluence username)
+    required(path.email);
+    email(path.email);
+
+    // API token: required unless an existing token is stored for the current deployment type
+    validate(path.apiToken, () => {
+      const value = this.model().apiToken;
+      if (value) return null;
+      const config = this.currentConfig();
+      const formType = this.model().deploymentType;
+      if (config?.configured && config.deploymentType === formType) return null;
+      return {kind: 'required'};
+    });
+
+    // Timeouts
+    required(path.connectTimeout);
+    min(path.connectTimeout, 1000);
+    max(path.connectTimeout, 120000);
+
+    required(path.readTimeout);
+    min(path.readTimeout, 5000);
+    max(path.readTimeout, 300000);
+
+    required(path.maxRetries);
+    min(path.maxRetries, 0);
+    max(path.maxRetries, 10);
+
+    // Pagination
+    required(path.issuesLimit);
+    min(path.issuesLimit, 1);
+    max(path.issuesLimit, 1000);
+
+    required(path.maxIssues);
+    min(path.maxIssues, 1);
+    max(path.maxIssues, 10000);
+  });
+
+  readonly isCloud = computed(() => this.model().deploymentType === 'CLOUD');
+
+  readonly hasExistingTokenForCurrentType = computed(() => {
+    const config = this.currentConfig();
+    return !!config && config.configured && config.deploymentType === this.model().deploymentType;
+  });
+
+  readonly apiTokenPlaceholder = computed(() => {
+    if (this.hasExistingTokenForCurrentType()) {
+      return this.translocoService.translate('settings.jira.placeholders.apiTokenExisting');
+    }
+    return this.translocoService.translate('settings.jira.placeholders.apiToken');
+  });
 
   ngOnInit(): void {
     this.loadConfig();
-  }
-
-  private initForm(): void {
-    this.configForm = this.fb.group({
-      deploymentType: ['CLOUD' as JiraDeploymentType, [Validators.required]],
-      baseUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
-      email: ['', [Validators.required, Validators.email]],
-      apiToken: [''],
-      connectTimeout: [30000, [Validators.required, Validators.min(1000), Validators.max(120000)]],
-      readTimeout: [60000, [Validators.required, Validators.min(5000), Validators.max(300000)]],
-      maxRetries: [3, [Validators.required, Validators.min(0), Validators.max(10)]],
-      issuesLimit: [25, [Validators.required, Validators.min(1), Validators.max(1000)]],
-      maxIssues: [1000, [Validators.required, Validators.min(1), Validators.max(10000)]]
-    });
   }
 
   private loadConfig(): void {
@@ -79,7 +149,7 @@ export class JiraSettingsComponent implements OnInit {
     this.configService.getConfig().subscribe({
       next: (config) => {
         this.currentConfig.set(config);
-        this.configForm.patchValue({
+        this.model.set({
           deploymentType: config.deploymentType || 'CLOUD',
           baseUrl: config.baseUrl,
           email: config.email,
@@ -92,50 +162,35 @@ export class JiraSettingsComponent implements OnInit {
         });
         this.loading.set(false);
       },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translocoService.translate('common.error'),
-          detail: this.translocoService.translate('settings.jira.messages.loadError', { error: err.message || 'Unknown error' }),
-          life: 5000
-        });
+      error: () => {
         this.loading.set(false);
       }
     });
   }
 
   onSave(): void {
-    if (this.configForm.invalid) {
-      this.configForm.markAllAsTouched();
-      return;
-    }
-
-    const formValue = this.configForm.value;
-    if (!this.currentConfig() && !formValue.apiToken) {
-      this.configForm.get('apiToken')?.setErrors({ required: true });
-      this.configForm.get('apiToken')?.markAsTouched();
-      return;
-    }
+    const formState = this.configForm();
+    if (formState.invalid()) return;
 
     this.saving.set(true);
 
+    const value = formState.value();
     const request: UpdateJiraConnectionConfigRequest = {
-      baseUrl: formValue.baseUrl,
-      email: formValue.email,
-      apiToken: formValue.apiToken,
-      connectTimeout: formValue.connectTimeout,
-      readTimeout: formValue.readTimeout,
-      maxRetries: formValue.maxRetries,
-      issuesLimit: formValue.issuesLimit,
-      maxIssues: formValue.maxIssues,
-      deploymentType: formValue.deploymentType
+      baseUrl: value.baseUrl,
+      email: value.email,
+      apiToken: value.apiToken,
+      connectTimeout: value.connectTimeout,
+      readTimeout: value.readTimeout,
+      maxRetries: value.maxRetries,
+      issuesLimit: value.issuesLimit,
+      maxIssues: value.maxIssues,
+      deploymentType: value.deploymentType
     };
 
     this.configService.updateConfig(request).subscribe({
       next: (config) => {
         this.currentConfig.set(config);
-        this.configForm.get('apiToken')?.setValue('');
-        this.configForm.markAsPristine();
+        this.model.update(m => ({...m, apiToken: ''}));
         this.messageService.add({
           severity: 'success',
           summary: this.translocoService.translate('common.success'),
@@ -143,43 +198,30 @@ export class JiraSettingsComponent implements OnInit {
           life: 3000
         });
         this.saving.set(false);
+        this.saved.emit();
       },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translocoService.translate('common.error'),
-          detail: this.translocoService.translate('settings.jira.messages.saveError', { error: err.message || 'Unknown error' }),
-          life: 5000
-        });
+      error: () => {
         this.saving.set(false);
       }
     });
   }
 
   onTestConnection(): void {
-    const baseUrl = this.configForm.get('baseUrl');
-    const email = this.configForm.get('email');
-    const apiToken = this.configForm.get('apiToken');
+    const formState = this.configForm();
+    const baseUrlState = this.configForm.baseUrl();
+    const emailState = this.configForm.email();
+    const apiTokenState = this.configForm.apiToken();
 
-    if (baseUrl?.invalid || email?.invalid) {
-      baseUrl?.markAsTouched();
-      email?.markAsTouched();
-      return;
-    }
-
-    if (!apiToken?.value && !this.currentConfig()) {
-      apiToken?.setErrors({ required: true });
-      apiToken?.markAsTouched();
-      return;
-    }
+    if (baseUrlState.invalid() || emailState.invalid() || apiTokenState.invalid()) return;
 
     this.testing.set(true);
 
+    const value = formState.value();
     const request: TestJiraConnectionRequest = {
-      baseUrl: baseUrl?.value,
-      email: email?.value,
-      apiToken: apiToken?.value,
-      deploymentType: this.configForm.get('deploymentType')?.value || 'CLOUD'
+      baseUrl: value.baseUrl,
+      email: value.email,
+      apiToken: value.apiToken,
+      deploymentType: value.deploymentType
     };
 
     this.configService.testConnection(request).subscribe({
@@ -195,28 +237,22 @@ export class JiraSettingsComponent implements OnInit {
           this.messageService.add({
             severity: 'warn',
             summary: this.translocoService.translate('common.warning'),
-            detail: this.translocoService.translate('settings.jira.messages.testFailed', { message: response.message || '' }),
+            detail: this.translocoService.translate('settings.jira.messages.testFailed', {message: response.message || ''}),
             life: 5000
           });
         }
         this.testing.set(false);
       },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translocoService.translate('common.error'),
-          detail: this.translocoService.translate('settings.jira.messages.testError', { error: err.message || 'Unknown error' }),
-          life: 5000
-        });
+      error: () => {
         this.testing.set(false);
       }
     });
   }
 
   onReset(): void {
-    if (this.currentConfig()) {
-      const config = this.currentConfig()!;
-      this.configForm.patchValue({
+    const config = this.currentConfig();
+    if (config) {
+      this.model.set({
         deploymentType: config.deploymentType || 'CLOUD',
         baseUrl: config.baseUrl,
         email: config.email,
@@ -227,14 +263,16 @@ export class JiraSettingsComponent implements OnInit {
         issuesLimit: config.issuesLimit,
         maxIssues: config.maxIssues
       });
-      this.configForm.markAsPristine();
     } else {
-      this.configForm.reset();
-      this.initForm();
+      this.model.set({...DEFAULT_MODEL});
     }
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty;
+    return this.configForm().dirty();
+  }
+
+  get isFormValid(): boolean {
+    return this.configForm().valid();
   }
 }

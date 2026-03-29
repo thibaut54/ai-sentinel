@@ -31,7 +31,15 @@ import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceCo
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceDateParseException;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceNotFoundException;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.parser.ConfluenceDeserializationException;
-import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.PiiDetectionException;
+import pro.softcom.aisentinel.domain.jira.JiraApiException;
+import pro.softcom.aisentinel.domain.jira.JiraAuthenticationException;
+import pro.softcom.aisentinel.domain.jira.JiraConnectionException;
+import pro.softcom.aisentinel.domain.jira.JiraNotFoundException;
+import pro.softcom.aisentinel.domain.pii.scan.PiiDetectionException;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointApiException;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointAuthenticationException;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointConnectionException;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointNotFoundException;
 
 /**
  * Central exception handler mapping all backend exceptions to RFC 9457 ProblemDetail responses.
@@ -228,6 +236,66 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail pd = problemWith(HttpStatus.BAD_REQUEST, "Malformed Request",
                 "error.validation.malformed_request");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(pd);
+    }
+
+    // ========== Jira exceptions (4) ==========
+
+    @ExceptionHandler(JiraAuthenticationException.class)
+    ProblemDetail handleJiraAuth(JiraAuthenticationException ex) {
+        log.warn("[ERROR_HANDLER] Jira authentication failed: {}", ex.getMessage());
+        return problemWith(HttpStatus.UNAUTHORIZED, "Jira Authentication Failed",
+                "error.jira.auth.failed");
+    }
+
+    @ExceptionHandler(JiraConnectionException.class)
+    ProblemDetail handleJiraConnection(JiraConnectionException ex) {
+        log.error("[ERROR_HANDLER] Jira connection failed: {}", ex.getMessage());
+        return problemWith(HttpStatus.SERVICE_UNAVAILABLE, "Jira Connection Failed",
+                "error.jira.connection.failed");
+    }
+
+    @ExceptionHandler(JiraNotFoundException.class)
+    ProblemDetail handleJiraNotFound(JiraNotFoundException ex) {
+        log.warn("[ERROR_HANDLER] Jira resource not found: {}", ex.getMessage());
+        return problemWith(HttpStatus.NOT_FOUND, "Jira Resource Not Found",
+                "error.jira.resource.not_found");
+    }
+
+    @ExceptionHandler(JiraApiException.class)
+    ProblemDetail handleJiraApi(JiraApiException ex) {
+        log.error("[ERROR_HANDLER] Jira API error: {}", ex.getMessage());
+        return problemWith(HttpStatus.BAD_GATEWAY, "Jira API Error",
+                "error.jira.api.error");
+    }
+
+    // ========== SharePoint exceptions (4) ==========
+
+    @ExceptionHandler(SharePointAuthenticationException.class)
+    ProblemDetail handleSharePointAuth(SharePointAuthenticationException ex) {
+        log.warn("[ERROR_HANDLER] SharePoint authentication failed: {}", ex.getMessage());
+        return problemWith(HttpStatus.UNAUTHORIZED, "SharePoint Authentication Failed",
+                "error.sharepoint.auth.failed");
+    }
+
+    @ExceptionHandler(SharePointConnectionException.class)
+    ProblemDetail handleSharePointConnection(SharePointConnectionException ex) {
+        log.error("[ERROR_HANDLER] SharePoint connection failed: {}", ex.getMessage());
+        return problemWith(HttpStatus.SERVICE_UNAVAILABLE, "SharePoint Connection Failed",
+                "error.sharepoint.connection.failed");
+    }
+
+    @ExceptionHandler(SharePointNotFoundException.class)
+    ProblemDetail handleSharePointNotFound(SharePointNotFoundException ex) {
+        log.warn("[ERROR_HANDLER] SharePoint resource not found: {}", ex.getMessage());
+        return problemWith(HttpStatus.NOT_FOUND, "SharePoint Resource Not Found",
+                "error.sharepoint.resource.not_found");
+    }
+
+    @ExceptionHandler(SharePointApiException.class)
+    ProblemDetail handleSharePointApi(SharePointApiException ex) {
+        log.error("[ERROR_HANDLER] SharePoint API error: {}", ex.getMessage());
+        return problemWith(HttpStatus.BAD_GATEWAY, "SharePoint API Error",
+                "error.sharepoint.api.error");
     }
 
     // ========== Catch-all (1) ==========

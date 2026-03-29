@@ -138,6 +138,35 @@ public class ScanCheckpointPersistenceAdapter implements ScanCheckpointRepositor
 
     @Override
     @Transactional
+    public void deleteAllBySourceType(SourceType sourceType) {
+        if (sourceType == null) {
+            return;
+        }
+        log.info("[PURGE] Deleting all scan checkpoints for sourceType={}", sourceType);
+        jpaRepository.deleteAllBySourceType(sourceType.name());
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllBySourceTypeAndSourceKeys(SourceType sourceType, List<String> sourceKeys) {
+        if (sourceType == null || sourceKeys == null || sourceKeys.isEmpty()) {
+            return;
+        }
+        log.info("[PURGE] Deleting all scan checkpoints for sourceType={} and {} sources", sourceType, sourceKeys.size());
+        jpaRepository.deleteAllBySourceTypeAndSourceKeys(sourceType.name(), sourceKeys);
+    }
+
+    @Override
+    public Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId) {
+        if (isBlank(scanId)) {
+            return Optional.empty();
+        }
+        return jpaRepository.findRunningScanCheckpoint(scanId)
+            .map(ScanCheckpointPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    @Transactional
     public int pauseAllRunningCheckpoints(String scanId) {
         if (isBlank(scanId)) {
             return 0;

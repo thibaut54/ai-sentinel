@@ -96,7 +96,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             )
         );
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE)).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert
@@ -121,7 +121,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             .andExpect(jsonPath("$.spaces[1].severityCounts.low").value(12))
             .andExpect(jsonPath("$.spaces[1].severityCounts.total").value(22));
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE);
         verify(scanReportingSummaryMapper).toDto(domainSummary);
     }
 
@@ -156,7 +156,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             )
         );
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE)).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert
@@ -169,7 +169,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(0))
             .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(0));
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE);
         verify(scanReportingSummaryMapper).toDto(domainSummary);
     }
 
@@ -193,7 +193,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             List.of()
         );
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE)).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert
@@ -206,21 +206,21 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             .andExpect(jsonPath("$.spaces").isArray())
             .andExpect(jsonPath("$.spaces").isEmpty());
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE);
         verify(scanReportingSummaryMapper).toDto(domainSummary);
     }
 
     @Test
     void should_ReturnNoContent_When_NoScanSummaryExists() throws Exception {
         // Arrange
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.empty());
+        when(scanReportingPort.getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE)).thenReturn(Optional.empty());
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isNoContent());
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE);
     }
 
     @Test
@@ -254,7 +254,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             )
         );
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE)).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert - Verify complete JSON structure
@@ -281,7 +281,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(11))
             .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(21));
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getScanSummaryBySourceType(pro.softcom.aisentinel.domain.pii.export.SourceType.CONFLUENCE);
         verify(scanReportingSummaryMapper).toDto(domainSummary);
     }
 }

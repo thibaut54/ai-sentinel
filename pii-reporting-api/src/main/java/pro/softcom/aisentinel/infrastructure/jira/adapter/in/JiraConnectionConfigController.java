@@ -107,7 +107,8 @@ public class JiraConnectionConfigController {
     public CompletableFuture<ResponseEntity<@NonNull ConnectionTestResultDto>> testConnection(
             @Valid @RequestBody TestJiraConnectionRequestDto request) {
 
-        log.info("POST /api/v1/jira/connection-config/test - Testing connection to: {}", request.baseUrl());
+        log.debug("POST /api/v1/jira/connection-config/test - Testing connection to: {}", request.baseUrl());
+
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -126,9 +127,9 @@ public class JiraConnectionConfigController {
                 return ResponseEntity.ok(new ConnectionTestResultDto(success, message));
 
             } catch (Exception ex) {
-                log.error("Connection test failed: {}", ex.getMessage(), ex);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(new ConnectionTestResultDto(false, "Connection test failed: " + ex.getMessage()));
+                log.error("Jira connection test failed: {}", ex.getMessage(), ex);
+                return ResponseEntity.internalServerError()
+                        .body(new ConnectionTestResultDto(false, "Connection test failed. Check server logs for details."));
             }
         });
     }

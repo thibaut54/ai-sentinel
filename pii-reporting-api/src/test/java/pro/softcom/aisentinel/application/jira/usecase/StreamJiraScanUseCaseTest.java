@@ -67,7 +67,7 @@ class StreamJiraScanUseCaseTest {
         void Should_StartScanAndSubscribe_When_ScanAllProjectsCalled() {
             // Arrange
             var resultFlux = Flux.just(createScanResult("scan-1", "MULTI_START"));
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(resultFlux);
 
             // Act
@@ -78,7 +78,7 @@ class StreamJiraScanUseCaseTest {
                 .as("scanAllProjects should return a non-null Flux")
                 .isNotNull();
             verify(contentScanOrchestrator).purgePreviousScanData(SourceType.JIRA);
-            verify(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            verify(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             verify(scanExecutionOrchestrator).subscribeScan(anyString());
         }
 
@@ -86,7 +86,7 @@ class StreamJiraScanUseCaseTest {
         void Should_ReturnSubscribedFlux_When_ScanStartsSuccessfully() {
             // Arrange
             ContentScanResult expectedEvent = createScanResult("scan-1", "MULTI_START");
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString()))
                 .thenReturn(Flux.just(expectedEvent));
 
@@ -107,7 +107,7 @@ class StreamJiraScanUseCaseTest {
         @Test
         void Should_PassFluxToScanExecutionOrchestrator_When_ScanStarted() {
             // Arrange
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.empty());
 
             // Act
@@ -116,7 +116,7 @@ class StreamJiraScanUseCaseTest {
             // Assert
             ArgumentCaptor<String> scanIdCaptor = ArgumentCaptor.forClass(String.class);
             ArgumentCaptor<Flux> fluxCaptor = ArgumentCaptor.forClass(Flux.class);
-            verify(scanExecutionOrchestrator).startScan(scanIdCaptor.capture(), fluxCaptor.capture());
+            verify(scanExecutionOrchestrator).startScan(scanIdCaptor.capture(), any(SourceType.class), fluxCaptor.capture());
 
             SoftAssertions softly = new SoftAssertions();
             softly.assertThat(scanIdCaptor.getValue())
@@ -136,7 +136,7 @@ class StreamJiraScanUseCaseTest {
         void Should_PurgeOnlySelectedProjects_When_ScanSelectedProjectsCalled() {
             // Arrange
             List<String> projectKeys = List.of("PROJ1", "PROJ2");
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.empty());
 
             // Act
@@ -151,7 +151,7 @@ class StreamJiraScanUseCaseTest {
             // Arrange
             List<String> projectKeys = List.of("PROJ1");
             ContentScanResult expectedEvent = createScanResult("scan-2", "MULTI_START");
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString()))
                 .thenReturn(Flux.just(expectedEvent));
 
@@ -168,7 +168,7 @@ class StreamJiraScanUseCaseTest {
         void Should_StartScanAndSubscribe_When_EmptyProjectKeysProvided() {
             // Arrange
             List<String> emptyKeys = List.of();
-            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            doNothing().when(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
             when(scanExecutionOrchestrator.subscribeScan(anyString())).thenReturn(Flux.empty());
 
             // Act
@@ -178,7 +178,7 @@ class StreamJiraScanUseCaseTest {
             assertThat(result)
                 .as("scanSelectedProjects should return a non-null Flux even with empty keys")
                 .isNotNull();
-            verify(scanExecutionOrchestrator).startScan(anyString(), any(Flux.class));
+            verify(scanExecutionOrchestrator).startScan(anyString(), any(SourceType.class), any(Flux.class));
         }
     }
 

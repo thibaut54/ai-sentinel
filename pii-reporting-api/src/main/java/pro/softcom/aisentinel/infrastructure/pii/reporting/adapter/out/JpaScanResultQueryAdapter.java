@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
@@ -39,6 +40,22 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
     @Override
     public Optional<LastScanMeta> findLatestScan() {
         var rows = eventRepository.findLatestScanGrouped(PageRequest.of(0, 1));
+        if (rows == null || rows.isEmpty()) {
+            return Optional.empty();
+        }
+        var row = rows.getFirst();
+        String scanId = row.getScanId();
+        int sources = eventRepository.countDistinctSourceKeyByScanId(scanId);
+        return Optional.of(new LastScanMeta(scanId, row.getLastUpdated(), sources));
+    }
+
+    @Override
+    public Optional<LastScanMeta> findLatestScanBySourceType(SourceType sourceType) {
+        if (sourceType == null) {
+            return Optional.empty();
+        }
+        var rows = eventRepository.findLatestScanGroupedBySourceType(
+            sourceType.name(), PageRequest.of(0, 1));
         if (rows == null || rows.isEmpty()) {
             return Optional.empty();
         }

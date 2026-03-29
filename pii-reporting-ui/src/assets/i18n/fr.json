@@ -82,8 +82,8 @@
       "modifiedOnlyLabel": "Espaces à rescanner"
     },
     "notifications": {
-      "confluenceConfig": {
-        "message": "Les identifiants Confluence ne sont pas configurés. Veuillez configurer vos paramètres de connexion avant de lancer un scan.",
+      "configMissing": {
+        "message": "Les identifiants {{source}} ne sont pas configurés. Veuillez configurer vos paramètres de connexion avant de lancer un scan.",
         "settingsButton": "Configurer",
         "closeAriaLabel": "Fermer la notification"
       },
@@ -312,6 +312,7 @@
       "validation": {
         "baseUrlRequired": "L'URL de base est requise et doit commencer par http:// ou https://",
         "emailRequired": "L'adresse e-mail est requise",
+        "emailInvalid": "Veuillez entrer une adresse e-mail valide",
         "apiTokenRequired": "Le jeton API est requis pour les nouvelles connexions"
       },
       "messages": {
@@ -866,6 +867,18 @@
       "deserializationFailed": "Erreur de lecture de la réponse Confluence.",
       "spaceNotFound": "L'espace Confluence demandé est introuvable.",
       "spaceCacheError": "Erreur lors du rafraîchissement du cache des espaces. Réessayez dans quelques instants."
+    },
+    "jira": {
+      "authFailed": "L'authentification Jira a échoué. Vérifiez vos identifiants dans Paramètres > Jira.",
+      "connectionFailed": "Impossible de se connecter à Jira. Vérifiez que le serveur est accessible.",
+      "resourceNotFound": "La ressource Jira demandée est introuvable.",
+      "apiError": "Erreur lors de la communication avec l'API Jira."
+    },
+    "sharepoint": {
+      "authFailed": "L'authentification SharePoint a échoué. Vérifiez vos identifiants dans Paramètres > SharePoint.",
+      "connectionFailed": "Impossible de se connecter à SharePoint. Vérifiez la configuration de votre tenant.",
+      "resourceNotFound": "La ressource SharePoint demandée est introuvable.",
+      "apiError": "Erreur lors de la communication avec l'API SharePoint."
     },
     "pii": {
       "detectionConnectionFailed": "Le service d'analyse PII est inaccessible. Vérifiez que le service est démarré.",

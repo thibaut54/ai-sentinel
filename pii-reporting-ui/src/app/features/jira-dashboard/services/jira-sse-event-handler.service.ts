@@ -61,10 +61,24 @@ export class JiraSseEventHandlerService {
     const projects = this.dataManagement.projects();
     if (!Array.isArray(projects) || projects.length === 0) return;
 
-    this.dataManagement.queue.set(projects.map((p) => p.key));
+    // Identify projects already completed in the current scan cycle
+    // so we don't reset their status when resuming a paused scan
+    const completedKeys = new Set(
+      this.dataManagement.lastProjectStatuses()
+        .filter(s => s.status === 'COMPLETED')
+        .map(s => s.spaceKey.trim().toLowerCase())
+    );
+
+    this.dataManagement.queue.set(
+      projects
+        .filter(p => !completedKeys.has(p.key.trim().toLowerCase()))
+        .map(p => p.key)
+    );
 
     for (const project of projects) {
-      this.dashboardUtils.updateProject(project.key, { status: 'PENDING' });
+      if (!completedKeys.has(project.key.trim().toLowerCase())) {
+        this.dashboardUtils.updateProject(project.key, { status: 'PENDING' });
+      }
     }
 
     if (!this.uiStateService.selectedProjectKey()) {

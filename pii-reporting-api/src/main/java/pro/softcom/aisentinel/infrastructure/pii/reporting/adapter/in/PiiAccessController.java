@@ -57,8 +57,8 @@ public class PiiAccessController {
                         log.warn("[PII_ACCESS] No results found for pageId={}", request.pageId());
                         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
                     });
-        } catch (PiiAccessDeniedException e) {
-            log.warn("[PII_ACCESS] Reveal attempt denied: {}", e.getMessage());
+        } catch (PiiAccessDeniedException _) {
+            log.warn("[PII_ACCESS] Reveal attempt denied for pageId={}", request.pageId());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }

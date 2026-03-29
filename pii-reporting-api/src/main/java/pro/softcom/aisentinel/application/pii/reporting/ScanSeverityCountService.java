@@ -99,6 +99,16 @@ public class ScanSeverityCountService {
         repository.deleteByScanId(scanId);
     }
 
+    public void deleteBySourceType(SourceType sourceType) {
+        validateSourceType(sourceType);
+        repository.deleteBySourceType(sourceType);
+    }
+
+    public void deleteBySourceTypeAndSourceKeys(SourceType sourceType, java.util.List<String> sourceKeys) {
+        validateSourceType(sourceType);
+        repository.deleteBySourceTypeAndSourceKeys(sourceType, sourceKeys);
+    }
+
     private void validateScanId(String scanId) {
         if (scanId == null || scanId.isBlank()) {
             throw new IllegalArgumentException("scanId must not be null or blank");

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -14,7 +14,6 @@ import { LanguageSelectorComponent } from '../../core/components/language-select
 import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
 import { ThemeService } from '../../core/services/theme.service';
 import { SettingsDialogService } from '../../core/services/settings-dialog.service';
-
 const SOURCE_ROUTES = ['confluence', 'jira', 'sharepoint'] as const;
 type SourceId = (typeof SOURCE_ROUTES)[number];
 
@@ -62,16 +61,12 @@ export class AppShellComponent {
     { initialValue: extractSourceFromUrl(this.router.url) }
   );
 
-  // Child component reference for triggering refresh after settings save
-  private readonly confluenceDashboard = viewChild(ConfluenceDashboardComponent);
-
-  openSettingsDialog(tab: number = 0): void {
-    this.settingsInitialTab.set(tab);
-    this.showSettingsDialog.set(true);
+  openSettingsDialog(): void {
+    this.settingsDialog.open();
   }
 
   closeSettingsDialog(): void {
-    this.showSettingsDialog.set(false);
+    this.settingsDialog.close();
   }
 
     onTabChange(tabId: string | number): void {
@@ -80,11 +75,7 @@ export class AppShellComponent {
         }
     }
 
-  /**
-   * Handle settings saved event from PiiSettingsComponent.
-   * Triggers dashboard refresh to reflect configuration changes.
-   */
   onSettingsSaved(): void {
-    this.confluenceDashboard()?.refreshAfterSettingsSave();
+    // Dashboards handle their own refresh via configSaved$ subscriptions
   }
 }

@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import reactor.core.publisher.Flux;
@@ -17,11 +18,13 @@ public interface PersonallyIdentifiableInformationScanExecutionOrchestratorPort 
     /**
      * Starts a scan process in the background.
      * The scan stream is hot and shared via a sink.
+     * If a scan of the same source type is already running, it will be cancelled first.
      *
      * @param scanId The unique identifier of the scan
+     * @param sourceType The source type of the scan (JIRA, CONFLUENCE, SHAREPOINT)
      * @param scanDataStream The cold stream of scan events
      */
-    void startScan(String scanId, Flux<ContentScanResult> scanDataStream);
+    void startScan(String scanId, SourceType sourceType, Flux<ContentScanResult> scanDataStream);
 
     /**
      * Subscribes to an existing scan to receive its events.

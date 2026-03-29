@@ -58,4 +58,8 @@ public interface ScanSeverityCountRepository {
      * @param scanId Unique identifier of the scan to delete
      */
     void deleteByScanId(String scanId);
+
+    void deleteBySourceType(SourceType sourceType);
+
+    void deleteBySourceTypeAndSourceKeys(SourceType sourceType, List<String> sourceKeys);
 }

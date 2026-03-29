@@ -34,7 +34,7 @@ describe('ErrorNotificationService', () => {
     expect(messageServiceMock.add).toHaveBeenCalledWith(
       expect.objectContaining({
         severity: 'error',
-        summary: 'translated:common.error',
+        summary: 'Erreur',
         detail: 'translated:errors.confluence.connectionFailed',
         life: 8000
       })
@@ -117,8 +117,8 @@ describe('classifyError', () => {
     expect(classifyError(401)).toBe('configuration');
   });
 
-  it('Should_ReturnAccessDenied_When_Status403', () => {
-    expect(classifyError(403)).toBe('access_denied');
+  it('Should_ReturnConfiguration_When_Status403', () => {
+    expect(classifyError(403)).toBe('configuration');
   });
 
   it('Should_ReturnValidation_When_Status400', () => {

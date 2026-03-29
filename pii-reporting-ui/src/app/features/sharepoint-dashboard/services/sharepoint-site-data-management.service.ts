@@ -65,7 +65,7 @@ export class SharePointSiteDataManagementService {
 
   loadLastScan(): Observable<void> {
     return new Observable(observer => {
-      this.sentinelleApiService.getLastScanMeta().subscribe({
+      this.sentinelleApiService.getSharePointLastScanMeta().subscribe({
         next: (meta) => {
           this.lastScanMeta.set(meta);
           observer.next();
@@ -81,7 +81,7 @@ export class SharePointSiteDataManagementService {
 
   loadLastSiteStatuses(isActive: boolean, alsoLoadItems: boolean = true): Observable<void> {
     return new Observable(observer => {
-      this.sentinelleApiService.getDashboardSpacesSummary().subscribe({
+      this.sentinelleApiService.getSharePointDashboardSummary().subscribe({
         next: (summary) => {
           if (!summary) {
             this.lastSiteStatuses.set([]);
@@ -166,7 +166,7 @@ export class SharePointSiteDataManagementService {
     return new Observable(observer => {
       const siteIds = new Set(this.sites().map(s => s.id.trim().toLowerCase()));
 
-      this.sentinelleApiService.getLastScanItems().subscribe({
+      this.sentinelleApiService.getSharePointLastScanItems().subscribe({
         next: (events) => {
           for (const event of events) {
             const type = (event as any)?.eventType as string | undefined;

@@ -15,6 +15,7 @@ import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository.LatestScanProjection;
@@ -345,6 +346,54 @@ class JpaScanResultQueryAdapterTest {
 
         assertThat(results).isEmpty();
         verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void Should_ReturnLatestJiraScan_When_MultipleSourceTypesExist() {
+        Instant now = Instant.now();
+
+        LatestScanProjection projection = new LatestScanProjection() {
+            @Override
+            public String getScanId() {
+                return "jira-scan-1";
+            }
+
+            @Override
+            public Instant getLastUpdated() {
+                return now;
+            }
+        };
+
+        when(eventRepository.findLatestScanGroupedBySourceType(eq("JIRA"), any()))
+            .thenReturn(List.of(projection));
+        when(eventRepository.countDistinctSourceKeyByScanId("jira-scan-1")).thenReturn(2);
+
+        Optional<LastScanMeta> result = adapter.findLatestScanBySourceType(SourceType.JIRA);
+
+        assertThat(result).isPresent();
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(result.get().scanId()).isEqualTo("jira-scan-1");
+        softly.assertThat(result.get().lastUpdated()).isEqualTo(now);
+        softly.assertThat(result.get().spacesCount()).isEqualTo(2);
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_ReturnEmptyOptional_When_NoScanFoundForSourceType() {
+        when(eventRepository.findLatestScanGroupedBySourceType(eq("SHAREPOINT"), any()))
+            .thenReturn(List.of());
+
+        Optional<LastScanMeta> result = adapter.findLatestScanBySourceType(SourceType.SHAREPOINT);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_ReturnEmptyOptional_When_SourceTypeIsNull() {
+        Optional<LastScanMeta> result = adapter.findLatestScanBySourceType(null);
+
+        assertThat(result).isEmpty();
+        verify(eventRepository, never()).findLatestScanGroupedBySourceType(any(), any());
     }
 
     private ContentScanResult sampleScanResult() {

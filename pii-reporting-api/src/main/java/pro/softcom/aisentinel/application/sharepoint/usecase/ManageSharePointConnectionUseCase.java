@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.sharepoint.usecase;
 
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.microsoft.graph.models.odataerrors.ODataError;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,8 @@ import pro.softcom.aisentinel.application.sharepoint.port.out.SharePointConnecti
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.domain.sharepoint.SharePointConnectionSettings;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointAuthenticationException;
+import pro.softcom.aisentinel.domain.sharepoint.SharePointConnectionException;
 
 import java.time.Instant;
 
@@ -101,9 +104,15 @@ public class ManageSharePointConnectionUseCase implements ManageSharePointConnec
             log.info("SharePoint connection test result: {}", success ? "SUCCESS" : "FAILED");
             return success;
 
+        } catch (ODataError e) {
+            int statusCode = e.getResponseStatusCode();
+            if (statusCode == 401 || statusCode == 403) {
+                throw new SharePointAuthenticationException(
+                        "SharePoint authentication failed (HTTP " + statusCode + ")", statusCode);
+            }
+            throw new SharePointConnectionException("SharePoint API error: " + e.getMessage(), e);
         } catch (Exception e) {
-            log.warn("SharePoint connection test failed: {}", e.getMessage());
-            return false;
+            throw new SharePointConnectionException("SharePoint connection failed: " + e.getMessage(), e);
         }
     }
 }

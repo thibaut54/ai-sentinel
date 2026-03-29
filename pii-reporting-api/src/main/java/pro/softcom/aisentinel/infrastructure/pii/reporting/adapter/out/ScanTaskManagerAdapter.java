@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import reactor.core.Disposable;
@@ -45,9 +46,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class ScanTaskManagerAdapter implements
     PersonallyIdentifiableInformationScanExecutionOrchestratorPort {
-    
+
     private final Map<String, ManagedScan> managedScans = new ConcurrentHashMap<>();
-    
+    private final Map<SourceType, String> activeSourceScans = new ConcurrentHashMap<>();
+
     private static final int REPLAY_BUFFER_SIZE = 1000;
     private static final Duration CLEANUP_TTL = Duration.ofHours(1);
 
@@ -67,19 +69,33 @@ public class ScanTaskManagerAdapter implements
     ) {}
 
     @Override
-    public void startScan(String scanId, Flux<ContentScanResult> scanDataStream) {
+    public void startScan(String scanId, SourceType sourceType, Flux<ContentScanResult> scanDataStream) {
         if (scanId == null) {
             throw new IllegalArgumentException("scanId cannot be null");
         }
         if (scanDataStream == null) {
             throw new IllegalArgumentException("scanDataStream cannot be null");
         }
-        
-        log.info("[ScanTaskManager] Starting independent scan with scanId={}", scanId);
-        
+
+        log.info("[ScanTaskManager] Starting independent scan with scanId={}, sourceType={}", scanId, sourceType);
+
+        // Cancel previous scan of same source type
+        if (sourceType != null) {
+            String previousScanId = activeSourceScans.get(sourceType);
+            if (previousScanId != null) {
+                ManagedScan previous = managedScans.get(previousScanId);
+                if (previous != null && !previous.isCompleted().get()) {
+                    log.info("[ScanTaskManager] Cancelling previous {} scan: {}", sourceType, previousScanId);
+                    previous.subscription().dispose();
+                    markCompleted(previousScanId);
+                }
+            }
+            activeSourceScans.put(sourceType, scanId);
+        }
+
         // Create a sink with a replay buffer to support SSE reconnection (Last-Event-ID)
         Sinks.Many<ContentScanResult> sink = Sinks.many().replay().limit(REPLAY_BUFFER_SIZE);
-        
+
         // KEY: independent subscribe() — decouples scan execution from SSE subscribers' lifecycle
         // When the SSE client disconnects, this subscription keeps running
         // subscribeOn(boundedElastic) ensures the scan executes on a dedicated thread pool,
@@ -87,7 +103,7 @@ public class ScanTaskManagerAdapter implements
         Disposable subscription = scanDataStream
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnNext(event -> {
-                    log.debug("[ScanTaskManager] Emitting event for scanId={}, eventType={}", 
+                    log.debug("[ScanTaskManager] Emitting event for scanId={}, eventType={}",
                             scanId, event.eventType());
                     sink.emitNext(event, EmitFailureHandler.FAIL_FAST);
                 })
@@ -106,14 +122,14 @@ public class ScanTaskManagerAdapter implements
                     markCompleted(scanId);
                 })
                 .subscribe(); // ← KEY part — independent subscription on boundedElastic scheduler
-        
+
         ManagedScan managedScan = new ManagedScan(
                 sink,
                 subscription,
                 Instant.now(),
                 new AtomicBoolean(false)
         );
-        
+
         managedScans.put(scanId, managedScan);
         log.info("[ScanTaskManager] Scan registered, active scans count: {}", managedScans.size());
 
@@ -122,13 +138,13 @@ public class ScanTaskManagerAdapter implements
     @Override
     public Flux<ContentScanResult> subscribeScan(String scanId) {
         log.info("[ScanTaskManager] SSE client subscribing to scanId={}", scanId);
-        
+
         ManagedScan scan = managedScans.get(scanId);
         if (scan == null) {
             log.warn("[ScanTaskManager] Scan not found: {}", scanId);
             return Flux.error(new ScanNotFoundException(scanId));
         }
-        
+
         // Return a Flux from the sink — provides replay buffer for late subscribers
         return scan.sink().asFlux()
                 .doOnSubscribe(ignored -> log.debug("[ScanTaskManager] New subscriber for scanId={}", scanId))
@@ -139,18 +155,18 @@ public class ScanTaskManagerAdapter implements
     @Override
     public boolean pauseScan(String scanId) {
         log.info("[ScanTaskManager] Pause requested for scanId={}", scanId);
-        
+
         ManagedScan scan = managedScans.get(scanId);
         if (scan == null) {
             log.warn("[ScanTaskManager] Cannot pause - scan not found: {}", scanId);
             return false;
         }
-        
+
         if (scan.subscription().isDisposed()) {
             log.info("[ScanTaskManager] Scan already disposed: {}", scanId);
             return false;
         }
-        
+
         scan.subscription().dispose();
         markCompleted(scanId);
         log.info("[ScanTaskManager] Scan paused successfully: {}", scanId);
@@ -186,14 +202,14 @@ public class ScanTaskManagerAdapter implements
     public void cleanupCompletedScans() {
         Instant cutoff = Instant.now().minus(CLEANUP_TTL);
         int initialSize = managedScans.size();
-        
+
         managedScans.entrySet().removeIf(entry -> {
             String scanId = entry.getKey();
             ManagedScan scan = entry.getValue();
-            
+
             boolean shouldRemove = scan.isCompleted().get() && scan.startTime().isBefore(cutoff);
             if (shouldRemove) {
-                log.info("[ScanTaskManager] Cleaning up completed scan: {} (age: {})", 
+                log.info("[ScanTaskManager] Cleaning up completed scan: {} (age: {})",
                         scanId, Duration.between(scan.startTime(), Instant.now()));
                 // Ensure the subscription is disposed
                 if (!scan.subscription().isDisposed()) {
@@ -202,10 +218,10 @@ public class ScanTaskManagerAdapter implements
             }
             return shouldRemove;
         });
-        
+
         int removedCount = initialSize - managedScans.size();
         if (removedCount > 0) {
-            log.info("[ScanTaskManager] Cleanup completed: removed {} scans, {} remaining", 
+            log.info("[ScanTaskManager] Cleanup completed: removed {} scans, {} remaining",
                     removedCount, managedScans.size());
         }
     }

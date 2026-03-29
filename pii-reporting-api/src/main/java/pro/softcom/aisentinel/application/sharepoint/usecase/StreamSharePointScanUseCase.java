@@ -54,7 +54,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
 
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
-        scanExecutionOrchestrator.startScan(scanId, scanFlux);
+        scanExecutionOrchestrator.startScan(scanId, SourceType.SHAREPOINT, scanFlux);
         return scanExecutionOrchestrator.subscribeScan(scanId);
     }
 
@@ -71,7 +71,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
 
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
-        scanExecutionOrchestrator.startScan(scanId, scanFlux);
+        scanExecutionOrchestrator.startScan(scanId, SourceType.SHAREPOINT, scanFlux);
         return scanExecutionOrchestrator.subscribeScan(scanId);
     }
 
@@ -83,7 +83,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
                 })
                 .onErrorResume(exception -> {
                     log.error("[SHAREPOINT-SCAN] Error in scan flux: {}", exception.getMessage(), exception);
-                    return errorEvent(scanId, null, exception.getMessage());
+                    return errorEvent(scanId, null, resolveErrorKey(exception));
                 });
     }
 
@@ -99,7 +99,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
                 })
                 .onErrorResume(exception -> {
                     log.error("[SHAREPOINT-SCAN] Error in selected sites scan flux: {}", exception.getMessage(), exception);
-                    return errorEvent(scanId, null, exception.getMessage());
+                    return errorEvent(scanId, null, resolveErrorKey(exception));
                 });
     }
 
@@ -109,7 +109,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
                         .onErrorResume(exception -> {
                             log.error("[SHAREPOINT-SCAN] Error during site scan {}: {}",
                                     site.id(), exception.getMessage(), exception);
-                            return errorEvent(scanId, site.id(), exception.getMessage());
+                            return errorEvent(scanId, site.id(), resolveErrorKey(exception));
                         }));
     }
 
@@ -216,7 +216,7 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
                             scanProgress.originalTotal());
                     return Mono.just(contentScanOrchestrator.createErrorEvent(
                             scanId, siteId, scannableFile.getId(),
-                            "Error analyzing file: " + exception.getMessage(), progress));
+                            resolveErrorKey(exception), progress));
                 })
                 .flux();
     }
@@ -239,9 +239,28 @@ public class StreamSharePointScanUseCase implements StreamSharePointScanPort {
 
     private static Flux<ContentScanResult> createErrorIfNoSites(String scanId, List<SharePointSite> sites) {
         if (sites == null || sites.isEmpty()) {
-            return errorEvent(scanId, null, "No SharePoint site found");
+            return errorEvent(scanId, null, "error.sharepoint.resource.not_found");
         }
         return null;
+    }
+
+    private static String resolveErrorKey(Throwable exception) {
+        if (exception instanceof pro.softcom.aisentinel.domain.sharepoint.SharePointAuthenticationException) {
+            return "error.sharepoint.auth.failed";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.sharepoint.SharePointConnectionException) {
+            return "error.sharepoint.connection.failed";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.sharepoint.SharePointNotFoundException) {
+            return "error.sharepoint.resource.not_found";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.sharepoint.SharePointApiException) {
+            return "error.sharepoint.api.error";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.pii.scan.PiiDetectionException) {
+            return "error.pii.detection.service_error";
+        }
+        return "error.internal";
     }
 
     private static Flux<ContentScanResult> errorEvent(String scanId, String sourceId, String message) {

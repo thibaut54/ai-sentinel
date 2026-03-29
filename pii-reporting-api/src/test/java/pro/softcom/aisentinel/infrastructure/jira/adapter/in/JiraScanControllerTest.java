@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.codec.ServerSentEvent;
+import pro.softcom.aisentinel.application.jira.port.in.StreamJiraResumeScanPort;
 import pro.softcom.aisentinel.application.jira.port.in.StreamJiraScanPort;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ContentScanResultEventDto;
@@ -21,7 +22,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,12 +31,16 @@ class JiraScanControllerTest {
     @Mock
     private StreamJiraScanPort streamJiraScanPort;
 
+    @Mock
+    private StreamJiraResumeScanPort streamJiraResumeScanPort;
+
     private JiraScanController controller;
 
     @BeforeEach
     void setUp() {
         controller = new JiraScanController(
                 streamJiraScanPort,
+                streamJiraResumeScanPort,
                 new ConfluenceContentScanResultToScanEventMapper()
         );
     }
@@ -53,7 +57,7 @@ class JiraScanControllerTest {
         );
         when(streamJiraScanPort.scanAllProjects()).thenReturn(events);
 
-        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan()
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan(null)
                 .filter(sse -> !ScanEventType.KEEPALIVE.toJson().equals(sse.event()))
                 .take(5)
                 .timeout(Duration.ofSeconds(5));
@@ -98,7 +102,7 @@ class JiraScanControllerTest {
                         .build()
         ));
 
-        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan()
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan(null)
                 .filter(sse -> ScanEventType.ERROR.toJson().equals(sse.event()))
                 .take(1)
                 .timeout(Duration.ofSeconds(3));
@@ -118,7 +122,7 @@ class JiraScanControllerTest {
         when(streamJiraScanPort.scanAllProjects()).thenReturn(Flux.never());
 
         StepVerifier.withVirtualTime(() ->
-                        controller.streamAllProjectsScan()
+                        controller.streamAllProjectsScan(null)
                                 .filter(sse -> ScanEventType.KEEPALIVE.toJson().equals(sse.event()))
                                 .take(1)
                 )
@@ -142,7 +146,7 @@ class JiraScanControllerTest {
 
         when(streamJiraScanPort.scanAllProjects()).thenReturn(Flux.just(result));
 
-        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan()
+        Flux<ServerSentEvent<@NonNull ContentScanResultEventDto>> flux = controller.streamAllProjectsScan(null)
                 .filter(sse -> ScanEventType.ITEM.toJson().equals(sse.event()))
                 .take(1)
                 .timeout(Duration.ofSeconds(5));

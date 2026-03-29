@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.in;
 
+import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
@@ -33,4 +34,28 @@ public interface ScanReportingPort {
      * @return an Optional containing the dashboard summary, or empty if no data found
      */
     Optional<ScanReportingSummary> getGlobalScanSummary();
+
+    /**
+     * Returns the most recent scan metadata for the given source type.
+     *
+     * @param sourceType the source type to filter by
+     * @return the latest scan metadata for that source type, or empty if none
+     */
+    Optional<LastScanMeta> getLatestScanBySourceType(SourceType sourceType);
+
+    /**
+     * Returns a dashboard summary scoped to the given source type.
+     *
+     * @param sourceType the source type to filter by
+     * @return the dashboard summary for that source type, or empty if no data
+     */
+    Optional<ScanReportingSummary> getScanSummaryBySourceType(SourceType sourceType);
+
+    /**
+     * Returns scan items (encrypted) scoped to the given source type.
+     *
+     * @param sourceType the source type to filter by
+     * @return list of encrypted scan results for that source type
+     */
+    List<ContentScanResult> getScanItemsBySourceType(SourceType sourceType);
 }

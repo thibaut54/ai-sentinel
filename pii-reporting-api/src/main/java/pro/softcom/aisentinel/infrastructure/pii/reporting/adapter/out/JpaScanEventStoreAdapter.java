@@ -111,4 +111,20 @@ public class JpaScanEventStoreAdapter implements ScanEventStore {
         eventRepository.deleteAllInBatch();
     }
 
+    @Override
+    public void deleteBySourceType(SourceType sourceType) {
+        if (sourceType == null) {
+            return;
+        }
+        eventRepository.deleteAllBySourceType(sourceType.name());
+    }
+
+    @Override
+    public void deleteBySourceTypeAndSourceKeys(SourceType sourceType, java.util.List<String> sourceKeys) {
+        if (sourceType == null || sourceKeys == null || sourceKeys.isEmpty()) {
+            return;
+        }
+        eventRepository.deleteAllBySourceTypeAndSourceKeys(sourceType.name(), sourceKeys);
+    }
+
 }

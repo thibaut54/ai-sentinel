@@ -92,6 +92,12 @@
           [feedback]="false"
           class="field-input">
         </p-password>
+        @if (hasExistingTokenForCurrentType()) {
+          <small class="field-hint">
+            {{ 'settings.confluence.connection.apiTokenHint' | transloco }}
+            <span class="token-masked">{{ currentConfig()!.apiTokenMasked }}</span>
+          </small>
+        }
         @if (configForm.apiToken().errors().length && configForm.apiToken().touched()) {
           <small class="field-error">{{ 'settings.confluence.validation.apiTokenRequired' | transloco }}</small>
         }
@@ -112,6 +118,7 @@
           [max]="120000"
           [step]="1000"
           suffix=" ms"
+          [useGrouping]="false"
           [showButtons]="true"
           buttonLayout="horizontal"
           incrementButtonIcon="pi pi-plus"
@@ -131,6 +138,7 @@
           [max]="300000"
           [step]="5000"
           suffix=" ms"
+          [useGrouping]="false"
           [showButtons]="true"
           buttonLayout="horizontal"
           incrementButtonIcon="pi pi-plus"
@@ -149,6 +157,7 @@
           [min]="0"
           [max]="10"
           [step]="1"
+          [useGrouping]="false"
           [showButtons]="true"
           buttonLayout="horizontal"
           incrementButtonIcon="pi pi-plus"
@@ -170,6 +179,7 @@
           [min]="1"
           [max]="1000"
           [step]="5"
+          [useGrouping]="false"
           [showButtons]="true"
           buttonLayout="horizontal"
           incrementButtonIcon="pi pi-plus"
@@ -188,6 +198,7 @@
           [min]="1"
           [max]="10000"
           [step]="100"
+          [useGrouping]="false"
           [showButtons]="true"
           buttonLayout="horizontal"
           incrementButtonIcon="pi pi-plus"

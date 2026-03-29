@@ -51,7 +51,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
 
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
-        scanExecutionOrchestrator.startScan(scanId, scanFlux);
+        scanExecutionOrchestrator.startScan(scanId, SourceType.JIRA, scanFlux);
         return scanExecutionOrchestrator.subscribeScan(scanId);
     }
 
@@ -68,7 +68,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
 
         Flux<ContentScanResult> scanFlux = Flux.concat(header, body, footer);
 
-        scanExecutionOrchestrator.startScan(scanId, scanFlux);
+        scanExecutionOrchestrator.startScan(scanId, SourceType.JIRA, scanFlux);
         return scanExecutionOrchestrator.subscribeScan(scanId);
     }
 
@@ -80,7 +80,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                 })
                 .onErrorResume(exception -> {
                     log.error("[JIRA-SCAN] Error in scan flux: {}", exception.getMessage(), exception);
-                    return errorEvent(scanId, null, exception.getMessage());
+                    return errorEvent(scanId, null, resolveErrorKey(exception));
                 });
     }
 
@@ -96,7 +96,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                 })
                 .onErrorResume(exception -> {
                     log.error("[JIRA-SCAN] Error in selected projects scan flux: {}", exception.getMessage(), exception);
-                    return errorEvent(scanId, null, exception.getMessage());
+                    return errorEvent(scanId, null, resolveErrorKey(exception));
                 });
     }
 
@@ -106,7 +106,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                         .onErrorResume(exception -> {
                             log.error("[JIRA-SCAN] Error during project scan {}: {}",
                                     project.key(), exception.getMessage(), exception);
-                            return errorEvent(scanId, project.key(), exception.getMessage());
+                            return errorEvent(scanId, project.key(), resolveErrorKey(exception));
                         }));
     }
 
@@ -200,7 +200,7 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
                             scanProgress.originalTotal());
                     return Mono.just(contentScanOrchestrator.createErrorEvent(
                             scanId, projectKey, issue.id(),
-                            "Error analyzing issue: " + exception.getMessage(), progress));
+                            resolveErrorKey(exception), progress));
                 })
                 .flux();
     }
@@ -223,9 +223,28 @@ public class StreamJiraScanUseCase implements StreamJiraScanPort {
 
     private static Flux<ContentScanResult> createErrorIfNoProjects(String scanId, List<JiraProject> projects) {
         if (projects == null || projects.isEmpty()) {
-            return errorEvent(scanId, null, "No project found");
+            return errorEvent(scanId, null, "error.jira.resource.not_found");
         }
         return null;
+    }
+
+    private static String resolveErrorKey(Throwable exception) {
+        if (exception instanceof pro.softcom.aisentinel.domain.jira.JiraAuthenticationException) {
+            return "error.jira.auth.failed";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.jira.JiraConnectionException) {
+            return "error.jira.connection.failed";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.jira.JiraNotFoundException) {
+            return "error.jira.resource.not_found";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.jira.JiraApiException) {
+            return "error.jira.api.error";
+        }
+        if (exception instanceof pro.softcom.aisentinel.domain.pii.scan.PiiDetectionException) {
+            return "error.pii.detection.service_error";
+        }
+        return "error.internal";
     }
 
     private static Flux<ContentScanResult> errorEvent(String scanId, String sourceId, String message) {
