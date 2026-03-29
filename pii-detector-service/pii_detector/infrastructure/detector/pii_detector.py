@@ -117,7 +117,7 @@ class PIIDetector:
 
     def _detect_pii_chunked_internal(self, text: str, threshold: float, detection_id: str) -> List[PIIEntity]:
         """Process text using token-based splitting aligned with model context (256 tokens)."""
-        self.logger.info(f"[{detection_id}] Using token-based splitting for detection")
+        self.logger.debug(f"[{detection_id}] Using token-based splitting for detection")
         return self._detect_pii_token_splitting(text, threshold)
 
     def download_model(self) -> None:
@@ -158,7 +158,7 @@ class PIIDetector:
         threshold = threshold or self.config.threshold
         detection_id = self._generate_detection_id()
 
-        self.logger.info(f"[{detection_id}] Starting PII detection for {len(text)} characters")
+        self.logger.debug(f"[{detection_id}] Starting PII detection for {len(text)} characters")
 
         try:
             if len(text) > self.config.long_text_threshold:
@@ -216,7 +216,7 @@ class PIIDetector:
         entities = self.detect_pii(text, threshold)
         masked_text = self._apply_masks(text, entities)
 
-        self.logger.info(f"Masked {len(entities)} PII entities")
+        self.logger.debug(f"Masked {len(entities)} PII entities")
         return masked_text, entities
 
     def get_summary(self, text: str, threshold: Optional[float] = None) -> Dict[str, int]:
@@ -237,7 +237,7 @@ class PIIDetector:
             pii_type = entity.type_label
             summary[pii_type] = summary.get(pii_type, 0) + 1
 
-        self.logger.info(f"Generated nbOfDetectedPIIBySeverity with {len(summary)} PII types")
+        self.logger.debug(f"Generated nbOfDetectedPIIBySeverity with {len(summary)} PII types")
         return summary
 
     def clear_cache(self) -> None:
@@ -346,7 +346,7 @@ class PIIDetector:
         entities = self._detect_pii_token_splitting(text, threshold)
 
         detection_time = time.time() - start_time
-        self.logger.info(f"[{detection_id}] Detection completed in {detection_time:.3f}s, found {len(entities)} entities")
+        self.logger.debug(f"[{detection_id}] Detection completed in {detection_time:.3f}s, found {len(entities)} entities")
 
         return entities
 

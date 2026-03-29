@@ -54,18 +54,11 @@ class ConfluenceHttpClientAdapterRetryPolicyTest {
         lenient().when(config.baseUrl()).thenReturn("https://confluence.test.com");
         lenient().when(config.username()).thenReturn("testuser");
         lenient().when(config.apiToken()).thenReturn("testtoken");
-        lenient().when(config.getRestApiUrl()).thenReturn("https://confluence.test.com/rest/api");
         lenient().when(config.connectTimeout()).thenReturn(5000);
         lenient().when(config.readTimeout()).thenReturn(10000);
         lenient().when(config.maxRetries()).thenReturn(1); // 1 retry for tests
         lenient().when(config.pagesLimit()).thenReturn(50);
         lenient().when(config.maxPages()).thenReturn(100);
-        lenient().when(config.contentPath()).thenReturn("/content/");
-        lenient().when(config.searchContentPath()).thenReturn("/content/search");
-        lenient().when(config.spacePath()).thenReturn("/space");
-        lenient().when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
-        lenient().when(config.defaultPageExpands()).thenReturn("body.storage,version,metadata,ancestors");
-        lenient().when(config.defaultSpaceExpands()).thenReturn("permissions,metadata");
     }
 
     private void setupHttpClient() throws Exception {

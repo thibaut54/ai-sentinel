@@ -1,7 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.ScanTaskManagerAdapter;
+import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import reactor.core.publisher.Flux;
 
 /**
@@ -54,7 +54,7 @@ public interface PersonallyIdentifiableInformationScanExecutionOrchestratorPort 
      * @param scanId the scan identifier (non-null)
      * @return a Flux of scan events
      * @throws IllegalArgumentException if scanId is null
-     * @throws ScanTaskManagerAdapter.ScanNotFoundException
+     * @throws ScanNotFoundException
      *         if the scan does not exist or has been cleaned up
      */
     Flux<ConfluenceContentScanResult> subscribeScan(String scanId);

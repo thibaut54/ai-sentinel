@@ -27,14 +27,15 @@ export class PiiItemCardUtils {
       return 'excel';
     }
 
+    // PowerPoint / Presentations (including OpenDocument Presentation)
+    // Must be checked before Word because 'doc' substring matches 'officedocument' in all OpenXML MIMEs
+    if (match(['powerpoint', 'presentationml', 'presentation', 'ppt', 'pptx', 'odp'])) {
+      return 'ppt';
+    }
+
     // Word processors (including RTF and OpenDocument Text)
     if (match(['msword', 'wordprocessingml', 'application/rtf', 'rtf', 'doc', 'docx', 'odt'])) {
       return 'word';
-    }
-
-    // PowerPoint / Presentations (including OpenDocument Presentation)
-    if (match(['powerpoint', 'presentationml', 'presentation', 'ppt', 'pptx', 'odp'])) {
-      return 'ppt';
     }
 
     // Plain/text-like content (HTML shown as text badge for now)

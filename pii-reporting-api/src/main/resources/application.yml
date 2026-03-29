@@ -27,6 +27,8 @@ spring:
       # Continue on error (already inserted data with ON CONFLICT DO NOTHING)
       continue-on-error: false
   mvc:
+    problemdetails:
+      enabled: true
     async:
       request-timeout: 300000  # 5 minutes for async requests
   autoconfigure:

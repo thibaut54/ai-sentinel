@@ -16,7 +16,6 @@ from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.exception.exceptions import ModelNotLoadedError, PIIDetectionError
 from pii_detector.infrastructure.model_management.gliner_model_manager import \
     GLiNERModelManager
-# FIXME: from service.detector.models import
 from pii_detector.infrastructure.text_processing.semantic_chunker import \
     create_chunker
 
@@ -87,11 +86,24 @@ class GLiNERDetector:
         Returns:
             Tokenizer object (either from model or AutoTokenizer)
         """
-        tokenizer = getattr(self.model.data_processor.config, 'tokenizer', None)
-        if tokenizer is None:
-            # Fallback: try to get from model name
+        data_processor = getattr(self.model, 'data_processor', None)
+        if data_processor is None:
+            self.logger.warning("Model has no data_processor, falling back to HuggingFace download")
             from transformers import AutoTokenizer
             model_name = getattr(self.model.config, 'model_name', 'bert-base-cased')
+            return AutoTokenizer.from_pretrained(model_name)
+
+        tokenizer = getattr(data_processor, 'transformer_tokenizer', None)
+        if tokenizer is None:
+            # Legacy fallback: older GLiNER versions stored tokenizer differently
+            config = getattr(data_processor, 'config', None)
+            if config is not None:
+                tokenizer = getattr(config, 'tokenizer', None)
+        if tokenizer is None:
+            # Last resort: download tokenizer from HuggingFace (requires network)
+            from transformers import AutoTokenizer
+            model_name = getattr(self.model.config, 'model_name', 'bert-base-cased')
+            self.logger.warning("Tokenizer not found in model, downloading from HuggingFace: %s", model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
         return tokenizer
 
@@ -152,15 +164,15 @@ class GLiNERDetector:
         threshold = threshold or self.config.threshold
         detection_id = self._generate_detection_id()
         
-        self.logger.info(f"[{detection_id}] Starting GLiNER PII detection for {len(text)} characters")
+        self.logger.debug(f"[{detection_id}] Starting GLiNER PII detection for {len(text)} characters")
         
         try:
             # Fetch fresh configs if not provided
             if pii_type_configs is None:
-                self.logger.info(f"[{detection_id}] Fetching fresh configuration from database")
+                self.logger.debug(f"[{detection_id}] Fetching fresh configuration from database")
                 pii_type_configs = self._load_pii_type_configs_from_database()
             else:
-                self.logger.info(f"[{detection_id}] Using provided fresh configuration")
+                self.logger.debug(f"[{detection_id}] Using provided fresh configuration")
             
             # ALWAYS use chunking for GLiNER to prevent internal truncation warnings
             # GLiNER truncates individual sentences at 768 tokens, regardless of total text size
@@ -188,7 +200,7 @@ class GLiNERDetector:
         entities = self.detect_pii(text, threshold)
         masked_text = self._apply_masks(text, entities)
         
-        self.logger.info(f"Masked {len(entities)} PII entities")
+        self.logger.debug(f"Masked {len(entities)} PII entities")
         return masked_text, entities
 
     def _load_pii_type_configs_from_database(self) -> Optional[Dict]:
@@ -214,7 +226,7 @@ class GLiNERDetector:
                 self.logger.warning("No PII type configs found in database for GLINER")
                 return None
             
-            self.logger.info(f"Loaded {len(pii_type_configs)} PII type configs from database for GLINER")
+            self.logger.debug(f"Loaded {len(pii_type_configs)} PII type configs from database for GLINER")
             return pii_type_configs
             
         except Exception as e:
@@ -238,7 +250,7 @@ class GLiNERDetector:
             "phone number": "PHONE",
             # PERSON_IDENTITY
             "person name": "PERSON_NAME",
-            "username": "USERNAME",
+            "system account name": "USERNAME",
             # PERSON_DEMOGRAPHICS
             "date of birth": "DATE_OF_BIRTH",
             "age": "AGE",
@@ -246,7 +258,7 @@ class GLiNERDetector:
             # FINANCIAL_IDENTIFIER
             "credit card number": "CREDIT_CARD",
             "bank account number": "BANK_ACCOUNT",
-            "iban": "IBAN",
+            "international banking identifier": "IBAN",
             "routing number": "ROUTING_NUMBER",
             "tax identification number": "TAX_ID",
             "cryptocurrency wallet address": "CRYPTO_WALLET",
@@ -262,7 +274,7 @@ class GLiNERDetector:
             "country": "COUNTRY",
             "postal code": "ZIP_CODE",
             # CREDENTIAL_SECRET
-            "password": "PASSWORD",
+            "account password or PIN code": "PASSWORD",
             "api key": "API_KEY",
             "access token": "ACCESS_TOKEN",
             "secret key": "SECRET_KEY",
@@ -308,6 +320,10 @@ class GLiNERDetector:
         """
         mapping = {}
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") added by database_config_adapter
+            # for per-detector lookup — they are not real PII type names
+            if ':' in pii_type:
+                continue
             detector_label = config.get('detector_label')
             # Only include GLINER configs - skip PRESIDIO and REGEX labels
             if detector_label and config.get('enabled', False) and config.get('detector') == 'GLINER':
@@ -331,6 +347,9 @@ class GLiNERDetector:
         """
         scoring = {}
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+            if ':' in pii_type:
+                continue
             # Only include GLINER configs - skip PRESIDIO and REGEX thresholds
             if config.get('enabled', False) and config.get('detector') == 'GLINER':
                 scoring[pii_type] = config['threshold']
@@ -573,7 +592,7 @@ class GLiNERDetector:
         Returns:
             List of detected PIIEntity objects with duplicates removed
         """
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] Using parallel processing with {self.max_workers} workers"
         )
         
@@ -639,9 +658,9 @@ class GLiNERDetector:
             List of detected PIIEntity objects with duplicates removed
         """
         if not self.parallel_enabled:
-            self.logger.info(f"[{detection_id}] Parallel processing disabled, using sequential mode")
+            self.logger.debug(f"[{detection_id}] Parallel processing disabled, using sequential mode")
         else:
-            self.logger.info(f"[{detection_id}] Single chunk detected, using sequential mode")
+            self.logger.debug(f"[{detection_id}] Single chunk detected, using sequential mode")
         
         seen_entities: set = set()
         all_entities: List[PIIEntity] = []
@@ -759,7 +778,7 @@ class GLiNERDetector:
         if pii_type_configs:
             pii_type_mapping = self._build_pii_type_mapping_from_configs(pii_type_configs)
             scoring_overrides = self._build_scoring_overrides_from_configs(pii_type_configs)
-            self.logger.info(f"[{detection_id}] Built mapping with {len(pii_type_mapping)} labels and {len(scoring_overrides)} thresholds from fresh configs")
+            self.logger.debug(f"[{detection_id}] Built mapping with {len(pii_type_mapping)} labels and {len(scoring_overrides)} thresholds from fresh configs")
         else:
             # Fallback to defaults if no configs provided
             self.logger.warning(f"[{detection_id}] No configs provided, using default mapping")

@@ -200,7 +200,7 @@ class DatabaseConfigAdapter:
             configs = {}
             for row in results:
                 pii_type = row['pii_type']
-                configs[pii_type] = {
+                entry = {
                     'enabled': row['enabled'],
                     'threshold': float(row['threshold']),
                     'detector': row['detector'],
@@ -208,6 +208,11 @@ class DatabaseConfigAdapter:
                     'country_code': row['country_code'],
                     'detector_label': row['detector_label']
                 }
+                # Primary key (may overwrite for duplicates across detectors)
+                configs[pii_type] = entry
+                # Composite key for precise per-detector lookup (always unique)
+                if not detector:
+                    configs[f"{row['detector']}:{pii_type}"] = entry
 
             logger.info(
                 f"Successfully fetched {len(configs)} PII type configs from database "

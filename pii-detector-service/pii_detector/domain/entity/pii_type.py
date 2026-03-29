@@ -21,20 +21,20 @@ class PIIType(Enum):
     EMAIL = "Email"
     GIVENNAME = "Prénom"
     IDCARDNUM = "Numéro de carte d'identité"
-    PASSWORD = "Mot de passe"
+    PASSWORD = "Mot de passe ou code PIN"  # NOSONAR  # noqa: S105
     SOCIALNUM = "Numéro de sécurité sociale (format générique)"
     STREET = "Rue"
     SURNAME = "Nom de famille"
     TAXNUM = "Numéro fiscal"
     TELEPHONENUM = "Numéro de téléphone (format générique)"
-    USERNAME = "Nom d'utilisateur"
+    USERNAME = "Identifiant système ou compte de connexion"
     ZIPCODE = "Code postal"
     
     # Additional types for Presidio and Regex detectors
     PHONE = "Téléphone (format international)"
     URL = "URL"
     CREDIT_CARD = "Carte bancaire (format court)"
-    IBAN = "IBAN"
+    IBAN = "Identifiant bancaire international (IBAN)"
     CRYPTO_WALLET = "Portefeuille crypto"
     SSN = "Social Security Number (SSN standard)"
     NHS_NUMBER = "Numéro NHS"

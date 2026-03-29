@@ -112,6 +112,7 @@ class TestModelManagement:
         mock_tokenizer = Mock()
         
         mock_config.tokenizer = None
+        mock_data_processor.transformer_tokenizer = None
         mock_data_processor.config = mock_config
         mock_model.data_processor = mock_data_processor
         mock_model.config = Mock(model_name='bert-base-cased')

@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.confluence.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 
 /**
@@ -27,6 +28,7 @@ public record TestConfluenceConnectionRequestDto(
         String apiToken,
 
         @JsonProperty("deploymentType")
+        @NotNull(message = "deploymentType is required")
         ConfluenceDeploymentType deploymentType
 ) {
 }

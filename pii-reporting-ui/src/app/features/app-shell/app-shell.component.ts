@@ -45,8 +45,9 @@ export class AppShellComponent {
   readonly showSettingsDialog = signal(false);
   readonly settingsInitialTab = signal(0);
 
-  // Child component reference for triggering refresh after settings save
+  // Child component references
   private readonly confluenceDashboard = viewChild(ConfluenceDashboardComponent);
+  private readonly piiSettings = viewChild(PiiSettingsComponent);
 
   openSettingsDialog(tab: number = 0): void {
     this.settingsInitialTab.set(tab);
@@ -55,6 +56,10 @@ export class AppShellComponent {
 
   closeSettingsDialog(): void {
     this.showSettingsDialog.set(false);
+  }
+
+  onSettingsDialogHide(): void {
+    this.piiSettings()?.onResetAll();
   }
 
   /**

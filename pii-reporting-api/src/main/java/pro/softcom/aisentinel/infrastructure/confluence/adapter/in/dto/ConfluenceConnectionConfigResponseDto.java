@@ -6,11 +6,9 @@ import java.time.Instant;
  * DTO representing Confluence connection configuration for REST API responses.
  *
  * <p>Business purpose: Provides clients with current Confluence connection settings.
- * The API token is always masked for security.
  *
  * @param baseUrl        Base URL of the Confluence instance
  * @param username       Username for Confluence authentication
- * @param apiToken       Always masked as "***" for security
  * @param connectTimeout Connection timeout in milliseconds
  * @param readTimeout    Read timeout in milliseconds
  * @param maxRetries     Maximum number of retry attempts
@@ -24,7 +22,6 @@ import java.time.Instant;
 public record ConfluenceConnectionConfigResponseDto(
         String baseUrl,
         String username,
-        String apiToken,
         int connectTimeout,
         int readTimeout,
         int maxRetries,
