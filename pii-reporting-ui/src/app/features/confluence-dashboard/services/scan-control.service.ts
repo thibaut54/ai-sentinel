@@ -332,6 +332,7 @@ export class ScanControlService {
         );
         this.sseSubscription?.unsubscribe();
         this.sseSubscription = undefined;
+        this.isStreaming.set(false);
       }
     });
   }
