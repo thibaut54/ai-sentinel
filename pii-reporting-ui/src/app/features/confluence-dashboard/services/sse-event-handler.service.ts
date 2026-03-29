@@ -92,7 +92,7 @@ export class SseEventHandlerService {
 
     const errorMessage = (payload as Record<string, unknown>)?.['message'] as string
       ?? (payload as Record<string, unknown>)?.['errorMessage'] as string
-      ?? 'Erreur inconnue';
+      ?? this.translocoService.translate('errors.unknownError');
     const errorType = this.toastService.detectErrorType(errorMessage);
 
     this.toastService.showScanError({
