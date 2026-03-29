@@ -90,7 +90,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                                      .scanId(scanId)
                                      .sourceId(spaceKey)
                                      .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                     .message(exception.getMessage())
+                                     .message(resolveErrorMessage(exception))
                                      .emittedAt(Instant.now().toString())
                                      .build());
             });
@@ -193,7 +193,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                 return Flux.just(ContentScanResult.builder()
                     .scanId(scanId)
                     .eventType(DetectionReportingEventType.ERROR.getLabel())
-                    .message(exception.getMessage())
+                    .message(resolveErrorMessage(exception))
                     .emittedAt(Instant.now().toString())
                     .build());
             });
@@ -226,7 +226,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                 return Flux.just(ContentScanResult.builder()
                                      .scanId(scanId)
                                      .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                     .message(exception.getMessage())
+                                     .message(resolveErrorMessage(exception))
                                      .emittedAt(Instant.now().toString())
                                      .build());
             });
@@ -258,7 +258,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                                 .scanId(scanId)
                                 .sourceId(space.key())
                                 .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                .message(exception.getMessage())
+                                .message(resolveErrorMessage(exception))
                                 .emittedAt(Instant.now().toString())
                                 .build());
                     }));

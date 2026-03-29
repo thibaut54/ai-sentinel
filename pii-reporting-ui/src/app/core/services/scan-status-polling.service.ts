@@ -68,10 +68,12 @@ export class ScanStatusPollingService {
     });
   }
 
-  /** Stops polling. */
+  /** Stops polling and resets scan state signals. */
   stop(): void {
     this.pollingSub?.unsubscribe();
     this.pollingSub = undefined;
+    this.scanActive.set(false);
+    this.scanPaused.set(false);
   }
 
   /**
@@ -101,9 +103,15 @@ export class ScanStatusPollingService {
 
     const hasRunning = summary.spaces.some(s => s.status === 'RUNNING');
     const hasPaused = summary.spaces.some(s => s.status === 'PAUSED') && !hasRunning;
-    const isScanActive = hasRunning || hasPaused;
 
-    this.scanActive.set(hasRunning);
+    // Between two spaces, no space is RUNNING but the scan is still in progress.
+    // When polling is active and no space is RUNNING or PAUSED, the backend is transitioning.
+    // Keep scanActive = true to avoid misleading "inactive" flash in the UI.
+    const isTransitioning = !!this.pollingSub && !hasRunning && !hasPaused;
+    const scanInProgress = hasRunning || isTransitioning;
+    const isScanActive = scanInProgress || hasPaused;
+
+    this.scanActive.set(scanInProgress);
     this.scanPaused.set(hasPaused);
 
     // Auto-clear actionPending when backend confirms the new scan is RUNNING
@@ -120,8 +128,9 @@ export class ScanStatusPollingService {
       return;
     }
 
-    const { completedOrFailedCount, runningSpaceKey } = this.applySpaceStatuses(summary.spaces, isScanActive);
-    this.markUnreportedSpacesAsPending(summary.spaces, isScanActive);
+    const scanScope = this.buildScanScope();
+    const { completedOrFailedCount, runningSpaceKey } = this.applySpaceStatuses(summary.spaces, isScanActive, scanScope);
+    this.markUnreportedSpacesAsPending(summary.spaces, isScanActive, scanScope);
     this.uiStateService.activeSpaceKey.set(runningSpaceKey);
     this.detectScanCompletion(summary.spaces.length, completedOrFailedCount);
   }
@@ -142,13 +151,29 @@ export class ScanStatusPollingService {
     return true;
   }
 
+  /**
+   * Builds a Set of lowercased space keys for the current scan scope.
+   * Returns null when all spaces are in scope (global scan).
+   */
+  private buildScanScope(): Set<string> | null {
+    const keys = this.dataManagement.currentScanSpaceKeys();
+    if (!keys) return null;
+    return new Set(keys.map(k => k.trim().toLowerCase()));
+  }
+
+  /** Returns true when the given spaceKey belongs to the current scan scope. */
+  private isInScanScope(spaceKey: string, scanScope: Set<string> | null): boolean {
+    if (!scanScope) return true; // null = all spaces in scope
+    return scanScope.has(spaceKey.trim().toLowerCase());
+  }
+
   /** Applies status, progress, and history for each space in the summary. */
-  private applySpaceStatuses(spaces: SpaceSummaryDto[], isScanActive: boolean): { completedOrFailedCount: number; runningSpaceKey: string | null } {
+  private applySpaceStatuses(spaces: SpaceSummaryDto[], isScanActive: boolean, scanScope: Set<string> | null): { completedOrFailedCount: number; runningSpaceKey: string | null } {
     let completedOrFailedCount = 0;
     let runningSpaceKey: string | null = null;
 
     for (const space of spaces) {
-      this.applySpaceUiState(space, isScanActive);
+      this.applySpaceUiState(space, isScanActive, scanScope);
       this.trackScanHistory(space);
 
       if (space.status === 'RUNNING') {
@@ -163,9 +188,9 @@ export class ScanStatusPollingService {
   }
 
   /** Updates a single space's UI state (status badge, timestamp, counts, progress). */
-  private applySpaceUiState(space: SpaceSummaryDto, isScanActive: boolean): void {
+  private applySpaceUiState(space: SpaceSummaryDto, isScanActive: boolean, scanScope: Set<string> | null): void {
     let uiStatus = mapBackendStatusToUi(space.status);
-    if (isScanActive && uiStatus === 'NOT_STARTED') {
+    if (isScanActive && uiStatus === 'NOT_STARTED' && this.isInScanScope(space.spaceKey, scanScope)) {
       uiStatus = 'PENDING';
     }
 
@@ -189,14 +214,14 @@ export class ScanStatusPollingService {
     }
   }
 
-  /** Marks spaces not yet in the summary as PENDING during an active scan. */
-  private markUnreportedSpacesAsPending(summarySpaces: SpaceSummaryDto[], isScanActive: boolean): void {
+  /** Marks spaces not yet in the summary as PENDING during an active scan, but only if they belong to the current scan scope. */
+  private markUnreportedSpacesAsPending(summarySpaces: SpaceSummaryDto[], isScanActive: boolean, scanScope: Set<string> | null): void {
     if (!isScanActive) {
       return;
     }
-    const summaryKeys = new Set(summarySpaces.map(s => s.spaceKey));
+    const summaryKeys = new Set(summarySpaces.map(s => s.spaceKey.trim().toLowerCase()));
     for (const space of this.dataManagement.spaces()) {
-      if (!summaryKeys.has(space.key)) {
+      if (!summaryKeys.has(space.key.trim().toLowerCase()) && this.isInScanScope(space.key, scanScope)) {
         this.spacesUtils.updateSpace(space.key, { status: 'PENDING' });
       }
     }

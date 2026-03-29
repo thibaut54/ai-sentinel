@@ -254,6 +254,14 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   closeAddCustomLabelDialog(): void {
+    this.customLabelForm.reset({
+      detectorLabel: '',
+      piiType: '',
+      category: 'CUSTOM',
+      severity: 'MEDIUM',
+      threshold: 0.8,
+      countryCode: ''
+    });
     this.showAddCustomLabelDialog.set(false);
   }
 
@@ -694,6 +702,7 @@ export class PiiSettingsComponent implements OnInit {
    * In dialog mode, emits close event. In standalone mode, navigates to home.
    */
   onCancel(): void {
+    this.onResetAll();
     if (this.dialogMode()) {
       this.closeDialog.emit();
     } else {

@@ -33,6 +33,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.event.Sca
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -788,6 +789,60 @@ class StreamConfluenceScanUseCaseTest {
         // Verify both spaces were scanned (fail-safe behavior)
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("ABC");
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("DEF");
+    }
+
+    @Test
+    @DisplayName("streamAllSpaces - ConnectException with null message emits descriptive error, not null")
+    void Should_EmitDescriptiveErrorMessage_When_ConnectExceptionHasNullMessage() {
+        ConfluenceSpace space = new ConfluenceSpace("id", "CCAEI", "t", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(spaceRepository.findAll()).thenReturn(List.of());
+        when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
+
+        CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
+        failing.completeExceptionally(new ConnectException());
+        when(confluenceService.getAllPagesInSpace("CCAEI")).thenReturn(failing);
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux)
+            .expectNextMatches(ev -> ScanEventType.MULTI_START.toJson().equals(ev.eventType()))
+            .assertNext(ev -> {
+                assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
+                assertThat(ev.spaceKey()).isEqualTo("CCAEI");
+                assertThat(ev.message()).isNotNull();
+                assertThat(ev.message()).isNotEmpty();
+                assertThat(ev.message()).doesNotContain("null");
+                assertThat(ev.message()).containsIgnoringCase("connect");
+            })
+            .expectNextMatches(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
+            .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("streamSpace - ConnectException with null message emits descriptive error event")
+    void Should_EmitDescriptiveErrorEvent_When_StreamSpaceGetsConnectException() {
+        String spaceKey = "CONN-ERR";
+        ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(confluenceService.getSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(Optional.of(space)));
+
+        CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
+        failing.completeExceptionally(new ConnectException());
+        when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(failing);
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux)
+            .assertNext(ev -> {
+                assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
+                assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                assertThat(ev.message()).isNotNull();
+                assertThat(ev.message()).isNotEmpty();
+                assertThat(ev.message()).doesNotContain("null");
+                assertThat(ev.message()).containsIgnoringCase("connect");
+            })
+            .verifyComplete();
     }
 
     @Test

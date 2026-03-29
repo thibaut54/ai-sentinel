@@ -69,11 +69,10 @@ describe('PiiItemCardUtils', () => {
     expect(utils.attachmentKind('pptx')).toBe('ppt');
   });
 
-  it('Should_ReturnPpt_When_PresentationMime', () => {
-    // NOTE: The full OpenXML MIME for PowerPoint contains 'doc' in 'officedocument',
-    // which matches the Word check first. This is a known limitation of substring matching.
-    // Using the short extension 'pptx' works correctly.
-    expect(utils.attachmentKind('application/vnd.ms-powerpoint')).toBe('ppt');
+  it('Should_ReturnPpt_When_OpenXmlPresentationMime', () => {
+    // The full OpenXML MIME for PowerPoint contains 'presentationml' which is matched
+    // by the 'presentation' substring in the PowerPoint check.
+    expect(utils.attachmentKind('application/vnd.openxmlformats-officedocument.presentationml.presentation')).toBe('ppt');
   });
 
   it('Should_ReturnPpt_When_Odp', () => {

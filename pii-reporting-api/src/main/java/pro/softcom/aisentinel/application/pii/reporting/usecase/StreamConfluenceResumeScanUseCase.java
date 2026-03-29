@@ -114,7 +114,7 @@ public class StreamConfluenceResumeScanUseCase extends
                              .scanId(scanId)
                              .sourceId(space != null ? space.key() : null)
                              .eventType(DetectionReportingEventType.ERROR.getLabel())
-                             .message(exception.getMessage())
+                             .message(resolveErrorMessage(exception))
                              .emittedAt(Instant.now().toString())
                              .build());
     }

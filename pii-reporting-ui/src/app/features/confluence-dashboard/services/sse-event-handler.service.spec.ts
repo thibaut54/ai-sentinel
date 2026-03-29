@@ -141,7 +141,7 @@ describe('SseEventHandlerService', () => {
 
     service.routeStreamEvent('scanError', payload);
 
-    expect(toastMock.detectErrorType).toHaveBeenCalledWith('Erreur inconnue');
+    expect(toastMock.detectErrorType).toHaveBeenCalledWith('errors.unknownError');
   });
 
   // ========== Status events (ignored by SSE handler) ==========

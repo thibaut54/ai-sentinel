@@ -61,8 +61,13 @@ export class AppShellComponent {
     { initialValue: extractSourceFromUrl(this.router.url) }
   );
 
-  openSettingsDialog(): void {
-    this.settingsDialog.open();
+  // Child component references
+  private readonly confluenceDashboard = viewChild(ConfluenceDashboardComponent);
+  private readonly piiSettings = viewChild(PiiSettingsComponent);
+
+  openSettingsDialog(tab: number = 0): void {
+    this.settingsInitialTab.set(tab);
+    this.showSettingsDialog.set(true);
   }
 
   closeSettingsDialog(): void {
@@ -75,6 +80,14 @@ export class AppShellComponent {
         }
     }
 
+  onSettingsDialogHide(): void {
+    this.piiSettings()?.onResetAll();
+  }
+
+  /**
+   * Handle settings saved event from PiiSettingsComponent.
+   * Triggers dashboard refresh to reflect configuration changes.
+   */
   onSettingsSaved(): void {
     // Dashboards handle their own refresh via configSaved$ subscriptions
   }
