@@ -320,6 +320,10 @@ class GLiNERDetector:
         """
         mapping = {}
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") added by database_config_adapter
+            # for per-detector lookup — they are not real PII type names
+            if ':' in pii_type:
+                continue
             detector_label = config.get('detector_label')
             # Only include GLINER configs - skip PRESIDIO and REGEX labels
             if detector_label and config.get('enabled', False) and config.get('detector') == 'GLINER':
@@ -343,6 +347,9 @@ class GLiNERDetector:
         """
         scoring = {}
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+            if ':' in pii_type:
+                continue
             # Only include GLINER configs - skip PRESIDIO and REGEX thresholds
             if config.get('enabled', False) and config.get('detector') == 'GLINER':
                 scoring[pii_type] = config['threshold']

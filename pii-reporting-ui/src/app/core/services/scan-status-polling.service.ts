@@ -68,10 +68,12 @@ export class ScanStatusPollingService {
     });
   }
 
-  /** Stops polling. */
+  /** Stops polling and resets scan state signals. */
   stop(): void {
     this.pollingSub?.unsubscribe();
     this.pollingSub = undefined;
+    this.scanActive.set(false);
+    this.scanPaused.set(false);
   }
 
   /**
@@ -101,9 +103,15 @@ export class ScanStatusPollingService {
 
     const hasRunning = summary.spaces.some(s => s.status === 'RUNNING');
     const hasPaused = summary.spaces.some(s => s.status === 'PAUSED') && !hasRunning;
-    const isScanActive = hasRunning || hasPaused;
 
-    this.scanActive.set(hasRunning);
+    // Between two spaces, no space is RUNNING but the scan is still in progress.
+    // When polling is active and no space is RUNNING or PAUSED, the backend is transitioning.
+    // Keep scanActive = true to avoid misleading "inactive" flash in the UI.
+    const isTransitioning = !!this.pollingSub && !hasRunning && !hasPaused;
+    const scanInProgress = hasRunning || isTransitioning;
+    const isScanActive = scanInProgress || hasPaused;
+
+    this.scanActive.set(scanInProgress);
     this.scanPaused.set(hasPaused);
 
     // Auto-clear actionPending when backend confirms the new scan is RUNNING

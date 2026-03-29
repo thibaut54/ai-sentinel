@@ -48,7 +48,8 @@ class PauseScanUseCaseTest {
         // When
         pauseScanUseCase.pauseScan(scanId);
 
-        // Then
+        // Then — verify orchestrator pause is called BEFORE checkpoint update
+        verify(personallyIdentifiableInformationScanExecutionOrchestratorPort).pauseScan(scanId);
         verify(scanCheckpointRepository).pauseAllRunningCheckpoints(scanId);
     }
 

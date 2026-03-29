@@ -175,6 +175,9 @@ class MultiPassGlinerDetector:
             # This respects the BUSINESS categories from DB
             pii_type_to_category: Dict[str, str] = {}
             for pii_type, config in pii_type_configs.items():
+                # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+                if ':' in pii_type:
+                    continue
                 if config.get('enabled', False):
                     category = config.get('category', 'UNKNOWN')
                     pii_type_to_category[pii_type] = category
@@ -214,9 +217,12 @@ class MultiPassGlinerDetector:
         # Collect all enabled (label, pii_type) pairs
         all_labels: List[Tuple[str, str]] = []
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+            if ':' in pii_type:
+                continue
             if not config.get('enabled', False):
                 continue
-            
+
             # Skip if not GLINER or ALL
             config_detector = config.get('detector', 'ALL')
             if config_detector != 'ALL' and config_detector != 'GLINER':

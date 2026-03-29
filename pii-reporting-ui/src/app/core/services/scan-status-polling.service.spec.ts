@@ -159,4 +159,39 @@ describe('ScanStatusPollingService', () => {
 
     expect(utilsMock.updateSpace).not.toHaveBeenCalled();
   });
+
+  it('Should_KeepScanActive_When_TransitioningBetweenSpaces', () => {
+    // Space 1 completed, Space 2 not yet started — backend reports no RUNNING space
+    const transitionSummary: ScanReportingSummaryDto = {
+      scanId: 'scan-1',
+      lastUpdated: '2026-03-25T10:00:00Z',
+      spacesCount: 2,
+      spaces: [
+        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 100, pagesDone: 20, attachmentsDone: 10, lastEventTs: '2026-03-25T10:00:00Z', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } },
+        { spaceKey: 'SPACE2', status: 'NOT_STARTED', progressPercentage: 0, pagesDone: 0, attachmentsDone: 0, lastEventTs: null as any, severityCounts: { high: 0, medium: 0, low: 0, total: 0 } }
+      ]
+    };
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(transitionSummary));
+
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    // scanActive should stay true because polling is active (scan in progress)
+    expect(service.scanActive()).toBe(true);
+    expect(service.scanPaused()).toBe(false);
+    expect(service.scanIdle()).toBe(false);
+  });
+
+  it('Should_SetScanInactive_When_StopCalled', () => {
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    expect(service.scanActive()).toBe(true);
+
+    service.stop();
+
+    expect(service.scanActive()).toBe(false);
+    expect(service.scanPaused()).toBe(false);
+    expect(service.scanIdle()).toBe(true);
+  });
 });
