@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import { ScanControlService } from './scan-control.service';
 import { SentinelleApiService } from '../../../core/services/sentinelle-api.service';
 import { ScanStatusPollingService } from '../../../core/services/scan-status-polling.service';
