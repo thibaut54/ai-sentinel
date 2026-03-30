@@ -100,9 +100,14 @@ export class ScanStatusPollingService {
    */
   private applySummary(summary: ScanReportingSummaryDto, force: boolean = false): void {
     const isNewScan = this.syncLastScanMeta(summary);
+    const scanScope = this.buildScanScope();
 
-    const hasRunning = summary.spaces.some(s => s.status === 'RUNNING');
-    const hasPaused = summary.spaces.some(s => s.status === 'PAUSED') && !hasRunning;
+    // Only consider in-scope spaces for scan state derivation.
+    // Out-of-scope spaces may have stale RUNNING status from a previous scan.
+    const scopedSpaces = summary.spaces.filter(s => this.isInScanScope(s.spaceKey, scanScope));
+
+    const hasRunning = scopedSpaces.some(s => s.status === 'RUNNING');
+    const hasPaused = scopedSpaces.some(s => s.status === 'PAUSED') && !hasRunning;
 
     // Between two spaces, no space is RUNNING but the scan is still in progress.
     // When polling is active and no space is RUNNING or PAUSED, the backend is transitioning.
@@ -128,11 +133,10 @@ export class ScanStatusPollingService {
       return;
     }
 
-    const scanScope = this.buildScanScope();
-    const { completedOrFailedCount, runningSpaceKey } = this.applySpaceStatuses(summary.spaces, isScanActive, scanScope);
+    const { completedOrFailedCount, inScopeReportedCount, runningSpaceKey } = this.applySpaceStatuses(summary.spaces, isScanActive, scanScope);
     this.markUnreportedSpacesAsPending(summary.spaces, isScanActive, scanScope);
     this.uiStateService.activeSpaceKey.set(runningSpaceKey);
-    this.detectScanCompletion(summary.spaces.length, completedOrFailedCount);
+    this.detectScanCompletion(inScopeReportedCount, completedOrFailedCount);
   }
 
   /** Syncs lastScanMeta when backend reports a different scanId. Returns true if a new scan was detected. */
@@ -167,30 +171,44 @@ export class ScanStatusPollingService {
     return scanScope.has(spaceKey.trim().toLowerCase());
   }
 
-  /** Applies status, progress, and history for each space in the summary. */
-  private applySpaceStatuses(spaces: SpaceSummaryDto[], isScanActive: boolean, scanScope: Set<string> | null): { completedOrFailedCount: number; runningSpaceKey: string | null } {
+  /** Applies status, progress, and history for each space in the summary. Only in-scope spaces count for completion tracking. */
+  private applySpaceStatuses(spaces: SpaceSummaryDto[], isScanActive: boolean, scanScope: Set<string> | null): { completedOrFailedCount: number; inScopeReportedCount: number; runningSpaceKey: string | null } {
     let completedOrFailedCount = 0;
+    let inScopeReportedCount = 0;
     let runningSpaceKey: string | null = null;
 
     for (const space of spaces) {
+      const inScope = this.isInScanScope(space.spaceKey, scanScope);
       this.applySpaceUiState(space, isScanActive, scanScope);
-      this.trackScanHistory(space);
 
-      if (space.status === 'RUNNING') {
-        runningSpaceKey = space.spaceKey;
-      }
-      if (space.status === 'COMPLETED' || space.status === 'FAILED') {
-        completedOrFailedCount++;
+      if (inScope) {
+        this.trackScanHistory(space);
+        inScopeReportedCount++;
+
+        if (space.status === 'RUNNING') {
+          runningSpaceKey = space.spaceKey;
+        }
+        if (space.status === 'COMPLETED' || space.status === 'FAILED') {
+          completedOrFailedCount++;
+        }
       }
     }
 
-    return { completedOrFailedCount, runningSpaceKey };
+    return { completedOrFailedCount, inScopeReportedCount, runningSpaceKey };
   }
 
   /** Updates a single space's UI state (status badge, timestamp, counts, progress). */
   private applySpaceUiState(space: SpaceSummaryDto, isScanActive: boolean, scanScope: Set<string> | null): void {
+    const inScope = this.isInScanScope(space.spaceKey, scanScope);
+
+    // During a scoped scan, ignore active statuses (RUNNING) from out-of-scope spaces
+    // as they are stale data from a previous scan.
+    if (isScanActive && !inScope && space.status === 'RUNNING') {
+      return;
+    }
+
     let uiStatus = mapBackendStatusToUi(space.status);
-    if (isScanActive && uiStatus === 'NOT_STARTED' && this.isInScanScope(space.spaceKey, scanScope)) {
+    if (isScanActive && uiStatus === 'NOT_STARTED' && inScope) {
       uiStatus = 'PENDING';
     }
 

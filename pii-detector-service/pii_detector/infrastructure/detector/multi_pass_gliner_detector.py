@@ -279,9 +279,9 @@ class MultiPassGlinerDetector:
         self._pass_categories = {
             "IDENTITY": {
                 "person name": "PERSON_NAME",
-                "social security number": "SSN",
+                "social insurance number": "SSN",
                 "passport number": "PASSPORT_NUMBER",
-                "driver license number": "DRIVER_LICENSE_NUMBER",
+                "driver license identification": "DRIVER_LICENSE_NUMBER",
             },
             "CONTACT": {
                 "email address": "EMAIL",
@@ -290,17 +290,17 @@ class MultiPassGlinerDetector:
             },
             "FINANCIAL": {
                 "credit card number": "CREDIT_CARD_NUMBER",
-                "bank account number": "BANK_ACCOUNT_NUMBER",
+                "financial institution account number": "BANK_ACCOUNT_NUMBER",
                 "iban": "IBAN",
             },
             "MEDICAL": {
-                "avs number": "AVS_NUMBER",
-                "patient id": "PATIENT_ID",
-                "medical diagnosis": "DIAGNOSIS",
+                "Swiss AVS 13-digit personal number": "AVS_NUMBER",
+                "hospital patient identifier": "PATIENT_ID",
+                "clinical diagnosis": "DIAGNOSIS",
             },
             "IT": {
-                "ip address": "IP_ADDRESS",
-                "api key": "API_KEY",
+                "IPv4 or IPv6 network address": "IP_ADDRESS",
+                "API authentication credential": "API_KEY",
                 "password": "PASSWORD",
             },
         }
