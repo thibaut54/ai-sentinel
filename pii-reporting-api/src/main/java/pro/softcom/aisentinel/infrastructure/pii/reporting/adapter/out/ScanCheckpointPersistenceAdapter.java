@@ -138,6 +138,15 @@ public class ScanCheckpointPersistenceAdapter implements ScanCheckpointRepositor
         return jpaRepository.resumeAllPausedCheckpoints(scanId);
     }
 
+    @Override
+    @Transactional
+    public int resolveStaleActiveCheckpoints(List<String> spaceKeys) {
+        if (spaceKeys == null || spaceKeys.isEmpty()) {
+            return 0;
+        }
+        return jpaRepository.resolveStaleActiveCheckpoints(spaceKeys);
+    }
+
     public static ScanCheckpoint toDomain(ScanCheckpointEntity e) {
         return ScanCheckpoint.builder()
             .scanId(e.getScanId())

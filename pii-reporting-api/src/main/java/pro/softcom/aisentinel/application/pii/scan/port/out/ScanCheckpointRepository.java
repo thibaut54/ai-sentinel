@@ -88,6 +88,18 @@ public interface ScanCheckpointRepository {
     void deleteAllCheckpointsForSpaces(List<String> spaceKeys);
 
     /**
+     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as COMPLETED.
+     * Business purpose: When starting a selected scan, stale active checkpoints from
+     * previous interrupted scans on other spaces must be resolved to prevent them from
+     * polluting the dashboard summary with ghost RUNNING statuses.
+     * All scan data (results, counts, progress) is preserved — only the status changes.
+     *
+     * @param spaceKeys list of space keys EXCLUDED from cleanup (being re-scanned)
+     * @return number of rows updated
+     */
+    int resolveStaleActiveCheckpoints(List<String> spaceKeys);
+
+    /**
      * Atomically sets ALL RUNNING checkpoints for a scan to PAUSED.
      * Business purpose: Race-condition-safe pause — uses a single UPDATE statement
      * so no in-flight scan event can overwrite the PAUSED status between read and write.

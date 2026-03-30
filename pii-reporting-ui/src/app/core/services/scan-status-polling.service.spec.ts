@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import { ScanStatusPollingService } from './scan-status-polling.service';
 import { SentinelleApiService, ScanReportingSummaryDto } from './sentinelle-api.service';
 import { SpacesDashboardUtils } from '../../features/confluence-dashboard/spaces-dashboard.utils';
