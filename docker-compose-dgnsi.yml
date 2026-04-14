@@ -1,0 +1,40 @@
+# Docker Compose override for DGNSI deployment
+# Fixes SSL certificate verification for corporate proxy/firewall
+#
+# Prerequisites:
+#   Place your CA certificate (PEM format) at: ./certs/corporate-ca.pem
+#   This is the same certificate used for the JDK truststore.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose-dgnsi.yml up
+#
+# If the JDK truststore (cacerts) is available instead of a PEM file:
+#   Place it at: ./certs/cacerts
+#   And uncomment the pii-reporting-api truststore lines below.
+
+services:
+  # ============================================================================
+  # PII DETECTOR (Python/gRPC) — SSL CA cert for HuggingFace model download
+  # ============================================================================
+  pii-detector:
+    environment:
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/corporate-ca.pem
+      SSL_CERT_FILE: /etc/ssl/certs/corporate-ca.pem
+      CURL_CA_BUNDLE: /etc/ssl/certs/corporate-ca.pem
+    volumes:
+      - ./certs/corporate-ca.pem:/etc/ssl/certs/corporate-ca.pem:ro
+
+  # ============================================================================
+  # PII REPORTING API (Spring Boot) — SSL CA cert for external HTTPS calls
+  # (Confluence, SharePoint, Jira connectors)
+  # ============================================================================
+  pii-reporting-api:
+    environment:
+      # Option A: PEM certificate (works with Java 11+)
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStoreType=PKCS12
+        -Djavax.net.ssl.trustStore=/etc/ssl/certs/corporate-cacerts
+        -Djavax.net.ssl.trustStorePassword=changeit
+    volumes:
+      # Mount the JDK cacerts (keystore with corporate CA already imported)
+      - ./certs/cacerts:/etc/ssl/certs/corporate-cacerts:ro

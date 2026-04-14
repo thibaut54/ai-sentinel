@@ -275,6 +275,10 @@
       "regex": {
         "label": "Détecteur Regex",
         "description": "Détection basée sur des motifs utilisant des expressions régulières pour les données structurées"
+      },
+      "llmValidation": {
+        "label": "Double vérification IA (Gemma 4)",
+        "description": "Filtre les faux positifs en validant chaque détection avec un modèle de langage local (Gemma 4 e4b)"
       }
     },
     "threshold": {

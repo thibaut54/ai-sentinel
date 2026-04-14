@@ -60,12 +60,13 @@ class DatabaseConfigAdapter:
 
             # Query the single-row configuration table
             query = """
-                SELECT 
+                SELECT
                     gliner_enabled,
                     presidio_enabled,
                     regex_enabled,
                     default_threshold,
-                    nb_of_label_by_pass
+                    nb_of_label_by_pass,
+                    llm_validation_enabled
                 FROM pii_detection_config
                 WHERE id = 1
             """
@@ -86,7 +87,8 @@ class DatabaseConfigAdapter:
                 f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
-                f"threshold={config['default_threshold']}"
+                f"threshold={config['default_threshold']}, "
+                f"llm_validation={config.get('llm_validation_enabled', False)}"
             )
             return config
 

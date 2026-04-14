@@ -25,5 +25,9 @@ CREATE INDEX IF NOT EXISTS idx_pii_type_config_detector_label
 ON pii_type_config(detector_label);
 
 -- Add comment explaining detector_label purpose
-COMMENT ON COLUMN pii_type_config.detector_label IS 
+COMMENT ON COLUMN pii_type_config.detector_label IS
     'Detector-specific label used for detection. For GLINER: natural language labels (e.g., "email"). For PRESIDIO/REGEX: may be NULL or same as pii_type.';
+
+-- Add LLM validation flag for post-detection false positive filtering
+ALTER TABLE pii_detection_config
+ADD COLUMN IF NOT EXISTS llm_validation_enabled BOOLEAN NOT NULL DEFAULT false;

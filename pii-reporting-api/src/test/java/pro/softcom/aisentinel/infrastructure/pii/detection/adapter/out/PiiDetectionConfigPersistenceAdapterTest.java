@@ -67,6 +67,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(config.regexEnabled()).isTrue();
         softly.assertThat(config.defaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(config.llmValidationEnabled()).isFalse();
         softly.assertThat(config.updatedAt()).isNotNull();
         softly.assertThat(config.updatedBy()).isEqualTo("system");
 
@@ -78,6 +79,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(entity.getRegexEnabled()).isTrue();
         softly.assertThat(entity.getDefaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(entity.getLlmValidationEnabled()).isFalse();
         softly.assertThat(entity.getUpdatedAt()).isNotNull();
         softly.assertThat(entity.getUpdatedBy()).isEqualTo("system");
 
@@ -100,7 +102,8 @@ class PiiDetectionConfigPersistenceAdapterTest {
             existingConfig.presidioEnabled(),
             existingConfig.regexEnabled(),
             newThreshold,
-                30,
+            30,
+            true,
             updateTime,
             "integration-test"
         );

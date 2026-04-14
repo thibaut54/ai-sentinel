@@ -69,9 +69,10 @@ public class PiiDetectionConfigController {
             @Valid @RequestBody UpdatePiiDetectionConfigRequestDto request) {
         
         log.info("PUT /api/v1/pii-detection/config - Updating configuration: gliner={}, " +
-                "presidio={}, regex={}, threshold={}", 
-                request.glinerEnabled(), request.presidioEnabled(), 
-                request.regexEnabled(), request.defaultThreshold());
+                "presidio={}, regex={}, threshold={}, llmValidationEnabled={}",
+                request.glinerEnabled(), request.presidioEnabled(),
+                request.regexEnabled(), request.defaultThreshold(),
+                request.llmValidationEnabled());
         
         try {
             String updatedBy = ADMIN_USERNAME;
@@ -82,6 +83,7 @@ public class PiiDetectionConfigController {
                 request.regexEnabled(),
                 request.defaultThreshold(),
                 request.nbOfLabelByPass(),
+                request.llmValidationEnabled(),
                 updatedBy
             );
             
@@ -111,6 +113,7 @@ public class PiiDetectionConfigController {
             config.regexEnabled(),
             config.defaultThreshold(),
             config.nbOfLabelByPass(),
+            config.llmValidationEnabled(),
             config.updatedAt(),
             config.updatedBy()
         );

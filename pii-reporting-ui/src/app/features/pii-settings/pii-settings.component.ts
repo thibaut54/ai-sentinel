@@ -201,6 +201,7 @@ export class PiiSettingsComponent implements OnInit {
       glinerEnabled: [true],
       presidioEnabled: [true],
       regexEnabled: [true],
+      llmValidationEnabled: [false],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {
@@ -370,6 +371,7 @@ export class PiiSettingsComponent implements OnInit {
           glinerEnabled: detectorConfig.glinerEnabled,
           presidioEnabled: detectorConfig.presidioEnabled,
           regexEnabled: detectorConfig.regexEnabled,
+          llmValidationEnabled: detectorConfig.llmValidationEnabled,
           defaultThreshold: detectorConfig.defaultThreshold,
           nbOfLabelByPass: detectorConfig.nbOfLabelByPass
         });
@@ -699,6 +701,7 @@ export class PiiSettingsComponent implements OnInit {
         glinerEnabled: this.currentConfig()!.glinerEnabled,
         presidioEnabled: this.currentConfig()!.presidioEnabled,
         regexEnabled: this.currentConfig()!.regexEnabled,
+        llmValidationEnabled: this.currentConfig()!.llmValidationEnabled,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
       });

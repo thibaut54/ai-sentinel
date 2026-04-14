@@ -42,7 +42,11 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("nbOfLabelByPass")
     @NotNull(message = "nbOfLabelByPass is required")
     @DecimalMin(value = "1", message = "nbOfLabelByPass must be at least 1")
-    Integer nbOfLabelByPass
+    Integer nbOfLabelByPass,
+
+    @JsonProperty("llmValidationEnabled")
+    @NotNull(message = "llmValidationEnabled is required")
+    Boolean llmValidationEnabled
 ) {
     /**
      * Validates business rules for the configuration request.

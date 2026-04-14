@@ -9,6 +9,7 @@ export interface PiiDetectionConfig {
   regexEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
+  llmValidationEnabled: boolean;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -22,6 +23,7 @@ export interface UpdatePiiDetectionConfigRequest {
   regexEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
+  llmValidationEnabled: boolean;
 }
 
 /**

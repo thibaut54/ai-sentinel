@@ -1,0 +1,305 @@
+package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
+import reactor.test.StepVerifier;
+
+import java.time.Duration;
+import java.time.Instant;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class ScanTaskManagerAdapterTest {
+
+    private ScanTaskManagerAdapter adapter;
+
+    @BeforeEach
+    void setUp() {
+        adapter = new ScanTaskManagerAdapter();
+    }
+
+    private ConfluenceContentScanResult buildEvent(String scanId, String eventType) {
+        return ConfluenceContentScanResult.builder()
+                .scanId(scanId)
+                .eventType(eventType)
+                .emittedAt(Instant.now().toString())
+                .build();
+    }
+
+    @Nested
+    class StartScan {
+
+        @Test
+        void Should_ThrowIllegalArgumentException_When_ScanIdIsNull() {
+            // Arrange
+            Flux<ConfluenceContentScanResult> stream = Flux.empty();
+
+            // Act & Assert
+            assertThatThrownBy(() -> adapter.startScan(null, stream))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("scanId cannot be null");
+        }
+
+        @Test
+        void Should_ThrowIllegalArgumentException_When_ScanDataStreamIsNull() {
+            // Act & Assert
+            assertThatThrownBy(() -> adapter.startScan("scan-1", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("scanDataStream cannot be null");
+        }
+
+        @Test
+        void Should_RegisterScan_When_ValidArguments() {
+            // Arrange
+            Flux<ConfluenceContentScanResult> stream = Flux.empty();
+
+            // Act
+            adapter.startScan("scan-1", stream);
+
+            // Assert - subscribeScan should not throw ScanNotFoundException
+            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("scan-1");
+            assertThat(result).isNotNull();
+        }
+    }
+
+    @Nested
+    class SubscribeScan {
+
+        @Test
+        void Should_ReturnErrorFlux_When_ScanIdIsUnknown() {
+            // Act
+            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("unknown-scan");
+
+            // Assert
+            StepVerifier.create(result)
+                    .expectErrorSatisfies(error -> {
+                        assertThat(error).isInstanceOf(ScanNotFoundException.class);
+                        assertThat(error.getMessage()).contains("unknown-scan");
+                    })
+                    .verify(Duration.ofSeconds(2));
+        }
+
+        @Test
+        void Should_ReceiveEvents_When_ScanEmitsData() {
+            // Arrange
+            Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
+            Flux<ConfluenceContentScanResult> scanStream = source.asFlux();
+
+            ConfluenceContentScanResult event1 = buildEvent("scan-1", "item");
+            ConfluenceContentScanResult event2 = buildEvent("scan-1", "item");
+
+            adapter.startScan("scan-1", scanStream);
+
+            // Act
+            Flux<ConfluenceContentScanResult> subscription = adapter.subscribeScan("scan-1");
+
+            // Emit events after a small delay to allow subscription wiring
+            source.tryEmitNext(event1);
+            source.tryEmitNext(event2);
+            source.tryEmitComplete();
+
+            // Assert
+            StepVerifier.create(subscription)
+                    .expectNext(event1)
+                    .expectNext(event2)
+                    .verifyComplete();
+        }
+
+        @Test
+        void Should_ReceiveReplayedEvents_When_SubscribingAfterEmission() {
+            // Arrange
+            Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
+            Flux<ConfluenceContentScanResult> scanStream = source.asFlux();
+
+            ConfluenceContentScanResult event1 = buildEvent("scan-1", "item");
+
+            adapter.startScan("scan-1", scanStream);
+
+            // Emit event before subscribing
+            source.tryEmitNext(event1);
+            source.tryEmitComplete();
+
+            // Allow the internal subscription to process
+            try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+            // Act & Assert - late subscriber should still receive replayed events
+            Flux<ConfluenceContentScanResult> subscription = adapter.subscribeScan("scan-1");
+
+            StepVerifier.create(subscription)
+                    .expectNext(event1)
+                    .verifyComplete();
+        }
+    }
+
+    @Nested
+    class PauseScan {
+
+        @Test
+        void Should_ReturnFalse_When_ScanIdIsUnknown() {
+            // Act
+            boolean result = adapter.pauseScan("unknown-scan");
+
+            // Assert
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void Should_ReturnFalse_When_SubscriptionAlreadyDisposed() {
+            // Arrange
+            Flux<ConfluenceContentScanResult> stream = Flux.empty();
+            adapter.startScan("scan-1", stream);
+
+            // Allow the stream to complete (which disposes the subscription)
+            try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+            // Act
+            boolean result = adapter.pauseScan("scan-1");
+
+            // Assert
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void Should_ReturnTrueAndDispose_When_ScanIsActive() {
+            // Arrange - use a never-ending flux to keep the scan active
+            Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
+            adapter.startScan("scan-1", source.asFlux());
+
+            // Act
+            boolean result = adapter.pauseScan("scan-1");
+
+            // Assert
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        void Should_ReturnFalseOnSecondPause_When_AlreadyPaused() {
+            // Arrange - use a never-ending flux to keep the scan active
+            Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
+            adapter.startScan("scan-1", source.asFlux());
+
+            // Act - first pause succeeds
+            boolean firstPause = adapter.pauseScan("scan-1");
+            // Second pause should fail (already disposed)
+            boolean secondPause = adapter.pauseScan("scan-1");
+
+            // Assert
+            assertThat(firstPause).isTrue();
+            assertThat(secondPause).isFalse();
+        }
+    }
+
+    @Nested
+    class CleanupCompletedScans {
+
+        @Test
+        void Should_RemoveCompletedScansOlderThanTTL_When_CleanupRuns() throws Exception {
+            // Arrange - start a scan and let it complete
+            Flux<ConfluenceContentScanResult> stream = Flux.empty();
+            adapter.startScan("old-scan", stream);
+
+            // Wait for completion
+            Thread.sleep(200);
+
+            // We need to manipulate time. Since the adapter uses Instant.now() internally,
+            // and the CLEANUP_TTL is 1 hour, the scan won't be cleaned up with real time.
+            // Instead, we use reflection to set startTime to a past instant.
+            java.lang.reflect.Field managedScansField = ScanTaskManagerAdapter.class.getDeclaredField("managedScans");
+            managedScansField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> scans = (java.util.Map<String, Object>) managedScansField.get(adapter);
+
+            // Get the ManagedScan record and replace it with one having an old startTime
+            Object oldScan = scans.get("old-scan");
+            assertThat(oldScan).isNotNull();
+
+            // Access inner record fields via reflection
+            java.lang.reflect.Method sinkMethod = oldScan.getClass().getMethod("sink");
+            java.lang.reflect.Method subscriptionMethod = oldScan.getClass().getMethod("subscription");
+            java.lang.reflect.Method isCompletedMethod = oldScan.getClass().getMethod("isCompleted");
+
+            Object sink = sinkMethod.invoke(oldScan);
+            Object subscription = subscriptionMethod.invoke(oldScan);
+            Object isCompleted = isCompletedMethod.invoke(oldScan);
+
+            // Create a new ManagedScan with an old startTime (2 hours ago)
+            java.lang.reflect.Constructor<?> constructor = oldScan.getClass().getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            Object agedScan = constructor.newInstance(sink, subscription, Instant.now().minus(Duration.ofHours(2)), isCompleted);
+            scans.put("old-scan", agedScan);
+
+            // Act
+            adapter.cleanupCompletedScans();
+
+            // Assert - the old completed scan should be removed
+            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("old-scan");
+            StepVerifier.create(result)
+                    .expectErrorSatisfies(error ->
+                            assertThat(error).isInstanceOf(ScanNotFoundException.class))
+                    .verify(Duration.ofSeconds(2));
+        }
+
+        @Test
+        void Should_KeepRecentCompletedScans_When_CleanupRuns() throws Exception {
+            // Arrange - start a scan and let it complete (just now, within TTL)
+            Flux<ConfluenceContentScanResult> stream = Flux.empty();
+            adapter.startScan("recent-scan", stream);
+
+            // Wait for completion
+            Thread.sleep(200);
+
+            // Act
+            adapter.cleanupCompletedScans();
+
+            // Assert - the recent completed scan should still be accessible
+            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("recent-scan");
+            assertThat(result).isNotNull();
+
+            StepVerifier.create(result)
+                    .verifyComplete();
+        }
+
+        @Test
+        void Should_NotRemoveActiveScans_When_CleanupRuns() throws Exception {
+            // Arrange - start a scan that never completes
+            Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
+            adapter.startScan("active-scan", source.asFlux());
+
+            // Manipulate startTime to be old (2 hours ago) but scan is NOT completed
+            java.lang.reflect.Field managedScansField = ScanTaskManagerAdapter.class.getDeclaredField("managedScans");
+            managedScansField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> scans = (java.util.Map<String, Object>) managedScansField.get(adapter);
+
+            Object activeScan = scans.get("active-scan");
+            java.lang.reflect.Method sinkMethod = activeScan.getClass().getMethod("sink");
+            java.lang.reflect.Method subscriptionMethod = activeScan.getClass().getMethod("subscription");
+            java.lang.reflect.Method isCompletedMethod = activeScan.getClass().getMethod("isCompleted");
+
+            Object sink = sinkMethod.invoke(activeScan);
+            Object subscription = subscriptionMethod.invoke(activeScan);
+            Object isCompleted = isCompletedMethod.invoke(activeScan);
+
+            java.lang.reflect.Constructor<?> constructor = activeScan.getClass().getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            Object agedActiveScan = constructor.newInstance(sink, subscription, Instant.now().minus(Duration.ofHours(2)), isCompleted);
+            scans.put("active-scan", agedActiveScan);
+
+            // Act
+            adapter.cleanupCompletedScans();
+
+            // Assert - the active scan should NOT be removed even though it's old
+            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("active-scan");
+            assertThat(result).isNotNull();
+
+            // Clean up
+            source.tryEmitComplete();
+        }
+    }
+}

@@ -106,3 +106,32 @@ parallel_execution = true
 
 # Timeout per model in seconds (increased to 180s to handle complex pages)
 model_timeout = 180
+
+# ============================================================================
+# LLM VALIDATION SETTINGS (Post-detection false positive filtering)
+# Activation is controlled via the database flag llm_validation_enabled.
+# The model is auto-downloaded from HuggingFace on first use (requires HF_TOKEN).
+# ============================================================================
+[llm_validation]
+# HuggingFace model ID or local path to model directory
+model_path = "google/gemma-4-E4B-it"
+
+# Device for validation model: "auto" (auto-detect), "cpu", "cuda"
+device = "auto"
+
+# Number of characters before/after detection to include as context
+context_window = 250
+
+# Maximum entities per validation batch (too many = prompt too long)
+max_batch_size = 20
+
+# Timeout per validation batch in seconds
+# If exceeded, returns unfiltered detections (graceful degradation)
+timeout_seconds = 300.0
+
+# Maximum tokens to generate in LLM response
+max_output_tokens = 200
+
+# Temperature for LLM generation (0.0 = deterministic)
+temperature = 0.0
+

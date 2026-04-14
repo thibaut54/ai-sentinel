@@ -76,6 +76,12 @@ except Exception:  # pragma: no cover - safe import guard
     create_composite_detector = None  # type: ignore
     should_use_composite_detector = None  # type: ignore
 
+# Optional LLM validation (post-detection false positive filtering)
+try:
+    from pii_detector.infrastructure.validation.llm_validator import LLMValidator
+except Exception:  # pragma: no cover - safe import guard
+    LLMValidator = None  # type: ignore
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -122,6 +128,10 @@ atexit.register(_shutdown_pii_log_listener)
 _detector_instance = None
 _detector_lock = threading.Lock()
 
+# Singleton instance for LLM validation (post-detection FP filtering)
+_llm_validator_instance = None
+_llm_validator_lock = threading.Lock()
+
 def get_detector_instance():
     """Get or create a singleton instance of PIIDetector."""
     global _detector_instance
@@ -130,6 +140,51 @@ def get_detector_instance():
             if _detector_instance is None:
                 _initialize_detector_instance()
     return _detector_instance
+
+
+def get_llm_validator_instance():
+    """Get or create a singleton instance of LLMValidator. Returns None if unavailable."""
+    global _llm_validator_instance
+    if _llm_validator_instance is None:
+        with _llm_validator_lock:
+            if _llm_validator_instance is None:
+                _llm_validator_instance = _initialize_llm_validator()
+    return _llm_validator_instance
+
+
+def _initialize_llm_validator():
+    """Initialize the LLM validator from TOML config. Activation controlled by DB flag only."""
+    if LLMValidator is None:
+        logger.info("LLMValidator not available (import failed) - validation disabled")
+        return None
+
+    try:
+        from pii_detector.application.config.detection_policy import _load_llm_config
+        config = _load_llm_config()
+        llm_config = config.get("llm_validation", {})
+
+        validator = LLMValidator(
+            model_path=llm_config.get("model_path", "google/gemma-4-E4B-it"),
+            device=llm_config.get("device", "auto"),
+            context_window=llm_config.get("context_window", 200),
+            max_batch_size=llm_config.get("max_batch_size", 20),
+            timeout_seconds=llm_config.get("timeout_seconds", 300.0),
+            max_output_tokens=llm_config.get("max_output_tokens", 200),
+            temperature=llm_config.get("temperature", 0.0),
+            n_ctx=llm_config.get("n_ctx", 4096),
+            n_gpu_layers=llm_config.get("n_gpu_layers", -1),
+        )
+
+        if validator.load_model():
+            logger.info("LLM validator (Gemma 4 E4B GGUF) initialized - activation controlled by DB flag")
+            return validator
+        else:
+            logger.info("LLM validator model not found - validation available when model is deployed")
+            return None
+
+    except Exception as e:
+        logger.warning(f"Failed to initialize LLM validator: {e} - validation disabled")
+        return None
 
 
 def _initialize_detector_instance():
@@ -312,9 +367,12 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         # Load throughput logging configuration
         self.log_throughput = self._load_log_throughput_config()
-        
+
         # Use singleton detector instance
         self.detector = get_detector_instance()
+
+        # LLM validation singleton (None if unavailable or disabled)
+        self.llm_validator = get_llm_validator_instance()
         
         # Start memory monitoring thread if enabled
         if self.enable_memory_monitoring:
@@ -449,9 +507,42 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if current_offset < content_length:
             gc.collect(0)
 
+    def _validate_with_llm(self, entities: List, content: str, request_id: str) -> List:
+        """Run LLM post-detection validation to filter false positives.
+
+        Returns filtered entities, or the original list on error (conservative).
+        """
+        if not entities:
+            return entities
+        try:
+            before_count = len(entities)
+            logger.info(
+                f"[{request_id}] LLM validation starting: {before_count} entities to validate"
+            )
+            validated = self.llm_validator.validate_entities(entities, content)
+            rejected_count = before_count - len(validated)
+            logger.info(
+                f"[{request_id}] LLM validation complete: {before_count} submitted, "
+                f"{len(validated)} confirmed, {rejected_count} rejected "
+                f"(rejection_rate={rejected_count/before_count*100:.1f}%)"
+            )
+            return validated
+        except Exception as e:
+            logger.warning(
+                f"[{request_id}] LLM validation failed: {e} - returning unfiltered entities"
+            )
+            return entities
+
+    @staticmethod
+    def _is_llm_validation_enabled(detector_flags: Optional[dict]) -> bool:
+        """Check if LLM validation is enabled via database config flags."""
+        if detector_flags is None:
+            return True  # Default: enabled if validator is loaded
+        return bool(detector_flags.get('llm_validation_enabled', True))
+
     def DetectPII(self, request, context):
         """Implement the DetectPII RPC method with memory management.
-        
+
         Business process:
         1. Validate and extract request parameters
         2. Fetch dynamic configuration from database if requested
@@ -487,7 +578,11 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             entities = self._execute_detection(
                 content, threshold, request_id, detector_flags, pii_type_configs, chunk_size
             )
-            
+
+            # LLM post-detection validation: filter false positives
+            if self.llm_validator and self._is_llm_validation_enabled(detector_flags):
+                entities = self._validate_with_llm(entities, content, request_id)
+
             # Apply PII type-specific filtering if configs were fetched
             if pii_type_configs:
                 entities = self._filter_entities_by_type_config(entities, pii_type_configs, request_id)
@@ -613,14 +708,16 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             detector_flags = {
                 'gliner_enabled': db_config.get('gliner_enabled', True),
                 'presidio_enabled': db_config.get('presidio_enabled', True),
-                'regex_enabled': db_config.get('regex_enabled', False)
+                'regex_enabled': db_config.get('regex_enabled', False),
+                'llm_validation_enabled': db_config.get('llm_validation_enabled', False),
             }
-            
+
             logger.debug(
                 f"[{request_id}] Applied database config: threshold={threshold}, "
                 f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
+                f"llm_validation={detector_flags['llm_validation_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
             
@@ -1375,6 +1472,12 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
     def _build_final_stream_update(self, content: str, threshold: float, request_id: str):
         """Build final update with masked content and nbOfDetectedPIIBySeverity."""
         all_entities = getattr(self, '_stream_all_entities', [])
+
+        # LLM post-detection validation on accumulated stream entities
+        # Note: streaming does not support fetch_config_from_db, so we pass
+        # detector_flags=None which defaults to enabled when validator is loaded.
+        if self.llm_validator and self._is_llm_validation_enabled(None):
+            all_entities = self._validate_with_llm(all_entities, content, request_id)
         
         masked_content = self.detector._apply_masks(content, all_entities)
         summary = self._build_entity_summary(all_entities)

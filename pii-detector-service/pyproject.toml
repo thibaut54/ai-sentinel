@@ -32,7 +32,7 @@ dependencies = [
     "torch>=2.0.0",
 
     # ML and NLP dependencies (torch excluded - install via extras)
-    "transformers>=4.35.0",
+    "transformers>=4.51.3",
     "huggingface-hub>=0.19.0",
     "accelerate>=0.20.0",
     "gliner>=0.2.0",
@@ -63,6 +63,9 @@ dependencies = [
     "de_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl",
     "fr_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl",
     
+    # LLM validation (Gemma 4 E4B GGUF via llama.cpp)
+    "llama-cpp-python>=0.3.0",
+
     # Database connectivity for config fetch
     "psycopg2-binary>=2.9.0",
     

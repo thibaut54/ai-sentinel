@@ -41,6 +41,7 @@ public interface ManagePiiDetectionConfigPort {
             boolean regexEnabled,
             BigDecimal defaultThreshold,
             Integer nbOfLabelByPass,
+            boolean llmValidationEnabled,
             String updatedBy
     ) {
     }

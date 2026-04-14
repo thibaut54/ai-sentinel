@@ -13,6 +13,7 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   regexEnabled: true,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
+  llmValidationEnabled: false,
   updatedAt: '2026-03-16T10:00:00',
 };
 
@@ -37,6 +38,7 @@ const FR_TRANSLATIONS = {
       gliner: { label: 'GLiNER', description: 'desc' },
       presidio: { label: 'Presidio', description: 'desc' },
       regex: { label: 'Regex', description: 'desc' },
+      llmValidation: { label: 'Double vérification IA (Gemma 4)', description: 'desc' },
     },
     messages: { loadError: 'Erreur', saveAllSuccess: 'Sauvegardé', saveAllError: 'Erreur' },
     confluence: { messages: { loadError: 'Erreur', saveSuccess: 'OK', saveError: 'Erreur' } },

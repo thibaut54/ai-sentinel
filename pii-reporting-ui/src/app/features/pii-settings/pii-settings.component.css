@@ -248,6 +248,29 @@
   border-color: var(--sentinel-border-medium);
 }
 
+/* LLM Validation */
+.detector-card.llm-validation.enabled {
+  border-color: var(--purple-300);
+  background: color-mix(in srgb, var(--purple-50) 60%, transparent);
+}
+
+.detector-card.llm-validation.disabled {
+  border-color: var(--sentinel-border-default);
+  background: var(--sentinel-bg-surface);
+}
+
+.detector-avatar.llm-validation {
+  background: color-mix(in srgb, var(--purple-100) 80%, transparent);
+  color: var(--purple-700);
+  border: 1px solid var(--purple-200);
+}
+
+.detector-avatar.llm-validation.disabled-avatar {
+  background: var(--sentinel-bg-input-disabled);
+  color: var(--sentinel-text-subtle);
+  border-color: var(--sentinel-border-medium);
+}
+
 .detector-info {
   flex: 1;
   min-width: 0;

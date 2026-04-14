@@ -15,6 +15,7 @@ public record PiiDetectionConfig(
         boolean regexEnabled,
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
+        boolean llmValidationEnabled,
         LocalDateTime updatedAt,
         String updatedBy) {
 

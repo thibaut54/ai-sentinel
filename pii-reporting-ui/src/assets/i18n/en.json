@@ -275,6 +275,10 @@
       "regex": {
         "label": "Regex Detector",
         "description": "Pattern-based detection using regular expressions for structured data"
+      },
+      "llmValidation": {
+        "label": "AI Double-Check (Gemma 4)",
+        "description": "Filters false positives by validating each detection with a local language model (Gemma 4 e4b)"
       }
     },
     "threshold": {

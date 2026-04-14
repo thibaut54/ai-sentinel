@@ -58,6 +58,11 @@ public class PiiDetectionConfigEntity {
     private Integer nbOfLabelByPass;
 
     @NotNull
+    @Column(name = "llm_validation_enabled", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean llmValidationEnabled = false;
+
+    @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

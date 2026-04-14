@@ -120,6 +120,25 @@
                                 [ariaLabel]="'settings.detectors.regex.label' | transloco">
                             </p-toggleswitch>
                         </div>
+
+                        <!-- LLM Validation (Gemma 4) -->
+                        <div class="detector-card llm-validation"
+                             [class.enabled]="configForm.get('llmValidationEnabled')?.value"
+                             [class.disabled]="!configForm.get('llmValidationEnabled')?.value">
+                            <div class="detector-avatar llm-validation"
+                                 [class.disabled-avatar]="!configForm.get('llmValidationEnabled')?.value">G4</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('llmValidationEnabled')?.value">
+                                    {{ 'settings.detectors.llmValidation.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.llmValidation.description' | transloco }}</div>
+                            </div>
+                            <p-toggleswitch
+                                formControlName="llmValidationEnabled"
+                                [ariaLabel]="'settings.detectors.llmValidation.label' | transloco">
+                            </p-toggleswitch>
+                        </div>
                     </div>
 
                     <!-- Validation error: at least one detector -->

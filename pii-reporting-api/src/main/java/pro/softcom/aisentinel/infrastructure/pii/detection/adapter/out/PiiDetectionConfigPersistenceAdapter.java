@@ -53,10 +53,10 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, threshold={}, nbOfLabelByPass={}, updatedBy={}",
+                "regexEnabled={}, threshold={}, nbOfLabelByPass={}, llmValidationEnabled={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
                 config.regexEnabled(), config.defaultThreshold(),
-                config.nbOfLabelByPass(), config.updatedBy());
+                config.nbOfLabelByPass(), config.llmValidationEnabled(), config.updatedBy());
         
         PiiDetectionConfigEntity entity = toEntity(config);
         jpaRepository.save(entity);
@@ -78,6 +78,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 true,  // regexEnabled
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
+                false, // llmValidationEnabled
                 LocalDateTime.now(),
                 "system"
         );
@@ -97,6 +98,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getRegexEnabled(),
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
+                Boolean.TRUE.equals(entity.getLlmValidationEnabled()),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -113,6 +115,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .regexEnabled(config.regexEnabled())
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
+                .llmValidationEnabled(config.llmValidationEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
                 .updatedBy(config.updatedBy())
                 .build();

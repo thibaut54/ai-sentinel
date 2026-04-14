@@ -62,6 +62,13 @@ pii-detector:
   connection-timeout-ms: 300000  # 5 minutes to handle large attachments (e.g., CSV files)
   request-timeout-ms: 300000      # 5 minutes to handle large attachments (e.g., CSV files)
 
+# Estimation / profiling (counts all Confluence chars + tokens on startup)
+estimation:
+  content-count:
+    enabled: ${ESTIMATION_CONTENT_COUNT_ENABLED:false}
+  attachment-count:
+    enabled: ${ESTIMATION_ATTACHMENT_COUNT_ENABLED:false}
+
 # Scan Timeouts Configuration
 scan:
   timeouts:
