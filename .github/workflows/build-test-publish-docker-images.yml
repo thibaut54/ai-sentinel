@@ -6,6 +6,7 @@ on:
       - main
       - develop
       - 'release/**'
+      - 'feature/gemma-4'
   workflow_dispatch:
     inputs:
       tag:
@@ -44,7 +45,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/feature/gemma-4') &&
       (github.event.inputs.build_detector != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
@@ -74,6 +75,8 @@ jobs:
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-pii-detector:$RELEASE_TAG" >> $GITHUB_OUTPUT
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-pii-detector:$VERSION" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/feature/gemma-4" ]; then
+            echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-pii-detector:feature-gemma-4" >> $GITHUB_OUTPUT
           fi
 
       - name: Log in to GitHub Container Registry
@@ -102,7 +105,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/feature/gemma-4') &&
       (github.event.inputs.build_api != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
@@ -131,6 +134,8 @@ jobs:
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-api:$RELEASE_TAG" >> $GITHUB_OUTPUT
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-api:$VERSION" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/feature/gemma-4" ]; then
+            echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-api:feature-gemma-4" >> $GITHUB_OUTPUT
           fi
 
       - name: Log in to GitHub Container Registry
@@ -159,7 +164,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/feature/gemma-4') &&
       (github.event.inputs.build_ui != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
@@ -188,6 +193,8 @@ jobs:
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-ui:$RELEASE_TAG" >> $GITHUB_OUTPUT
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-ui:$VERSION" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/feature/gemma-4" ]; then
+            echo "image_tags=ghcr.io/$OWNER_LOWER/ai-sentinel-reporting-ui:feature-gemma-4" >> $GITHUB_OUTPUT
           fi
 
       - name: Log in to GitHub Container Registry

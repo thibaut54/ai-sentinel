@@ -554,22 +554,60 @@ services:
       - ai-sentinel-network
 
   # ============================================================================
+  # GEMMA 4 MODEL DOWNLOADER (one-shot)
+  # Pre-telecharge le GGUF Gemma 4 E4B dans le volume partage huggingface-cache
+  # AVANT le demarrage du pii-detector, pour eviter le cold-start lazy au premier scan.
+  # Idempotent: hf_hub_download verifie l'ETag et skip le download si le fichier
+  # est deja present dans le cache.
+  # ============================================================================
+  gemma-model-downloader:
+    image: python:3.11-slim
+    container_name: ai-sentinel-gemma-downloader
+    restart: "no"
+    environment:
+      HF_HOME: /cache
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      # HF_TOKEN: a ajouter si le repo devient private ou en cas de rate-limiting
+    command: >
+      sh -c '
+        set -eu;
+        echo "[gemma-downloader] Installing huggingface-hub...";
+        pip install --quiet --no-cache-dir "huggingface-hub>=0.19.0";
+        echo "[gemma-downloader] Downloading gemma-4-E4B-it-Q4_K_M.gguf (~3 GB, first run only)...";
+        python -c "
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download(
+            repo_id=\"unsloth/gemma-4-E4B-it-GGUF\",
+            filename=\"gemma-4-E4B-it-Q4_K_M.gguf\",
+            cache_dir=\"/cache\",
+        )
+        print(f\"[gemma-downloader] OK -> {path}\")
+        ";
+        echo "[gemma-downloader] Done. Model ready for pii-detector.";
+      '
+    volumes:
+      - huggingface-cache:/cache
+    networks:
+      - ai-sentinel-network
+
+  # ============================================================================
   # PII DETECTOR SERVICE (Python/gRPC) - PRE-BUILT IMAGE
   # ============================================================================
   pii-detector:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:feature-gemma-4
     container_name: pii-detector-service
     restart: unless-stopped
     
     # Resource limits for stability (prevents OOM and limits CPU usage)
+    # Note: GLiNER (~2G) + Presidio (~1G) + Gemma 4 E4B Q4_K_M (~3-4G) + llama.cpp overhead (~1G)
     deploy:
       resources:
         limits:
           cpus: '4.0'      # Max 4 CPU cores (adjust based on host)
-          memory: 8G       # Max 8GB RAM for NLP/ML models
+          memory: 16G      # Max 16GB RAM (GLiNER + Presidio + Gemma 4 LLM validator)
         reservations:
           cpus: '2.0'      # Guaranteed 2 CPU cores
-          memory: 4G       # Guaranteed 4GB RAM
+          memory: 8G       # Guaranteed 8GB RAM
     
     ports:
       - "50051:50051"
@@ -599,6 +637,8 @@ services:
         condition: service_completed_successfully
       infisical:
         condition: service_healthy
+      gemma-model-downloader:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"]
       interval: 30s
@@ -612,7 +652,7 @@ services:
   # PII REPORTING API (Spring Boot) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-api:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:feature-gemma-4
     container_name: pii-reporting-api
     restart: unless-stopped
     ports:
@@ -661,7 +701,7 @@ services:
   # PII REPORTING UI (Angular + Nginx) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-ui:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:feature-gemma-4
     container_name: pii-reporting-ui
     restart: unless-stopped
     ports:
