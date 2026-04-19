@@ -49,6 +49,7 @@ logging:
   level:
     pro.softcom.aisentinel.infrastructure.confluence: DEBUG
     pro.softcom.aisentinel.infrastructure.pii: DEBUG
+    pro.softcom.aisentinel.application.pii.reporting: DEBUG
     org.springframework.web.client: DEBUG
 
 # PII Detector Configuration

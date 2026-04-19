@@ -171,7 +171,19 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                                     AttachmentTextExtracted extracted,
                                                                     ScanProgress scanProgress) {
         return Mono.fromCallable(() -> {
-            ContentPiiDetection detection = detectPii(extracted.extractedText());
+            String attachmentText = extracted.extractedText();
+            String safeText = attachmentText != null ? attachmentText : "";
+            String preview = safeText.length() > 500 ? safeText.substring(0, 500) + "..." : safeText;
+            log.info(
+                "[ATTACHMENTS][USECASE][TO_GLINER] pageId={} attachment=\"{}\" type=\"{}\" length={} preview=\"{}\"",
+                page.id(), extracted.attachment().name(), extracted.attachment().extension(),
+                safeText.length(), preview);
+            ContentPiiDetection detection = detectPii(attachmentText);
+            int detectedCount = detection != null && detection.sensitiveDataFound() != null
+                ? detection.sensitiveDataFound().size() : 0;
+            log.info(
+                "[ATTACHMENTS][USECASE][FROM_GLINER] pageId={} attachment=\"{}\" detectedPII={}",
+                page.id(), extracted.attachment().name(), detectedCount);
             double progress = calculateProgressForAttachment(scanProgress);
 
             return contentScanOrchestrator.createAttachmentItemEvent(

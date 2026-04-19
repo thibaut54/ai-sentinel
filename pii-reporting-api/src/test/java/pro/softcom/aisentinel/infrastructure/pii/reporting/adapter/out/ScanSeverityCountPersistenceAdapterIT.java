@@ -13,6 +13,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.ScanSeverityCountJpaRepository;
@@ -71,7 +72,7 @@ class ScanSeverityCountPersistenceAdapterIT {
         var delta = new SeverityCounts(3, 5, 2);
 
         // Act
-        adapter.incrementCounts("scan-001", "SPACE-A", delta);
+        adapter.incrementCounts("scan-001", "SPACE-A", delta, ClassificationCounts.zero());
 
         // Assert
         var id = ScanSeverityCountId.builder()
@@ -110,7 +111,7 @@ class ScanSeverityCountPersistenceAdapterIT {
 
         // Act - Increment with new delta
         var delta = new SeverityCounts(3, 5, 2);
-        adapter.incrementCounts("scan-002", "SPACE-B", delta);
+        adapter.incrementCounts("scan-002", "SPACE-B", delta, ClassificationCounts.zero());
 
         // Assert - Verify atomic increment
         var id = ScanSeverityCountId.builder()
@@ -138,7 +139,7 @@ class ScanSeverityCountPersistenceAdapterIT {
         var delta = new SeverityCounts(0, 0, 0);
 
         // Act
-        adapter.incrementCounts("scan-003", "SPACE-C", delta);
+        adapter.incrementCounts("scan-003", "SPACE-C", delta, ClassificationCounts.zero());
 
         // Assert - Should create record with zeros
         var id = ScanSeverityCountId.builder()

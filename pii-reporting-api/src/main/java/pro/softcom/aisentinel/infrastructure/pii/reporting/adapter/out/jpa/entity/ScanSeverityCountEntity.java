@@ -36,6 +36,30 @@ public class ScanSeverityCountEntity {
     @Column(name = "nb_of_low_severity", nullable = false)
     private Integer nbOfLowSeverity;
 
+    @Column(name = "nb_gdpr_special_category", nullable = false)
+    private Integer nbGdprSpecialCategory;
+
+    @Column(name = "nb_gdpr_criminal_data", nullable = false)
+    private Integer nbGdprCriminalData;
+
+    @Column(name = "nb_gdpr_personal_data_high_risk", nullable = false)
+    private Integer nbGdprPersonalDataHighRisk;
+
+    @Column(name = "nb_gdpr_personal_data", nullable = false)
+    private Integer nbGdprPersonalData;
+
+    @Column(name = "nb_nlpd_sensitive_data", nullable = false)
+    private Integer nbNlpdSensitiveData;
+
+    @Column(name = "nb_nlpd_high_risk_profiling_data", nullable = false)
+    private Integer nbNlpdHighRiskProfilingData;
+
+    @Column(name = "nb_nlpd_personal_data_high_risk", nullable = false)
+    private Integer nbNlpdPersonalDataHighRisk;
+
+    @Column(name = "nb_nlpd_personal_data", nullable = false)
+    private Integer nbNlpdPersonalData;
+
     /**
      * Convenience method to get scan ID from composite key.
      */

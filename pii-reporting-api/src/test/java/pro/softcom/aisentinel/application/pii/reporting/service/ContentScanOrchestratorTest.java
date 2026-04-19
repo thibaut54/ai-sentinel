@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
@@ -17,6 +18,8 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -137,6 +140,8 @@ class ContentScanOrchestratorTest {
             SeverityCounts calculatedCounts = new SeverityCounts(0, 1, 0);
             when(severityCalculationService.aggregateCounts(detectedEntities))
                     .thenReturn(calculatedCounts);
+            when(severityCalculationService.aggregateClassificationCounts(detectedEntities))
+                    .thenReturn(ClassificationCounts.zero());
 
             // When
             orchestrator.persistEventAsyncOperations(event);
@@ -144,7 +149,7 @@ class ContentScanOrchestratorTest {
             // Then
             verifyNoInteractions(scanCheckpointService); // Checkpoint NOT persisted here
             verify(severityCalculationService).aggregateCounts(detectedEntities);
-            verify(scanSeverityCountService).incrementCounts(scanId, spaceKey, calculatedCounts);
+            verify(scanSeverityCountService).incrementCounts(eq(scanId), eq(spaceKey), eq(calculatedCounts), any(ClassificationCounts.class));
             verify(scanEventStore).append(event);
         }
 

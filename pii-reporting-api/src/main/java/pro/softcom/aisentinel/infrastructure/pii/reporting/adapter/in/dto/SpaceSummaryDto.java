@@ -9,5 +9,6 @@ public record SpaceSummaryDto(
         long pagesDone,
         long attachmentsDone,
         Instant lastEventTs,
-        SeverityCountsDto severityCounts
+        SeverityCountsDto severityCounts,
+        ClassificationCountsDto classificationCounts
 ) { }

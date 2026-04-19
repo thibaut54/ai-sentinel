@@ -2,6 +2,8 @@ package pro.softcom.aisentinel.application.pii.detection.usecase;
 
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 
 import java.util.List;
@@ -20,7 +22,7 @@ import java.util.stream.Collectors;
  */
 public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
 
-    private static final Pattern PII_TYPE_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]{1,98}$");
+    private static final Pattern PII_TYPE_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]{2,98}$");
 
     private final PiiTypeConfigRepository repository;
 
@@ -33,6 +35,7 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         validatePiiTypeFormat(command.piiType());
         validateDetector(command.detector());
         validateThreshold(command.threshold());
+        validateClassifications(command.gdprClassification(), command.nlpdClassification());
 
         if ("GLINER".equals(command.detector()) && (command.detectorLabel() == null || command.detectorLabel().isBlank())) {
             throw new IllegalArgumentException("Detector label is required for GLINER detector");
@@ -54,6 +57,8 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
                 .countryCode(command.countryCode())
                 .custom(true)
                 .severity(command.severity() != null ? command.severity() : "LOW")
+                .gdprClassification(command.gdprClassification())
+                .nlpdClassification(command.nlpdClassification())
                 .updatedBy(command.createdBy())
                 .build();
 
@@ -86,12 +91,17 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
             String detector,
             boolean enabled,
             double threshold,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification,
             String updatedBy
     ) {
         validateDetector(detector);
         validateThreshold(threshold);
 
-        return repository.updateAtomically(piiType, detector, enabled, threshold, updatedBy);
+        return repository.updateAtomically(
+                piiType, detector, enabled, threshold,
+                gdprClassification, nlpdClassification, updatedBy
+        );
     }
 
     @Override
@@ -120,6 +130,9 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         for (PiiTypeConfigUpdate update : updates) {
             validateDetector(update.detector());
             validateThreshold(update.threshold());
+            // Classifications are optional for bulk update (null = keep current);
+            // when provided, the enum itself guarantees the value is one of the four allowed.
+            // Nothing further to check — we only guard against corrupt data from misbehaving adapters.
         }
 
         return repository.bulkUpdateAtomically(updates, updatedBy);
@@ -128,7 +141,7 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
     private void validatePiiTypeFormat(String piiType) {
         if (piiType == null || !PII_TYPE_PATTERN.matcher(piiType).matches()) {
             throw new IllegalArgumentException(
-                    "PII type must be UPPER_SNAKE_CASE (2-99 chars, starts with letter). Got: " + piiType
+                    "PII type must be UPPER_SNAKE_CASE (3-99 chars, starts with letter). Got: " + piiType
             );
         }
     }
@@ -149,6 +162,15 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
             throw new IllegalArgumentException(
                     "Threshold must be between 0.0 and 1.0. Got: " + threshold
             );
+        }
+    }
+
+    private void validateClassifications(GdprDataClassification gdpr, NlpdDataClassification nlpd) {
+        if (gdpr == null) {
+            throw new IllegalArgumentException("GDPR classification is required");
+        }
+        if (nlpd == null) {
+            throw new IllegalArgumentException("nLPD classification is required");
         }
     }
 }

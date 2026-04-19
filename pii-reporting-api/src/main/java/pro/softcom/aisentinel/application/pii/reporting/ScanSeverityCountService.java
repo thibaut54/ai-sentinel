@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting;
 
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
@@ -30,27 +31,30 @@ public class ScanSeverityCountService {
     }
 
     /**
-     * Atomically increments severity counts for a scan and space.
-     * 
+     * Atomically increments severity and classification counts for a scan and space.
+     *
      * <p>Business rule: This operation must support concurrent execution from multiple
      * scan workers processing the same space without data loss or corruption.
-     * 
-     * @param scanId Unique identifier of the scan (must not be null or blank)
-     * @param spaceKey Confluence space key (must not be null or blank)
-     * @param delta Severity counts to add (must not be null)
-     * @throws IllegalArgumentException if scanId, spaceKey, or delta is null or blank
+     *
+     * @param scanId              Unique identifier of the scan (must not be null or blank)
+     * @param spaceKey            Confluence space key (must not be null or blank)
+     * @param delta               Severity counts to add (must not be null)
+     * @param classificationDelta Classification counts to add (must not be null, {@link ClassificationCounts#zero()} when none)
+     * @throws IllegalArgumentException if any parameter is null or blank
      */
-    public void incrementCounts(String scanId, String spaceKey, SeverityCounts delta) {
+    public void incrementCounts(String scanId, String spaceKey, SeverityCounts delta,
+                                ClassificationCounts classificationDelta) {
         validateScanId(scanId);
         validateSpaceKey(spaceKey);
         validateDelta(delta);
-        
-        repository.incrementCounts(scanId, spaceKey, delta);
+        validateClassificationDelta(classificationDelta);
+
+        repository.incrementCounts(scanId, spaceKey, delta, classificationDelta);
     }
 
     /**
      * Retrieves severity counts for a specific scan and space.
-     * 
+     *
      * @param scanId Unique identifier of the scan (must not be null or blank)
      * @param spaceKey Confluence space key (must not be null or blank)
      * @return Severity counts if record exists, otherwise empty
@@ -59,8 +63,25 @@ public class ScanSeverityCountService {
     public Optional<SeverityCounts> getCounts(String scanId, String spaceKey) {
         validateScanId(scanId);
         validateSpaceKey(spaceKey);
-        
+
         return repository.findByScanIdAndSpaceKey(scanId, spaceKey);
+    }
+
+    /**
+     * Retrieves the full scan counts record (severity + classification) for a specific space.
+     *
+     * @param scanId Unique identifier of the scan
+     * @param spaceKey Confluence space key
+     * @return The aggregated record if it exists, otherwise empty
+     * @throws IllegalArgumentException if scanId or spaceKey is null or blank
+     */
+    public Optional<ScanSeverityCount> getScanCount(String scanId, String spaceKey) {
+        validateScanId(scanId);
+        validateSpaceKey(spaceKey);
+
+        return repository.findByScanId(scanId).stream()
+                .filter(sc -> spaceKey.equals(sc.spaceKey()))
+                .findFirst();
     }
 
     /**
@@ -109,6 +130,12 @@ public class ScanSeverityCountService {
     private void validateDelta(SeverityCounts delta) {
         if (delta == null) {
             throw new IllegalArgumentException("delta must not be null");
+        }
+    }
+
+    private void validateClassificationDelta(ClassificationCounts delta) {
+        if (delta == null) {
+            throw new IllegalArgumentException("classificationDelta must not be null");
         }
     }
 }

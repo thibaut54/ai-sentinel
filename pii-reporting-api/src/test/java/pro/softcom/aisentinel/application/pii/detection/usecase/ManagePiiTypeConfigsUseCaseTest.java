@@ -8,8 +8,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort.CreatePiiTypeConfigCommand;
+import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort.PiiTypeConfigUpdate;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
+
+import java.util.List;
 
 import java.util.Optional;
 
@@ -51,7 +56,9 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "custom label", null, "HIGH", "admin"
+                "Custom", "custom label", null, "HIGH",
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         ));
 
         // Assert
@@ -78,7 +85,9 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act & Assert
         var command = new CreatePiiTypeConfigCommand(
                 "EXISTING_TYPE", "GLINER", true, 0.5,
-                "Custom", "existing type", null, null, "admin"
+                "Custom", "existing type", null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -92,7 +101,9 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidPiiTypeFormat() {
         var command = new CreatePiiTypeConfigCommand(
                 "invalid-type", "GLINER", true, 0.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -106,7 +117,9 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidDetector() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "INVALID", true, 0.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -120,7 +133,9 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_GlinerDetectorLabelBlank() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "", null, null, "admin"
+                "Custom", "", null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -134,7 +149,9 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_ThresholdOutOfRange() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 1.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -163,7 +180,9 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act - no detectorLabel for PRESIDIO should be fine
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "PRESIDIO", true, 0.7,
-                "Custom", null, null, null, "admin"
+                "Custom", null, null, null,
+                GdprDataClassification.PERSONAL_DATA, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
         ));
 
         // Assert
@@ -222,5 +241,84 @@ class ManagePiiTypeConfigsUseCaseTest {
                 .hasMessageContaining("not found");
 
         verify(repository, never()).deleteByPiiTypeAndDetector(any(), any());
+    }
+
+    // ====== Legal classification tests ======
+
+    @Test
+    @DisplayName("Should_PassClassificationsToBuilder_When_CreatingConfig")
+    void Should_PassClassificationsToBuilder_When_CreatingConfig() {
+        // Arrange
+        when(repository.findByPiiTypeAndDetector("DIAGNOSIS", "GLINER")).thenReturn(Optional.empty());
+        when(repository.save(any(PiiTypeConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        useCase.createConfig(new CreatePiiTypeConfigCommand(
+                "DIAGNOSIS", "GLINER", true, 0.8,
+                "MEDICAL", "medical diagnosis", null, "HIGH",
+                GdprDataClassification.SPECIAL_CATEGORY, NlpdDataClassification.SENSITIVE_DATA,
+                "admin"
+        ));
+
+        // Assert
+        ArgumentCaptor<PiiTypeConfig> captor = ArgumentCaptor.forClass(PiiTypeConfig.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getGdprClassification()).isEqualTo(GdprDataClassification.SPECIAL_CATEGORY);
+        assertThat(captor.getValue().getNlpdClassification()).isEqualTo(NlpdDataClassification.SENSITIVE_DATA);
+    }
+
+    @Test
+    @DisplayName("Should_ThrowException_When_GdprClassificationIsNull")
+    void Should_ThrowException_When_GdprClassificationIsNull() {
+        var command = new CreatePiiTypeConfigCommand(
+                "CUSTOM_LABEL", "GLINER", true, 0.5,
+                "Custom", "label", null, "LOW",
+                null, NlpdDataClassification.PERSONAL_DATA,
+                "admin"
+        );
+        assertThatThrownBy(() -> useCase.createConfig(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("GDPR classification is required");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should_ThrowException_When_NlpdClassificationIsNull")
+    void Should_ThrowException_When_NlpdClassificationIsNull() {
+        var command = new CreatePiiTypeConfigCommand(
+                "CUSTOM_LABEL", "GLINER", true, 0.5,
+                "Custom", "label", null, "LOW",
+                GdprDataClassification.PERSONAL_DATA, null,
+                "admin"
+        );
+        assertThatThrownBy(() -> useCase.createConfig(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nLPD classification is required");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should_PropagateOptionalClassifications_When_BulkUpdate")
+    void Should_PropagateOptionalClassifications_When_BulkUpdate() {
+        // Arrange
+        PiiTypeConfigUpdate withClassifications = new PiiTypeConfigUpdate(
+                "DIAGNOSIS", "GLINER", true, 0.8,
+                GdprDataClassification.SPECIAL_CATEGORY, NlpdDataClassification.SENSITIVE_DATA
+        );
+        PiiTypeConfigUpdate withoutClassifications = new PiiTypeConfigUpdate(
+                "EMAIL", "GLINER", true, 0.8
+        );
+        List<PiiTypeConfigUpdate> updates = List.of(withClassifications, withoutClassifications);
+        when(repository.bulkUpdateAtomically(updates, "admin")).thenReturn(List.of());
+
+        // Act
+        useCase.bulkUpdate(updates, "admin");
+
+        // Assert - ensure the updates reach the repository verbatim (null means keep current value)
+        verify(repository).bulkUpdateAtomically(updates, "admin");
+        assertThat(withoutClassifications.gdprClassification()).isNull();
+        assertThat(withoutClassifications.nlpdClassification()).isNull();
     }
 }

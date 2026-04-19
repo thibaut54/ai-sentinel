@@ -1,7 +1,9 @@
 package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import org.springframework.stereotype.Component;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ClassificationCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 
 /**
@@ -34,6 +36,25 @@ public class SeverityCountsMapper {
             counts.medium(),
             counts.low(),
             counts.total()
+        );
+    }
+
+    /**
+     * Converts domain {@link ClassificationCounts} to DTO, returning zero counts when null.
+     */
+    public ClassificationCountsDto toClassificationDto(ClassificationCounts counts) {
+        if (counts == null) {
+            return ClassificationCountsDto.zero();
+        }
+        return new ClassificationCountsDto(
+            counts.gdprSpecialCategory(),
+            counts.gdprCriminalData(),
+            counts.gdprPersonalDataHighRisk(),
+            counts.gdprPersonalData(),
+            counts.nlpdSensitiveData(),
+            counts.nlpdHighRiskProfilingData(),
+            counts.nlpdPersonalDataHighRisk(),
+            counts.nlpdPersonalData()
         );
     }
 }

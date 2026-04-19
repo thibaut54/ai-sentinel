@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.application.pii.detection.port.in;
 
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 
 import java.util.List;
@@ -47,6 +49,9 @@ public interface ManagePiiTypeConfigsPort {
 
     /**
      * Command object for creating a new PII type configuration.
+     * <p>
+     * Both {@code gdprClassification} and {@code nlpdClassification} are mandatory
+     * and validated non-null by the use case.
      */
     record CreatePiiTypeConfigCommand(
             String piiType,
@@ -57,22 +62,36 @@ public interface ManagePiiTypeConfigsPort {
             String detectorLabel,
             String countryCode,
             String severity,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification,
             String createdBy
     ) {
     }
 
     /**
      * Updates configuration for a specific PII type and detector.
+     * <p>
+     * Classification parameters are optional: {@code null} means "keep the current value".
      *
-     * @param piiType     the PII type identifier
-     * @param detector    the detector name
-     * @param enabled     whether the PII type is enabled
-     * @param threshold   the detection threshold (0.0-1.0)
-     * @param updatedBy   the user making the update
+     * @param piiType             the PII type identifier
+     * @param detector            the detector name
+     * @param enabled             whether the PII type is enabled
+     * @param threshold           the detection threshold (0.0-1.0)
+     * @param gdprClassification  optional GDPR classification ({@code null} = keep current)
+     * @param nlpdClassification  optional nLPD classification ({@code null} = keep current)
+     * @param updatedBy           the user making the update
      * @return the updated configuration
      * @throws IllegalArgumentException if parameters are invalid
      */
-    PiiTypeConfig updateConfig(String piiType, String detector, boolean enabled, double threshold, String updatedBy);
+    PiiTypeConfig updateConfig(
+            String piiType,
+            String detector,
+            boolean enabled,
+            double threshold,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification,
+            String updatedBy
+    );
 
     /**
      * Bulk update of multiple PII type configurations.
@@ -96,12 +115,22 @@ public interface ManagePiiTypeConfigsPort {
 
     /**
      * Represents a single configuration update.
+     * <p>
+     * Classification fields are optional: {@code null} means "keep the current value".
      */
     record PiiTypeConfigUpdate(
             String piiType,
             String detector,
             boolean enabled,
-            double threshold
+            double threshold,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification
     ) {
+        /**
+         * Backward-compatible constructor that leaves both legal classifications untouched.
+         */
+        public PiiTypeConfigUpdate(String piiType, String detector, boolean enabled, double threshold) {
+            this(piiType, detector, enabled, threshold, null, null);
+        }
     }
 }

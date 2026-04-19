@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort.PiiTypeConfigUpdate;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.entity.PiiTypeConfigEntity;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiTypeConfigJpaRepository;
@@ -81,6 +83,8 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             String detector,
             boolean enabled,
             double threshold,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification,
             String updatedBy
     ) {
         PiiTypeConfigEntity entity = jpaRepository.findByPiiTypeAndDetector(piiType, detector)
@@ -90,6 +94,12 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
 
         entity.setEnabled(enabled);
         entity.setThreshold(threshold);
+        if (gdprClassification != null) {
+            entity.setGdprClassification(gdprClassification);
+        }
+        if (nlpdClassification != null) {
+            entity.setNlpdClassification(nlpdClassification);
+        }
         entity.setUpdatedBy(updatedBy);
 
         PiiTypeConfigEntity saved = jpaRepository.save(entity);
@@ -114,6 +124,12 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
 
                     entity.setEnabled(update.enabled());
                     entity.setThreshold(update.threshold());
+                    if (update.gdprClassification() != null) {
+                        entity.setGdprClassification(update.gdprClassification());
+                    }
+                    if (update.nlpdClassification() != null) {
+                        entity.setNlpdClassification(update.nlpdClassification());
+                    }
                     entity.setUpdatedBy(updatedBy);
 
                     return entity;

@@ -4,8 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
-import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
+import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ClassificationCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
@@ -48,11 +49,13 @@ public class ScanReportingSummaryMapper {
         if (space == null) {
             return null;
         }
-        
-        Optional<SeverityCounts> countsOpt = severityCountService.getCounts(scanId, space.spaceKey());
-        SeverityCounts counts = countsOpt.orElse(null);
-        SeverityCountsDto severityCountsDto = severityCountsMapper.toDto(counts);
-        
+
+        Optional<ScanSeverityCount> scanCountOpt = severityCountService.getScanCount(scanId, space.spaceKey());
+        SeverityCountsDto severityCountsDto = severityCountsMapper.toDto(
+                scanCountOpt.map(ScanSeverityCount::counts).orElse(null));
+        ClassificationCountsDto classificationCountsDto = severityCountsMapper.toClassificationDto(
+                scanCountOpt.map(ScanSeverityCount::classificationCounts).orElse(null));
+
         return new SpaceSummaryDto(
                 space.spaceKey(),
                 space.status(),
@@ -60,7 +63,8 @@ public class ScanReportingSummaryMapper {
                 space.pagesDone(),
                 space.attachmentsDone(),
                 space.lastEventTs(),
-                severityCountsDto
+                severityCountsDto,
+                classificationCountsDto
         );
     }
 }

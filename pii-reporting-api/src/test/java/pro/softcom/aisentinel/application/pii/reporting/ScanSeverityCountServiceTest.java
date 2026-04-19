@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
@@ -36,16 +37,16 @@ class ScanSeverityCountServiceTest {
             String spaceKey = "SPACE-A";
             SeverityCounts delta = new SeverityCounts(5, 3, 2);
 
-            service.incrementCounts(scanId, spaceKey, delta);
+            service.incrementCounts(scanId, spaceKey, delta, ClassificationCounts.zero());
 
-            verify(repository).incrementCounts(scanId, spaceKey, delta);
+            verify(repository).incrementCounts(scanId, spaceKey, delta, ClassificationCounts.zero());
         }
 
         @Test
         void Should_ThrowException_When_ScanIdIsNull() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts(null, "SPACE-A", delta))
+            assertThatThrownBy(() -> service.incrementCounts(null, "SPACE-A", delta, ClassificationCounts.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("scanId must not be null or blank");
         }
@@ -54,7 +55,7 @@ class ScanSeverityCountServiceTest {
         void Should_ThrowException_When_ScanIdIsBlank() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("  ", "SPACE-A", delta))
+            assertThatThrownBy(() -> service.incrementCounts("  ", "SPACE-A", delta, ClassificationCounts.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("scanId must not be null or blank");
         }
@@ -63,7 +64,7 @@ class ScanSeverityCountServiceTest {
         void Should_ThrowException_When_SpaceKeyIsNull() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", null, delta))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", null, delta, ClassificationCounts.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("spaceKey must not be null or blank");
         }
@@ -72,14 +73,14 @@ class ScanSeverityCountServiceTest {
         void Should_ThrowException_When_SpaceKeyIsBlank() {
             SeverityCounts delta = new SeverityCounts(1, 1, 1);
 
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", "", delta))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", "", delta, ClassificationCounts.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("spaceKey must not be null or blank");
         }
 
         @Test
         void Should_ThrowException_When_DeltaIsNull() {
-            assertThatThrownBy(() -> service.incrementCounts("scan-123", "SPACE-A", null))
+            assertThatThrownBy(() -> service.incrementCounts("scan-123", "SPACE-A", null, ClassificationCounts.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("delta must not be null");
         }
@@ -137,8 +138,8 @@ class ScanSeverityCountServiceTest {
         void Should_ReturnListOfCounts_When_ScanHasData() {
             String scanId = "scan-123";
             List<ScanSeverityCount> expected = List.of(
-                new ScanSeverityCount(scanId, "SPACE-A", new SeverityCounts(5, 3, 2)),
-                new ScanSeverityCount(scanId, "SPACE-B", new SeverityCounts(8, 4, 1))
+                new ScanSeverityCount(scanId, "SPACE-A", new SeverityCounts(5, 3, 2), ClassificationCounts.zero()),
+                new ScanSeverityCount(scanId, "SPACE-B", new SeverityCounts(8, 4, 1), ClassificationCounts.zero())
             );
             when(repository.findByScanId(scanId)).thenReturn(expected);
 

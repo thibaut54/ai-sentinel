@@ -6,9 +6,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
+import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ClassificationCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
@@ -70,11 +73,16 @@ class ScanReportingSummaryMapperTest {
         
         SeverityCounts severityCounts = new SeverityCounts(10, 20, 5);
         SeverityCountsDto severityCountsDto = new SeverityCountsDto(10, 20, 5, 35);
-        
-        when(severityCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(Optional.of(severityCounts));
+        ClassificationCounts classificationCounts = ClassificationCounts.zero();
+        ClassificationCountsDto classificationCountsDto = ClassificationCountsDto.zero();
+        ScanSeverityCount scanCount = new ScanSeverityCount(scanId, "SPACE1", severityCounts, classificationCounts);
+
+        when(severityCountService.getScanCount(scanId, "SPACE1"))
+                .thenReturn(Optional.of(scanCount));
         when(severityCountsMapper.toDto(severityCounts))
                 .thenReturn(severityCountsDto);
+        when(severityCountsMapper.toClassificationDto(classificationCounts))
+                .thenReturn(classificationCountsDto);
         
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
@@ -95,7 +103,7 @@ class ScanReportingSummaryMapperTest {
         assertThat(spaceDto.lastEventTs()).isEqualTo(Instant.parse("2025-01-15T09:30:00Z"));
         assertThat(spaceDto.severityCounts()).isEqualTo(severityCountsDto);
         
-        verify(severityCountService).getCounts(scanId, "SPACE1");
+        verify(severityCountService).getScanCount(scanId, "SPACE1");
         verify(severityCountsMapper).toDto(severityCounts);
     }
 
@@ -121,11 +129,13 @@ class ScanReportingSummaryMapperTest {
         );
         
         SeverityCountsDto zeroCountsDto = SeverityCountsDto.zero();
-        
-        when(severityCountService.getCounts(scanId, "SPACE1"))
+
+        when(severityCountService.getScanCount(scanId, "SPACE1"))
                 .thenReturn(Optional.empty());
         when(severityCountsMapper.toDto(null))
                 .thenReturn(zeroCountsDto);
+        when(severityCountsMapper.toClassificationDto(null))
+                .thenReturn(ClassificationCountsDto.zero());
         
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
@@ -137,7 +147,7 @@ class ScanReportingSummaryMapperTest {
         SpaceSummaryDto spaceDto = result.spaces().get(0);
         assertThat(spaceDto.severityCounts()).isEqualTo(zeroCountsDto);
         
-        verify(severityCountService).getCounts(scanId, "SPACE1");
+        verify(severityCountService).getScanCount(scanId, "SPACE1");
         verify(severityCountsMapper).toDto(null);
     }
 
@@ -175,13 +185,17 @@ class ScanReportingSummaryMapperTest {
         SeverityCounts counts2 = new SeverityCounts(3, 7, 1);
         SeverityCountsDto countsDto1 = new SeverityCountsDto(5, 10, 2, 17);
         SeverityCountsDto countsDto2 = new SeverityCountsDto(3, 7, 1, 11);
-        
-        when(severityCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(Optional.of(counts1));
-        when(severityCountService.getCounts(scanId, "SPACE2"))
-                .thenReturn(Optional.of(counts2));
+        ClassificationCounts cc1 = ClassificationCounts.zero();
+        ClassificationCounts cc2 = ClassificationCounts.zero();
+
+        when(severityCountService.getScanCount(scanId, "SPACE1"))
+                .thenReturn(Optional.of(new ScanSeverityCount(scanId, "SPACE1", counts1, cc1)));
+        when(severityCountService.getScanCount(scanId, "SPACE2"))
+                .thenReturn(Optional.of(new ScanSeverityCount(scanId, "SPACE2", counts2, cc2)));
         when(severityCountsMapper.toDto(counts1)).thenReturn(countsDto1);
         when(severityCountsMapper.toDto(counts2)).thenReturn(countsDto2);
+        when(severityCountsMapper.toClassificationDto(cc1)).thenReturn(ClassificationCountsDto.zero());
+        when(severityCountsMapper.toClassificationDto(cc2)).thenReturn(ClassificationCountsDto.zero());
         
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
@@ -191,8 +205,8 @@ class ScanReportingSummaryMapperTest {
         assertThat(result.spaces().get(0).severityCounts()).isEqualTo(countsDto1);
         assertThat(result.spaces().get(1).severityCounts()).isEqualTo(countsDto2);
         
-        verify(severityCountService).getCounts(scanId, "SPACE1");
-        verify(severityCountService).getCounts(scanId, "SPACE2");
+        verify(severityCountService).getScanCount(scanId, "SPACE1");
+        verify(severityCountService).getScanCount(scanId, "SPACE2");
         verify(severityCountsMapper).toDto(counts1);
         verify(severityCountsMapper).toDto(counts2);
     }
@@ -207,7 +221,7 @@ class ScanReportingSummaryMapperTest {
         
         // Then
         assertThat(result).isNull();
-        verify(severityCountService, never()).getCounts(any(), any());
+        verify(severityCountService, never()).getScanCount(any(), any());
         verify(severityCountsMapper, never()).toDto(any());
     }
 
@@ -227,7 +241,7 @@ class ScanReportingSummaryMapperTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.spaces()).isEmpty();
-        verify(severityCountService, never()).getCounts(any(), any());
+        verify(severityCountService, never()).getScanCount(any(), any());
         verify(severityCountsMapper, never()).toDto(any());
     }
 
@@ -247,7 +261,7 @@ class ScanReportingSummaryMapperTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.spaces()).isEmpty();
-        verify(severityCountService, never()).getCounts(any(), any());
+        verify(severityCountService, never()).getScanCount(any(), any());
         verify(severityCountsMapper, never()).toDto(any());
     }
 
@@ -268,7 +282,7 @@ class ScanReportingSummaryMapperTest {
         assertThat(result).isNotNull();
         assertThat(result.spaces()).hasSize(1);
         assertThat(result.spaces().get(0)).isNull();
-        verify(severityCountService, never()).getCounts(any(), any());
+        verify(severityCountService, never()).getScanCount(any(), any());
         verify(severityCountsMapper, never()).toDto(any());
     }
 }

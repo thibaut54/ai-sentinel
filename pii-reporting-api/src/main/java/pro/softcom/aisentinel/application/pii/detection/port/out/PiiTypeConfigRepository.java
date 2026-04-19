@@ -1,6 +1,8 @@
 package pro.softcom.aisentinel.application.pii.detection.port.out;
 
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort.PiiTypeConfigUpdate;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 
 import java.util.List;
@@ -18,16 +20,28 @@ public interface PiiTypeConfigRepository {
      * <p>
      * This method performs the read-modify-write operation within a single transaction
      * to prevent race conditions and lost updates.
+     * <p>
+     * Classification parameters are optional: {@code null} means "keep the current value".
      *
-     * @param piiType   the PII type identifier
-     * @param detector  the detector name
-     * @param enabled   whether the configuration is enabled
-     * @param threshold the detection threshold
-     * @param updatedBy the user performing the update
+     * @param piiType            the PII type identifier
+     * @param detector           the detector name
+     * @param enabled            whether the configuration is enabled
+     * @param threshold          the detection threshold
+     * @param gdprClassification optional GDPR classification ({@code null} = keep current)
+     * @param nlpdClassification optional nLPD classification ({@code null} = keep current)
+     * @param updatedBy          the user performing the update
      * @return the updated configuration
      * @throws IllegalArgumentException if configuration not found
      */
-    PiiTypeConfig updateAtomically(String piiType, String detector, boolean enabled, double threshold, String updatedBy);
+    PiiTypeConfig updateAtomically(
+            String piiType,
+            String detector,
+            boolean enabled,
+            double threshold,
+            GdprDataClassification gdprClassification,
+            NlpdDataClassification nlpdClassification,
+            String updatedBy
+    );
 
     /**
      * Updates multiple PII type configurations atomically.

@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.out;
 
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
@@ -16,17 +17,18 @@ import java.util.Optional;
 public interface ScanSeverityCountRepository {
 
     /**
-     * Atomically increments severity counts for a given scan and space.
-     * 
+     * Atomically increments severity and classification counts for a given scan and space.
+     *
      * <p>This operation must be thread-safe and support concurrent increments
      * from multiple scan workers processing the same space. If no record exists,
      * creates a new one with the provided delta values.
-     * 
-     * @param scanId   Unique identifier of the scan
-     * @param spaceKey Confluence space key
-     * @param delta    Severity counts to add (must not be null)
+     *
+     * @param scanId              Unique identifier of the scan
+     * @param spaceKey            Confluence space key
+     * @param delta               Severity counts to add (must not be null)
+     * @param classificationDelta Classification counts to add (must not be null, use {@link ClassificationCounts#zero()} when none)
      */
-    void incrementCounts(String scanId, String spaceKey, SeverityCounts delta);
+    void incrementCounts(String scanId, String spaceKey, SeverityCounts delta, ClassificationCounts classificationDelta);
 
     /**
      * Retrieves severity counts for a specific scan and space.

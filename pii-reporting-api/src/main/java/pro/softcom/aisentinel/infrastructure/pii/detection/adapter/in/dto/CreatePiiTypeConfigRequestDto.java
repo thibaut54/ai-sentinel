@@ -11,8 +11,8 @@ import jakarta.validation.constraints.Pattern;
  */
 public record CreatePiiTypeConfigRequestDto(
         @NotBlank(message = "PII type cannot be blank")
-        @Pattern(regexp = "^[A-Z][A-Z0-9_]{1,98}$",
-                message = "PII type must be UPPER_SNAKE_CASE (2-99 chars, starts with letter)")
+        @Pattern(regexp = "^[A-Z][A-Z0-9_]{2,98}$",
+                message = "PII type must be UPPER_SNAKE_CASE (3-99 chars, starts with letter)")
         String piiType,
 
         @NotBlank(message = "Detector cannot be blank")
@@ -34,6 +34,16 @@ public record CreatePiiTypeConfigRequestDto(
         String countryCode,
 
         @Pattern(regexp = "^(HIGH|MEDIUM|LOW)$", message = "Severity must be HIGH, MEDIUM, or LOW")
-        String severity
+        String severity,
+
+        @NotNull(message = "GDPR classification is required")
+        @Pattern(regexp = "SPECIAL_CATEGORY|CRIMINAL_DATA|PERSONAL_DATA_HIGH_RISK|PERSONAL_DATA",
+                message = "GDPR classification must be one of: SPECIAL_CATEGORY, CRIMINAL_DATA, PERSONAL_DATA_HIGH_RISK, PERSONAL_DATA")
+        String gdprClassification,
+
+        @NotNull(message = "nLPD classification is required")
+        @Pattern(regexp = "SENSITIVE_DATA|HIGH_RISK_PROFILING_DATA|PERSONAL_DATA_HIGH_RISK|PERSONAL_DATA",
+                message = "nLPD classification must be one of: SENSITIVE_DATA, HIGH_RISK_PROFILING_DATA, PERSONAL_DATA_HIGH_RISK, PERSONAL_DATA")
+        String nlpdClassification
 ) {
 }

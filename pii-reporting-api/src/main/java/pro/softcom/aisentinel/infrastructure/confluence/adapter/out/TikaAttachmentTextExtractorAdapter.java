@@ -47,9 +47,16 @@ public class TikaAttachmentTextExtractorAdapter implements AttachmentTextExtract
             parser.parse(in, handler, metadata, context);
             String text = StringUtils.trim(handler.toString());
 
+            String attachmentName = info != null ? info.name() : "?";
+            String detectedContentType = metadata.get("Content-Type");
+            String detectedCharset = metadata.get("Content-Encoding");
+            logger.info("[ATTACHMENT_TEXT][TIKA][EXTRACTED] name='{}' bytes={} textLength={} detectedContentType='{}' detectedCharset='{}' preview='{}'",
+                attachmentName, bytes.length, text.length(), detectedContentType, detectedCharset,
+                StringUtils.abbreviate(text, 500));
+
             // If content looks like image-only (e.g., scanned PDF without OCR), skip indexing
             if (textQualityValidator.isImageOnlyDocument(text)) {
-                logger.debug("[ATTACHMENT_TEXT][TIKA][SKIP_IMAGE_ONLY] name='{}'", info != null ? info.name() : "?");
+                logger.info("[ATTACHMENT_TEXT][TIKA][SKIP_IMAGE_ONLY] name='{}'", attachmentName);
                 return Optional.empty();
             }
 

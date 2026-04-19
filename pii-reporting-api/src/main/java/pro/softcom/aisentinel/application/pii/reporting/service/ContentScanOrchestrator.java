@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationServi
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
@@ -103,10 +104,12 @@ public class ContentScanOrchestrator {
      * @param event the scan event to process
      */
     public void persistEventAsyncOperations(ConfluenceContentScanResult event) {
-        // Calculate and persist severity counts if event contains PII detections
+        // Calculate and persist severity + classification counts if event contains PII detections
         if (event.detectedPIIList() != null && !event.detectedPIIList().isEmpty()) {
             SeverityCounts counts = severityCalculationService.aggregateCounts(event.detectedPIIList());
-            scanSeverityCountService.incrementCounts(event.scanId(), event.spaceKey(), counts);
+            ClassificationCounts classificationCounts =
+                    severityCalculationService.aggregateClassificationCounts(event.detectedPIIList());
+            scanSeverityCountService.incrementCounts(event.scanId(), event.spaceKey(), counts, classificationCounts);
         }
         
         if (scanEventStore != null) {

@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 
 import java.time.LocalDateTime;
@@ -64,6 +66,14 @@ public class PiiTypeConfigEntity {
     @Column(name = "severity", length = 10)
     private String severity;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gdpr_classification", nullable = false, length = 30)
+    private GdprDataClassification gdprClassification = GdprDataClassification.PERSONAL_DATA;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nlpd_classification", nullable = false, length = 30)
+    private NlpdDataClassification nlpdClassification = NlpdDataClassification.PERSONAL_DATA;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -100,6 +110,10 @@ public class PiiTypeConfigEntity {
         entity.detectorLabel = domain.getDetectorLabel();
         entity.custom = domain.isCustom();
         entity.severity = domain.getSeverity();
+        // Domain invariant: PiiTypeConfig builder defaults classifications to PERSONAL_DATA,
+        // so we can trust non-null here (defense against corrupt data caught by @NotNull column).
+        entity.gdprClassification = domain.getGdprClassification();
+        entity.nlpdClassification = domain.getNlpdClassification();
         entity.updatedAt = domain.getUpdatedAt();
         entity.updatedBy = domain.getUpdatedBy();
         return entity;
@@ -118,6 +132,8 @@ public class PiiTypeConfigEntity {
                 .detectorLabel(detectorLabel)
                 .custom(custom)
                 .severity(severity)
+                .gdprClassification(gdprClassification)
+                .nlpdClassification(nlpdClassification)
                 .updatedAt(updatedAt)
                 .updatedBy(updatedBy)
                 .build();

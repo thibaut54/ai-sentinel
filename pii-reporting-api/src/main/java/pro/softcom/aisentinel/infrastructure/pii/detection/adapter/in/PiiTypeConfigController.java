@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.CategoryGroupResponseDto;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.CreatePiiTypeConfigRequestDto;
@@ -77,6 +79,8 @@ public class PiiTypeConfigController {
                 request.detectorLabel(),
                 request.countryCode(),
                 request.severity(),
+                parseGdpr(request.gdprClassification()),
+                parseNlpd(request.nlpdClassification()),
                 PLACEHOLDER_USER
         );
         PiiTypeConfig created = managePiiTypeConfigsPort.createConfig(command);
@@ -173,10 +177,30 @@ public class PiiTypeConfigController {
                 request.detector(),
                 request.enabled(),
                 request.threshold(),
+                parseGdpr(request.gdprClassification()),
+                parseNlpd(request.nlpdClassification()),
                 PLACEHOLDER_USER
         );
 
         return ResponseEntity.ok(PiiTypeConfigResponseDto.fromDomain(updated));
+    }
+
+    private static GdprDataClassification parseGdpr(String value) {
+        return value != null ? GdprDataClassification.valueOf(value) : null;
+    }
+
+    private static NlpdDataClassification parseNlpd(String value) {
+        return value != null ? NlpdDataClassification.valueOf(value) : null;
+    }
+
+    /**
+     * Maps any {@link IllegalArgumentException} bubbling up from the use case
+     * (validation, enum {@code valueOf} on malformed input, duplicate config)
+     * to a 400 Bad Request instead of a 500 Internal Server Error.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 
     /**
@@ -196,7 +220,9 @@ public class PiiTypeConfigController {
                         req.piiType(),
                         req.detector(),
                         req.enabled(),
-                        req.threshold()
+                        req.threshold(),
+                        parseGdpr(req.gdprClassification()),
+                        parseNlpd(req.nlpdClassification())
                 ))
                 .toList();
 

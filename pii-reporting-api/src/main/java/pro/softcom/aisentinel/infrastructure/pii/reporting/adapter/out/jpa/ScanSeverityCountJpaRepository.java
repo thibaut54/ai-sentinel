@@ -71,18 +71,48 @@ public interface ScanSeverityCountJpaRepository extends
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query(value = """
-        INSERT INTO scan_severity_counts (scan_id, space_key, nb_of_high_severity, nb_of_medium_severity, nb_of_low_severity)
-        VALUES (:scanId, :spaceKey, :deltaHigh, :deltaMedium, :deltaLow)
+        INSERT INTO scan_severity_counts (
+            scan_id, space_key,
+            nb_of_high_severity, nb_of_medium_severity, nb_of_low_severity,
+            nb_gdpr_special_category, nb_gdpr_criminal_data,
+            nb_gdpr_personal_data_high_risk, nb_gdpr_personal_data,
+            nb_nlpd_sensitive_data, nb_nlpd_high_risk_profiling_data,
+            nb_nlpd_personal_data_high_risk, nb_nlpd_personal_data
+        )
+        VALUES (
+            :scanId, :spaceKey,
+            :deltaHigh, :deltaMedium, :deltaLow,
+            :deltaGdprSpecial, :deltaGdprCriminal,
+            :deltaGdprHigh, :deltaGdprPersonal,
+            :deltaNlpdSensitive, :deltaNlpdProfiling,
+            :deltaNlpdHigh, :deltaNlpdPersonal
+        )
         ON CONFLICT (scan_id, space_key) DO UPDATE
-        SET nb_of_high_severity = scan_severity_counts.nb_of_high_severity + :deltaHigh,
-            nb_of_medium_severity = scan_severity_counts.nb_of_medium_severity + :deltaMedium,
-            nb_of_low_severity = scan_severity_counts.nb_of_low_severity + :deltaLow
+        SET nb_of_high_severity              = scan_severity_counts.nb_of_high_severity + :deltaHigh,
+            nb_of_medium_severity            = scan_severity_counts.nb_of_medium_severity + :deltaMedium,
+            nb_of_low_severity               = scan_severity_counts.nb_of_low_severity + :deltaLow,
+            nb_gdpr_special_category         = scan_severity_counts.nb_gdpr_special_category + :deltaGdprSpecial,
+            nb_gdpr_criminal_data            = scan_severity_counts.nb_gdpr_criminal_data + :deltaGdprCriminal,
+            nb_gdpr_personal_data_high_risk  = scan_severity_counts.nb_gdpr_personal_data_high_risk + :deltaGdprHigh,
+            nb_gdpr_personal_data            = scan_severity_counts.nb_gdpr_personal_data + :deltaGdprPersonal,
+            nb_nlpd_sensitive_data           = scan_severity_counts.nb_nlpd_sensitive_data + :deltaNlpdSensitive,
+            nb_nlpd_high_risk_profiling_data = scan_severity_counts.nb_nlpd_high_risk_profiling_data + :deltaNlpdProfiling,
+            nb_nlpd_personal_data_high_risk  = scan_severity_counts.nb_nlpd_personal_data_high_risk + :deltaNlpdHigh,
+            nb_nlpd_personal_data            = scan_severity_counts.nb_nlpd_personal_data + :deltaNlpdPersonal
         """, nativeQuery = true)
     void incrementCounts(@Param("scanId") String scanId,
                          @Param("spaceKey") String spaceKey,
                          @Param("deltaHigh") int deltaHigh,
                          @Param("deltaMedium") int deltaMedium,
-                         @Param("deltaLow") int deltaLow);
+                         @Param("deltaLow") int deltaLow,
+                         @Param("deltaGdprSpecial") int deltaGdprSpecial,
+                         @Param("deltaGdprCriminal") int deltaGdprCriminal,
+                         @Param("deltaGdprHigh") int deltaGdprHigh,
+                         @Param("deltaGdprPersonal") int deltaGdprPersonal,
+                         @Param("deltaNlpdSensitive") int deltaNlpdSensitive,
+                         @Param("deltaNlpdProfiling") int deltaNlpdProfiling,
+                         @Param("deltaNlpdHigh") int deltaNlpdHigh,
+                         @Param("deltaNlpdPersonal") int deltaNlpdPersonal);
 
     /**
      * Retrieves all severity count records for a given scan.

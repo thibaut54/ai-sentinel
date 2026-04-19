@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.domain.pii.detection;
 
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -41,6 +42,16 @@ public class PiiTypeConfig {
     private final String detectorLabel;
     private final boolean custom;
     private final String severity;
+    /**
+     * GDPR data classification (non-null, defaults to {@link GdprDataClassification#PERSONAL_DATA}).
+     */
+    @Default
+    private final GdprDataClassification gdprClassification = GdprDataClassification.PERSONAL_DATA;
+    /**
+     * Swiss nLPD data classification (non-null, defaults to {@link NlpdDataClassification#PERSONAL_DATA}).
+     */
+    @Default
+    private final NlpdDataClassification nlpdClassification = NlpdDataClassification.PERSONAL_DATA;
     private final LocalDateTime updatedAt;
     private final String updatedBy;
 
@@ -70,6 +81,8 @@ public class PiiTypeConfig {
                 ", countryCode='" + countryCode + '\'' +
                 ", custom=" + custom +
                 ", severity='" + severity + '\'' +
+                ", gdprClassification=" + gdprClassification +
+                ", nlpdClassification=" + nlpdClassification +
                 ", updatedAt=" + updatedAt +
                 ", updatedBy='" + updatedBy + '\'' +
                 '}';

@@ -12,6 +12,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
 import pro.softcom.aisentinel.infrastructure.config.SecurityConfig;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ClassificationCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper.ConfluenceContentScanResultToScanEventMapper;
@@ -81,7 +82,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     10L,
                     5L,
                     lastEventTs,
-                    new SeverityCountsDto(5, 10, 15, 30)
+                    new SeverityCountsDto(5, 10, 15, 30),
+                    ClassificationCountsDto.zero()
                 ),
                 new SpaceSummaryDto(
                     "SPACE2",
@@ -90,7 +92,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     5L,
                     2L,
                     lastEventTs,
-                    new SeverityCountsDto(2, 8, 12, 22)
+                    new SeverityCountsDto(2, 8, 12, 22),
+                    ClassificationCountsDto.zero()
                 )
             )
         );
@@ -150,7 +153,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     5L,
                     0L,
                     lastEventTs,
-                    SeverityCountsDto.zero()  // No severity counts found
+                    SeverityCountsDto.zero(),  // No severity counts found
+                    ClassificationCountsDto.zero()
                 )
             )
         );
@@ -248,7 +252,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     20L,
                     10L,
                     lastEventTs,
-                    new SeverityCountsDto(3, 7, 11, 21)
+                    new SeverityCountsDto(3, 7, 11, 21),
+                    ClassificationCountsDto.zero()
                 )
             )
         );

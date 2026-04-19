@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanSeverityCount;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.ScanSeverityCountJpaRepository;
@@ -32,13 +33,22 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
     private final ScanSeverityCountJpaRepository jpaRepository;
 
     @Override
-    public void incrementCounts(String scanId, String spaceKey, SeverityCounts delta) {
+    public void incrementCounts(String scanId, String spaceKey, SeverityCounts delta,
+                                ClassificationCounts classificationDelta) {
         jpaRepository.incrementCounts(
             scanId,
             spaceKey,
             delta.high(),
             delta.medium(),
-            delta.low()
+            delta.low(),
+            classificationDelta.gdprSpecialCategory(),
+            classificationDelta.gdprCriminalData(),
+            classificationDelta.gdprPersonalDataHighRisk(),
+            classificationDelta.gdprPersonalData(),
+            classificationDelta.nlpdSensitiveData(),
+            classificationDelta.nlpdHighRiskProfilingData(),
+            classificationDelta.nlpdPersonalDataHighRisk(),
+            classificationDelta.nlpdPersonalData()
         );
     }
 
@@ -77,13 +87,34 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
     }
 
     /**
+     * Maps JPA entity to domain ClassificationCounts.
+     */
+    private ClassificationCounts toDomainClassificationCounts(ScanSeverityCountEntity entity) {
+        return new ClassificationCounts(
+            nz(entity.getNbGdprSpecialCategory()),
+            nz(entity.getNbGdprCriminalData()),
+            nz(entity.getNbGdprPersonalDataHighRisk()),
+            nz(entity.getNbGdprPersonalData()),
+            nz(entity.getNbNlpdSensitiveData()),
+            nz(entity.getNbNlpdHighRiskProfilingData()),
+            nz(entity.getNbNlpdPersonalDataHighRisk()),
+            nz(entity.getNbNlpdPersonalData())
+        );
+    }
+
+    private static int nz(Integer value) {
+        return value != null ? value : 0;
+    }
+
+    /**
      * Maps JPA entity to domain ScanSeverityCount.
      */
     private ScanSeverityCount toDomain(ScanSeverityCountEntity entity) {
         return new ScanSeverityCount(
             entity.getScanId(),
             entity.getSpaceKey(),
-            toDomainCounts(entity)
+            toDomainCounts(entity),
+            toDomainClassificationCounts(entity)
         );
     }
 }

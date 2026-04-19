@@ -2,7 +2,10 @@ package pro.softcom.aisentinel.application.pii.reporting;
 
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.domain.pii.detection.GdprDataClassification;
+import pro.softcom.aisentinel.domain.pii.detection.NlpdDataClassification;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
+import pro.softcom.aisentinel.domain.pii.reporting.ClassificationCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
@@ -42,6 +45,8 @@ public class SeverityCalculationService {
 
     private final PiiTypeConfigRepository piiTypeConfigRepository;
     private final Map<String, PersonallyIdentifiableInformationSeverity> dbSeverityCache = new ConcurrentHashMap<>();
+    private final Map<String, GdprDataClassification> gdprClassificationCache = new ConcurrentHashMap<>();
+    private final Map<String, NlpdDataClassification> nlpdClassificationCache = new ConcurrentHashMap<>();
     private volatile boolean cacheLoaded;
 
     public SeverityCalculationService(PiiTypeConfigRepository piiTypeConfigRepository) {
@@ -270,20 +275,71 @@ public class SeverityCalculationService {
         try {
             List<PiiTypeConfig> configs = piiTypeConfigRepository.findAll();
             dbSeverityCache.clear();
+            gdprClassificationCache.clear();
+            nlpdClassificationCache.clear();
             for (PiiTypeConfig config : configs) {
+                String normalizedPiiType = normalizeType(config.getPiiType());
                 if (config.getSeverity() != null && !config.getSeverity().isBlank()) {
-                    String normalizedPiiType = normalizeType(config.getPiiType());
                     PersonallyIdentifiableInformationSeverity severity = parseSeverity(config.getSeverity());
                     if (severity != null) {
                         dbSeverityCache.put(normalizedPiiType, severity);
                     }
                 }
+                if (config.getGdprClassification() != null) {
+                    gdprClassificationCache.put(normalizedPiiType, config.getGdprClassification());
+                }
+                if (config.getNlpdClassification() != null) {
+                    nlpdClassificationCache.put(normalizedPiiType, config.getNlpdClassification());
+                }
             }
             cacheLoaded = true;
-            log.debug("Loaded {} DB severity mappings", dbSeverityCache.size());
+            log.debug("Loaded {} DB severity / {} GDPR / {} nLPD classification mappings",
+                    dbSeverityCache.size(), gdprClassificationCache.size(), nlpdClassificationCache.size());
         } catch (Exception e) {
-            log.warn("Failed to load DB severity mappings, falling back to static rules: {}", e.getMessage());
+            log.warn("Failed to load DB classification mappings, falling back to defaults: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Aggregates classification counts (GDPR + nLPD) from a list of PII entities.
+     *
+     * <p>Uses the DB-backed caches populated by {@link #loadDbSeverities()}. PII types
+     * not found in the cache default to {@code PERSONAL_DATA} for both regimes.
+     *
+     * @param entities List of entities with {@code piiType()} accessor
+     * @param <T> Entity type
+     * @return Aggregated classification counts (never null)
+     */
+    public <T> ClassificationCounts aggregateClassificationCounts(List<T> entities) {
+        if (!cacheLoaded) {
+            loadDbSeverities();
+        }
+        int gdprSpecial = 0, gdprCriminal = 0, gdprHigh = 0, gdprPersonal = 0;
+        int nlpdSensitive = 0, nlpdProfiling = 0, nlpdHigh = 0, nlpdPersonal = 0;
+
+        for (T entity : entities) {
+            String normalized = normalizeType(extractPiiType(entity));
+            GdprDataClassification gdpr = gdprClassificationCache.getOrDefault(normalized, GdprDataClassification.PERSONAL_DATA);
+            NlpdDataClassification nlpd = nlpdClassificationCache.getOrDefault(normalized, NlpdDataClassification.PERSONAL_DATA);
+
+            switch (gdpr) {
+                case SPECIAL_CATEGORY -> gdprSpecial++;
+                case CRIMINAL_DATA -> gdprCriminal++;
+                case PERSONAL_DATA_HIGH_RISK -> gdprHigh++;
+                case PERSONAL_DATA -> gdprPersonal++;
+            }
+            switch (nlpd) {
+                case SENSITIVE_DATA -> nlpdSensitive++;
+                case HIGH_RISK_PROFILING_DATA -> nlpdProfiling++;
+                case PERSONAL_DATA_HIGH_RISK -> nlpdHigh++;
+                case PERSONAL_DATA -> nlpdPersonal++;
+            }
+        }
+
+        return new ClassificationCounts(
+                gdprSpecial, gdprCriminal, gdprHigh, gdprPersonal,
+                nlpdSensitive, nlpdProfiling, nlpdHigh, nlpdPersonal
+        );
     }
 
     private PersonallyIdentifiableInformationSeverity parseSeverity(String severity) {
