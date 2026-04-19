@@ -1,4 +1,4 @@
-import { SeverityCounts } from './severity-counts';
+import { ClassificationCounts, SeverityCounts } from './severity-counts';
 
 export interface Space {
   status?: 'FAILED' | 'RUNNING' | 'OK' | 'PENDING' | 'INTERRUPTED' | 'PAUSED';
@@ -6,4 +6,5 @@ export interface Space {
   name?: string;
   url?: string;
   counts?: SeverityCounts;
+  classificationCounts?: ClassificationCounts;
 }

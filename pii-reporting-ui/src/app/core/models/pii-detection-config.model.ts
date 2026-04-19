@@ -1,6 +1,26 @@
 export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX';
 
 /**
+ * GDPR legal classification (EU regulation).
+ * Matches backend enum `GdprDataClassification`.
+ */
+export type GdprDataClassification =
+  | 'SPECIAL_CATEGORY'
+  | 'CRIMINAL_DATA'
+  | 'PERSONAL_DATA_HIGH_RISK'
+  | 'PERSONAL_DATA';
+
+/**
+ * Swiss nLPD legal classification (Federal Data Protection Act).
+ * Matches backend enum `NlpdDataClassification`.
+ */
+export type NlpdDataClassification =
+  | 'SENSITIVE_DATA'
+  | 'HIGH_RISK_PROFILING_DATA'
+  | 'PERSONAL_DATA_HIGH_RISK'
+  | 'PERSONAL_DATA';
+
+/**
  * PII Detection Configuration model matching backend DTO.
  */
 export interface PiiDetectionConfig {
@@ -38,6 +58,16 @@ export interface PiiTypeConfig {
   isCustom?: boolean;
   detectorLabel?: string;
   severity?: string;
+  /**
+   * GDPR classification. Optional on the response for backward compatibility
+   * while the backend rollout is in progress; consumers must fall back to
+   * `PERSONAL_DATA` when missing.
+   */
+  gdprClassification?: GdprDataClassification;
+  /**
+   * Swiss nLPD classification. Optional for the same reason as above.
+   */
+  nlpdClassification?: NlpdDataClassification;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -53,6 +83,10 @@ export interface CreatePiiTypeConfigRequest {
   category: string;
   detectorLabel: string;
   severity: string;
+  /** GDPR classification, mandatory at creation (backend `@NotNull`). */
+  gdprClassification: GdprDataClassification;
+  /** nLPD classification, mandatory at creation (backend `@NotNull`). */
+  nlpdClassification: NlpdDataClassification;
   countryCode?: string;
 }
 
@@ -64,6 +98,10 @@ export interface UpdatePiiTypeConfigRequest {
   detector: DetectorType;
   enabled: boolean;
   threshold: number;
+  /** GDPR classification, optional at update (null = no change). */
+  gdprClassification?: GdprDataClassification;
+  /** nLPD classification, optional at update (null = no change). */
+  nlpdClassification?: NlpdDataClassification;
 }
 
 /**

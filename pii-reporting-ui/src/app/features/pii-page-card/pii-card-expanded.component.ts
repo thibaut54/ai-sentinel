@@ -3,13 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { MultiSelectChangeEvent } from 'primeng/types/multiselect';
+import { TagModule } from 'primeng/tag';
 import { PersonallyIdentifiableInformationScanResult } from '../../core/models/personally-identifiable-information-scan-result';
+import { GdprDataClassification, NlpdDataClassification } from '../../core/models/pii-detection-config.model';
 import { DetectorTagComponent } from '../../shared/detector-tag/detector-tag.component';
 import { ConfidenceIndicatorComponent } from '../../shared/confidence-indicator/confidence-indicator.component';
 import { SEVERITY_STYLES } from './severity.config';
 import { PiiEntityRow, ValuePart } from './pii-type-row.model';
 import { PiiItemCardUtils } from '../pii-item-card/pii-item-card.utils';
 import { SentinelleApiService } from '../../core/services/sentinelle-api.service';
+import {
+  ClassificationService,
+  GDPR_CLASSIFICATION_VALUES,
+  LegalBadgeSeverity,
+  NLPD_CLASSIFICATION_VALUES,
+} from '../../core/services/classification.service';
+import { ViewModeService } from '../../core/services/view-mode.service';
 
 export type SortColumn = 'typeLabel' | 'value' | 'confidence' | 'detector';
 export type SortDirection = 'asc' | 'desc';
@@ -17,7 +26,7 @@ export type SortDirection = 'asc' | 'desc';
 @Component({
   selector: 'app-pii-card-expanded',
   standalone: true,
-  imports: [TranslocoModule, FormsModule, MultiSelectModule, DetectorTagComponent, ConfidenceIndicatorComponent],
+  imports: [TranslocoModule, FormsModule, MultiSelectModule, TagModule, DetectorTagComponent, ConfidenceIndicatorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pii-card-expanded.component.html',
   styleUrl: './pii-card-expanded.component.css',
@@ -32,8 +41,59 @@ export class PiiCardExpandedComponent {
   readonly openInConfluence = output<void>();
 
   readonly sentinelleApi = inject(SentinelleApiService);
+  readonly viewModeService = inject(ViewModeService);
+  readonly classificationService = inject(ClassificationService);
   private readonly translocoService = inject(TranslocoService);
   private readonly piiItemCardUtils = inject(PiiItemCardUtils);
+
+  /** Active GDPR classification filters (all enabled by default). */
+  readonly activeGdprFilters = signal<Set<GdprDataClassification>>(
+    new Set(GDPR_CLASSIFICATION_VALUES)
+  );
+
+  /** Active nLPD classification filters (all enabled by default). */
+  readonly activeNlpdFilters = signal<Set<NlpdDataClassification>>(
+    new Set(NLPD_CLASSIFICATION_VALUES)
+  );
+
+  readonly gdprFilterOptions = GDPR_CLASSIFICATION_VALUES;
+  readonly nlpdFilterOptions = NLPD_CLASSIFICATION_VALUES;
+
+  toggleGdprFilter(value: GdprDataClassification): void {
+    const next = new Set(this.activeGdprFilters());
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    this.activeGdprFilters.set(next);
+  }
+
+  toggleNlpdFilter(value: NlpdDataClassification): void {
+    const next = new Set(this.activeNlpdFilters());
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    this.activeNlpdFilters.set(next);
+  }
+
+  isGdprFilterActive(value: GdprDataClassification): boolean {
+    return this.activeGdprFilters().has(value);
+  }
+
+  isNlpdFilterActive(value: NlpdDataClassification): boolean {
+    return this.activeNlpdFilters().has(value);
+  }
+
+  gdprBadgeSeverity(value: GdprDataClassification): LegalBadgeSeverity {
+    return this.classificationService.badgeSeverity(value);
+  }
+
+  nlpdBadgeSeverity(value: NlpdDataClassification): LegalBadgeSeverity {
+    return this.classificationService.badgeSeverity(value);
+  }
 
   readonly severityStyle = computed(() => SEVERITY_STYLES[this.item().severity] ?? SEVERITY_STYLES.low);
 
@@ -47,6 +107,7 @@ export class PiiCardExpandedComponent {
 
     return entities.map(entity => {
       const label = entity.piiTypeLabel || entity.piiType || 'UNKNOWN';
+      const piiTypeCode = (entity.piiType || label).toUpperCase();
       const sensitiveValue = entity.sensitiveValue;
       const hasRevealedValue = isRevealed && !!sensitiveValue;
       const displayValue = hasRevealedValue
@@ -55,6 +116,7 @@ export class PiiCardExpandedComponent {
 
       return {
         typeLabel: this.translatePiiType(label),
+        piiTypeCode,
         value: displayValue,
         valueParts: hasRevealedValue
           ? this.parseRevealedParts(entity.sensitiveContext, sensitiveValue)
@@ -62,6 +124,9 @@ export class PiiCardExpandedComponent {
         isRevealed: hasRevealedValue,
         confidence: entity.confidence ?? 0,
         detector: entity.source ?? 'UNKNOWN_SOURCE',
+        severity: this.classificationService.getSeverity(piiTypeCode),
+        gdprClassification: this.classificationService.getGdprClassification(piiTypeCode),
+        nlpdClassification: this.classificationService.getNlpdClassification(piiTypeCode),
       };
     });
   });
@@ -138,6 +203,16 @@ export class PiiCardExpandedComponent {
     if (!this.isAllSelected()) {
       const selectedSet = new Set(this.selectedFilterValues());
       rows = rows.filter(r => selectedSet.has(r.typeLabel));
+    }
+
+    // Apply legal filter (only in legal view modes)
+    const mode = this.viewModeService.viewMode();
+    if (mode === 'gdpr') {
+      const active = this.activeGdprFilters();
+      rows = rows.filter(r => active.has(r.gdprClassification));
+    } else if (mode === 'nlpd') {
+      const active = this.activeNlpdFilters();
+      rows = rows.filter(r => active.has(r.nlpdClassification));
     }
 
     // Sort

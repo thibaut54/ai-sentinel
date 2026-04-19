@@ -22,6 +22,52 @@
     "fr": "Français",
     "en": "English"
   },
+  "viewMode": {
+    "label": "Mode de lecture",
+    "standard": "Standard",
+    "gdpr": "RGPD",
+    "nlpd": "nLPD"
+  },
+  "gdpr": {
+    "classification": {
+      "SPECIAL_CATEGORY": {
+        "label": "Catégorie spéciale (Art. 9)",
+        "short": "Art. 9"
+      },
+      "CRIMINAL_DATA": {
+        "label": "Données pénales (Art. 10)",
+        "short": "Art. 10"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "label": "Données à haut risque",
+        "short": "Haut risque"
+      },
+      "PERSONAL_DATA": {
+        "label": "Données personnelles (Art. 6)",
+        "short": "Art. 6"
+      }
+    }
+  },
+  "nlpd": {
+    "classification": {
+      "SENSITIVE_DATA": {
+        "label": "Données sensibles (Art. 5 let. c)",
+        "short": "Art. 5 c"
+      },
+      "HIGH_RISK_PROFILING_DATA": {
+        "label": "Profilage à risque élevé (Art. 5 let. g)",
+        "short": "Art. 5 g"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "label": "Données à haut risque",
+        "short": "Haut risque"
+      },
+      "PERSONAL_DATA": {
+        "label": "Données personnelles (Art. 5 let. a)",
+        "short": "Art. 5 a"
+      }
+    }
+  },
   "severity": {
     "critical": "Critique",
     "high": "Élevée",
@@ -647,11 +693,15 @@
         "severity": "Sévérité",
         "threshold": "Seuil de confiance",
         "countryCode": "Code pays (optionnel)",
-        "countryCodePlaceholder": "ex: CH, FR"
+        "countryCodePlaceholder": "ex: CH, FR",
+        "gdprClassification": "Classification RGPD",
+        "nlpdClassification": "Classification nLPD"
       },
       "validation": {
         "detectorLabelRequired": "Le label du détecteur est requis (min. 2 caractères)",
-        "piiTypeInvalid": "Doit commencer par une lettre, majuscules et underscores uniquement (ex: NUMERO_BADGE)"
+        "piiTypeInvalid": "Doit commencer par une lettre, majuscules et underscores uniquement (ex: NUMERO_BADGE)",
+        "gdprRequired": "La classification RGPD est obligatoire",
+        "nlpdRequired": "La classification nLPD est obligatoire"
       },
       "deleteConfirm": {
         "header": "Supprimer le label personnalisé",
@@ -692,8 +742,13 @@
       "all": "Tous",
       "selectedItems": "{0} types sélectionnés"
     },
+    "legalFilters": {
+      "gdprAria": "Filtres de classification RGPD",
+      "nlpdAria": "Filtres de classification nLPD"
+    },
     "table": {
       "type": "Type",
+      "classification": "Classification",
       "value": "Valeur",
       "confidence": "Confiance",
       "detector": "Détecteur"

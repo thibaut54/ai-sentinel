@@ -225,10 +225,16 @@ export class SpaceDataManagementService {
               });
             }
 
-            // Map severity counts from backend to Space model
-            // Fallback to zero counts if severityCounts is null
+            // Map severity + classification counts from backend to Space model.
+            // Fallback to zero counts if either block is missing.
             const counts = spaceSummary.severityCounts ?? { high: 0, medium: 0, low: 0, total: 0 };
-            this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, { counts });
+            const classificationCounts = spaceSummary.classificationCounts ?? {
+              gdprSpecialCategory: 0, gdprCriminalData: 0,
+              gdprPersonalDataHighRisk: 0, gdprPersonalData: 0,
+              nlpdSensitiveData: 0, nlpdHighRiskProfilingData: 0,
+              nlpdPersonalDataHighRisk: 0, nlpdPersonalData: 0,
+            };
+            this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, { counts, classificationCounts });
           }
 
           // NOTE: Do NOT call applyCountsFromItems() here - backend counts are authoritative

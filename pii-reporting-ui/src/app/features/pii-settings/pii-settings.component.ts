@@ -1,4 +1,5 @@
-import { Component, computed, EventEmitter, Input, OnChanges, OnInit, Output, SecurityContext, signal, SimpleChanges, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, EventEmitter, inject, Input, OnChanges, OnInit, Output, SecurityContext, signal, SimpleChanges, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -21,13 +22,23 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { TagModule } from 'primeng/tag';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PiiDetectionConfigService } from '../../core/services/pii-detection-config.service';
 import {
+  ClassificationService,
+  GDPR_CLASSIFICATION_VALUES,
+  LegalBadgeSeverity,
+  NLPD_CLASSIFICATION_VALUES,
+} from '../../core/services/classification.service';
+import { ViewModeService } from '../../core/services/view-mode.service';
+import {
     CreatePiiTypeConfigRequest,
+    GdprDataClassification,
     GroupedPiiTypes,
+    NlpdDataClassification,
     PiiDetectionConfig,
     PiiTypeConfig
 } from '../../core/models/pii-detection-config.model';
@@ -60,6 +71,7 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
         InputIconModule,
         InputTextModule,
         SelectModule,
+        TagModule,
         ConfirmDialogModule,
         DialogModule,
         ConfluenceSettingsComponent
@@ -149,6 +161,43 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       .filter(det => det !== null) as GroupedPiiTypes[];
   });
 
+  /**
+   * Regrouping of PII types for legal modes:
+   * - gdpr: group by gdprClassification
+   * - nlpd: group by nlpdClassification
+   *
+   * Structure mirrors {@link filteredPiiTypes} (detector -> categories), but
+   * category is replaced by the classification enum value so the existing
+   * template loops keep working.
+   */
+  readonly legalGroupedPiiTypes = computed<GroupedPiiTypes[]>(() => {
+    const mode = this.viewModeService.viewMode();
+    if (mode === 'standard') {
+      return this.filteredPiiTypes();
+    }
+
+    const getKey = (type: PiiTypeConfig): string =>
+      mode === 'gdpr' ? this.getGdprFor(type) : this.getNlpdFor(type);
+
+    return this.filteredPiiTypes().map(detectorGroup => {
+      const buckets = new Map<string, PiiTypeConfig[]>();
+      for (const category of detectorGroup.categories) {
+        for (const type of category.types) {
+          const key = getKey(type);
+          const bucket = buckets.get(key) ?? [];
+          bucket.push(type);
+          buckets.set(key, bucket);
+        }
+      }
+      return {
+        ...detectorGroup,
+        categories: Array.from(buckets.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([classification, types]) => ({ category: classification, types })),
+      };
+    });
+  });
+
   // Computed signal for checking if there are no results
   hasNoSearchResults = computed(() => {
     const term = this.searchTerm().trim();
@@ -185,6 +234,51 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
     { label: 'MEDIUM', value: 'MEDIUM' },
     { label: 'LOW', value: 'LOW' }
   ];
+
+  // Legal classification view mode + classification service
+  readonly viewModeService = inject(ViewModeService);
+  readonly classificationService = inject(ClassificationService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly gdprOptions = computed(() =>
+    GDPR_CLASSIFICATION_VALUES.map(value => ({
+      value,
+      label: this.translocoService.translate(`gdpr.classification.${value}.label`),
+    }))
+  );
+
+  readonly nlpdOptions = computed(() =>
+    NLPD_CLASSIFICATION_VALUES.map(value => ({
+      value,
+      label: this.translocoService.translate(`nlpd.classification.${value}.label`),
+    }))
+  );
+
+  gdprBadgeSeverity(value: GdprDataClassification | undefined): LegalBadgeSeverity {
+    return this.classificationService.badgeSeverity(value);
+  }
+
+  nlpdBadgeSeverity(value: NlpdDataClassification | undefined): LegalBadgeSeverity {
+    return this.classificationService.badgeSeverity(value);
+  }
+
+  /** Safe getter for the effective GDPR classification of a type (fallback to PERSONAL_DATA). */
+  getGdprFor(type: PiiTypeConfig): GdprDataClassification {
+    return type.gdprClassification ?? this.classificationService.getGdprClassification(type.piiType);
+  }
+
+  /** Safe getter for the effective nLPD classification of a type (fallback to PERSONAL_DATA). */
+  getNlpdFor(type: PiiTypeConfig): NlpdDataClassification {
+    return type.nlpdClassification ?? this.classificationService.getNlpdClassification(type.piiType);
+  }
+
+  gdprLabelShort(value: GdprDataClassification): string {
+    return this.translocoService.translate(`gdpr.classification.${value}.short`);
+  }
+
+  nlpdLabelShort(value: NlpdDataClassification): string {
+    return this.translocoService.translate(`nlpd.classification.${value}.short`);
+  }
 
   constructor(
     private readonly fb: FormBuilder,
@@ -237,8 +331,38 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       category: ['CUSTOM', [Validators.required]],
       severity: ['MEDIUM', [Validators.required]],
       threshold: [0.8, [Validators.required, Validators.min(0), Validators.max(1)]],
-      countryCode: ['']
+      countryCode: [''],
+      gdprClassification: ['PERSONAL_DATA' as GdprDataClassification, [Validators.required]],
+      nlpdClassification: ['PERSONAL_DATA' as NlpdDataClassification, [Validators.required]]
     });
+
+    // Auto-map GDPR -> nLPD whenever the user picks a GDPR classification.
+    // emitEvent: false avoids an infinite loop with the nLPD subscription.
+    this.customLabelForm.get('gdprClassification')!.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(gdpr => {
+        if (gdpr) {
+          const mapped = this.classificationService.mapGdprToNlpd(gdpr as GdprDataClassification);
+          this.customLabelForm.patchValue(
+            { nlpdClassification: mapped },
+            { emitEvent: false }
+          );
+        }
+      });
+
+    // Reverse mapping only active in nLPD mode: user edits nLPD first, GDPR auto-fills.
+    // emitEvent: false prevents the GDPR subscription above from overwriting the user's nLPD choice.
+    this.customLabelForm.get('nlpdClassification')!.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(nlpd => {
+        if (nlpd && this.viewModeService.isNlpdMode()) {
+          const mapped = this.classificationService.mapNlpdToGdpr(nlpd as NlpdDataClassification);
+          this.customLabelForm.patchValue(
+            { gdprClassification: mapped },
+            { emitEvent: false }
+          );
+        }
+      });
   }
 
   /**
@@ -264,7 +388,9 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       category: 'CUSTOM',
       severity: 'MEDIUM',
       threshold: 0.8,
-      countryCode: ''
+      countryCode: '',
+      gdprClassification: 'PERSONAL_DATA',
+      nlpdClassification: 'PERSONAL_DATA'
     });
     this.showAddCustomLabelDialog.set(true);
   }
@@ -290,6 +416,8 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       category: formValue.category,
       detectorLabel: formValue.detectorLabel,
       severity: formValue.severity,
+      gdprClassification: formValue.gdprClassification,
+      nlpdClassification: formValue.nlpdClassification,
       countryCode: formValue.countryCode || undefined
     };
 
@@ -564,11 +692,16 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
 
     this.saving.set(true);
 
+    // Forward the classifications when present so future UI flows that let the user
+    // edit them from the list view persist correctly. For now the quick toggle / threshold
+    // path does not change classifications, so they round-trip unchanged.
     const updates = modifications.map(type => ({
       piiType: type.piiType,
       detector: type.detector,
       enabled: type.enabled,
-      threshold: type.threshold
+      threshold: type.threshold,
+      gdprClassification: type.gdprClassification,
+      nlpdClassification: type.nlpdClassification,
     }));
 
     this.configService.bulkUpdatePiiTypeConfigs(updates).subscribe({
@@ -798,14 +931,26 @@ export class PiiSettingsComponent implements OnInit, OnChanges {
       return this.sanitizer.sanitize(SecurityContext.HTML, translatedText) || translatedText;
     }
 
-    // Escape special regex characters
-    const escapedTerm = term.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    // Defense-in-depth: escape HTML in the translated text BEFORE injecting the
+    // <mark> tag so a malicious translation cannot bypass DomSanitizer via
+    // attributes like onerror=. The regex-special-character escape below only
+    // protects the regex itself, not the rendered HTML.
+    const safeText = this.escapeHtml(translatedText);
+    // Escape special regex characters in the user-controlled search term.
+    const escapedTerm = this.escapeHtml(term).replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
     const regex = new RegExp(`(${escapedTerm})`, 'gi');
 
-    // Replace matches with highlighted version
-    const highlighted = translatedText.replaceAll(regex, '<mark class="search-highlight">$1</mark>');
-
+    const highlighted = safeText.replaceAll(regex, '<mark class="search-highlight">$1</mark>');
     return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) || '';
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   /**

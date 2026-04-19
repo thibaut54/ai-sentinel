@@ -44,6 +44,19 @@ const FR_TRANSLATIONS = {
     actions: { resetAll: 'Reset', cancel: 'Annuler', saveAll: 'Sauvegarder' },
     validation: { atLeastOneDetector: 'Au moins un' },
   },
+  viewMode: { label: 'Mode', standard: 'Standard', gdpr: 'RGPD', nlpd: 'nLPD' },
+  gdpr: { classification: {
+    SPECIAL_CATEGORY: { label: 'Cat speciale', short: 'Art. 9' },
+    CRIMINAL_DATA: { label: 'Donnees penales', short: 'Art. 10' },
+    PERSONAL_DATA_HIGH_RISK: { label: 'Haut risque', short: 'Haut' },
+    PERSONAL_DATA: { label: 'Donnees perso', short: 'Art. 6' },
+  }},
+  nlpd: { classification: {
+    SENSITIVE_DATA: { label: 'Sensibles', short: 'Art. 5c' },
+    HIGH_RISK_PROFILING_DATA: { label: 'Profilage', short: 'Art. 5g' },
+    PERSONAL_DATA_HIGH_RISK: { label: 'Haut risque', short: 'Haut' },
+    PERSONAL_DATA: { label: 'Donnees perso', short: 'Art. 5a' },
+  }},
 };
 
 describe('PiiSettingsComponent', () => {
@@ -72,6 +85,10 @@ describe('PiiSettingsComponent', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
 
+    // ClassificationService triggers a GET on /api/v1/pii-detection/pii-types at construction.
+    httpMock.match('/api/v1/pii-detection/pii-types').forEach(
+      (req: TestRequest) => req.flush([])
+    );
     // Respond to initial config loads
     httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
     httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
@@ -145,5 +162,79 @@ describe('PiiSettingsComponent', () => {
 
     // saving should be false after response (flush is synchronous)
     expect(component.saving()).toBe(false);
+  });
+
+  it('Should_IncludeClassifications_When_CreatingCustomType', () => {
+    // Given - open the dialog (initialises defaults to PERSONAL_DATA / PERSONAL_DATA)
+    component.openAddCustomLabelDialog();
+    component.customLabelForm.patchValue({
+      detectorLabel: 'employee badge',
+      piiType: 'EMPLOYEE_BADGE',
+      category: 'CUSTOM',
+      severity: 'MEDIUM',
+      threshold: 0.8,
+    });
+
+    // When
+    component.createCustomType();
+
+    // Then - request should contain gdpr + nlpd classifications
+    const req = httpMock.expectOne('/api/v1/pii-detection/pii-types');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.gdprClassification).toBe('PERSONAL_DATA');
+    expect(req.request.body.nlpdClassification).toBe('PERSONAL_DATA');
+    req.flush({
+      id: 1,
+      piiType: 'EMPLOYEE_BADGE',
+      detector: 'GLINER',
+      enabled: true,
+      threshold: 0.8,
+      category: 'CUSTOM',
+      gdprClassification: 'PERSONAL_DATA',
+      nlpdClassification: 'PERSONAL_DATA',
+    });
+    // Second reload triggered after success
+    httpMock.match(() => true).forEach((pending: TestRequest) => {
+      if (!pending.cancelled) pending.flush([]);
+    });
+  });
+
+  it('Should_AutoMapNlpd_When_GdprChanges', () => {
+    // Given - dialog open
+    component.openAddCustomLabelDialog();
+
+    // When - choose a GDPR SPECIAL_CATEGORY
+    component.customLabelForm.get('gdprClassification')!.setValue('SPECIAL_CATEGORY');
+
+    // Then - nLPD must be auto-mapped to SENSITIVE_DATA
+    expect(component.customLabelForm.get('nlpdClassification')!.value).toBe('SENSITIVE_DATA');
+  });
+
+  it('Should_NotAutoMapGdpr_When_NlpdChangesAndModeIsStandard', () => {
+    // Given - default mode is 'standard' and dialog open
+    component.viewModeService.setMode('standard');
+    component.openAddCustomLabelDialog();
+    component.customLabelForm.patchValue(
+      { gdprClassification: 'PERSONAL_DATA' },
+      { emitEvent: false }
+    );
+
+    // When - user changes nLPD directly
+    component.customLabelForm.get('nlpdClassification')!.setValue('SENSITIVE_DATA');
+
+    // Then - GDPR should NOT auto-change in standard mode
+    expect(component.customLabelForm.get('gdprClassification')!.value).toBe('PERSONAL_DATA');
+  });
+
+  it('Should_AutoMapGdpr_When_NlpdChangesAndModeIsNlpd', () => {
+    // Given - user switches to nLPD mode
+    component.viewModeService.setMode('nlpd');
+    component.openAddCustomLabelDialog();
+
+    // When - user picks SENSITIVE_DATA
+    component.customLabelForm.get('nlpdClassification')!.setValue('SENSITIVE_DATA');
+
+    // Then - GDPR must be auto-mapped to SPECIAL_CATEGORY (conservative default)
+    expect(component.customLabelForm.get('gdprClassification')!.value).toBe('SPECIAL_CATEGORY');
   });
 });

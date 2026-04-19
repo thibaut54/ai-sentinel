@@ -3,6 +3,8 @@ import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { PersonallyIdentifiableInformationScanResult } from '../../core/models/personally-identifiable-information-scan-result';
 import { SEVERITY_STYLES } from './severity.config';
 import { PiiItemCardUtils } from '../pii-item-card/pii-item-card.utils';
+import { ClassificationService } from '../../core/services/classification.service';
+import { ViewModeService } from '../../core/services/view-mode.service';
 
 @Component({
   selector: 'app-pii-card-collapsed',
@@ -18,6 +20,8 @@ export class PiiCardCollapsedComponent {
 
   private readonly piiItemCardUtils = inject(PiiItemCardUtils);
   private readonly translocoService = inject(TranslocoService);
+  readonly viewModeService = inject(ViewModeService);
+  private readonly classificationService = inject(ClassificationService);
 
   readonly severityStyle = computed(() => SEVERITY_STYLES[this.item().severity] ?? SEVERITY_STYLES.low);
 
@@ -26,13 +30,28 @@ export class PiiCardCollapsedComponent {
   );
 
   readonly piiTypeBadges = computed(() => {
+    const mode = this.viewModeService.viewMode();
+    const entities = this.item().detectedPersonallyIdentifiableInformationList ?? [];
     const counts = new Map<string, number>();
-    for (const entity of this.item().detectedPersonallyIdentifiableInformationList ?? []) {
+
+    for (const entity of entities) {
+      const piiTypeCode = (entity.piiType || entity.piiTypeLabel || 'UNKNOWN').toUpperCase();
       const label = entity.piiTypeLabel || entity.piiType || 'UNKNOWN';
-      counts.set(label, (counts.get(label) ?? 0) + 1);
+      let key: string;
+      if (mode === 'gdpr') {
+        const gdpr = this.classificationService.getGdprClassification(piiTypeCode);
+        key = this.translocoService.translate(`gdpr.classification.${gdpr}.short`);
+      } else if (mode === 'nlpd') {
+        const nlpd = this.classificationService.getNlpdClassification(piiTypeCode);
+        key = this.translocoService.translate(`nlpd.classification.${nlpd}.short`);
+      } else {
+        key = this.translatePiiType(label);
+      }
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
+
     return Array.from(counts.entries()).map(([type, count]) => ({
-      label: this.translatePiiType(type),
+      label: type,
       count,
     }));
   });

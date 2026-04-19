@@ -223,12 +223,44 @@
         </td>
         <td>
           <div class="flex align-items-center justify-content-center gap-1">
-            <p-badge [value]="space?.counts?.high ?? 0" severity="danger"
-                     size="large" [attr.data-testid]="testIds.badges.high"></p-badge>
-            <p-badge [value]="space?.counts?.medium ?? 0" severity="warn"
-                     size="large" [attr.data-testid]="testIds.badges.medium"></p-badge>
-            <p-badge [value]="space?.counts?.low ?? 0" severity="info"
-                     size="large" [attr.data-testid]="testIds.badges.low"></p-badge>
+            @switch (viewModeService.viewMode()) {
+              @case ('gdpr') {
+                <p-badge [value]="space?.classificationCounts?.gdprSpecialCategory ?? 0" severity="danger"
+                         size="large"
+                         [pTooltip]="'gdpr.classification.SPECIAL_CATEGORY.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.gdprCriminalData ?? 0" severity="warn"
+                         size="large"
+                         [pTooltip]="'gdpr.classification.CRIMINAL_DATA.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.gdprPersonalDataHighRisk ?? 0" severity="info"
+                         size="large"
+                         [pTooltip]="'gdpr.classification.PERSONAL_DATA_HIGH_RISK.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.gdprPersonalData ?? 0" severity="success"
+                         size="large"
+                         [pTooltip]="'gdpr.classification.PERSONAL_DATA.label' | transloco"></p-badge>
+              }
+              @case ('nlpd') {
+                <p-badge [value]="space?.classificationCounts?.nlpdSensitiveData ?? 0" severity="danger"
+                         size="large"
+                         [pTooltip]="'nlpd.classification.SENSITIVE_DATA.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.nlpdHighRiskProfilingData ?? 0" severity="warn"
+                         size="large"
+                         [pTooltip]="'nlpd.classification.HIGH_RISK_PROFILING_DATA.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.nlpdPersonalDataHighRisk ?? 0" severity="info"
+                         size="large"
+                         [pTooltip]="'nlpd.classification.PERSONAL_DATA_HIGH_RISK.label' | transloco"></p-badge>
+                <p-badge [value]="space?.classificationCounts?.nlpdPersonalData ?? 0" severity="success"
+                         size="large"
+                         [pTooltip]="'nlpd.classification.PERSONAL_DATA.label' | transloco"></p-badge>
+              }
+              @default {
+                <p-badge [value]="space?.counts?.high ?? 0" severity="danger"
+                         size="large" [attr.data-testid]="testIds.badges.high"></p-badge>
+                <p-badge [value]="space?.counts?.medium ?? 0" severity="warn"
+                         size="large" [attr.data-testid]="testIds.badges.medium"></p-badge>
+                <p-badge [value]="space?.counts?.low ?? 0" severity="info"
+                         size="large" [attr.data-testid]="testIds.badges.low"></p-badge>
+              }
+            }
           </div>
         </td>
         <td class="col-actions">

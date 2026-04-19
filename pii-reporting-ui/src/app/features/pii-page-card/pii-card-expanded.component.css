@@ -217,6 +217,8 @@ button.expanded-header {
   display: flex;
   padding: 8px 20px;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   border-top: 1px solid var(--sentinel-border-badge);
 }
 
@@ -318,9 +320,16 @@ button.expanded-header {
   font-weight: 500;
 }
 
+.th-classification,
+.td-classification {
+  width: 12%;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .th-value,
 .td-value {
-  width: 55%;
+  width: 43%;
 }
 
 .th-confidence,
@@ -333,6 +342,11 @@ button.expanded-header {
 .td-detector {
   width: 15%;
   text-align: center;
+}
+
+.classification-badge {
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 .td-value {
@@ -507,3 +521,40 @@ button.expanded-header {
     width: 100%;
   }
 }
+
+/* Legal filter chips (GDPR / nLPD toggle pills) — nested inside .filter-bar so
+   they live next to the PII type multiselect without extra padding/border. */
+.legal-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.legal-filter-chip {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--sentinel-border-medium);
+  background: var(--sentinel-bg-card);
+  color: var(--sentinel-text-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.legal-filter-chip:hover {
+  background: var(--sentinel-bg-hover);
+}
+
+.legal-filter-chip--active {
+  background: var(--sentinel-primary, #2563EB);
+  color: #fff;
+  border-color: var(--sentinel-primary, #2563EB);
+}
+
+.legal-filter-chip:focus-visible {
+  outline: 2px solid var(--sentinel-focus, #2563EB);
+  outline-offset: 2px;
+}
+

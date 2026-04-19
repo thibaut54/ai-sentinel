@@ -249,8 +249,8 @@
                     </div>
                 }
 
-                <!-- PII Types grouped by detector -->
-                @for (detectorGroup of filteredPiiTypes(); track detectorGroup.detector) {
+                <!-- PII Types grouped by detector (grouping depends on view mode) -->
+                @for (detectorGroup of legalGroupedPiiTypes(); track detectorGroup.detector) {
                     <div class="detector-group">
                         <!-- Detector group header -->
                         <div class="detector-group-header"
@@ -290,7 +290,17 @@
                                 <!-- Category sub-header -->
                                 <div class="category-subheader">
                                     <i class="pi pi-folder-open"></i>
-                                    {{ 'settings.piiTypes.categoryNames.' + categoryGroup.category | transloco }}
+                                    @switch (viewModeService.viewMode()) {
+                                        @case ('gdpr') {
+                                            {{ 'gdpr.classification.' + categoryGroup.category + '.label' | transloco }}
+                                        }
+                                        @case ('nlpd') {
+                                            {{ 'nlpd.classification.' + categoryGroup.category + '.label' | transloco }}
+                                        }
+                                        @default {
+                                            {{ 'settings.piiTypes.categoryNames.' + categoryGroup.category | transloco }}
+                                        }
+                                    }
                                 </div>
 
                                 <!-- PII type rows -->
@@ -313,6 +323,22 @@
                                             }
                                             @if (type.isCustom && type.severity) {
                                                 <span class="severity-indicator severity-{{ type.severity | lowercase }}">{{ type.severity }}</span>
+                                            }
+                                            @if (viewModeService.isGdprMode()) {
+                                                <p-tag
+                                                    class="legal-badge"
+                                                    [severity]="gdprBadgeSeverity(getGdprFor(type))"
+                                                    [value]="gdprLabelShort(getGdprFor(type))"
+                                                    [attr.aria-label]="'gdpr.classification.' + getGdprFor(type) + '.label' | transloco">
+                                                </p-tag>
+                                            }
+                                            @if (viewModeService.isNlpdMode()) {
+                                                <p-tag
+                                                    class="legal-badge"
+                                                    [severity]="nlpdBadgeSeverity(getNlpdFor(type))"
+                                                    [value]="nlpdLabelShort(getNlpdFor(type))"
+                                                    [attr.aria-label]="'nlpd.classification.' + getNlpdFor(type) + '.label' | transloco">
+                                                </p-tag>
                                             }
                                             @if (!(type.isCustom && type.detectorLabel)) {
                                                 <p class="type-description" [innerHTML]="highlightText('', 'settings.piiTypes.typeDescriptions.' + type.piiType)"></p>
@@ -496,6 +522,44 @@
                 optionValue="value"
                 [ariaLabel]="'settings.customLabels.fields.severity' | transloco">
             </p-select>
+        </div>
+
+        <!-- GDPR classification (required) -->
+        <div class="custom-label-field">
+            <label for="gdprClassification">
+                {{ 'settings.customLabels.fields.gdprClassification' | transloco }}
+                <span class="required-marker" aria-hidden="true">*</span>
+            </label>
+            <p-select
+                id="gdprClassification"
+                formControlName="gdprClassification"
+                [options]="gdprOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [ariaLabel]="'settings.customLabels.fields.gdprClassification' | transloco">
+            </p-select>
+            @if (customLabelForm.get('gdprClassification')?.invalid && customLabelForm.get('gdprClassification')?.touched) {
+                <small class="field-error">{{ 'settings.customLabels.validation.gdprRequired' | transloco }}</small>
+            }
+        </div>
+
+        <!-- nLPD classification (required) -->
+        <div class="custom-label-field">
+            <label for="nlpdClassification">
+                {{ 'settings.customLabels.fields.nlpdClassification' | transloco }}
+                <span class="required-marker" aria-hidden="true">*</span>
+            </label>
+            <p-select
+                id="nlpdClassification"
+                formControlName="nlpdClassification"
+                [options]="nlpdOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [ariaLabel]="'settings.customLabels.fields.nlpdClassification' | transloco">
+            </p-select>
+            @if (customLabelForm.get('nlpdClassification')?.invalid && customLabelForm.get('nlpdClassification')?.touched) {
+                <small class="field-error">{{ 'settings.customLabels.validation.nlpdRequired' | transloco }}</small>
+            }
         </div>
 
         <!-- Threshold -->

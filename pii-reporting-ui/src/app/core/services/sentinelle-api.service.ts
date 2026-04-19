@@ -33,6 +33,16 @@ export interface SpaceSummaryDto {
   attachmentsDone: number;
   lastEventTs: string;
   severityCounts: { high: number; medium: number; low: number; total: number; } | null;
+  classificationCounts: {
+    gdprSpecialCategory: number;
+    gdprCriminalData: number;
+    gdprPersonalDataHighRisk: number;
+    gdprPersonalData: number;
+    nlpdSensitiveData: number;
+    nlpdHighRiskProfilingData: number;
+    nlpdPersonalDataHighRisk: number;
+    nlpdPersonalData: number;
+  } | null;
 }
 
 export interface ScanReportingSummaryDto {

@@ -57,9 +57,10 @@
     </button>
   </div>
 
-  <!-- Filter bar -->
-  @if (filterOptions().length > 2) {
-    <div class="filter-bar">
+  <!-- Filter bar: PII type multiselect is always visible; legal classification chips
+       stack on top of it when the user is in GDPR or nLPD view. -->
+  <div class="filter-bar">
+    @if (filterOptions().length > 2) {
       <p-multiselect
         [options]="filterOptions()"
         [ngModel]="selectedFilterValues()"
@@ -73,8 +74,41 @@
         appendTo="body"
         class="pii-type-multiselect">
       </p-multiselect>
-    </div>
-  }
+    }
+
+    @switch (viewModeService.viewMode()) {
+      @case ('gdpr') {
+        <div class="legal-filter-bar" role="group"
+             [attr.aria-label]="'piiPageCard.legalFilters.gdprAria' | transloco">
+          @for (value of gdprFilterOptions; track value) {
+            <button type="button"
+                    class="legal-filter-chip"
+                    [class.legal-filter-chip--active]="isGdprFilterActive(value)"
+                    [attr.aria-pressed]="isGdprFilterActive(value)"
+                    (click)="toggleGdprFilter(value)"
+                    (keydown.enter)="toggleGdprFilter(value)">
+              {{ 'gdpr.classification.' + value + '.short' | transloco }}
+            </button>
+          }
+        </div>
+      }
+      @case ('nlpd') {
+        <div class="legal-filter-bar" role="group"
+             [attr.aria-label]="'piiPageCard.legalFilters.nlpdAria' | transloco">
+          @for (value of nlpdFilterOptions; track value) {
+            <button type="button"
+                    class="legal-filter-chip"
+                    [class.legal-filter-chip--active]="isNlpdFilterActive(value)"
+                    [attr.aria-pressed]="isNlpdFilterActive(value)"
+                    (click)="toggleNlpdFilter(value)"
+                    (keydown.enter)="toggleNlpdFilter(value)">
+              {{ 'nlpd.classification.' + value + '.short' | transloco }}
+            </button>
+          }
+        </div>
+      }
+    }
+  </div>
 
   <!-- Detail table -->
   <div class="detail-table-wrapper">
@@ -86,6 +120,9 @@
             <span class="sort-indicator" [class.sort-indicator--active]="sortColumn() === 'typeLabel'"
                   [class.sort-indicator--desc]="sortColumn() === 'typeLabel' && sortDirection() === 'desc'"
                   aria-hidden="true">&#x25B4;</span>
+          </th>
+          <th class="th-classification">
+            {{ 'piiPageCard.table.classification' | transloco }}
           </th>
           <th class="th-value th-sortable" tabindex="0" (click)="onSort('value')" (keydown.enter)="onSort('value')">
             {{ 'piiPageCard.table.value' | transloco }}
@@ -111,6 +148,31 @@
         @for (row of filteredAndSortedRows(); track $index) {
           <tr class="pii-row">
             <td class="td-type">{{ row.typeLabel }}</td>
+            <td class="td-classification">
+              @switch (viewModeService.viewMode()) {
+                @case ('gdpr') {
+                  <p-tag class="classification-badge"
+                         [severity]="gdprBadgeSeverity(row.gdprClassification)"
+                         [value]="'gdpr.classification.' + row.gdprClassification + '.short' | transloco"
+                         [attr.aria-label]="'gdpr.classification.' + row.gdprClassification + '.label' | transloco">
+                  </p-tag>
+                }
+                @case ('nlpd') {
+                  <p-tag class="classification-badge"
+                         [severity]="nlpdBadgeSeverity(row.nlpdClassification)"
+                         [value]="'nlpd.classification.' + row.nlpdClassification + '.short' | transloco"
+                         [attr.aria-label]="'nlpd.classification.' + row.nlpdClassification + '.label' | transloco">
+                  </p-tag>
+                }
+                @default {
+                  <p-tag class="classification-badge"
+                         [severity]="classificationService.severityBadgeSeverity(row.severity)"
+                         [value]="'severity.' + row.severity.toLowerCase() | transloco"
+                         [attr.aria-label]="'piiItem.severity.label' | transloco:{ value: ('severity.' + row.severity.toLowerCase() | transloco) }">
+                  </p-tag>
+                }
+              }
+            </td>
             <td class="td-value" [class.td-value--revealed]="row.isRevealed">
               @for (part of row.valueParts; track $index) {
                 @if (part.isBadge) {

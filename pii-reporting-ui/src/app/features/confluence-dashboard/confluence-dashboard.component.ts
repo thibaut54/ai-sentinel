@@ -29,6 +29,7 @@ import { SpaceDataManagementService } from './services/space-data-management.ser
 import { ScanControlService } from './services/scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
+import { ViewModeService } from '../../core/services/view-mode.service';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -76,6 +77,7 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   // Utility services
   readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
+  readonly viewModeService = inject(ViewModeService);
 
   // Output to request settings dialog from parent (AppShellComponent)
   @Output() openSettings = new EventEmitter<number>();

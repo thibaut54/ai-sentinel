@@ -9,6 +9,31 @@
       <h1 class="app-title">{{ 'common.appTitle' | transloco }}</h1>
     </div>
     <div class="flex align-items-center gap-2">
+      <!-- Tri-mode legal view toggle (desktop) -->
+      <p-selectbutton
+        class="view-mode-toggle view-mode-toggle--desktop"
+        [options]="viewModeOptions()"
+        [ngModel]="viewModeService.viewMode()"
+        (ngModelChange)="onViewModeChange($event)"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        [ariaLabelledBy]="'view-mode-label'"
+        [attr.aria-label]="'viewMode.label' | transloco">
+      </p-selectbutton>
+      <span id="view-mode-label" class="sr-only">{{ 'viewMode.label' | transloco }}</span>
+
+      <!-- Tri-mode legal view toggle (mobile dropdown) -->
+      <p-select
+        class="view-mode-toggle view-mode-toggle--mobile"
+        [options]="viewModeOptions()"
+        [ngModel]="viewModeService.viewMode()"
+        (ngModelChange)="onViewModeChange($event)"
+        optionLabel="label"
+        optionValue="value"
+        [ariaLabel]="'viewMode.label' | transloco">
+      </p-select>
+
       <p-button [icon]="themeService.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
                 styleClass="header-theme-btn"
                 [rounded]="true"
