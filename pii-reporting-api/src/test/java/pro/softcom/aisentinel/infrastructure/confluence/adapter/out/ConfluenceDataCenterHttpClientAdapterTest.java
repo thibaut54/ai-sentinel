@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 import java.lang.reflect.Field;
@@ -44,18 +45,12 @@ class ConfluenceDataCenterHttpClientAdapterTest {
         lenient().when(config.baseUrl()).thenReturn("https://confluence.mycompany.com");
         lenient().when(config.username()).thenReturn("admin");
         lenient().when(config.apiToken()).thenReturn("dc-personal-access-token");
-        lenient().when(config.getRestApiUrl()).thenReturn("https://confluence.mycompany.com/rest/api");
+        lenient().when(config.deploymentType()).thenReturn(ConfluenceDeploymentType.DATA_CENTER);
         lenient().when(config.connectTimeout()).thenReturn(5000);
         lenient().when(config.readTimeout()).thenReturn(10000);
         lenient().when(config.maxRetries()).thenReturn(0);
         lenient().when(config.pagesLimit()).thenReturn(50);
         lenient().when(config.maxPages()).thenReturn(100);
-        lenient().when(config.contentPath()).thenReturn("/content/");
-        lenient().when(config.searchContentPath()).thenReturn("/content/search");
-        lenient().when(config.spacePath()).thenReturn("/space");
-        lenient().when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
-        lenient().when(config.defaultPageExpands()).thenReturn("body.storage,version,metadata,ancestors");
-        lenient().when(config.defaultSpaceExpands()).thenReturn("permissions,metadata");
 
         adapter = new ConfluenceDataCenterHttpClientAdapter(config, new ObjectMapper());
 
@@ -113,6 +108,27 @@ class ConfluenceDataCenterHttpClientAdapterTest {
         boolean result = adapter.testConnection().join();
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void Should_DelegateToGetSpace_When_GetSpaceWithPermissionsCalled() {
+        // Data Center does not support expand=permissions (CONFSERVER-78176)
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn("{\"id\":\"1\",\"key\":\"DC\",\"name\":\"DC Space\",\"type\":\"global\",\"status\":\"current\"}");
+        when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+            .thenReturn(CompletableFuture.completedFuture(httpResponse));
+
+        var result = adapter.getSpaceWithPermissions("DC").join();
+
+        // Assert - the request should NOT contain expand=permissions
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+
+        HttpRequest capturedRequest = requestCaptor.getValue();
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(capturedRequest.uri().toString()).doesNotContain("permissions");
+        softly.assertThat(result).isPresent();
+        softly.assertAll();
     }
 
     @Test

@@ -9,8 +9,14 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.RevealPiiSecretsPort;
+import pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException;
 
 import java.util.List;
 
@@ -51,7 +57,7 @@ public class PiiAccessController {
                         log.warn("[PII_ACCESS] No results found for pageId={}", request.pageId());
                         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
                     });
-        } catch (SecurityException e) {
+        } catch (PiiAccessDeniedException e) {
             log.warn("[PII_ACCESS] Reveal attempt denied: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

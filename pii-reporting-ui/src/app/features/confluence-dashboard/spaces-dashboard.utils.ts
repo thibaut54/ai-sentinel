@@ -36,6 +36,7 @@ export class SpacesDashboardUtils {
    * The translation is handled in the template using transloco pipe.
    */
   readonly statusOptions = signal<Array<{ labelKey: string; value: string }>>([
+    { labelKey: 'dashboard.status.notStarted', value: 'NOT_STARTED' },
     { labelKey: 'dashboard.status.pending', value: 'PENDING' },
     { labelKey: 'dashboard.status.paused', value: 'PAUSED' },
     { labelKey: 'dashboard.status.running', value: 'RUNNING' },
@@ -62,7 +63,7 @@ export class SpacesDashboardUtils {
   setSpaces(spaces: Space[] | null | undefined): void {
     const mapped: UISpace[] = (spaces ?? []).map<UISpace>((s, idx) => ({
       ...s,
-      status: 'PENDING',
+      status: 'NOT_STARTED',
       lastScanTs: undefined,
       counts: { total: 0, high: 0, medium: 0, low: 0 },
       // Preserve backend-provided URL when present
@@ -87,11 +88,11 @@ export class SpacesDashboardUtils {
   }
 
   statusLabel(status?: string): string {
-    // Normalize to business-friendly French labels
     if (status === 'FAILED') return 'En échec';
     if (status === 'RUNNING') return 'En cours';
     if (status === 'PAUSED') return 'En pause';
-    if (status === 'PENDING' || !status) return 'Non démarré';
+    if (status === 'PENDING') return 'En attente';
+    if (status === 'NOT_STARTED' || !status) return 'Non démarré';
     return 'Terminé';
   }
 
@@ -100,7 +101,8 @@ export class SpacesDashboardUtils {
     if (status === 'FAILED') return 'danger';
     if (status === 'RUNNING') return 'warning';
     if (status === 'PAUSED') return 'info';
-    if (status === 'PENDING' || !status) return 'secondary';
+    if (status === 'PENDING') return 'info';
+    if (status === 'NOT_STARTED' || !status) return 'secondary';
     return 'success';
   }
 

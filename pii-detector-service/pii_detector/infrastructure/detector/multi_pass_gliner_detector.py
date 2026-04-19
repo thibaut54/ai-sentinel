@@ -57,7 +57,7 @@ class AggregatedSpan:
 
     def has_conflict(self) -> bool:
         """Returns True if multiple different labels were detected for this span."""
-        unique_types = set(label for label, _ in self.labels)
+        unique_types = {label for label, _ in self.labels}
         return len(unique_types) > 1
 
 
@@ -175,6 +175,9 @@ class MultiPassGlinerDetector:
             # This respects the BUSINESS categories from DB
             pii_type_to_category: Dict[str, str] = {}
             for pii_type, config in pii_type_configs.items():
+                # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+                if ':' in pii_type:
+                    continue
                 if config.get('enabled', False):
                     category = config.get('category', 'UNKNOWN')
                     pii_type_to_category[pii_type] = category
@@ -194,7 +197,7 @@ class MultiPassGlinerDetector:
                 f"Loaded {total_types} PII types from database, optimized into {len(self._pass_categories)} passes (limit={limit})"
             )
             for pass_name, labels in sorted(self._pass_categories.items()):
-                self.logger.info(f"  {pass_name}: {len(labels)} labels")
+                self.logger.debug(f"  {pass_name}: {len(labels)} labels")
 
         except Exception as e:
             self.logger.error(f"Failed to load categories from database: {e}")
@@ -214,9 +217,12 @@ class MultiPassGlinerDetector:
         # Collect all enabled (label, pii_type) pairs
         all_labels: List[Tuple[str, str]] = []
         for pii_type, config in pii_type_configs.items():
+            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
+            if ':' in pii_type:
+                continue
             if not config.get('enabled', False):
                 continue
-            
+
             # Skip if not GLINER or ALL
             config_detector = config.get('detector', 'ALL')
             if config_detector != 'ALL' and config_detector != 'GLINER':
@@ -235,7 +241,7 @@ class MultiPassGlinerDetector:
         for i in range(0, len(all_labels), limit):
             chunk = all_labels[i:i+limit]
             batch_name = f"BATCH_{i//limit + 1}"
-            batches[batch_name] = {label: pii_type for label, pii_type in chunk}
+            batches[batch_name] = dict(chunk)
             
         if not batches:
              # Fallback if nothing enabled
@@ -273,9 +279,9 @@ class MultiPassGlinerDetector:
         self._pass_categories = {
             "IDENTITY": {
                 "person name": "PERSON_NAME",
-                "social security number": "SSN",
+                "social insurance number": "SSN",
                 "passport number": "PASSPORT_NUMBER",
-                "driver license number": "DRIVER_LICENSE_NUMBER",
+                "driver license identification": "DRIVER_LICENSE_NUMBER",
             },
             "CONTACT": {
                 "email address": "EMAIL",
@@ -284,17 +290,17 @@ class MultiPassGlinerDetector:
             },
             "FINANCIAL": {
                 "credit card number": "CREDIT_CARD_NUMBER",
-                "bank account number": "BANK_ACCOUNT_NUMBER",
+                "financial institution account number": "BANK_ACCOUNT_NUMBER",
                 "iban": "IBAN",
             },
             "MEDICAL": {
-                "avs number": "AVS_NUMBER",
-                "patient id": "PATIENT_ID",
-                "medical diagnosis": "DIAGNOSIS",
+                "Swiss AVS 13-digit personal number": "AVS_NUMBER",
+                "hospital patient identifier": "PATIENT_ID",
+                "clinical diagnosis": "DIAGNOSIS",
             },
             "IT": {
-                "ip address": "IP_ADDRESS",
-                "api key": "API_KEY",
+                "IPv4 or IPv6 network address": "IP_ADDRESS",
+                "API authentication credential": "API_KEY",
                 "password": "PASSWORD",
             },
         }
@@ -374,7 +380,7 @@ class MultiPassGlinerDetector:
         detection_id = self._generate_detection_id()
         categories_to_run = categories or list(pass_categories.keys())
 
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] Starting multi-pass detection on {len(text)} chars "
             f"with {len(categories_to_run)} categories, threshold={threshold}"
         )
@@ -436,7 +442,7 @@ class MultiPassGlinerDetector:
             mask = f"[{entity.pii_type}]"
             masked_text = masked_text[:entity.start] + mask + masked_text[entity.end:]
 
-        self.logger.info(f"Masked {len(entities)} PII entities")
+        self.logger.debug(f"Masked {len(entities)} PII entities")
         return masked_text, entities
 
     def _run_parallel_passes(
@@ -466,7 +472,7 @@ class MultiPassGlinerDetector:
         all_entities: List[PIIEntity] = []
 
         if self.parallel_enabled and self.executor and len(categories) > 1:
-            self.logger.info(
+            self.logger.debug(
                 f"[{detection_id}] Running {len(categories)} passes in parallel "
                 f"with {self.max_workers} workers"
             )
@@ -495,12 +501,12 @@ class MultiPassGlinerDetector:
                     raise
         else:
             # Sequential fallback
-            self.logger.info(f"[{detection_id}] Running {len(categories)} passes sequentially")
+            self.logger.debug(f"[{detection_id}] Running {len(categories)} passes sequentially")
             for category in categories:
                 entities = self._run_single_pass(text, threshold, detection_id, category, pass_categories)
                 all_entities.extend(entities)
 
-        self.logger.info(
+        self.logger.debug(
             f"[{detection_id}] All passes complete: {len(all_entities)} total entities"
         )
         return all_entities
@@ -568,7 +574,7 @@ class MultiPassGlinerDetector:
         # Log pass results
         if entities:
             entity_types = [e.pii_type for e in entities]
-            self.logger.info(
+            self.logger.debug(
                 f"[{detection_id}] Pass {category}: {len(entities)} entities in {pass_time:.2f}s - "
                 f"types: {set(entity_types)}"
             )

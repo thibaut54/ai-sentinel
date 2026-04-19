@@ -222,16 +222,21 @@ def _create_multi_detector():
 
 
 def _create_single_detector():
-    """Create and return a single-model detector instance, or None if no LLM models are enabled."""
+    """Create and return a single-model detector instance, or None if no LLM models are enabled.
+
+    Returns:
+        A detector instance, or None when no LLM models are enabled.
+        When None is returned, the caller (CompositePIIDetector) falls back
+        to Presidio and/or Regex detection only.
+    """
     from pii_detector.application.config.detection_policy import DetectionConfig, get_enabled_models, _load_llm_config
-    
+
     # Check if any LLM models are enabled
     try:
         config_dict = _load_llm_config()
         enabled_models = get_enabled_models(config_dict)
-        
+
         if not enabled_models:
-            # TODO When no LLM models are enabled, returning None relies on the caller to handle this case correctly. Consider documenting this behavior in the function docstring or adding a check that at least one detection method (Presidio/Regex) is enabled before returning None to prevent a scenario where all detection is disabled.
             # No LLM models enabled - return None to use only Presidio/Regex
             logger.info("No LLM models enabled - will use only Presidio/Regex detection")
             return None
@@ -548,10 +553,10 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         """
         peer_info = context.peer() if hasattr(context, 'peer') else "unknown"
         
-        logger.info(f"[{request_id}] Received DetectPII request #{self.request_counter}")
-        logger.info(f"[{request_id}] Client: {peer_info}")
-        logger.info(f"[{request_id}] Content length: {len(content)} characters")
-        logger.info(f"[{request_id}] Threshold: {threshold}")
+        logger.debug(f"[{request_id}] Received DetectPII request #{self.request_counter}")
+        logger.debug(f"[{request_id}] Client: {peer_info}")
+        logger.debug(f"[{request_id}] Content length: {len(content)} characters")
+        logger.debug(f"[{request_id}] Threshold: {threshold}")
         
         if len(content) > 100:
             logger.debug(f"[{request_id}] Content preview: {content[:100]}...")
@@ -582,7 +587,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 get_database_config_adapter,
             )
             
-            logger.info(f"[{request_id}] Fetching config from database...")
+            logger.debug(f"[{request_id}] Fetching config from database...")
             adapter = get_database_config_adapter()
             db_config = adapter.fetch_config()
             
@@ -590,7 +595,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             pii_type_configs = adapter.fetch_pii_type_configs()
             
             if db_config is None:
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Using default threshold {default_threshold} "
                     "(database config not available)"
                 )
@@ -611,7 +616,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'regex_enabled': db_config.get('regex_enabled', False)
             }
             
-            logger.info(
+            logger.debug(
                 f"[{request_id}] Applied database config: threshold={threshold}, "
                 f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
@@ -620,7 +625,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             )
             
             if pii_type_configs:
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Loaded {len(pii_type_configs)} PII type-specific configs"
                 )
             
@@ -765,7 +770,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             
             # Case 1: Direct PresidioDetector
             if isinstance(self.detector, PresidioDetector):
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Passing fresh configs to direct PresidioDetector "
                     f"({len(pii_type_configs)} types)"
                 )
@@ -778,7 +783,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 presidio_detector = getattr(self.detector, 'presidio_detector', None)
                 
                 if presidio_detector and isinstance(presidio_detector, PresidioDetector):
-                    logger.info(
+                    logger.debug(
                         f"[{request_id}] Passing fresh configs to Presidio inside CompositePIIDetector "
                         f"({len(pii_type_configs)} types)"
                     )
@@ -879,10 +884,10 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if not entities or not pii_type_configs:
             return entities
 
-        logger.info(
+        logger.debug(
             f"[{request_id}] POST-FILTER START: {len(entities)} entities to filter"
         )
-        logger.info(
+        logger.debug(
             f"[{request_id}] Available PII type configs in DB: {sorted(pii_type_configs.keys())}"
         )
 
@@ -897,12 +902,12 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 filter_reasons[reason] = filter_reasons.get(reason, 0) + 1
 
         filtered_count = len(entities) - len(filtered_entities)
-        logger.info(
+        logger.debug(
             f"[{request_id}] POST-FILTER COMPLETE: Filtered {filtered_count} of {len(entities)} entities. "
             f"Kept: {len(filtered_entities)}"
         )
         if filter_reasons:
-            logger.info(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
+            logger.debug(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
 
         return filtered_entities
 
@@ -919,22 +924,28 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         entity_type_upper = entity_type.upper()
         entity_text_preview = entity.get('text', '')[:30]
         entity_score = float(entity.get('score', 0.0))
+        raw_source = entity.get('source', 'UNKNOWN')
+        entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
 
-        logger.info(
+        logger.debug(
             f"[{request_id}] Entity #{idx+1}: raw_type='{entity_type_raw}' → "
             f"normalized='{entity_type}' → uppercase='{entity_type_upper}' | "
             f"text='{entity_text_preview}' | score={entity_score:.3f}"
         )
 
-        type_config = pii_type_configs.get(entity_type_upper)
+        # Prefer detector-specific composite key (e.g. "REGEX:IP_ADDRESS"),
+        # fall back to plain pii_type key for backward compatibility.
+        type_config = pii_type_configs.get(f"{entity_source}:{entity_type_upper}")
+        if not type_config:
+            type_config = pii_type_configs.get(entity_type_upper)
 
         if not type_config:
-            logger.info(
+            logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT (no config)"
             )
             return True, None
 
-        logger.info(
+        logger.debug(
             f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): Config FOUND → "
             f"enabled={type_config.get('enabled')}, "
             f"threshold={type_config.get('threshold')}, "
@@ -943,18 +954,16 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         )
 
         config_detector = type_config.get('detector', 'ALL')
-        raw_source = entity.get('source', 'UNKNOWN')
-        entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
 
         if config_detector != 'ALL' and config_detector != entity_source:
-            logger.info(
+            logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
                 f"(config detector={config_detector} doesn't match entity source={entity_source})"
             )
             return True, None
 
         if not type_config.get('enabled', True):
-            logger.info(
+            logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
                 f"(disabled in config for detector={config_detector}) | text='{entity_text_preview}'"
             )
@@ -962,14 +971,14 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
 
         type_threshold = float(type_config.get('threshold', 0.5))
         if entity_score < type_threshold:
-            logger.info(
+            logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
                 f"(score {entity_score:.3f} < threshold {type_threshold:.3f}) | "
                 f"text='{entity_text_preview}'"
             )
             return False, f"{entity_type_upper}:below_threshold"
 
-        logger.info(
+        logger.debug(
             f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
             f"(enabled=true, score {entity_score:.3f} >= threshold {type_threshold:.3f})"
         )

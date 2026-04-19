@@ -241,7 +241,7 @@ public class PiiTypeConfigController {
     /**
      * Get PII type configurations grouped by detector and category for UI display.
      * Returns a nested structure: detector → categories → types.
-     * Only includes GLINER and PRESIDIO detectors (REGEX excluded).
+     * Includes GLINER, PRESIDIO and REGEX detectors.
      * <p>
      * GET /api/v1/pii-detection/pii-types/grouped
      *
@@ -253,7 +253,6 @@ public class PiiTypeConfigController {
 
         // Group by detector, then by category
         Map<String, Map<String, List<PiiTypeConfig>>> groupedByDetectorAndCategory = allConfigs.stream()
-                .filter(config -> !"REGEX".equals(config.getDetector())) // Exclude REGEX
                 .collect(Collectors.groupingBy(
                         PiiTypeConfig::getDetector,
                         Collectors.groupingBy(PiiTypeConfig::getCategory)

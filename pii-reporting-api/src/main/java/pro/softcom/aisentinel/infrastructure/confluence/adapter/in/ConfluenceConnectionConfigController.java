@@ -34,14 +34,13 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "Confluence Connection Config", description = "Manage Confluence connection configuration")
 public class ConfluenceConnectionConfigController {
 
-    private static final String MASKED_TOKEN = "***";
     private static final String SYSTEM_USER = "system";
 
     private final ManageConfluenceConnectionPort manageConfluenceConnectionPort;
 
     /**
      * Retrieves the current Confluence connection configuration.
-     * The API token is always masked in the response.
+     * The API token is never returned in the response.
      *
      * @return Current connection configuration settings
      */
@@ -71,7 +70,7 @@ public class ConfluenceConnectionConfigController {
      * <p>Business rule: The API token is encrypted before storage and never returned in plaintext.
      *
      * @param request New connection configuration settings
-     * @return Updated configuration (with masked token)
+     * @return Updated configuration
      */
     @PutMapping
     @Operation(summary = "Update Confluence connection configuration")
@@ -154,14 +153,10 @@ public class ConfluenceConnectionConfigController {
         });
     }
 
-    /**
-     * Converts domain model to response DTO with masked token.
-     */
     private ConfluenceConnectionConfigResponseDto toResponseDto(ConfluenceConnectionSettings settings) {
         return new ConfluenceConnectionConfigResponseDto(
                 settings.baseUrl(),
                 settings.username(),
-                MASKED_TOKEN,
                 settings.connectTimeout(),
                 settings.readTimeout(),
                 settings.maxRetries(),

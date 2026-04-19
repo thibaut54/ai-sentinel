@@ -15,9 +15,9 @@ labels = [
     # IDENTITY (9 types) - Core personal identity
     "person name",
     "national identity number",
-    "social security number",
+    "social insurance number",
     "passport number",
-    "driver license number",
+    "driver license identification",
     "date of birth",
     "gender",
     "nationality",
@@ -28,41 +28,41 @@ labels = [
     "address",
     "postal code",
     # DIGITAL (3 types) - Online identifiers
-    "username",
-    "account id",
+    "system account name",
+    "customer account",
     "url",
     # FINANCIAL (6 types) - Money/banking
     "credit card number",
-    "bank account number",
-    "iban",
+    "financial institution account number",
+    "international banking identifier",
     "swift code",
-    "tax identification number",
+    "tax identifier",
     "salary amount",
     # MEDICAL (6 types) - Health info
-    "avs number",
-    "patient id",
-    "medical record number",
+    "Swiss AVS 13-digit personal number",
+    "hospital patient identifier",
+    "medical file number",
     "health insurance number",
-    "medical diagnosis",
+    "clinical diagnosis",
     "medication name",
     # IT_CREDENTIALS (9 types) - Technical/secrets
-    "ip address",
+    "IPv4 or IPv6 network address",
     "mac address",
     "hostname",
-    "device id",
-    "password",
-    "api key",
+    "mobile device unique identifier",
+    "account password or PIN code",
+    "API authentication credential",
     "access token",
     "secret key",
-    "session id",
+    "web session",
     # LEGAL_ASSET (7 types) - Legal + property
-    "case number",
-    "license number",
-    "criminal record",
-    "vehicle registration number",
-    "license plate number",
-    "vehicle identification number",
-    "insurance policy number",
+    "court case reference number",
+    "regulatory license identifier",
+    "criminal background record",
+    "vehicle registration plate number",
+    "vehicle license plate",
+    "vehicle chassis identification number",
+    "insurance policy identifier",
 ]
 
 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print(f"{'='*70}")
     print(f"Text length: {len(text)} characters")
     print(f"Labels: {len(labels)} types (CONSOLIDATED from 107)")
-    print(f"Categories: 7 (down from 13)")
+    print("Categories: 7 (down from 13)")
     print(f"{'='*70}\n")
 
     # Single pass - no chunking, full text at once

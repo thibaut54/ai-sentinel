@@ -19,7 +19,6 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
 const MOCK_CONFLUENCE_CONFIG: ConfluenceConnectionConfig = {
   baseUrl: 'https://confluence.example.com',
   username: 'user',
-  apiTokenMasked: '****',
   connectTimeout: 30000,
   readTimeout: 60000,
   maxRetries: 3,
@@ -115,11 +114,10 @@ describe('PiiSettingsComponent', () => {
     );
     fixture.detectChanges();
 
-    // Simulate Confluence form dirty state
+    // Simulate Confluence form dirty state via model signal update
     const confluenceChild = component.confluenceSettings();
     expect(confluenceChild).toBeTruthy();
-    confluenceChild!.configForm.markAsDirty();
-    confluenceChild!.configForm.patchValue({ baseUrl: 'https://new-url.example.com' });
+    confluenceChild!.model.update(m => ({ ...m, baseUrl: 'https://new-url.example.com' }));
 
     // Ensure parent form is NOT dirty (only Confluence changed)
     expect(component.configForm.dirty).toBe(false);

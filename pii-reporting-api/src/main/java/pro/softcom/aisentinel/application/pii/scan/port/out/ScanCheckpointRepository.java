@@ -78,20 +78,44 @@ public interface ScanCheckpointRepository {
     void deleteActiveScanCheckpoints();
 
     /**
-     * Deletes active scan checkpoints (RUNNING or PAUSED status) for specific spaces.
-     * Business purpose: Clean up active scans for specific spaces when starting a fresh selected scan.
-     * 
+     * Deletes ALL scan checkpoints for specific spaces regardless of status.
+     * Business purpose: When re-scanning selected spaces, all previous checkpoint data
+     * (including COMPLETED) must be removed so the dashboard summary does not return
+     * stale statuses before the new scan creates its own checkpoints.
+     *
      * @param spaceKeys list of space keys to purge
      */
-    void deleteActiveScanCheckpointsForSpaces(List<String> spaceKeys);
+    void deleteAllCheckpointsForSpaces(List<String> spaceKeys);
 
     /**
-     * Finds the checkpoint with RUNNING status for a given scan.
-     * Business purpose: When pausing a scan, only the RUNNING checkpoint should be paused,
-     * not COMPLETED or other status checkpoints.
+     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as COMPLETED.
+     * Business purpose: When starting a selected scan, stale active checkpoints from
+     * previous interrupted scans on other spaces must be resolved to prevent them from
+     * polluting the dashboard summary with ghost RUNNING statuses.
+     * All scan data (results, counts, progress) is preserved — only the status changes.
+     *
+     * @param spaceKeys list of space keys EXCLUDED from cleanup (being re-scanned)
+     * @return number of rows updated
+     */
+    int resolveStaleActiveCheckpoints(List<String> spaceKeys);
+
+    /**
+     * Atomically sets ALL RUNNING checkpoints for a scan to PAUSED.
+     * Business purpose: Race-condition-safe pause — uses a single UPDATE statement
+     * so no in-flight scan event can overwrite the PAUSED status between read and write.
      *
      * @param scanId the business identifier of the scan
-     * @return the RUNNING checkpoint if found, otherwise empty
+     * @return the number of checkpoints updated
      */
-    Optional<ScanCheckpoint> findRunningScanCheckpoint(String scanId);
+    int pauseAllRunningCheckpoints(String scanId);
+
+    /**
+     * Atomically sets ALL PAUSED checkpoints for a scan to RUNNING.
+     * Business purpose: On resume, update checkpoint status BEFORE the scan emits new events,
+     * so the UPSERT guard (which blocks PAUSED → RUNNING from scan events) does not reject them.
+     *
+     * @param scanId the business identifier of the scan
+     * @return the number of checkpoints updated
+     */
+    int resumeAllPausedCheckpoints(String scanId);
 }

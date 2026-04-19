@@ -47,14 +47,14 @@ class HtmlContentParserTest {
         String source = line1 + "<br>" + line2;
         // Source: "Line 1<br>Line 2"
         
-        int brTagEnd = source.indexOf("<br>") + "<br>".length();
-        int positionInLine2 = brTagEnd + 4; // 4 chars into line2
+        int expectedLineStart = source.indexOf("<br>") + "<br>".length();
+        int positionInLine2 = expectedLineStart + 4; // 4 chars into line2
         
         // When
         int lineStart = parser.findLineStart(source, positionInLine2);
         
         // Then
-        int expectedLineStart = brTagEnd; // After <br>
+        // After <br>
         assertThat(lineStart).isEqualTo(expectedLineStart);
     }
 
@@ -312,11 +312,90 @@ class HtmlContentParserTest {
     void Should_HandleSelfClosingTags_When_CleaningText() {
         // Given
         String html = "Line 1<br/>Line 2";
-        
+
         // When
         String cleaned = parser.cleanText(html);
-        
+
         // Then
         assertThat(cleaned).contains("\n");
+    }
+
+    // ========== Confluence Storage Format Tests ==========
+
+    @Test
+    @DisplayName("Should_RemoveConfluenceMacroParameters_When_CleaningStorageFormat")
+    void Should_RemoveConfluenceMacroParameters_When_CleaningStorageFormat() {
+        // Given - Confluence storage format with structured macro (create-from-template blueprint)
+        String confluenceStorage = """
+            <p>Articles de dépannage</p>
+            <ac:structured-macro ac:name="create-from-template" ac:schema-version="1" ac:macro-id="40ed1b31-3f36-47ab-8542-7eb98b765aa0">
+              <ac:parameter ac:name="blueprintModuleCompleteKey">com.atlassian.confluence.plugins.confluence-knowledge-base:kb-troubleshooting-article-blueprint</ac:parameter>
+              <ac:parameter ac:name="buttonLabel">Add troubleshooting article</ac:parameter>
+            </ac:structured-macro>
+            """;
+
+        // When
+        String cleaned = parser.cleanText(confluenceStorage);
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(cleaned).contains("Articles de dépannage");
+            softly.assertThat(cleaned).doesNotContain("com.atlassian.confluence.plugins");
+            softly.assertThat(cleaned).doesNotContain("kb-troubleshooting-article-blueprint");
+            softly.assertThat(cleaned).doesNotContain("blueprintModuleCompleteKey");
+            softly.assertThat(cleaned).doesNotContain("40ed1b31-3f36-47ab-8542-7eb98b765aa0");
+        });
+    }
+
+    @Test
+    @DisplayName("Should_RemoveResourceIdentifiers_When_CleaningStorageFormat")
+    void Should_RemoveResourceIdentifiers_When_CleaningStorageFormat() {
+        // Given - Confluence storage format with internal links and resource identifiers
+        String confluenceStorage = """
+            <p>Voir la page suivante:</p>
+            <ac:link>
+              <ri:page ri:content-title="Guide utilisateur" ri:space-key="DOC" />
+              <ac:plain-text-link-body><![CDATA[Guide utilisateur]]></ac:plain-text-link-body>
+            </ac:link>
+            <ac:image>
+              <ri:attachment ri:filename="screenshot.png" />
+            </ac:image>
+            """;
+
+        // When
+        String cleaned = parser.cleanText(confluenceStorage);
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(cleaned).contains("Voir la page suivante");
+            softly.assertThat(cleaned).doesNotContain("ri:content-title");
+            softly.assertThat(cleaned).doesNotContain("ri:space-key");
+            softly.assertThat(cleaned).doesNotContain("ri:filename");
+            softly.assertThat(cleaned).doesNotContain("screenshot.png");
+        });
+    }
+
+    @Test
+    @DisplayName("Should_PreserveUserContent_When_CleaningMacroWithRichTextBody")
+    void Should_PreserveUserContent_When_CleaningMacroWithRichTextBody() {
+        // Given - Macro with both parameters (technical) and rich-text-body (user content)
+        String confluenceStorage = """
+            <ac:structured-macro ac:name="info">
+              <ac:parameter ac:name="title">Note importante</ac:parameter>
+              <ac:rich-text-body>
+                <p>Ce contenu doit être conservé car il est rédigé par l'utilisateur.</p>
+              </ac:rich-text-body>
+            </ac:structured-macro>
+            """;
+
+        // When
+        String cleaned = parser.cleanText(confluenceStorage);
+
+        // Then
+        assertSoftly(softly -> {
+            softly.assertThat(cleaned).contains("Ce contenu doit être conservé");
+            softly.assertThat(cleaned).doesNotContain("ac:name");
+            softly.assertThat(cleaned).doesNotContain("ac:parameter");
+        });
     }
 }

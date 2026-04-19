@@ -58,17 +58,14 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     }
 
     private void givenListingConfig() {
+        when(config.baseUrl()).thenReturn("https://example.atlassian.net");
         when(config.username()).thenReturn("user@example.com");
         when(config.apiToken()).thenReturn("token-123");
-        when(config.getRestApiUrl()).thenReturn("https://example.atlassian.net/rest/api");
         when(config.readTimeout()).thenReturn(5_000);
-        when(config.contentPath()).thenReturn("/content/");
-        when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
     }
 
     private void givenDownloadConfig() {
         givenListingConfig();
-        when(config.baseUrl()).thenReturn("https://example.atlassian.net");
         when(config.maxRetries()).thenReturn(2);
     }
 
@@ -128,7 +125,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    void downloadAttachmentContent_normalizesDownloadPathWithoutLeadingSlash() throws Exception {
+    void Should_NormalizeDownloadPath_When_PathWithoutLeadingSlash() throws Exception {
         givenDownloadConfig();
         String okList = attachmentsJson(List.of(
                 attachment()

@@ -1,6 +1,9 @@
-import { Component, EventEmitter, OnInit, Output, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  form, required, email, pattern, min, max, hidden, validate,
+  FormField, FieldTree
+} from '@angular/forms/signals';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { FieldsetModule } from 'primeng/fieldset';
@@ -19,6 +22,30 @@ import {
   TestConnectionRequest
 } from '../../core/models/confluence-connection-config.model';
 
+interface ConfluenceFormModel {
+  deploymentType: ConfluenceDeploymentType;
+  baseUrl: string;
+  username: string;
+  apiToken: string;
+  connectTimeout: number;
+  readTimeout: number;
+  maxRetries: number;
+  pagesLimit: number;
+  maxPages: number;
+}
+
+const DEFAULT_MODEL: ConfluenceFormModel = {
+  deploymentType: 'CLOUD',
+  baseUrl: '',
+  username: '',
+  apiToken: '',
+  connectTimeout: 30000,
+  readTimeout: 60000,
+  maxRetries: 3,
+  pagesLimit: 25,
+  maxPages: 1000
+};
+
 @Component({
   selector: 'app-confluence-settings',
   templateUrl: './confluence-settings.component.html',
@@ -26,7 +53,7 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormField,
     TranslocoModule,
     ButtonModule,
     FieldsetModule,
@@ -40,87 +67,95 @@ import {
   providers: [MessageService]
 })
 export class ConfluenceSettingsComponent implements OnInit {
-  /**
-   * Event emitted when Confluence settings are saved successfully.
-   */
-  @Output() saved = new EventEmitter<void>();
+  readonly saved = output();
 
-  configForm!: FormGroup;
-  loading = signal(false);
-  saving = signal(false);
-  testing = signal(false);
-  currentConfig = signal<ConfluenceConnectionConfig | null>(null);
+  private readonly configService = inject(ConfluenceConnectionConfigService);
+  private readonly messageService = inject(MessageService);
+  private readonly translocoService = inject(TranslocoService);
 
-  constructor(
-    private readonly fb: FormBuilder,
-    private readonly configService: ConfluenceConnectionConfigService,
-    private readonly messageService: MessageService,
-    private readonly translocoService: TranslocoService
-  ) {
-    this.initForm();
-  }
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly testing = signal(false);
+  readonly currentConfig = signal<ConfluenceConnectionConfig | null>(null);
+
+  readonly model = signal<ConfluenceFormModel>({...DEFAULT_MODEL});
+
+  readonly configForm: FieldTree<ConfluenceFormModel> = form(this.model, (path) => {
+    // Deployment type
+    required(path.deploymentType);
+
+    // Base URL
+    required(path.baseUrl);
+    pattern(path.baseUrl, /^https?:\/\/.+/);
+
+    // Username: hidden (excluded from validation) for Data Center
+    hidden(path.username, () => this.model().deploymentType === 'DATA_CENTER');
+    required(path.username);
+    email(path.username);
+
+    // API token: required unless an existing token is stored for the current deployment type
+    validate(path.apiToken, () => {
+      const value = this.model().apiToken;
+      if (value) return null;
+      const config = this.currentConfig();
+      const formType = this.model().deploymentType;
+      if (config?.configured && config.deploymentType === formType) return null;
+      return {kind: 'required'};
+    });
+
+    // Timeouts
+    required(path.connectTimeout);
+    min(path.connectTimeout, 1000);
+    max(path.connectTimeout, 120000);
+
+    required(path.readTimeout);
+    min(path.readTimeout, 5000);
+    max(path.readTimeout, 300000);
+
+    required(path.maxRetries);
+    min(path.maxRetries, 0);
+    max(path.maxRetries, 10);
+
+    // Pagination
+    required(path.pagesLimit);
+    min(path.pagesLimit, 1);
+    max(path.pagesLimit, 1000);
+
+    required(path.maxPages);
+    min(path.maxPages, 1);
+    max(path.maxPages, 10000);
+  });
+
+  readonly isCloud = computed(() => this.model().deploymentType === 'CLOUD');
+
+  readonly hasExistingTokenForCurrentType = computed(() => {
+    const config = this.currentConfig();
+    return !!config && config.configured && config.deploymentType === this.model().deploymentType;
+  });
+
+  readonly baseUrlPlaceholder = computed(() =>
+    this.isCloud()
+      ? this.translocoService.translate('settings.confluence.placeholders.baseUrlCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.baseUrlDc')
+  );
+
+  readonly usernamePlaceholder = computed(() =>
+    this.isCloud()
+      ? this.translocoService.translate('settings.confluence.placeholders.usernameCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.usernameDc')
+  );
+
+  readonly apiTokenPlaceholder = computed(() => {
+    if (this.hasExistingTokenForCurrentType()) {
+      return this.translocoService.translate('settings.confluence.placeholders.apiTokenExisting');
+    }
+    return this.isCloud()
+      ? this.translocoService.translate('settings.confluence.placeholders.apiTokenCloud')
+      : this.translocoService.translate('settings.confluence.placeholders.apiTokenDc');
+  });
 
   ngOnInit(): void {
     this.loadConfig();
-  }
-
-  get isCloud(): boolean {
-    return this.configForm.get('deploymentType')?.value === 'CLOUD';
-  }
-
-  get baseUrlPlaceholder(): string {
-    return this.isCloud
-      ? this.translocoService.translate('settings.confluence.placeholders.baseUrlCloud')
-      : this.translocoService.translate('settings.confluence.placeholders.baseUrlDc');
-  }
-
-  get usernamePlaceholder(): string {
-    return this.isCloud
-      ? this.translocoService.translate('settings.confluence.placeholders.usernameCloud')
-      : this.translocoService.translate('settings.confluence.placeholders.usernameDc');
-  }
-
-  get deploymentType(): ConfluenceDeploymentType {
-    return this.configForm.get('deploymentType')?.value || 'CLOUD';
-  }
-
-  get hasExistingTokenForCurrentType(): boolean {
-    const config = this.currentConfig();
-    return !!config && config.deploymentType === this.deploymentType;
-  }
-
-  get apiTokenPlaceholder(): string {
-    if (this.hasExistingTokenForCurrentType) {
-      return this.translocoService.translate('settings.confluence.placeholders.apiTokenExisting');
-    }
-    return this.isCloud
-      ? this.translocoService.translate('settings.confluence.placeholders.apiTokenCloud')
-      : this.translocoService.translate('settings.confluence.placeholders.apiTokenDc');
-  }
-
-  private initForm(): void {
-    this.configForm = this.fb.group({
-      deploymentType: ['CLOUD' as ConfluenceDeploymentType, [Validators.required]],
-      baseUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
-      username: ['', [Validators.required]],
-      apiToken: [''],
-      connectTimeout: [30000, [Validators.required, Validators.min(1000), Validators.max(120000)]],
-      readTimeout: [60000, [Validators.required, Validators.min(5000), Validators.max(300000)]],
-      maxRetries: [3, [Validators.required, Validators.min(0), Validators.max(10)]],
-      pagesLimit: [25, [Validators.required, Validators.min(1), Validators.max(1000)]],
-      maxPages: [1000, [Validators.required, Validators.min(1), Validators.max(10000)]]
-    });
-
-    this.configForm.get('deploymentType')?.valueChanges.subscribe((type: ConfluenceDeploymentType) => {
-      const usernameControl = this.configForm.get('username');
-      if (type === 'DATA_CENTER') {
-        usernameControl?.clearValidators();
-        usernameControl?.setValue('');
-      } else {
-        usernameControl?.setValidators([Validators.required]);
-      }
-      usernameControl?.updateValueAndValidity();
-    });
   }
 
   private loadConfig(): void {
@@ -130,7 +165,7 @@ export class ConfluenceSettingsComponent implements OnInit {
       next: (config) => {
         this.currentConfig.set(config);
         const deploymentType = config.deploymentType || 'CLOUD';
-        this.configForm.patchValue({
+        this.model.set({
           deploymentType,
           baseUrl: config.baseUrl,
           username: deploymentType === 'CLOUD' ? config.username : '',
@@ -157,38 +192,28 @@ export class ConfluenceSettingsComponent implements OnInit {
   }
 
   onSave(): void {
-    if (this.configForm.invalid) {
-      this.configForm.markAllAsTouched();
-      return;
-    }
-
-    // If config already exists and apiToken is empty, require user to confirm
-    const formValue = this.configForm.value;
-    if (!this.hasExistingTokenForCurrentType && !formValue.apiToken) {
-      this.configForm.get('apiToken')?.setErrors({required: true});
-      this.configForm.get('apiToken')?.markAsTouched();
-      return;
-    }
+    const formState = this.configForm();
+    if (formState.invalid()) return;
 
     this.saving.set(true);
 
+    const value = formState.value();
     const request: UpdateConfluenceConnectionConfigRequest = {
-      baseUrl: formValue.baseUrl,
-      username: formValue.username,
-      apiToken: formValue.apiToken,
-      connectTimeout: formValue.connectTimeout,
-      readTimeout: formValue.readTimeout,
-      maxRetries: formValue.maxRetries,
-      pagesLimit: formValue.pagesLimit,
-      maxPages: formValue.maxPages,
-      deploymentType: formValue.deploymentType
+      baseUrl: value.baseUrl,
+      username: value.username,
+      apiToken: value.apiToken,
+      connectTimeout: value.connectTimeout,
+      readTimeout: value.readTimeout,
+      maxRetries: value.maxRetries,
+      pagesLimit: value.pagesLimit,
+      maxPages: value.maxPages,
+      deploymentType: value.deploymentType
     };
 
     this.configService.updateConfig(request).subscribe({
       next: (config) => {
         this.currentConfig.set(config);
-        this.configForm.get('apiToken')?.setValue('');
-        this.configForm.markAsPristine();
+        this.model.update(m => ({...m, apiToken: ''}));
         this.messageService.add({
           severity: 'success',
           summary: this.translocoService.translate('common.success'),
@@ -212,31 +237,25 @@ export class ConfluenceSettingsComponent implements OnInit {
   }
 
   onTestConnection(): void {
-    const baseUrl = this.configForm.get('baseUrl');
-    const username = this.configForm.get('username');
-    const apiToken = this.configForm.get('apiToken');
+    const formState = this.configForm();
+    const baseUrlState = this.configForm.baseUrl();
+    const apiTokenState = this.configForm.apiToken();
 
-    // Validate only connection fields (username not required for DC)
-    if (baseUrl?.invalid || (this.isCloud && username?.invalid)) {
-      baseUrl?.markAsTouched();
-      if (this.isCloud) username?.markAsTouched();
-      return;
-    }
+    if (baseUrlState.invalid() || apiTokenState.invalid()) return;
 
-    // Token is required for testing
-    if (!apiToken?.value && !this.hasExistingTokenForCurrentType) {
-      apiToken?.setErrors({required: true});
-      apiToken?.markAsTouched();
-      return;
+    if (this.isCloud()) {
+      const usernameState = this.configForm.username();
+      if (usernameState.invalid()) return;
     }
 
     this.testing.set(true);
 
+    const value = formState.value();
     const request: TestConnectionRequest = {
-      baseUrl: baseUrl?.value,
-      username: username?.value,
-      apiToken: apiToken?.value,
-      deploymentType: this.configForm.get('deploymentType')?.value || 'CLOUD'
+      baseUrl: value.baseUrl,
+      username: value.username,
+      apiToken: value.apiToken,
+      deploymentType: value.deploymentType
     };
 
     this.configService.testConnection(request).subscribe({
@@ -272,10 +291,10 @@ export class ConfluenceSettingsComponent implements OnInit {
   }
 
   onReset(): void {
-    if (this.currentConfig()) {
-      const config = this.currentConfig()!;
+    const config = this.currentConfig();
+    if (config) {
       const deploymentType = config.deploymentType || 'CLOUD';
-      this.configForm.patchValue({
+      this.model.set({
         deploymentType,
         baseUrl: config.baseUrl,
         username: deploymentType === 'CLOUD' ? config.username : '',
@@ -286,14 +305,23 @@ export class ConfluenceSettingsComponent implements OnInit {
         pagesLimit: config.pagesLimit,
         maxPages: config.maxPages
       });
-      this.configForm.markAsPristine();
     } else {
-      this.configForm.reset();
-      this.initForm();
+      this.model.set({...DEFAULT_MODEL});
     }
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty;
+    return this.configForm().dirty();
+  }
+
+  get isFormValid(): boolean {
+    return this.configForm().valid();
+  }
+
+  get isConnectionFieldsValid(): boolean {
+    if (this.configForm.baseUrl().invalid()) return false;
+    if (!this.model().apiToken) return false;
+    if (this.isCloud() && this.configForm.username().invalid()) return false;
+    return true;
   }
 }

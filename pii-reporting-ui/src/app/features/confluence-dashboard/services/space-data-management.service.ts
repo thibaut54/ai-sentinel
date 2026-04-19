@@ -10,6 +10,7 @@ import { PiiItemsStorageService } from './pii-items-storage.service';
 import { DashboardUiStateService } from './dashboard-ui-state.service';
 import { TranslocoService } from '@jsverse/transloco';
 import { coerceSpaceKey } from '../spaces-dashboard-stream.utils';
+import { mapBackendStatusToUi } from '../scan-status.utils';
 
 /**
  * Service responsible for managing space data loading and background polling.
@@ -57,6 +58,9 @@ export class SpaceDataManagementService {
   // Last scan metadata for resume functionality
   readonly lastScanMeta = signal<LastScanMeta | null>(null);
   readonly lastSpaceStatuses = signal<SpaceScanStateDto[]>([]);
+
+  // Current scan scope: null = all spaces, string[] = selected spaces only
+  readonly currentScanSpaceKeys = signal<string[] | null>(null);
 
   // Manual refresh state
   readonly lastRefresh = signal<Date | null>(null);
@@ -162,14 +166,13 @@ export class SpaceDataManagementService {
    * Load dashboard summary using unified endpoint that combines authoritative progress
    * from checkpoints with aggregated counters from events.
    *
-   * Business rule:
-   * - If NO active scan: apply summary data to ALL spaces
-   * - If scan IS active: apply summary data ONLY to COMPLETED spaces (preserve SSE real-time data for others)
+   * Statuses are applied unconditionally to all spaces — the polling service is now
+   * the single source of truth for live status updates, so there is no longer a need
+   * to protect SSE real-time data.
    *
-   * @param isActive Whether a scan is currently active (streaming SSE events)
    * @param alsoLoadItems Whether to also load persisted PII items after loading statuses
    */
-  loadLastSpaceStatuses(isActive: boolean, alsoLoadItems: boolean = true): Observable<void> {
+  loadLastSpaceStatuses(alsoLoadItems: boolean = true): Observable<void> {
     return new Observable(observer => {
       this.sentinelleApiService.getDashboardSpacesSummary().subscribe({
         next: (summary) => {
@@ -193,31 +196,14 @@ export class SpaceDataManagementService {
           this.lastSpaceStatuses.set(spaceScanStateList);
 
           for (const spaceSummary of summary.spaces) {
-            // BUSINESS RULE: If scan is active, only apply summary data to COMPLETED spaces
-            // This preserves real-time SSE data for spaces that are RUNNING, PENDING, or FAILED
-            if (isActive && spaceSummary.status !== 'COMPLETED') {
-              continue;
-            }
-
-            const spaceScanState = {
-              spaceKey: spaceSummary.spaceKey,
-              status: spaceSummary.status,
-              pagesDone: spaceSummary.pagesDone,
-              attachmentsDone: spaceSummary.attachmentsDone,
-              lastEventTs: spaceSummary.lastEventTs,
-              progressPercentage: spaceSummary.progressPercentage ?? undefined
-            };
-
-            const uiStatus = this.computeUiStatus(spaceScanState, isActive);
+            const uiStatus = mapBackendStatusToUi(spaceSummary.status);
             this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, {
               status: uiStatus,
               lastScanTs: spaceSummary.lastEventTs
             });
 
             // CRITICAL: Always use progress from checkpoint (authoritative source)
-            // This fixes the bug where intermediate progress was overwriting correct values
             if (spaceSummary.status === 'COMPLETED') {
-              // Fallback to 100% for completed scans without explicit progress
               this.scanProgressService.updateProgress(spaceSummary.spaceKey, { percent: 100 });
             } else if (spaceSummary.progressPercentage != null) {
               this.scanProgressService.updateProgress(spaceSummary.spaceKey, {
@@ -237,11 +223,7 @@ export class SpaceDataManagementService {
             this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, { counts, classificationCounts });
           }
 
-          // NOTE: Do NOT call applyCountsFromItems() here - backend counts are authoritative
-          // The backend counts represent the number of PII entities detected, not the number of items/cards
-
           // Still load persisted items to display PII cards (if needed)
-          // The unified endpoint provides progress and counters, but not the detailed PII items
           if (alsoLoadItems) {
             this.loadLastItems().subscribe({
               next: () => {
@@ -267,37 +249,12 @@ export class SpaceDataManagementService {
   }
 
   /**
-   * Computes UI status from backend scan state.
-   * Mapping:
-   *  - COMPLETED → OK
-   *  - FAILED    → FAILED
-   *  - PAUSED    → PAUSED
-   *  - RUNNING   → RUNNING if SSE is active, PAUSED otherwise (e.g. page refresh)
-   *  - PENDING   → PENDING
-   * Fallback: PAUSED if work has been done, PENDING otherwise.
-   */
-  private computeUiStatus(
-    spaceScanState: SpaceScanStateDto,
-    isActive: boolean
-  ): 'FAILED' | 'RUNNING' | 'OK' | 'PENDING' | 'PAUSED' | undefined {
-    if (spaceScanState.status === 'COMPLETED') return 'OK';
-    if (spaceScanState.status === 'FAILED') return 'FAILED';
-    if (spaceScanState.status === 'PAUSED') return 'PAUSED';
-    if (spaceScanState.status === 'RUNNING') return isActive ? 'RUNNING' : 'PAUSED';
-    if (spaceScanState.status === 'PENDING') return 'PENDING';
-
-    const workDone = (spaceScanState.pagesDone ?? 0) + (spaceScanState.attachmentsDone ?? 0);
-    if (workDone > 0) return 'PAUSED';
-    return 'PENDING';
-  }
-
-  /**
    * Loads persisted PII items from last scan.
    * Business purpose: backfill dashboard with PII items after page refresh or resume.
    *
    * Items are added via PiiItemsStorageService which handles deduplication.
    */
-  private loadLastItems(): Observable<void> {
+  loadLastItems(): Observable<void> {
     return new Observable(observer => {
       this.sentinelleApiService.getLastScanItems().subscribe({
         next: (events) => {
@@ -334,15 +291,11 @@ export class SpaceDataManagementService {
   private reapplyLastScanUi(): void {
     const list = this.lastSpaceStatuses();
     if (!Array.isArray(list) || list.length === 0) {
-      // No statuses to reapply - counts remain as set by backend
       return;
     }
 
-    // isActive should be false during initial load, but we check anyway for safety
-    const isActive = false;
-
     for (const s of list) {
-      const uiStatus = this.computeUiStatus(s, isActive);
+      const uiStatus = mapBackendStatusToUi(s.status);
       this.spacesDashboardUtils.updateSpace(s.spaceKey, {
         status: uiStatus,
         lastScanTs: s.lastEventTs
@@ -354,8 +307,6 @@ export class SpaceDataManagementService {
         });
       }
     }
-
-    // NOTE: Do NOT call applyCountsFromItems() - backend counts are authoritative
   }
 
   /**
@@ -529,6 +480,7 @@ export class SpaceDataManagementService {
     this.queue.set([]);
     this.lastScanMeta.set(null);
     this.lastSpaceStatuses.set([]);
+    this.currentScanSpaceKeys.set(null);
     this.hasNewSpaces.set(false);
     this.newSpacesCount.set(0);
     this.spacesUpdateInfo.set([]);

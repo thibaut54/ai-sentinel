@@ -8,6 +8,7 @@
     "close": "Close",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "error": "Error",
     "yes": "Yes",
     "no": "No",
     "loading": "Loading...",
@@ -102,6 +103,7 @@
       "ok": "Finished",
       "failed": "Failed",
       "pending": "Pending",
+      "notStarted": "Not started",
       "paused": "Paused"
     },
     "actions": {
@@ -114,7 +116,8 @@
       "darkMode": "Switch to dark mode",
       "lightMode": "Switch to light mode",
       "scanSelected": "Scan Selected Spaces ({{count}})",
-      "scanSelectedLabel": "({{count}})"
+      "scanSelectedLabel": "({{count}})",
+      "purgeData": "Delete all scan data"
     },
     "filters": {
       "modifiedOnly": "Show only modified spaces",
@@ -152,7 +155,8 @@
     },
     "scanStatus": {
       "active": "Scanning",
-      "inactive": "Scan Inactive"
+      "inactive": "Scan Inactive",
+      "loading": "Loading..."
     },
     "logs": {
       "purging": "[ui] Purging previous results...",
@@ -160,6 +164,9 @@
       "sseError": "[ui] SSE connection error: {{error}}. The scan continues on the server.",
       "purgeError": "[ui] Error while purging previous scans: {{error}}",
       "scanCancelled": "[ui] Global scan cancelled by user",
+      "purgeManualOk": "[ui] All scan data has been successfully deleted",
+      "purgeManualError": "[ui] Error while deleting data: {{error}}",
+      "purgeManualCancelled": "[ui] Data deletion cancelled by user",
       "resumeRequest": "[ui] Requesting resume of scan {{scanId}}...",
       "resumeAccepted": "[ui] Resume accepted (HTTP 202). Connecting to event stream...",
       "resumeError": "[ui] Resume failed: {{error}}",
@@ -183,6 +190,12 @@
       "header": "Selected spaces scan confirmation",
       "message": "<p>Are you sure you want to start scanning <b>{{count}}</b> selected space(s)?</p>\n<p><b>Previous results will be overwritten.</b></p>",
       "acceptLabel": "Yes, start",
+      "rejectLabel": "Cancel"
+    },
+    "purgeData": {
+      "header": "Delete all data",
+      "message": "<p>Are you sure you want to <b>permanently delete</b> all Confluence scan data?</p>\n<p>This action is <b>irreversible</b>. All scan results, PII detections, and checkpoints will be removed.</p>",
+      "acceptLabel": "Yes, delete all",
       "rejectLabel": "Cancel"
     }
   },
@@ -278,7 +291,8 @@
       },
       "validation": {
         "baseUrlRequired": "Base URL is required and must start with http:// or https://",
-        "usernameRequired": "Username is required",
+        "usernameRequired": "Email address is required",
+        "usernameEmail": "Please enter a valid email address",
         "apiTokenRequired": "API token is required for new connections"
       },
       "messages": {
@@ -373,11 +387,11 @@
         "PERSON_NAME": "Person Name",
         "PERSONNAME": "Person Name",
         "FULLNAME": "Full Name",
-        "USERNAME": "Username",
+        "USERNAME": "Login / System Identifier",
         "ACCOUNTNUM": "Account Number",
         "CREDIT_CARD": "Credit Card Number",
         "CREDITCARDNUMBER": "Credit Card Number",
-        "IBAN": "IBAN (International Bank Account)",
+        "IBAN": "International Banking Identifier (IBAN)",
         "CRYPTO_WALLET": "Cryptocurrency Wallet",
         "CRYPTOWALLET": "Cryptocurrency Wallet",
         "US_BANK_NUMBER": "US Bank Account Number",
@@ -426,7 +440,7 @@
         "BUILDINGNUM": "Building Number",
         "ZIPCODE": "Zip/Postal Code",
         "ZIP_CODE": "Zip Code",
-        "PASSWORD": "Password",
+        "PASSWORD": "Account Password / PIN",
         "API_KEY": "API Key",
         "JWT_TOKEN": "JWT Token",
         "GITHUB_TOKEN": "GitHub Token",
@@ -523,11 +537,11 @@
         "PERSON_NAME": "Full person name (first + last)",
         "PERSONNAME": "Generic person name (not split into first/last)",
         "FULLNAME": "Complete person name",
-        "USERNAME": "User account names and login identifiers",
+        "USERNAME": "System user identifiers and account login names",
         "ACCOUNTNUM": "Generic account numbers for various services",
         "CREDIT_CARD": "Credit card numbers (Visa, MasterCard, Amex, etc.)",
         "CREDITCARDNUMBER": "Payment card numbers with validation",
-        "IBAN": "International Bank Account Number for European banking",
+        "IBAN": "International banking identifiers (IBAN) for European and Swiss banking",
         "CRYPTO_WALLET": "Cryptocurrency wallet addresses (Bitcoin, Ethereum, etc.)",
         "CRYPTOWALLET": "Cryptocurrency wallet addresses (Bitcoin, Ethereum, etc.)",
         "US_BANK_NUMBER": "United States bank account routing and account numbers",
@@ -576,7 +590,7 @@
         "BUILDINGNUM": "Building, house, or apartment numbers",
         "ZIPCODE": "Postal codes and ZIP codes",
         "ZIP_CODE": "Postal codes and ZIP codes",
-        "PASSWORD": "Password strings and authentication credentials",
+        "PASSWORD": "Account passwords, PIN codes and authentication credentials",
         "API_KEY": "API keys and service tokens",
         "JWT_TOKEN": "JSON Web Tokens for authentication",
         "GITHUB_TOKEN": "GitHub personal access tokens",
@@ -797,7 +811,50 @@
     "scanError": "Scan error",
     "connectionError": "Connection error",
     "timeout": "Timeout",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "confluence": {
+      "authFailed": "Confluence authentication failed. Check your credentials in Settings > Confluence.",
+      "connectionFailed": "Unable to connect to Confluence. Verify that the server is reachable.",
+      "resourceNotFound": "The requested Confluence resource was not found.",
+      "apiError": "Error communicating with the Confluence API.",
+      "dateParseFailed": "Date format error in the Confluence response.",
+      "deserializationFailed": "Error reading the Confluence response.",
+      "spaceNotFound": "The requested Confluence space was not found.",
+      "spaceCacheError": "Error refreshing the spaces cache. Please try again shortly."
+    },
+    "pii": {
+      "detectionConnectionFailed": "The PII analysis service is unreachable. Verify that the service is running.",
+      "detectionServiceError": "PII analysis service error.",
+      "detectionTimeout": "The PII analysis service did not respond in time.",
+      "detectorError": "Error during PII detection."
+    },
+    "encryption": {
+      "failed": "Encryption error. Contact the administrator."
+    },
+    "crypto": {
+      "operationFailed": "Cryptographic error. Contact the administrator."
+    },
+    "access": {
+      "denied": "Access denied. You do not have the required permissions for this operation."
+    },
+    "scan": {
+      "invalidStatusTransition": "Invalid scan status transition.",
+      "notFound": "The requested scan was not found."
+    },
+    "export": {
+      "failed": "Report export failed. Please try again.",
+      "contextNotFound": "Export context not found for this source.",
+      "unsupportedSourceType": "Unsupported source type for export."
+    },
+    "validation": {
+      "invalidArgument": "Invalid data. Please check the form fields.",
+      "constraintViolation": "Invalid data. Please check the required fields and expected formats.",
+      "malformedRequest": "The request is malformed. Please check the data format."
+    },
+    "state": {
+      "invalid": "Operation not possible in the current state."
+    },
+    "internal": "An unexpected error occurred. Contact the administrator if the issue persists."
   },
   "piiTypes": {
     "PERSON_NAME": "Person Name",
@@ -813,12 +870,12 @@
     "PHONE_NUMBER": "Phone Number",
     "ADDRESS": "Address",
     "POSTAL_CODE": "Postal Code",
-    "USERNAME": "Username",
+    "USERNAME": "Login / System Identifier",
     "ACCOUNT_ID": "Account ID",
     "URL": "URL",
     "CREDIT_CARD_NUMBER": "Credit Card Number",
     "BANK_ACCOUNT_NUMBER": "Bank Account Number",
-    "IBAN": "IBAN",
+    "IBAN": "International Banking Identifier (IBAN)",
     "BIC_SWIFT": "BIC/SWIFT Code",
     "TAX_ID": "Tax ID",
     "SALARY": "Salary",
@@ -832,7 +889,7 @@
     "MAC_ADDRESS": "MAC Address",
     "HOSTNAME": "Hostname",
     "DEVICE_ID": "Device ID",
-    "PASSWORD": "Password",
+    "PASSWORD": "Account Password / PIN",
     "API_KEY": "API Key",
     "ACCESS_TOKEN": "Access Token",
     "SECRET_KEY": "Secret Key",

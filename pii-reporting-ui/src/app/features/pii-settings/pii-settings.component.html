@@ -267,7 +267,8 @@
                                 </button>
                                 <span class="detector-badge"
                                       [class.gliner]="detectorGroup.detector === 'GLINER'"
-                                      [class.presidio]="detectorGroup.detector === 'PRESIDIO'">
+                                      [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
+                                      [class.regex]="detectorGroup.detector === 'REGEX'">
                                     {{ detectorGroup.detector }}
                                 </span>
                                 @if (detectorGroup.detector === 'GLINER') {
@@ -420,7 +421,7 @@
                 type="button"
                 [label]="'settings.actions.saveAll' | transloco"
                 icon="pi pi-save"
-                [disabled]="saving() || !hasUnsavedChanges"
+                [disabled]="saving() || !hasUnsavedChanges || !isFormValid"
                 [loading]="saving()"
                 (click)="onSaveAll()"
                 (keydown.enter)="onSaveAll()"

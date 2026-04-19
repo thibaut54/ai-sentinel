@@ -21,6 +21,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
@@ -346,7 +349,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         
         ConfluenceContentScanResult errorEvent = contentScanOrchestrator.createErrorEvent(
             scanId, spaceKey, page.id(),
-            "Error analyzing page: " + exception.getMessage(),
+            "Error analyzing page: " + resolveErrorMessage(exception),
             progress);
         
         return Mono.just(errorEvent);
@@ -403,6 +406,27 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         return contentScanOrchestrator.calculateProgress(
             scanProgress.analyzedOffset() + (scanProgress.currentIndex() - 1),
             scanProgress.originalTotal());
+    }
+
+    /**
+     * Resolves a human-readable error message from an exception, handling cases where
+     * getMessage() returns null (e.g., java.net.ConnectException).
+     */
+    protected static String resolveErrorMessage(Throwable exception) {
+        if (exception instanceof ConnectException) {
+            return "Unable to connect to the data source. Verify the server is reachable and the URL is correct.";
+        }
+        if (exception instanceof UnknownHostException) {
+            String host = exception.getMessage();
+            return host != null
+                ? "Unknown host: " + host + ". Verify the server URL."
+                : "Unknown host. Verify the server URL.";
+        }
+        if (exception instanceof SocketTimeoutException) {
+            return "Connection timed out. The server may be unreachable or overloaded.";
+        }
+        String message = exception.getMessage();
+        return message != null ? message : exception.getClass().getSimpleName();
     }
 
     /**

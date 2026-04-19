@@ -34,13 +34,6 @@ class ConfluenceHttpClientAdapterDateExtractionTest {
         when(config.pagesLimit()).thenReturn(50);
         when(config.maxPages()).thenReturn(100);
         when(config.baseUrl()).thenReturn("https://test.com");
-        when(config.getRestApiUrl()).thenReturn("https://test.com/rest/api");
-        when(config.contentPath()).thenReturn("/content/");
-        when(config.searchContentPath()).thenReturn("/content/search");
-        when(config.spacePath()).thenReturn("/space");
-        when(config.attachmentChildSuffix()).thenReturn("/child/attachment");
-        when(config.defaultPageExpands()).thenReturn("body.storage");
-        when(config.defaultSpaceExpands()).thenReturn("permissions");
 
         adapter = new ConfluenceCloudHttpClientAdapter(config, objectMapper);
     }
