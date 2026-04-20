@@ -78,7 +78,7 @@ public class ScanEventFactory {
             .pageIndex(pageIndex)
             .pageId(page.id())
             .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -96,7 +96,7 @@ public class ScanEventFactory {
             .eventType(DetectionReportingEventType.PAGE_COMPLETE.getLabel())
             .pageId(page.id())
             .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -119,7 +119,7 @@ public class ScanEventFactory {
             .detectedPIIList(List.of())
             .nbOfDetectedPIIBySeverity(Map.of())
             .nbOfDetectedPIIByType(Map.of())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -150,7 +150,7 @@ public class ScanEventFactory {
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
             .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -181,7 +181,7 @@ public class ScanEventFactory {
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
             .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildAttachmentsUrl(spaceKey, page.id()))
             .attachmentName(attachment.name())
             .attachmentType(attachment.mimeType())
             .attachmentUrl(attachment.url())
@@ -203,7 +203,7 @@ public class ScanEventFactory {
             .eventType(DetectionReportingEventType.ERROR.getLabel())
             .pageId(pageId)
             .message(errorMessage)
-            .pageUrl(buildPageUrl(pageId))
+            .pageUrl(buildPageUrl(spaceKey, pageId))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.FAILED)
@@ -375,10 +375,11 @@ public class ScanEventFactory {
         }
     }
 
-    private String buildPageUrl(String pageId) {
-        if (confluenceUrlProvider == null || pageId == null) {
-            return null;
-        }
-        return confluenceUrlProvider.pageUrl(pageId);
+    private String buildPageUrl(String spaceKey, String pageId) {
+        return confluenceUrlProvider.pageUrl(spaceKey, pageId);
+    }
+
+    private String buildAttachmentsUrl(String spaceKey, String pageId) {
+        return confluenceUrlProvider.attachmentsUrl(spaceKey, pageId);
     }
 }

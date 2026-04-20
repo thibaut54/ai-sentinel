@@ -54,6 +54,9 @@ https://github.com/user-attachments/assets/d2c633d6-3209-4b2f-b80a-88fe2e41f945
 - ✅ **Modern Web interface**: Angular dashboard with real-time scan visualization
 - ✅ **Detailed reports**: Report generation with statistics and PII location
 - ✅ **Microservices architecture**: Python (gRPC), Java (Spring Boot), and Angular services
+- ✅ **Configurable detectors & PII types**: Enable/disable individual detectors (GLiNER, Presidio, Regex) and specific PII types (names, emails, IBANs…) from `Settings > PII Settings`
+- ✅ **Tunable confidence thresholds**: Global default threshold + per-type override to reduce false positives (`Settings > PII Settings > Thresholds` / `PII Types`)
+- ✅ **Zero-shot custom labels (GLiNER)**: Add your own entities to detect on-the-fly without retraining, leveraging `nvidia/gliner-PII` zero-shot capabilities (`Settings > PII Settings > PII Types > + Add custom label` on the GLINER group). ⚠️ **No reliability guarantee**: zero-shot detection quality depends heavily on the label wording and the underlying model — validate results on a representative sample before relying on them in production.
 - ✅ **Scan management**: Pause, resume, and real-time tracking of ongoing scans
 - ✅ **PostgreSQL database**: Persistent storage of results and history
 - 🚧 **Report export** (in progress): CSV/PDF export of scan results
@@ -364,7 +367,12 @@ docker image prune -a
 
 # Complete cleanup (warning: removes EVERYTHING)
 docker system prune -a --volumes
+
+# Full reinstallation (removes volumes + images + cache, forces re-pull and re-bootstrap)
+docker-compose down -v --rmi all && docker system prune -af && docker-compose pull && docker-compose up -d
 ```
+
+> ⚠️ After running the full reinstallation command, the Infisical bootstrap will re-run — you must repeat **Step 2** of the [Quick Setup](#quick-setup-2-steps) (`--force-recreate` of `pii-detector`, `pii-reporting-api`, and `pii-reporting-ui`).
 
 ### REST API Endpoints
 
@@ -563,6 +571,12 @@ Use [GitHub Issues](https://github.com/Softcom-Technologies-Organization/ai-sent
 
 **Q: What types of PII are detected?**  
 A: First names, last names, emails, phones, addresses, social security numbers, credit cards, dates of birth, and more.
+
+**Q: Can I disable specific PII types or adjust detection sensitivity?**  
+A: Yes, via `Settings > PII Settings`. You can toggle detectors (GLiNER, Presidio, Regex), enable/disable individual PII types, and adjust the global confidence threshold as well as per-type thresholds.
+
+**Q: Can I detect custom entities not in the default PII list?**  
+A: Yes, through zero-shot custom labels on the GLiNER detector (`Settings > PII Settings > PII Types > + Add custom label`). ⚠️ Detection reliability is **not guaranteed** for zero-shot labels — results depend on the label wording and the underlying `nvidia/gliner-PII` model. Always validate on a representative sample before trusting the output.
 
 **Q: Do models work offline?**  
 A: Yes, after the first download, models are cached locally.
