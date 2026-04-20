@@ -594,7 +594,7 @@ services:
   # PII DETECTOR SERVICE (Python/gRPC) - PRE-BUILT IMAGE
   # ============================================================================
   pii-detector:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:feature-gemma-4
+    image: ghcr.io/${GHCR_OWNER:-thibaut54}/ai-sentinel-pii-detector:${AI_SENTINEL_IMAGE_TAG:-feature-gemma-4}
     container_name: pii-detector-service
     restart: unless-stopped
     
@@ -652,7 +652,7 @@ services:
   # PII REPORTING API (Spring Boot) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-api:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:feature-gemma-4
+    image: ghcr.io/${GHCR_OWNER:-thibaut54}/ai-sentinel-reporting-api:${AI_SENTINEL_IMAGE_TAG:-feature-gemma-4}
     container_name: pii-reporting-api
     restart: unless-stopped
     ports:
@@ -701,7 +701,7 @@ services:
   # PII REPORTING UI (Angular + Nginx) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-ui:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:feature-gemma-4
+    image: ghcr.io/${GHCR_OWNER:-thibaut54}/ai-sentinel-reporting-ui:${AI_SENTINEL_IMAGE_TAG:-feature-gemma-4}
     container_name: pii-reporting-ui
     restart: unless-stopped
     ports:
