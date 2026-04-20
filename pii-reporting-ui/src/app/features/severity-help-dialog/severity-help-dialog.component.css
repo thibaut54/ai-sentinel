@@ -1,0 +1,261 @@
+/* =============================================================================
+   Severity Help Dialog
+   -----------------------------------------------------------------------------
+   Aligns visually with the settings-fullscreen-dialog (12px radius, sentinel
+   dialog header background, sentinel border colors). ::ng-deep is required
+   because PrimeNG renders the dialog in its own encapsulation context.
+   ============================================================================= */
+
+:host ::ng-deep .severity-help-dialog.p-dialog {
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 95vh;
+}
+
+:host ::ng-deep .severity-help-dialog .p-dialog-header {
+  background-color: var(--sentinel-dialog-header-bg);
+  border-bottom: 1px solid var(--sentinel-border-dialog);
+  border-radius: 12px 12px 0 0;
+}
+
+:host ::ng-deep .severity-help-dialog .p-dialog-content {
+  padding: 1.5rem 1.75rem 1.75rem;
+  overflow-y: auto;
+}
+
+/* Intro paragraph */
+.severity-help-intro {
+  margin: 0 0 1.25rem;
+  color: var(--sentinel-text-help);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* --- Tabs harmonisation --------------------------------------------------- */
+
+:host ::ng-deep .severity-help-tabs .p-tablist {
+  border-bottom: 1px solid var(--sentinel-border-default);
+  margin-bottom: 1.25rem;
+}
+
+:host ::ng-deep .severity-help-tabs .p-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-weight: 500;
+  color: var(--sentinel-text-secondary);
+  transition: color 0.15s ease;
+}
+
+:host ::ng-deep .severity-help-tabs .p-tab:hover {
+  color: var(--sentinel-text-primary);
+}
+
+:host ::ng-deep .severity-help-tabs .p-tab[data-p-active="true"] {
+  color: var(--sentinel-focus-ring);
+}
+
+:host ::ng-deep .severity-help-tabs .p-tabpanels {
+  padding: 0;
+}
+
+.tab-icon {
+  font-size: 0.95rem;
+}
+
+/* --- Sections ------------------------------------------------------------- */
+
+.severity-help-section-intro {
+  margin: 0 0 1rem;
+  color: var(--sentinel-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.severity-help-section {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.severity-help-section:last-child {
+  margin-bottom: 0;
+}
+
+.severity-help-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.severity-help-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.severity-help-section-body {
+  margin: 0 0 0.75rem;
+  color: var(--sentinel-text-body);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.severity-help-section-examples {
+  margin: 0;
+  color: var(--sentinel-text-body);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.severity-help-label {
+  font-weight: 600;
+  color: var(--sentinel-text-primary);
+  margin-right: 0.25rem;
+}
+
+/* --- Standard mode colours (reuse severity tokens) ------------------------ */
+
+.severity-help-high {
+  background-color: var(--sentinel-severity-high-bg);
+}
+.severity-help-high .severity-help-section-title {
+  color: var(--sentinel-severity-high-text);
+}
+
+.severity-help-medium {
+  background-color: var(--sentinel-severity-medium-bg);
+}
+.severity-help-medium .severity-help-section-title {
+  color: var(--sentinel-severity-medium-text);
+}
+
+.severity-help-low {
+  background-color: var(--sentinel-severity-low-bg);
+}
+.severity-help-low .severity-help-section-title {
+  color: var(--sentinel-severity-low-text);
+}
+
+.severity-help-score {
+  background-color: var(--sentinel-severity-low-card-bg);
+}
+.severity-help-score .severity-help-section-title {
+  color: var(--sentinel-severity-total-card);
+}
+
+/* --- Legal mode colours (danger / warn / info) ---------------------------- */
+
+.severity-help-legal-danger {
+  background-color: var(--sentinel-severity-high-bg);
+}
+.severity-help-legal-danger .severity-help-section-title {
+  color: var(--sentinel-severity-high-text);
+}
+
+.severity-help-legal-warn {
+  background-color: var(--sentinel-severity-medium-bg);
+}
+.severity-help-legal-warn .severity-help-section-title {
+  color: var(--sentinel-severity-medium-text);
+}
+
+.severity-help-legal-info {
+  background-color: var(--sentinel-severity-low-bg);
+}
+.severity-help-legal-info .severity-help-section-title {
+  color: var(--sentinel-severity-low-text);
+}
+
+/* --- Quote blockquote ----------------------------------------------------- */
+
+.severity-help-quote {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.9rem;
+  background-color: var(--sentinel-bg-card);
+  border-left: 3px solid var(--sentinel-border-strong);
+  border-radius: 0 0.35rem 0.35rem 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--sentinel-text-body);
+}
+
+.severity-help-quote p {
+  margin: 0;
+  font-style: italic;
+}
+
+.severity-help-quote-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sentinel-text-secondary);
+  font-style: normal;
+}
+
+/* Legal sections tune quote border to match */
+.severity-help-legal-danger .severity-help-quote {
+  border-left-color: var(--sentinel-severity-high-dark);
+}
+.severity-help-legal-warn .severity-help-quote {
+  border-left-color: var(--sentinel-severity-medium-dark);
+}
+.severity-help-legal-info .severity-help-quote {
+  border-left-color: var(--sentinel-severity-low-text);
+}
+
+/* --- Source link ---------------------------------------------------------- */
+
+.severity-help-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--sentinel-focus-ring);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  transition: color 0.15s ease;
+}
+
+.severity-help-source-link:hover,
+.severity-help-source-link:focus-visible {
+  color: var(--sentinel-link-hover);
+  text-decoration: underline;
+}
+
+.severity-help-source-link .pi {
+  font-size: 0.8rem;
+}
+
+/* --- Badge icon harmonisation -------------------------------------------- */
+
+:host ::ng-deep .severity-badge-icon.p-badge {
+  width: 0.85rem;
+  height: 0.85rem;
+  min-width: 0.85rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* --- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  :host ::ng-deep .severity-help-dialog .p-dialog-content {
+    padding: 1rem;
+  }
+  :host ::ng-deep .severity-help-tabs .p-tab {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .severity-help-section {
+    padding: 0.85rem 0.95rem;
+  }
+}

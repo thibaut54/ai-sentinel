@@ -26,8 +26,10 @@ export const SEVERITY_STYLES: Record<Severity, SeverityStyle> = {
   low: {
     label: 'Faible',
     labelKey: 'severity.low',
-    color: '#16a34a',
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
+    // Blue tones instead of green: any PII detection is still a problem, so the
+    // card must not signal "safe/ok". Matches PrimeNG `info` severity palette.
+    color: '#2563eb',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
   },
 };

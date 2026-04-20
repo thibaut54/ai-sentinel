@@ -30,6 +30,7 @@ import { ScanControlService } from './services/scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
 import { ViewModeService } from '../../core/services/view-mode.service';
+import { SeverityHelpDialogComponent } from '../severity-help-dialog/severity-help-dialog.component';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -60,7 +61,8 @@ import { ViewModeService } from '../../core/services/view-mode.service';
         NewSpacesBannerComponent,
         ConfluenceConfigBannerComponent,
         ScanProgressBarComponent,
-        SeverityCardsComponent
+        SeverityCardsComponent,
+        SeverityHelpDialogComponent
     ],
   templateUrl: './confluence-dashboard.component.html',
   styleUrl: './confluence-dashboard.component.css',

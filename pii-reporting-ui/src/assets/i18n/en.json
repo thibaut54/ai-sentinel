@@ -200,28 +200,100 @@
     }
   },
   "piiHelp": {
-    "buttonTooltip": "Help on severity levels",
-    "dialogTitle": "Understanding PII Severity Levels",
-    "introduction": "The badges indicate the number of Personally Identifiable Information (PII) detected, classified by severity level, as well as a global score:",
-    "high": {
-      "title": "Critical Severity (Red)",
-      "description": "Counts the number of critical PII detected in the space.",
-      "types": "Categories: Financial Data, Security, Sensitive Government IDs (e.g. Credit Card, Password, SSN)."
+    "buttonTooltip": "Help on severity levels and legal classifications",
+    "dialogTitle": "Understanding severity levels and classifications",
+    "intro": "PII detections can be read through three different lenses: the technical severity level (Standard), or the legal classification under the European GDPR or the Swiss FADP (nLPD). Each tab below details the grid used.",
+    "examplesLabel": "Examples:",
+    "officialTextLabel": "Official text",
+    "tabs": {
+      "standard": "Standard",
+      "gdpr": "GDPR",
+      "nlpd": "nLPD"
     },
-    "medium": {
-      "title": "Medium Severity (Orange)",
-      "description": "Counts the number of medium severity PII detected.",
-      "types": "Categories: Official Documents, Medical Information, Personal IDs (e.g. Passport, Driver License, Date of Birth)."
+    "standard": {
+      "description": "Standard mode groups detections by a technical risk level assigned by the detection engine, independent of any legal framework.",
+      "high": {
+        "title": "Critical severity",
+        "description": "Highly sensitive PII whose leak results in a direct, major impact (fraud, identity theft, compromise).",
+        "types": "Credit card number, password, IBAN, API key, Swiss AVS number, social security number."
+      },
+      "medium": {
+        "title": "Medium severity",
+        "description": "Official documents, personal identifiers or health data whose disclosure remains harmful.",
+        "types": "Passport, driver license, date of birth, medical diagnosis, patient record."
+      },
+      "low": {
+        "title": "Low severity",
+        "description": "Contact or location data. Residual risk is never zero — a detected PII is never 'harmless'.",
+        "types": "Email address, phone number, IP address, full name, city, postal address."
+      },
+      "score": {
+        "title": "Global risk score",
+        "description": "Aggregate sum of all detections within a space to help prioritize remediation.",
+        "types": "Sum of critical + medium + low PII counts for the space."
+      }
     },
-    "low": {
-      "title": "Low Severity (Blue)",
-      "description": "Counts the number of low severity PII detected.",
-      "types": "Categories: Contact Information, Location, Names (e.g. Email, Phone Number, IP Address)."
+    "gdpr": {
+      "description": "GDPR mode groups PII according to the EU General Data Protection Regulation (Regulation (EU) 2016/679 of 27 April 2016).",
+      "SPECIAL_CATEGORY": {
+        "title": "Special category — GDPR Art. 9",
+        "summary": "Particularly sensitive data whose processing is prohibited as a matter of principle, subject to strictly defined exceptions.",
+        "quote": "Processing of personal data revealing racial or ethnic origin, political opinions, religious or philosophical beliefs, or trade union membership, and the processing of genetic data, biometric data for the purpose of uniquely identifying a natural person, data concerning health or data concerning a natural person's sex life or sexual orientation shall be prohibited.",
+        "sourceLabel": "GDPR Art. 9 — official text (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-9-gdpr/"
+      },
+      "CRIMINAL_DATA": {
+        "title": "Criminal data — GDPR Art. 10",
+        "summary": "Data relating to criminal convictions, offences and related security measures, subject to the control of official authority.",
+        "quote": "Processing of personal data relating to criminal convictions and offences or related security measures based on Article 6(1) shall be carried out only under the control of official authority or when the processing is authorised by Union or Member State law providing for appropriate safeguards for the rights and freedoms of data subjects. Any comprehensive register of criminal convictions shall be kept only under the control of official authority.",
+        "sourceLabel": "GDPR Art. 10 — official text (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-10-gdpr/"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "title": "High-risk data — GDPR Art. 35",
+        "summary": "Personal data whose processing is likely to result in a high risk to the rights and freedoms of natural persons, triggering a Data Protection Impact Assessment (DPIA).",
+        "quote": "Where a type of processing in particular using new technologies, and taking into account the nature, scope, context and purposes of the processing, is likely to result in a high risk to the rights and freedoms of natural persons, the controller shall, prior to the processing, carry out an assessment of the impact of the envisaged processing operations on the protection of personal data.",
+        "sourceLabel": "GDPR Art. 35 — official text (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-35-gdpr/"
+      },
+      "PERSONAL_DATA": {
+        "title": "Personal data — GDPR Art. 6",
+        "summary": "Ordinary personal data whose processing is lawful on one of the legal bases listed in Art. 6 (consent, contract, legal obligation, vital interests, public interest, legitimate interests).",
+        "quote": "Processing shall be lawful only if and to the extent that at least one of the following applies: (a) the data subject has given consent to the processing of his or her personal data for one or more specific purposes; (b) processing is necessary for the performance of a contract to which the data subject is party […]; (c) processing is necessary for compliance with a legal obligation; (d) processing is necessary in order to protect the vital interests of the data subject […].",
+        "sourceLabel": "GDPR Art. 6 — official text (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-6-gdpr/"
+      }
     },
-    "score": {
-      "title": "Severity Score (Green)",
-      "description": "Represents the total severity score for the space.",
-      "calculation": "This score is the sum of critical, medium, and low counts."
+    "nlpd": {
+      "description": "nLPD mode applies the revised Swiss Federal Act on Data Protection (FADP / LPD, SR 235.1), in force since 1 September 2023.",
+      "SENSITIVE_DATA": {
+        "title": "Sensitive data — FADP Art. 5 let. c",
+        "summary": "Broad catalogue of sensitive data under Swiss law: beliefs, health, intimate sphere, origin, genetic, biometric, criminal proceedings and social assistance.",
+        "quote": "Sensitive personal data means: 1. data on religious, philosophical, political or trade union-related views or activities; 2. data on health, the intimate sphere or affiliation to a race or ethnicity; 3. genetic data; 4. biometric data that uniquely identifies a natural person; 5. data on administrative and criminal proceedings or sanctions; 6. data on social assistance measures.",
+        "sourceLabel": "FADP Art. 5 — official text (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/en#art_5"
+      },
+      "HIGH_RISK_PROFILING_DATA": {
+        "title": "High-risk profiling — FADP Art. 5 let. g",
+        "summary": "Automated profiling that results in a personality profile and poses a high risk to the data subject.",
+        "quote": "High-risk profiling means: profiling that poses a high risk to the data subject's personality or fundamental rights by matching data that allows an assessment to be made of essential aspects of the personality of a natural person.",
+        "sourceLabel": "FADP Art. 5 — official text (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/en#art_5"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "title": "High-risk data — FADP Art. 22",
+        "summary": "Processing likely to result in a high risk to the personality or fundamental rights of the data subject, requiring a Data Protection Impact Assessment (DPIA).",
+        "quote": "Where the envisaged processing is likely to result in a high risk to the personality or fundamental rights of the data subject, the controller shall carry out a data protection impact assessment in advance.",
+        "sourceLabel": "FADP Art. 22 — official text (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/en#art_22"
+      },
+      "PERSONAL_DATA": {
+        "title": "Personal data — FADP Art. 5 let. a",
+        "summary": "General definition under Swiss law: any information relating to an identified or identifiable natural person.",
+        "quote": "Personal data means: any information relating to an identified or identifiable natural person.",
+        "sourceLabel": "FADP Art. 5 — official text (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/en#art_5"
+      }
     }
   },
   "settings": {

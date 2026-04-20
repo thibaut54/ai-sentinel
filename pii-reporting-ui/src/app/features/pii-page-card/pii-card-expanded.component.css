@@ -125,12 +125,13 @@ button.expanded-header {
 .severity-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 5px;
+  padding: 1px 8px;
+  border-radius: 4px;
   border: 1px solid;
   white-space: nowrap;
+  line-height: 1.5;
 }
 
 .collapse-chevron {
@@ -168,26 +169,27 @@ button.expanded-header {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 3px 8px 3px 6px;
-  border-radius: 5px;
+  padding: 1px 6px 1px 5px;
+  border-radius: 4px;
   background: var(--sentinel-bg-hover);
   border: 1px solid var(--sentinel-border-badge);
   color: var(--sentinel-text-body);
+  line-height: 1.5;
 }
 
 .pii-type-label {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 
 .pii-type-count {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--sentinel-text-primary);
   background: var(--sentinel-badge-count-bg);
-  border-radius: 4px;
-  padding: 0 4px;
+  border-radius: 3px;
+  padding: 0 3px;
   margin-left: 1px;
 }
 
@@ -344,9 +346,32 @@ button.expanded-header {
   text-align: center;
 }
 
-.classification-badge {
+/* Shared pill metrics — classification (p-tag), value (.masked-badge) and
+   detector (.detector-tag) share the same box model so every pill in the
+   detail table has identical height, font-size and line-height. The transparent
+   border on p-tag compensates for the visible 1px borders on the other two.
+   NB: <p-tag> renders its host element with both `classification-badge` and
+   `p-tag` classes, so the selector must use `.classification-badge.p-tag`
+   (same element), not a descendant combinator. */
+:host ::ng-deep p-tag.classification-badge,
+:host ::ng-deep .classification-badge.p-tag {
   display: inline-flex;
+  align-items: center;
   vertical-align: middle;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .classification-badge .p-tag-label,
+:host ::ng-deep .classification-badge .p-tag-value {
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 600;
 }
 
 .td-value {
@@ -366,6 +391,7 @@ button.expanded-header {
   align-items: center;
   font-size: 10px;
   font-weight: 600;
+  line-height: 1.5;
   letter-spacing: 0.3px;
   padding: 1px 7px;
   border-radius: 4px;
@@ -373,6 +399,7 @@ button.expanded-header {
   color: var(--sentinel-masked-color);
   border: 1px solid var(--sentinel-masked-border);
   vertical-align: middle;
+  box-sizing: border-box;
 }
 
 .revealed-highlight {
@@ -532,13 +559,17 @@ button.expanded-header {
 }
 
 .legal-filter-chip {
-  padding: 0.35rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
   border-radius: 999px;
-  border: 1px solid var(--sentinel-border-medium);
+  border: 1px solid var(--sentinel-border-strong);
   background: var(--sentinel-bg-card);
-  color: var(--sentinel-text-body);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  color: var(--sentinel-text-primary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }

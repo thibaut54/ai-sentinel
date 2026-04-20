@@ -1,0 +1,107 @@
+<p-dialog
+  [(visible)]="visible"
+  [header]="'piiHelp.dialogTitle' | transloco"
+  [modal]="true"
+  [closable]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '780px', maxWidth: '95vw' }"
+  styleClass="severity-help-dialog">
+
+  <p class="severity-help-intro">{{ 'piiHelp.intro' | transloco }}</p>
+
+  <p-tabs [value]="activeTab()" (valueChange)="onTabChange($event)" styleClass="severity-help-tabs">
+    <p-tablist>
+      <p-tab value="standard">
+        <i class="pi pi-signal tab-icon" aria-hidden="true"></i>
+        <span>{{ 'piiHelp.tabs.standard' | transloco }}</span>
+      </p-tab>
+      <p-tab value="gdpr">
+        <i class="pi pi-shield tab-icon" aria-hidden="true"></i>
+        <span>{{ 'piiHelp.tabs.gdpr' | transloco }}</span>
+      </p-tab>
+      <p-tab value="nlpd">
+        <i class="pi pi-verified tab-icon" aria-hidden="true"></i>
+        <span>{{ 'piiHelp.tabs.nlpd' | transloco }}</span>
+      </p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+
+      <!-- Standard tab -->
+      <p-tabpanel value="standard">
+        <p class="severity-help-section-intro">{{ 'piiHelp.standard.description' | transloco }}</p>
+
+        @for (entry of standardEntries; track entry.level) {
+          <section class="severity-help-section severity-help-{{ entry.level }}">
+            <header class="severity-help-section-header">
+              <p-badge [severity]="entry.badge" value="" [styleClass]="badgeClassFor(entry.badge)"></p-badge>
+              <h4 class="severity-help-section-title">{{ entry.i18nKey + '.title' | transloco }}</h4>
+            </header>
+            <p class="severity-help-section-body">{{ entry.i18nKey + '.description' | transloco }}</p>
+            <p class="severity-help-section-examples">
+              <span class="severity-help-label">{{ 'piiHelp.examplesLabel' | transloco }}</span>
+              {{ entry.i18nKey + '.types' | transloco }}
+            </p>
+          </section>
+        }
+      </p-tabpanel>
+
+      <!-- GDPR tab -->
+      <p-tabpanel value="gdpr">
+        <p class="severity-help-section-intro">{{ 'piiHelp.gdpr.description' | transloco }}</p>
+
+        @for (entry of gdprEntries; track entry.classification) {
+          <section class="severity-help-section severity-help-legal severity-help-legal-{{ entry.badge }}">
+            <header class="severity-help-section-header">
+              <p-badge [severity]="entry.badge" value="" [styleClass]="badgeClassFor(entry.badge)"></p-badge>
+              <h4 class="severity-help-section-title">{{ entry.i18nKey + '.title' | transloco }}</h4>
+            </header>
+            <p class="severity-help-section-body">{{ entry.i18nKey + '.summary' | transloco }}</p>
+            <blockquote class="severity-help-quote">
+              <span class="severity-help-quote-label">{{ 'piiHelp.officialTextLabel' | transloco }}</span>
+              <p>{{ entry.i18nKey + '.quote' | transloco }}</p>
+            </blockquote>
+            <a
+              class="severity-help-source-link"
+              [href]="entry.i18nKey + '.sourceUrl' | transloco"
+              target="_blank"
+              rel="noopener noreferrer">
+              <i class="pi pi-external-link" aria-hidden="true"></i>
+              <span>{{ entry.i18nKey + '.sourceLabel' | transloco }}</span>
+            </a>
+          </section>
+        }
+      </p-tabpanel>
+
+      <!-- nLPD tab -->
+      <p-tabpanel value="nlpd">
+        <p class="severity-help-section-intro">{{ 'piiHelp.nlpd.description' | transloco }}</p>
+
+        @for (entry of nlpdEntries; track entry.classification) {
+          <section class="severity-help-section severity-help-legal severity-help-legal-{{ entry.badge }}">
+            <header class="severity-help-section-header">
+              <p-badge [severity]="entry.badge" value="" [styleClass]="badgeClassFor(entry.badge)"></p-badge>
+              <h4 class="severity-help-section-title">{{ entry.i18nKey + '.title' | transloco }}</h4>
+            </header>
+            <p class="severity-help-section-body">{{ entry.i18nKey + '.summary' | transloco }}</p>
+            <blockquote class="severity-help-quote">
+              <span class="severity-help-quote-label">{{ 'piiHelp.officialTextLabel' | transloco }}</span>
+              <p>{{ entry.i18nKey + '.quote' | transloco }}</p>
+            </blockquote>
+            <a
+              class="severity-help-source-link"
+              [href]="entry.i18nKey + '.sourceUrl' | transloco"
+              target="_blank"
+              rel="noopener noreferrer">
+              <i class="pi pi-external-link" aria-hidden="true"></i>
+              <span>{{ entry.i18nKey + '.sourceLabel' | transloco }}</span>
+            </a>
+          </section>
+        }
+      </p-tabpanel>
+
+    </p-tabpanels>
+  </p-tabs>
+</p-dialog>

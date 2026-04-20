@@ -6,8 +6,10 @@ import {
 } from '../models/pii-detection-config.model';
 import { PiiDetectionConfigService } from './pii-detection-config.service';
 
-/** PrimeNG badge severities mapped to legal classification values. */
-export type LegalBadgeSeverity = 'danger' | 'warn' | 'info' | 'success';
+/** PrimeNG badge severities mapped to legal classification values.
+ *  `success` (green) is intentionally excluded: spotting a PII is always a
+ *  concern, so the UI never uses a "green/ok" tone for classifications. */
+export type LegalBadgeSeverity = 'danger' | 'warn' | 'info';
 
 /** Ordered list of the four GDPR classification values used for UI filters / dropdowns. */
 export const GDPR_CLASSIFICATION_VALUES: readonly GdprDataClassification[] = [
@@ -32,7 +34,7 @@ const BADGE_SEVERITY_BY_CLASSIFICATION: Record<string, LegalBadgeSeverity> = {
   SENSITIVE_DATA: 'danger',
   HIGH_RISK_PROFILING_DATA: 'warn',
   PERSONAL_DATA_HIGH_RISK: 'info',
-  PERSONAL_DATA: 'success',
+  PERSONAL_DATA: 'info',
 };
 
 /**
@@ -119,7 +121,7 @@ export class ClassificationService {
       case 'MEDIUM':
         return 'warn';
       default:
-        return 'success';
+        return 'info';
     }
   }
 
@@ -172,10 +174,11 @@ export class ClassificationService {
 
   /**
    * Map any legal classification label (GDPR or nLPD) to its PrimeNG badge severity.
-   * Falls back to `success` (green) for unknown values so the UI never crashes.
+   * Falls back to `info` (blue) for unknown values; green is avoided on purpose
+   * because a PII detection should never look reassuring.
    */
   badgeSeverity(value: GdprDataClassification | NlpdDataClassification | undefined): LegalBadgeSeverity {
-    return BADGE_SEVERITY_BY_CLASSIFICATION[value ?? 'PERSONAL_DATA'] ?? 'success';
+    return BADGE_SEVERITY_BY_CLASSIFICATION[value ?? 'PERSONAL_DATA'] ?? 'info';
   }
 
   private hydrateMaps(configs: PiiTypeConfig[]): void {

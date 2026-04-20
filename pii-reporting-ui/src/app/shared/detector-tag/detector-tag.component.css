@@ -1,15 +1,18 @@
 .detector-tag {
+  display: inline-flex;
+  align-items: center;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 2px 7px;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  padding: 1px 7px;
   border-radius: 4px;
-  display: inline-block;
+  box-sizing: border-box;
 }
 
 .detector-tag--small {
-  font-size: 9px;
-  padding: 1px 5px;
+  font-size: 10px;
+  padding: 1px 7px;
 }
 
 .detector-gliner {

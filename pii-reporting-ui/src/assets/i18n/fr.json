@@ -200,28 +200,100 @@
     }
   },
   "piiHelp": {
-    "buttonTooltip": "Aide sur les niveaux de sévérité",
-    "dialogTitle": "Comprendre les niveaux de sévérité des IPI",
-    "introduction": "Les badges indiquent le nombre d'informations personnelles identifiables (IPI) détectées, classées par niveau de sévérité, ainsi qu'un score global :",
-    "high": {
-      "title": "Sévérité critique (Rouge)",
-      "description": "Compte le nombre d'IPI critiques détectées dans l'espace.",
-      "types": "Catégories : Données financières, Sécurité, Identifiants gouvernementaux sensibles (ex: Carte de crédit, Mot de passe, SSN)."
+    "buttonTooltip": "Aide sur les niveaux de sévérité et classifications juridiques",
+    "dialogTitle": "Comprendre les niveaux de sévérité et les classifications",
+    "intro": "Les détections d'IPI peuvent être lues selon trois prismes : le niveau de sévérité technique (Standard) ou la classification juridique au sens du RGPD européen ou de la nLPD suisse. Chaque onglet ci-dessous détaille la grille utilisée.",
+    "examplesLabel": "Exemples :",
+    "officialTextLabel": "Texte officiel",
+    "tabs": {
+      "standard": "Standard",
+      "gdpr": "RGPD",
+      "nlpd": "nLPD"
     },
-    "medium": {
-      "title": "Sévérité moyenne (Orange)",
-      "description": "Compte le nombre d'IPI de sévérité moyenne détectées.",
-      "types": "Catégories : Documents officiels, Informations médicales, Identifiants personnels (ex: Passeport, Permis de conduire, Date de naissance)."
+    "standard": {
+      "description": "Le mode Standard regroupe les détections selon un niveau de risque technique attribué par le moteur de détection, indépendant du cadre juridique.",
+      "high": {
+        "title": "Sévérité critique",
+        "description": "IPI hautement sensibles dont la fuite entraîne un impact direct et majeur (fraude, usurpation, compromission).",
+        "types": "Numéro de carte de crédit, mot de passe, IBAN, clé API, numéro AVS, numéro de sécurité sociale."
+      },
+      "medium": {
+        "title": "Sévérité moyenne",
+        "description": "Documents officiels, identifiants personnels ou données de santé dont la divulgation reste préjudiciable.",
+        "types": "Passeport, permis de conduire, date de naissance, diagnostic médical, dossier patient."
+      },
+      "low": {
+        "title": "Sévérité faible",
+        "description": "Informations de contact ou de localisation. Le risque n'est jamais nul — une IPI détectée n'est jamais 'sans danger'.",
+        "types": "Adresse e-mail, numéro de téléphone, adresse IP, nom, ville, adresse postale."
+      },
+      "score": {
+        "title": "Score de risque global",
+        "description": "Agrégat cumulant toutes les détections d'un espace pour faciliter la priorisation des actions.",
+        "types": "Somme des IPI critiques + moyennes + faibles de l'espace."
+      }
     },
-    "low": {
-      "title": "Sévérité faible (Bleu)",
-      "description": "Compte le nombre d'IPI de faible sévérité détectées.",
-      "types": "Catégories : Informations de contact, Localisation, Noms (ex: Email, Téléphone, Adresse IP)."
+    "gdpr": {
+      "description": "Le mode RGPD regroupe les IPI selon le Règlement Général sur la Protection des Données de l'Union européenne (Règlement (UE) 2016/679 du 27 avril 2016).",
+      "SPECIAL_CATEGORY": {
+        "title": "Catégorie spéciale — Art. 9 RGPD",
+        "summary": "Données particulièrement sensibles dont le traitement est interdit par principe, sauf exceptions strictement encadrées.",
+        "quote": "Le traitement des données à caractère personnel qui révèle l'origine raciale ou ethnique, les opinions politiques, les convictions religieuses ou philosophiques ou l'appartenance syndicale, ainsi que le traitement des données génétiques, des données biométriques aux fins d'identifier une personne physique de manière unique, des données concernant la santé ou des données concernant la vie sexuelle ou l'orientation sexuelle d'une personne physique sont interdits.",
+        "sourceLabel": "Art. 9 RGPD — texte officiel (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-9-gdpr/"
+      },
+      "CRIMINAL_DATA": {
+        "title": "Données pénales — Art. 10 RGPD",
+        "summary": "Données relatives aux condamnations pénales, aux infractions et aux mesures de sûreté connexes, soumises au contrôle de l'autorité publique.",
+        "quote": "Le traitement des données à caractère personnel relatives aux condamnations pénales et aux infractions ou aux mesures de sûreté connexes fondé sur l'article 6, paragraphe 1, ne peut être effectué que sous le contrôle de l'autorité publique, ou si le traitement est autorisé par le droit de l'Union ou par le droit d'un État membre qui prévoit des garanties appropriées pour les droits et libertés des personnes concernées. Tout registre complet des condamnations pénales ne peut être tenu que sous le contrôle de l'autorité publique.",
+        "sourceLabel": "Art. 10 RGPD — texte officiel (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-10-gdpr/"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "title": "Données à haut risque — Art. 35 RGPD",
+        "summary": "Données personnelles dont le traitement est susceptible d'engendrer un risque élevé pour les droits et libertés des personnes physiques, imposant une analyse d'impact (AIPD).",
+        "quote": "Lorsqu'un type de traitement, en particulier par le recours à de nouvelles technologies, et compte tenu de la nature, de la portée, du contexte et des finalités du traitement, est susceptible d'engendrer un risque élevé pour les droits et libertés des personnes physiques, le responsable du traitement effectue, avant le traitement, une analyse de l'impact des opérations de traitement envisagées sur la protection des données à caractère personnel.",
+        "sourceLabel": "Art. 35 RGPD — texte officiel (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-35-gdpr/"
+      },
+      "PERSONAL_DATA": {
+        "title": "Données personnelles — Art. 6 RGPD",
+        "summary": "Données personnelles ordinaires dont le traitement est licite sur l'une des bases juridiques énumérées à l'art. 6 (consentement, contrat, obligation légale, intérêts vitaux, mission d'intérêt public, intérêts légitimes).",
+        "quote": "Le traitement n'est licite que si, et dans la mesure où, au moins une des conditions suivantes est remplie : a) la personne concernée a consenti au traitement de ses données à caractère personnel pour une ou plusieurs finalités spécifiques ; b) le traitement est nécessaire à l'exécution d'un contrat auquel la personne concernée est partie […] ; c) le traitement est nécessaire au respect d'une obligation légale ; d) le traitement est nécessaire à la sauvegarde des intérêts vitaux de la personne concernée […].",
+        "sourceLabel": "Art. 6 RGPD — texte officiel (gdpr-info.eu)",
+        "sourceUrl": "https://gdpr-info.eu/art-6-gdpr/"
+      }
     },
-    "score": {
-      "title": "Score de sévérité (Vert)",
-      "description": "Représente le score total de sévérité pour l'espace.",
-      "calculation": "Ce score est la somme des décomptes critique, moyen et faible."
+    "nlpd": {
+      "description": "Le mode nLPD applique la Loi fédérale révisée sur la protection des données (LPD, RS 235.1), en vigueur en Suisse depuis le 1er septembre 2023.",
+      "SENSITIVE_DATA": {
+        "title": "Données sensibles — Art. 5 let. c LPD",
+        "summary": "Catalogue étendu des données sensibles au sens du droit suisse : convictions, santé, intimité, origine, génétique, biométrie, poursuites pénales et aide sociale.",
+        "quote": "Par données sensibles, on entend : 1° les données sur les opinions ou les activités religieuses, philosophiques, politiques ou syndicales ; 2° les données sur la santé, la sphère intime ou l'origine raciale ou ethnique ; 3° les données génétiques ; 4° les données biométriques identifiant une personne physique de manière univoque ; 5° les données sur des poursuites ou sanctions pénales et administratives ; 6° les données sur des mesures d'aide sociale.",
+        "sourceLabel": "LPD art. 5 — texte officiel (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_5"
+      },
+      "HIGH_RISK_PROFILING_DATA": {
+        "title": "Profilage à risque élevé — Art. 5 let. g LPD",
+        "summary": "Profilage automatisé aboutissant à un profil de la personnalité et présentant un risque élevé pour la personne concernée.",
+        "quote": "Par profilage à risque élevé, on entend : tout profilage qui entraîne un risque élevé pour la personnalité ou les droits fondamentaux de la personne concernée parce qu'il conduit à un appariement de données qui permet d'apprécier les caractéristiques essentielles de la personnalité d'une personne physique.",
+        "sourceLabel": "LPD art. 5 — texte officiel (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_5"
+      },
+      "PERSONAL_DATA_HIGH_RISK": {
+        "title": "Données à haut risque — Art. 22 LPD",
+        "summary": "Traitement susceptible d'entraîner un risque élevé pour la personnalité ou les droits fondamentaux, imposant une analyse d'impact relative à la protection des données (AIPD).",
+        "quote": "Lorsque le traitement envisagé est susceptible d'entraîner un risque élevé pour la personnalité ou les droits fondamentaux de la personne concernée, le responsable du traitement procède au préalable à une analyse d'impact relative à la protection des données personnelles.",
+        "sourceLabel": "LPD art. 22 — texte officiel (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_22"
+      },
+      "PERSONAL_DATA": {
+        "title": "Données personnelles — Art. 5 let. a LPD",
+        "summary": "Définition générale des données personnelles en droit suisse : toute information rattachable à une personne physique identifiée ou identifiable.",
+        "quote": "Par données personnelles, on entend : toutes les informations concernant une personne physique identifiée ou identifiable.",
+        "sourceLabel": "LPD art. 5 — texte officiel (Fedlex)",
+        "sourceUrl": "https://www.fedlex.admin.ch/eli/cc/2022/491/fr#art_5"
+      }
     }
   },
   "settings": {

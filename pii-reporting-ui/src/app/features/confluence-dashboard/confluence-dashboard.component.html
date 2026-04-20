@@ -249,7 +249,7 @@
                 <p-badge [value]="space?.classificationCounts?.gdprPersonalDataHighRisk ?? 0" severity="info"
                          size="large"
                          [pTooltip]="'gdpr.classification.PERSONAL_DATA_HIGH_RISK.label' | transloco"></p-badge>
-                <p-badge [value]="space?.classificationCounts?.gdprPersonalData ?? 0" severity="success"
+                <p-badge [value]="space?.classificationCounts?.gdprPersonalData ?? 0" severity="info"
                          size="large"
                          [pTooltip]="'gdpr.classification.PERSONAL_DATA.label' | transloco"></p-badge>
               }
@@ -263,7 +263,7 @@
                 <p-badge [value]="space?.classificationCounts?.nlpdPersonalDataHighRisk ?? 0" severity="info"
                          size="large"
                          [pTooltip]="'nlpd.classification.PERSONAL_DATA_HIGH_RISK.label' | transloco"></p-badge>
-                <p-badge [value]="space?.classificationCounts?.nlpdPersonalData ?? 0" severity="success"
+                <p-badge [value]="space?.classificationCounts?.nlpdPersonalData ?? 0" severity="info"
                          size="large"
                          [pTooltip]="'nlpd.classification.PERSONAL_DATA.label' | transloco"></p-badge>
               }
@@ -348,51 +348,8 @@
     </ng-template>
   </p-table>
 
-  <!-- PII Severity Help Dialog -->
-  <p-dialog [header]="'piiHelp.dialogTitle' | transloco"
-            [visible]="showPiiHelpDialog()"
-            (onHide)="showPiiHelpDialog.set(false)"
-            [modal]="true"
-            [closable]="true"
-            [dismissableMask]="true"
-            [style]="{width: '600px'}"
-            styleClass="pii-help-dialog">
-    <p class="pii-help-intro">{{ 'piiHelp.introduction' | transloco }}</p>
-
-    <div class="pii-help-section pii-help-high">
-      <h4>
-        <p-badge severity="danger" [value]="''" class="severity-badge-icon"></p-badge>
-        {{ 'piiHelp.high.title' | transloco }}
-      </h4>
-      <p class="pii-help-description">{{ 'piiHelp.high.description' | transloco }}</p>
-      <p class="pii-help-types"><strong>{{ 'piiHelp.high.types' | transloco }}</strong></p>
-    </div>
-
-    <div class="pii-help-section pii-help-medium">
-      <h4>
-        <p-badge severity="warn" [value]="''" class="severity-badge-icon"></p-badge>
-        {{ 'piiHelp.medium.title' | transloco }}
-      </h4>
-      <p class="pii-help-description">{{ 'piiHelp.medium.description' | transloco }}</p>
-      <p class="pii-help-types"><strong>{{ 'piiHelp.medium.types' | transloco }}</strong></p>
-    </div>
-
-    <div class="pii-help-section pii-help-low">
-      <h4>
-        <p-badge severity="info" [value]="''" class="severity-badge-icon"></p-badge>
-        {{ 'piiHelp.low.title' | transloco }}
-      </h4>
-      <p class="pii-help-description">{{ 'piiHelp.low.description' | transloco }}</p>
-      <p class="pii-help-types"><strong>{{ 'piiHelp.low.types' | transloco }}</strong></p>
-    </div>
-
-    <div class="pii-help-section pii-help-score">
-      <h4>
-        <p-badge severity="success" [value]="''" class="severity-badge-icon"></p-badge>
-        {{ 'piiHelp.score.title' | transloco }}
-      </h4>
-      <p class="pii-help-description">{{ 'piiHelp.score.description' | transloco }}</p>
-      <p class="pii-help-calculation"><strong>{{ 'piiHelp.score.calculation' | transloco }}</strong></p>
-    </div>
-  </p-dialog>
+  <!-- Severity & classification help dialog (standard / GDPR / nLPD tabs) -->
+  <app-severity-help-dialog
+    [visible]="showPiiHelpDialog()"
+    (visibleChange)="showPiiHelpDialog.set($event)" />
 </div>

@@ -116,13 +116,14 @@ button.collapsed-card {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 5px;
+  padding: 1px 8px;
+  border-radius: 4px;
   border: 1px solid;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1.5;
 }
 
 .collapsed-row-2 {
@@ -144,26 +145,27 @@ button.collapsed-card {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 3px 8px 3px 6px;
-  border-radius: 5px;
+  padding: 1px 6px 1px 5px;
+  border-radius: 4px;
   background: var(--sentinel-bg-hover);
   border: 1px solid var(--sentinel-border-badge);
   color: var(--sentinel-text-body);
+  line-height: 1.5;
 }
 
 .pii-type-label {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 
 .pii-type-count {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--sentinel-text-primary);
   background: var(--sentinel-badge-count-bg);
-  border-radius: 4px;
-  padding: 0 4px;
+  border-radius: 3px;
+  padding: 0 3px;
   margin-left: 1px;
 }
 
