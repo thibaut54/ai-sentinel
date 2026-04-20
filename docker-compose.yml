@@ -568,23 +568,16 @@ services:
       HF_HOME: /cache
       HF_HUB_DISABLE_TELEMETRY: "1"
       # HF_TOKEN: a ajouter si le repo devient private ou en cas de rate-limiting
-    command: >
-      sh -c '
-        set -eu;
-        echo "[gemma-downloader] Installing huggingface-hub...";
-        pip install --quiet --no-cache-dir "huggingface-hub>=0.19.0";
-        echo "[gemma-downloader] Downloading gemma-4-E4B-it-Q4_K_M.gguf (~3 GB, first run only)...";
-        python -c "
-        from huggingface_hub import hf_hub_download
-        path = hf_hub_download(
-            repo_id=\"unsloth/gemma-4-E4B-it-GGUF\",
-            filename=\"gemma-4-E4B-it-Q4_K_M.gguf\",
-            cache_dir=\"/cache\",
-        )
-        print(f\"[gemma-downloader] OK -> {path}\")
-        ";
-        echo "[gemma-downloader] Done. Model ready for pii-detector.";
-      '
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        echo "[gemma-downloader] Installing huggingface-hub..."
+        pip install --quiet --no-cache-dir "huggingface-hub>=0.19.0"
+        echo "[gemma-downloader] Downloading gemma-4-E4B-it-Q4_K_M.gguf (~3 GB, first run only)..."
+        python -c "from huggingface_hub import hf_hub_download; p = hf_hub_download(repo_id='unsloth/gemma-4-E4B-it-GGUF', filename='gemma-4-E4B-it-Q4_K_M.gguf', cache_dir='/cache'); print(f'[gemma-downloader] OK -> {p}')"
+        echo "[gemma-downloader] Done. Model ready for pii-detector."
     volumes:
       - huggingface-cache:/cache
     networks:
