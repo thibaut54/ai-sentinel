@@ -85,17 +85,7 @@ class StreamConfluenceResumeScanUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        final ConfluenceUrlProvider confluenceUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "http://confluence.example"; }
-            @Override public String pageUrl(String pageId) {
-                if (pageId == null || pageId.isBlank()) return null;
-                String base = baseUrl();
-                if (base.isBlank()) return null;
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        final ConfluenceUrlProvider confluenceUrlProvider = stubDataCenterUrlProvider();
         
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -163,7 +153,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             .timeout(Duration.ofSeconds(5));
 
         StepVerifier.create(flux)
-            .assertNext(ev -> assertThat(ev.analysisProgressPercentage()).isEqualTo(0.0))
+            .assertNext(ev -> assertThat(ev.analysisProgressPercentage()).isZero())
             .verifyComplete();
     }
 
@@ -263,5 +253,30 @@ class StreamConfluenceResumeScanUseCaseTest {
             .expectNextMatches(ev -> "pA".equals(ev.pageId()))
             .expectNextMatches(ev -> "pB".equals(ev.pageId()))
             .verifyComplete();
+    }
+
+    /**
+     * Builds a Mockito stub of {@link ConfluenceUrlProvider} that mimics the Data Center
+     * adapter output, so test assertions can rely on a stable canonical URL shape.
+     */
+    private static ConfluenceUrlProvider stubDataCenterUrlProvider() {
+        String normalizedBase = normalizeBaseUrl();
+        ConfluenceUrlProvider provider = Mockito.mock(ConfluenceUrlProvider.class);
+        Mockito.lenient().when(provider.baseUrl()).thenReturn("http://confluence.example");
+        Mockito.lenient().when(provider.pageUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank()) return null;
+            return normalizedBase + "/pages/viewpage.action?pageId=" + pageId;
+        });
+        Mockito.lenient().when(provider.attachmentsUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank()) return null;
+            return normalizedBase + "/pages/viewpageattachments.action?pageId=" + pageId;
+        });
+        return provider;
+    }
+
+    private static String normalizeBaseUrl() {
+        return "http://confluence.example".trim();
     }
 }

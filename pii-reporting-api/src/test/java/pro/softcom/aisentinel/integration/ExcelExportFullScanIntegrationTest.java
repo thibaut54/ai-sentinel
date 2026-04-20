@@ -129,10 +129,10 @@ class ExcelExportFullScanIntegrationTest {
         // PHASE 1: ARRANGE - Mock Confluence Content
         // ============================================
         
-        var space = createTestSpace("TEST", "Test Space for Excel Export");
-        var page1 = createPageWithEmailsAndPhones("page-1", "TEST");
-        var page2 = createPageWithAVS("page-2", "TEST");
-        var page3 = createPageWithSecurityData("page-3", "TEST");
+        var space = createTestSpace();
+        var page1 = createPageWithEmailsAndPhones();
+        var page2 = createPageWithAVS();
+        var page3 = createPageWithSecurityData();
         
         when(confluenceClient.getAllSpaces())
             .thenReturn(CompletableFuture.completedFuture(List.of(space)));
@@ -144,10 +144,16 @@ class ExcelExportFullScanIntegrationTest {
         // CRITICAL FIX: Mock pageUrl() for each page - used by ScanEventFactory
         when(confluenceUrlProvider.baseUrl())
             .thenReturn("http://test.confluence.local");
-        when(confluenceUrlProvider.pageUrl(anyString()))
+        when(confluenceUrlProvider.pageUrl(anyString(), anyString()))
             .thenAnswer(invocation -> {
-                String pageId = invocation.getArgument(0);
-                return "http://test.confluence.local/pages/" + pageId;
+                String spaceKey = invocation.getArgument(0);
+                String pageId = invocation.getArgument(1);
+                return "http://test.confluence.local/spaces/" + spaceKey + "/pages/" + pageId;
+            });
+        when(confluenceUrlProvider.attachmentsUrl(anyString(), anyString()))
+            .thenAnswer(invocation -> {
+                String spaceKey = invocation.getArgument(0);
+                return "http://test.confluence.local/spaces/listattachmentsforspace.action?key=" + spaceKey;
             });
         
         // ============================================
@@ -306,20 +312,25 @@ class ExcelExportFullScanIntegrationTest {
         // Collecter tous les types PII détectés
         List<String> detectedTypes = new ArrayList<>();
         List<String> pageTitles = new ArrayList<>();
-        
+        List<String> pageUrls = new ArrayList<>();
+
         for (int i = 1; i <= totalDetections; i++) {
             Row row = detectionsSheet.getRow(i);
             if (row != null) {
                 String pageTitle = getCellValue(row, 1);
+                String pageUrl = getCellValue(row, 2);
                 String piiType = getCellValue(row, 6);
-                
+
                 if (pageTitle != null) {
                     pageTitles.add(pageTitle);
+                }
+                if (pageUrl != null) {
+                    pageUrls.add(pageUrl);
                 }
                 if (piiType != null) {
                     detectedTypes.add(piiType);
                 }
-                
+
                 // Vérifier que le confidence score est valide
                 Cell scoreCell = row.getCell(5);
                 if (scoreCell != null && scoreCell.getCellType() == CellType.NUMERIC) {
@@ -330,6 +341,19 @@ class ExcelExportFullScanIntegrationTest {
                 }
             }
         }
+
+        // Non-regression guard for the Cloud page URL format:
+        // the fix 1 makes sure pageUrl contains the /spaces/{spaceKey}/pages/{pageId} segment,
+        // not the old buggy /pages/{pageId}. Assertion reuses the stubbed provider shape.
+        softly.assertThat(pageUrls)
+            .as("Every detection row must expose a non-blank Page Url built from the Cloud format")
+            .isNotEmpty()
+            .allSatisfy(url -> softly.assertThat(url)
+                .as("Page Url should match the Cloud /spaces/{spaceKey}/pages/{pageId} shape")
+                .startsWith("http://test.confluence.local/spaces/TEST/pages/"));
+        softly.assertThat(pageUrls)
+            .as("At least one detection row must target the first test page")
+            .contains("http://test.confluence.local/spaces/TEST/pages/page-1");
         
         // Vérifier qu'on a des détections de différents types
         // Note: L'Excel utilise les labels français avec majuscules
@@ -382,12 +406,12 @@ class ExcelExportFullScanIntegrationTest {
         };
     }
 
-    private ConfluenceSpace createTestSpace(String key, String name) {
+    private ConfluenceSpace createTestSpace() {
         return new ConfluenceSpace(
-            "id-" + key,
-            key,
-            name,
-            "http://test.confluence.local/spaces/" + key,
+            "id-" + "TEST",
+                "TEST",
+                "Test Space for Excel Export",
+            "http://test.confluence.local/spaces/" + "TEST",
             "Test space for integration testing",
             ConfluenceSpace.SpaceType.GLOBAL,
             ConfluenceSpace.SpaceStatus.CURRENT,
@@ -396,11 +420,11 @@ class ExcelExportFullScanIntegrationTest {
         );
     }
 
-    private ConfluencePage createPageWithEmailsAndPhones(String id, String spaceKey) {
+    private ConfluencePage createPageWithEmailsAndPhones() {
         return ConfluencePage.builder()
-            .id(id)
+            .id("page-1")
             .title("Contact Information")
-            .spaceKey(spaceKey)
+            .spaceKey("TEST")
             .content(new ConfluencePage.HtmlContent("""
                 <html>
                 <body>
@@ -426,11 +450,11 @@ class ExcelExportFullScanIntegrationTest {
             .build();
     }
 
-    private ConfluencePage createPageWithAVS(String id, String spaceKey) {
+    private ConfluencePage createPageWithAVS() {
         return ConfluencePage.builder()
-            .id(id)
+            .id("page-2")
             .title("Employee Records")
-            .spaceKey(spaceKey)
+            .spaceKey("TEST")
             .content(new ConfluencePage.HtmlContent("""
                 <html>
                 <body>
@@ -455,11 +479,11 @@ class ExcelExportFullScanIntegrationTest {
             .build();
     }
 
-    private ConfluencePage createPageWithSecurityData(String id, String spaceKey) {
+    private ConfluencePage createPageWithSecurityData() {
         return ConfluencePage.builder()
-            .id(id)
+            .id("page-3")
             .title("System Configuration")
-            .spaceKey(spaceKey)
+            .spaceKey("TEST")
             .content(new ConfluencePage.HtmlContent("""
                 <html>
                 <body>

@@ -92,20 +92,7 @@ class StreamConfluenceScanUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        // Keep only baseUrl relevant for URL building
-        final ConfluenceUrlProvider confluenceUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "http://confluence.example"; }
-            @Override public String pageUrl(String pageId) {
-                if (pageId == null || pageId.isBlank()) return null;
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        final ConfluenceUrlProvider confluenceUrlProvider = stubDataCenterUrlProvider("http://confluence.example");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -557,20 +544,9 @@ class StreamConfluenceScanUseCaseTest {
     @Test
     @DisplayName("buildPageUrl - null when baseUrl is blank")
     void Should_UseNullPageUrl_When_BaseUrlIsBlank() {
-        // Build a dedicated service with blank base URL
-        final ConfluenceUrlProvider blankUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "   "; }
-            @Override public String pageUrl(String pageId) {
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                if (pageId == null || pageId.isBlank()) return null;
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        // Blank base URL -> provider returns null for every URL (mimics adapter behavior).
+        final ConfluenceUrlProvider blankUrlProvider = Mockito.mock(ConfluenceUrlProvider.class);
+        Mockito.lenient().when(blankUrlProvider.baseUrl()).thenReturn("   ");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -634,20 +610,8 @@ class StreamConfluenceScanUseCaseTest {
     @Test
     @DisplayName("buildPageUrl - trims trailing slash in baseUrl (dedicated provider)")
     void Should_BuildPageUrlWithoutDoubleSlash_When_ProviderEndsWithSlash() {
-        // Build a dedicated service with trailing slash
-        final ConfluenceUrlProvider confluenceUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "http://confluence.example/"; }
-            @Override public String pageUrl(String pageId) {
-                if (pageId == null || pageId.isBlank()) return null;
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        // Trailing slash is normalized by the helper so the stubbed URL has no double slash.
+        final ConfluenceUrlProvider confluenceUrlProvider = stubDataCenterUrlProvider("http://confluence.example/");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -810,10 +774,10 @@ class StreamConfluenceScanUseCaseTest {
             .assertNext(ev -> {
                 assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
                 assertThat(ev.spaceKey()).isEqualTo("CCAEI");
-                assertThat(ev.message()).isNotNull();
-                assertThat(ev.message()).isNotEmpty();
-                assertThat(ev.message()).doesNotContain("null");
-                assertThat(ev.message()).containsIgnoringCase("connect");
+                assertThat(ev.message())
+                        .isNotEmpty()
+                        .doesNotContain("null")
+                        .containsIgnoringCase("connect");
             })
             .expectNextMatches(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
             .verifyComplete();
@@ -837,10 +801,10 @@ class StreamConfluenceScanUseCaseTest {
             .assertNext(ev -> {
                 assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
                 assertThat(ev.spaceKey()).isEqualTo(spaceKey);
-                assertThat(ev.message()).isNotNull();
-                assertThat(ev.message()).isNotEmpty();
-                assertThat(ev.message()).doesNotContain("null");
-                assertThat(ev.message()).containsIgnoringCase("connect");
+                assertThat(ev.message())
+                        .isNotEmpty()
+                        .doesNotContain("null")
+                        .containsIgnoringCase("connect");
             })
             .verifyComplete();
     }
@@ -889,6 +853,34 @@ class StreamConfluenceScanUseCaseTest {
         // Verify both spaces were scanned
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("AHVIV");
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("XYZ");
+    }
+
+    /**
+     * Builds a Mockito stub of {@link ConfluenceUrlProvider} that mimics the Data Center
+     * adapter output. The base URL is normalized (trimmed + trailing slash removed) so the
+     * assertions in this file can compare against a clean canonical shape.
+     */
+    private static ConfluenceUrlProvider stubDataCenterUrlProvider(String rawBaseUrl) {
+        String normalizedBase = normalizeBaseUrl(rawBaseUrl);
+        ConfluenceUrlProvider provider = Mockito.mock(ConfluenceUrlProvider.class);
+        Mockito.lenient().when(provider.baseUrl()).thenReturn(rawBaseUrl);
+        Mockito.lenient().when(provider.pageUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank() || normalizedBase == null) return null;
+            return normalizedBase + "/pages/viewpage.action?pageId=" + pageId;
+        });
+        Mockito.lenient().when(provider.attachmentsUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank() || normalizedBase == null) return null;
+            return normalizedBase + "/pages/viewpageattachments.action?pageId=" + pageId;
+        });
+        return provider;
+    }
+
+    private static String normalizeBaseUrl(String rawBaseUrl) {
+        if (rawBaseUrl == null || rawBaseUrl.isBlank()) return null;
+        String trimmed = rawBaseUrl.trim();
+        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 
 }
