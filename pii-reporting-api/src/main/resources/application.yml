@@ -20,8 +20,12 @@ spring:
             non_contextual_creation: true
   sql:
     init:
-      # Always execute data.sql on startup (inserts PII type configs)
+      # Always execute the seed SQL on startup (inserts PII type configs)
       mode: always
+      # Seed file is overridable via SPRING_SQL_INIT_DATA_LOCATIONS env var.
+      # Default = data.sql (current GLiNER labels). Use classpath:data-old.sql to
+      # boot against the database "ai-sentinel-initial" with NVIDIA-official labels.
+      data-locations: ${SPRING_SQL_INIT_DATA_LOCATIONS:classpath:data.sql}
       # Encoding for SQL scripts
       encoding: UTF-8
       # Continue on error (already inserted data with ON CONFLICT DO NOTHING)
@@ -51,6 +55,7 @@ logging:
   level:
     pro.softcom.aisentinel.infrastructure.confluence: DEBUG
     pro.softcom.aisentinel.infrastructure.pii: DEBUG
+    pro.softcom.aisentinel.application.pii.reporting.usecase: DEBUG
     org.springframework.web.client: DEBUG
 
 # PII Detector Configuration

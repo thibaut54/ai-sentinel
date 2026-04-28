@@ -520,17 +520,9 @@ class MultiPassGlinerDetector:
         pass_categories: Dict[str, Dict[str, str]]
     ) -> List[PIIEntity]:
         """
-        Run a single detection pass for one category.
-
-        Args:
-            text: Text to analyze
-            threshold: Detection threshold
-            detection_id: Logging ID
-            category: Category to detect
-            pass_categories: Categories configuration to use
-
-        Returns:
-            Entities detected in this pass
+        Run a single detection pass for one category, chunking the text first
+        to bypass GLiNER's internal 384-token truncation that silently drops
+        findings on long inputs.
         """
         if category not in pass_categories:
             self.logger.warning(f"[{detection_id}] Unknown category: {category}")
@@ -540,51 +532,117 @@ class MultiPassGlinerDetector:
         labels = list(label_mapping.keys())
 
         pass_start = time.time()
-
-        # Use GLiNER's model directly to predict with specific labels
-        raw_entities = self._gliner_detector.model.predict_entities(
-            text,
-            labels,
-            threshold=threshold
-        )
-
-        # Convert to PIIEntity format
-        entities = []
-        for entity in raw_entities:
-            gliner_label = entity.get("label", "")
-            pii_type = label_mapping.get(gliner_label, gliner_label.upper())
-
-            start = entity.get("start", 0)
-            end = entity.get("end", 0)
-            actual_text = text[start:end] if 0 <= start < end <= len(text) else ""
-
-            pii_entity = PIIEntity(
-                text=actual_text,
-                pii_type=pii_type,
-                type_label=pii_type,
-                start=start,
-                end=end,
-                score=entity.get("score", 0.0)
-            )
-            pii_entity.source = DetectorSource.GLINER
-            entities.append(pii_entity)
-
+        chunked = self._predict_chunked(text, labels, threshold, detection_id, category)
+        entities = self._build_entities_from_chunked(text, chunked, label_mapping)
         pass_time = time.time() - pass_start
 
-        # Log pass results
+        self._log_single_pass_result(detection_id, category, entities, pass_time)
+        return entities
+
+    def _predict_chunked(
+        self,
+        text: str,
+        labels: List[str],
+        threshold: float,
+        detection_id: str,
+        category: str
+    ) -> List[Tuple[int, dict]]:
+        """
+        Run GLiNER prediction on each chunk, returning (chunk_offset, raw_entity)
+        tuples. Chunker comes from the underlying GLiNERDetector and is already
+        configured (chunk_chars=1134, overlap_chars=300 per startup logs).
+        """
+        chunks = self._build_chunks(text, detection_id, category)
+        raw_with_offset: List[Tuple[int, dict]] = []
+        for chunk_offset, chunk_text in chunks:
+            chunk_raw = self._gliner_detector.model.predict_entities(
+                chunk_text, labels, threshold=threshold
+            )
+            for entity in chunk_raw:
+                raw_with_offset.append((chunk_offset, entity))
+        return raw_with_offset
+
+    def _build_chunks(
+        self,
+        text: str,
+        detection_id: str,
+        category: str
+    ) -> List[Tuple[int, str]]:
+        """Return [(chunk_offset, chunk_text)] using the GLiNERDetector chunker."""
+        chunker = self._gliner_detector.semantic_chunker
+        if chunker is None:
+            self.logger.warning(
+                f"[{detection_id}] Pass {category}: chunker not initialized, "
+                f"using whole text (may be truncated by GLiNER)"
+            )
+            return [(0, text)]
+        chunk_results = chunker.chunk_text(text)
+        return [(c.start, c.text) for c in chunk_results]
+
+    def _build_entities_from_chunked(
+        self,
+        text: str,
+        raw_with_offset: List[Tuple[int, dict]],
+        label_mapping: Dict[str, str]
+    ) -> List[PIIEntity]:
+        """Convert chunked GLiNER outputs to PIIEntity with absolute positions and dedup."""
+        entities: List[PIIEntity] = []
+        seen: set = set()
+        for chunk_offset, entity in raw_with_offset:
+            pii_entity = self._to_absolute_pii_entity(text, entity, chunk_offset, label_mapping)
+            if pii_entity is None:
+                continue
+            key = (pii_entity.start, pii_entity.end, pii_entity.pii_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            entities.append(pii_entity)
+        return entities
+
+    def _to_absolute_pii_entity(
+        self,
+        text: str,
+        entity: dict,
+        chunk_offset: int,
+        label_mapping: Dict[str, str]
+    ) -> Optional[PIIEntity]:
+        """Build a PIIEntity with offset-corrected positions. Returns None if invalid."""
+        abs_start = entity.get("start", 0) + chunk_offset
+        abs_end = entity.get("end", 0) + chunk_offset
+        if not (0 <= abs_start < abs_end <= len(text)):
+            return None
+        gliner_label = entity.get("label", "")
+        pii_type = label_mapping.get(gliner_label, gliner_label.upper())
+        pii_entity = PIIEntity(
+            text=text[abs_start:abs_end],
+            pii_type=pii_type,
+            type_label=pii_type,
+            start=abs_start,
+            end=abs_end,
+            score=entity.get("score", 0.0)
+        )
+        pii_entity.source = DetectorSource.GLINER
+        return pii_entity
+
+    def _log_single_pass_result(
+        self,
+        detection_id: str,
+        category: str,
+        entities: List[PIIEntity],
+        pass_time: float
+    ) -> None:
+        """Log debug summary of a single category pass."""
         if entities:
-            entity_types = [e.pii_type for e in entities]
+            entity_types = {e.pii_type for e in entities}
             self.logger.debug(
                 f"[{detection_id}] Pass {category}: {len(entities)} entities in {pass_time:.2f}s - "
-                f"types: {set(entity_types)}"
+                f"types: {entity_types}"
             )
         else:
             self.logger.debug(
                 "[%s] Pass %s: 0 entities in %.2fs",
                 detection_id, category, pass_time
             )
-
-        return entities
 
     def _aggregate_by_span(
         self,
