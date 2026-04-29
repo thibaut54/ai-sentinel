@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import { PiiItemsStorageService } from './pii-items-storage.service';
 import { SpacesDashboardUtils } from '../spaces-dashboard.utils';
 

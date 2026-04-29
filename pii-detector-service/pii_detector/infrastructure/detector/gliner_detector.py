@@ -257,15 +257,15 @@ class GLiNERDetector:
             "gender": "GENDER",
             # FINANCIAL_IDENTIFIER
             "credit card number": "CREDIT_CARD",
-            "bank account number": "BANK_ACCOUNT",
+            "financial institution account number": "BANK_ACCOUNT",
             "international banking identifier": "IBAN",
             "routing number": "ROUTING_NUMBER",
-            "tax identification number": "TAX_ID",
+            "tax identifier": "TAX_ID",
             "cryptocurrency wallet address": "CRYPTO_WALLET",
             # GOVERNMENT_IDENTIFIER
-            "social security number": "SSN",
+            "social insurance number": "SSN",
             "passport number": "PASSPORT",
-            "driver license number": "DRIVER_LICENSE",
+            "driver license identification": "DRIVER_LICENSE",
             "national id number": "NATIONAL_ID",
             # GEO_LOCATION
             "street address": "ADDRESS",
@@ -275,17 +275,17 @@ class GLiNERDetector:
             "postal code": "ZIP_CODE",
             # CREDENTIAL_SECRET
             "account password or PIN code": "PASSWORD",
-            "api key": "API_KEY",
+            "API authentication credential": "API_KEY",
             "access token": "ACCESS_TOKEN",
             "secret key": "SECRET_KEY",
             "database connection string": "CONNECTION_STRING",
             # STRUCTURED_TECH_IDENTIFIER
-            "ip address": "IP_ADDRESS",
-            "avs number": "AVS_NUMBER",
+            "IPv4 or IPv6 network address": "IP_ADDRESS",
+            "Swiss AVS 13-digit personal number": "AVS_NUMBER",
             "mac address": "MAC_ADDRESS",
             "url": "URL",
             # HEALTHCARE
-            "medical record number": "MEDICAL_RECORD",
+            "medical file number": "MEDICAL_RECORD",
             "health insurance number": "HEALTH_INSURANCE",
             "medical condition": "MEDICAL_CONDITION",
             "medication": "MEDICATION",

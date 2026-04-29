@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 import { SseEventHandlerService } from './sse-event-handler.service';
 import { TranslocoService } from '@jsverse/transloco';
 import { ToastService } from '../../../core/services/toast.service';

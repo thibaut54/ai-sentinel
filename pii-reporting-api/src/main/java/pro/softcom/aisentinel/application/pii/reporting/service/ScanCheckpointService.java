@@ -189,4 +189,8 @@ public class ScanCheckpointService {
     public void deleteAllCheckpointsForSpaces(java.util.List<String> spaceKeys) {
         scanCheckpointRepository.deleteAllCheckpointsForSpaces(spaceKeys);
     }
+
+    public int resolveStaleActiveCheckpoints(java.util.List<String> excludedSpaceKeys) {
+        return scanCheckpointRepository.resolveStaleActiveCheckpoints(excludedSpaceKeys);
+    }
 }

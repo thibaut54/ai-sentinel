@@ -215,19 +215,10 @@
         [label]="'settings.confluence.buttons.test' | transloco"
         icon="pi pi-wifi"
         [loading]="testing()"
-        [disabled]="testing() || saving() || !isFormValid"
+        [disabled]="testing() || saving() || !isConnectionFieldsValid"
         (click)="onTestConnection()"
         (keydown.enter)="onTestConnection()"
         styleClass="p-button-outlined">
-      </p-button>
-      <p-button
-        type="button"
-        [label]="'settings.confluence.buttons.save' | transloco"
-        icon="pi pi-save"
-        [loading]="saving()"
-        [disabled]="saving() || testing() || !isFormValid || !hasUnsavedChanges"
-        (click)="onSave()"
-        (keydown.enter)="onSave()">
       </p-button>
     </div>
 

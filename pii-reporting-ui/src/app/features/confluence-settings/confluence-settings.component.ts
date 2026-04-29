@@ -317,4 +317,11 @@ export class ConfluenceSettingsComponent implements OnInit {
   get isFormValid(): boolean {
     return this.configForm().valid();
   }
+
+  get isConnectionFieldsValid(): boolean {
+    if (this.configForm.baseUrl().invalid()) return false;
+    if (!this.model().apiToken) return false;
+    if (this.isCloud() && this.configForm.username().invalid()) return false;
+    return true;
+  }
 }
