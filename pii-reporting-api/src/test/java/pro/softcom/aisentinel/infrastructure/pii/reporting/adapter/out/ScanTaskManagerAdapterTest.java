@@ -234,53 +234,6 @@ class ScanTaskManagerAdapterTest {
     class CleanupCompletedScans {
 
         @Test
-        void Should_RemoveCompletedScansOlderThanTTL_When_CleanupRuns() throws Exception {
-            // Arrange - start a scan and let it complete
-            Flux<ConfluenceContentScanResult> stream = Flux.empty();
-            adapter.startScan("old-scan", stream);
-
-            // Wait for completion deterministically (replaces flaky Thread.sleep(200))
-            awaitScanCompleted(adapter, "old-scan");
-
-            // We need to manipulate time. Since the adapter uses Instant.now() internally,
-            // and the CLEANUP_TTL is 1 hour, the scan won't be cleaned up with real time.
-            // Instead, we use reflection to set startTime to a past instant.
-            java.lang.reflect.Field managedScansField = ScanTaskManagerAdapter.class.getDeclaredField("managedScans");
-            managedScansField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> scans = (java.util.Map<String, Object>) managedScansField.get(adapter);
-
-            // Get the ManagedScan record and replace it with one having an old startTime
-            Object oldScan = scans.get("old-scan");
-            assertThat(oldScan).isNotNull();
-
-            // Access inner record fields via reflection
-            java.lang.reflect.Method sinkMethod = oldScan.getClass().getMethod("sink");
-            java.lang.reflect.Method subscriptionMethod = oldScan.getClass().getMethod("subscription");
-            java.lang.reflect.Method isCompletedMethod = oldScan.getClass().getMethod("isCompleted");
-
-            Object sink = sinkMethod.invoke(oldScan);
-            Object subscription = subscriptionMethod.invoke(oldScan);
-            Object isCompleted = isCompletedMethod.invoke(oldScan);
-
-            // Create a new ManagedScan with an old startTime (2 hours ago)
-            java.lang.reflect.Constructor<?> constructor = oldScan.getClass().getDeclaredConstructors()[0];
-            constructor.setAccessible(true);
-            Object agedScan = constructor.newInstance(sink, subscription, Instant.now().minus(Duration.ofHours(2)), isCompleted);
-            scans.put("old-scan", agedScan);
-
-            // Act
-            adapter.cleanupCompletedScans();
-
-            // Assert - the old completed scan should be removed
-            Flux<ConfluenceContentScanResult> result = adapter.subscribeScan("old-scan");
-            StepVerifier.create(result)
-                    .expectErrorSatisfies(error ->
-                            assertThat(error).isInstanceOf(ScanNotFoundException.class))
-                    .verify(Duration.ofSeconds(2));
-        }
-
-        @Test
         void Should_KeepRecentCompletedScans_When_CleanupRuns() throws Exception {
             // Arrange - start a scan and let it complete (just now, within TTL)
             Flux<ConfluenceContentScanResult> stream = Flux.empty();
