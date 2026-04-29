@@ -26,12 +26,26 @@ sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_DIR = Path(__file__).parent.parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "grpc.log"
+
+# Console handler (existing behavior)
+_console_handler = logging.StreamHandler(sys.stdout)
+_console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+# Rotating file handler (10 MB x 5 backups) so logs persist across restarts
+_file_handler = logging.handlers.RotatingFileHandler(
+    LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+)
+_file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
 
 logging.basicConfig(
     level=logging.INFO,
-    format=LOG_FORMAT
+    format=LOG_FORMAT,
+    handlers=[_console_handler, _file_handler],
+    force=True,
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Logging to file: {LOG_FILE}")
 
 
 def verify_dependencies(debug: bool = False) -> None:

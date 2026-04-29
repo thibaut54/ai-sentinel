@@ -218,7 +218,15 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     private Flux<ConfluenceContentScanResult> processOnePage(String scanId, String spaceKey, ConfluencePage page,
                                                              ScanProgress scanProgress) {
         String rawContent = extractPageContent(page);
+        log.info("[GLINER-INPUT][RAW] PageId={} Title=\"{}\" rawLen={} rawSample=\"{}\"",
+                page.id(), page.title(),
+                rawContent != null ? rawContent.length() : -1,
+                clipForLog(rawContent, 500));
         String content = htmlContentParser.cleanText(rawContent);
+        log.info("[GLINER-INPUT][CLEANED] PageId={} cleanedLen={} cleanedSample=\"{}\"",
+                page.id(),
+                content != null ? content.length() : -1,
+                clipForLog(content, 500));
         double startProgress = contentScanOrchestrator.calculateProgress(
             scanProgress.analyzedOffset() + (scanProgress.currentIndex() - 1),
             scanProgress.originalTotal());
@@ -242,6 +250,8 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                                   ConfluencePage page,
                                                                   String content, ScanProgress scanProgress) {
         if (isBlank(content)) {
+            log.warn("[GLINER-INPUT][SKIP] PageId={} Title=\"{}\" content is blank after cleanText -> gRPC NOT called, no findings possible",
+                    page.id(), page.title());
             return createEmptyPageItem(scanId, spaceKey, page, scanProgress);
         }
 
@@ -350,26 +360,36 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     private ContentPiiDetection detectPii(String content) {
         String safeContent = content != null ? content : "";
         int charCount = safeContent.length();
+        log.info("[GLINER-INPUT][SEND] len={} hash={} sample=\"{}\"",
+                charCount, Integer.toHexString(safeContent.hashCode()), clipForLog(safeContent, 500));
         long startTime = System.currentTimeMillis();
         ContentPiiDetection contentPiiDetection = piiDetectorClient.analyzeContent(safeContent);
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
 
+        int findings = contentPiiDetection != null && contentPiiDetection.sensitiveDataFound() != null
+                ? contentPiiDetection.sensitiveDataFound().size()
+                : -1;
+        log.info("[GLINER-INPUT][RECV] len={} hash={} findings={} duration={}ms",
+                charCount, Integer.toHexString(safeContent.hashCode()), findings, duration);
+
         if (log.isDebugEnabled()){
-            Mono.fromRunnable(() -> {
-                        log.debug("Content: {}", safeContent);
-                        log.debug("Time to send and received content pii scan result: {}", duration);
-                        log.debug("Pii content: {}", contentPiiDetection);
-                        double charsPerSecond = duration > 0 ? (charCount * 1000.0) / duration : 0;
-                        log.debug("[PERFORMANCE] Scan throughput: {} chars/sec ({} chars scanned in {} ms)",
-                                String.format(Locale.ROOT, "%.2f", charsPerSecond), charCount, duration);
-                    })
-                    .subscribeOn(Schedulers.parallel())
-                    .subscribe();
+            log.debug("Content: {}", safeContent);
+            log.debug("Time to send and received content pii scan result: {}", duration);
+            log.debug("Pii content: {}", contentPiiDetection);
+            double charsPerSecond = duration > 0 ? (charCount * 1000.0) / duration : 0;
+            log.debug("[PERFORMANCE] Scan throughput: {} chars/sec ({} chars scanned in {} ms)",
+                    String.format(Locale.ROOT, "%.2f", charsPerSecond), charCount, duration);
         }
 
-        
+
         return contentPiiDetection;
+    }
+
+    private static String clipForLog(String s, int max) {
+        if (s == null) return "<null>";
+        String oneLine = s.replace("\n", "\\n").replace("\r", "");
+        return oneLine.length() <= max ? oneLine : oneLine.substring(0, max) + "...[+" + (oneLine.length() - max) + " chars]";
     }
 
     boolean isBlank(String value) {

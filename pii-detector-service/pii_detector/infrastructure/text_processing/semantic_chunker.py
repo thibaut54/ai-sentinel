@@ -9,7 +9,7 @@ Critical for models like GLiNER that have internal sentence-level token limits.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 try:
     import semchunk
@@ -250,6 +250,102 @@ class FallbackChunker:
         }
 
 
+class TokenWindowChunker:
+    """
+    Token-based sliding-window chunker driven by a HuggingFace fast tokenizer.
+
+    Aligned with GLiNER's official guidance (urchade): leverages
+    ``return_overflowing_tokens`` + ``stride`` so each chunk holds at most
+    ``chunk_size`` tokens with ``overlap`` tokens of context shared with the
+    previous chunk. No char-to-token approximation, no silent truncation.
+
+    Char positions of every chunk are extracted from ``offset_mapping`` so the
+    rest of the pipeline can keep using char-based offsets.
+    """
+
+    _SPECIAL_TOKEN_OFFSET: Tuple[int, int] = (0, 0)
+
+    def __init__(
+        self,
+        tokenizer: Any,
+        chunk_size: int,
+        overlap: int,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
+        if chunk_size <= overlap:
+            raise ValueError(
+                f"chunk_size ({chunk_size}) must be greater than overlap ({overlap})"
+            )
+        if not getattr(tokenizer, "is_fast", False):
+            raise TypeError(
+                "TokenWindowChunker requires a fast HuggingFace tokenizer "
+                "(slow tokenizers do not support return_offsets_mapping)."
+            )
+
+        self._tokenizer = tokenizer
+        self._chunk_size = chunk_size
+        self._overlap = overlap
+        self._logger = logger or logging.getLogger(__name__)
+
+        self._logger.info(
+            "TokenWindowChunker initialized: "
+            f"chunk_size={chunk_size}, overlap={overlap}, "
+            f"tokenizer={tokenizer.__class__.__name__}"
+        )
+
+    def chunk_text(self, text: str) -> List[ChunkResult]:
+        """Split ``text`` into token-bounded windows (char-aligned)."""
+        if not text:
+            return []
+
+        encoded = self._encode_with_overflow(text)
+        chunk_count = self._count_chunks(encoded)
+        return [self._build_chunk(text, encoded, idx) for idx in range(chunk_count)]
+
+    def get_chunk_info(self) -> dict:
+        return {
+            "chunk_size": self._chunk_size,
+            "overlap": self._overlap,
+            "library": "huggingface-token-window",
+            "available": True,
+        }
+
+    def _encode_with_overflow(self, text: str) -> Any:
+        """Tokenize once and produce sliding windows of ``chunk_size`` tokens."""
+        return self._tokenizer(
+            text,
+            max_length=self._chunk_size,
+            stride=self._overlap,
+            truncation=True,
+            return_overflowing_tokens=True,
+            return_offsets_mapping=True,
+            add_special_tokens=False,
+        )
+
+    @staticmethod
+    def _count_chunks(encoded: Any) -> int:
+        return len(encoded["input_ids"])
+
+    def _build_chunk(self, text: str, encoded: Any, idx: int) -> ChunkResult:
+        """Slice the original ``text`` so absolute positions stay in sync."""
+        offsets = encoded["offset_mapping"][idx]
+        start_char, end_char = self._char_bounds(offsets)
+        return ChunkResult(
+            text=text[start_char:end_char],
+            start=start_char,
+            end=end_char,
+            token_count=len(encoded["input_ids"][idx]),
+        )
+
+    @classmethod
+    def _char_bounds(cls, offsets: List[Tuple[int, int]]) -> Tuple[int, int]:
+        """Return (first_char, last_char) of a chunk, ignoring special tokens."""
+        usable = [pair for pair in offsets if pair != cls._SPECIAL_TOKEN_OFFSET]
+        if not usable:
+            return 0, 0
+        return usable[0][0], usable[-1][1]
+
+
 def create_chunker(
     tokenizer: Optional[Any] = None,
     chunk_size: int = 378,
@@ -258,28 +354,41 @@ def create_chunker(
     logger: Optional[logging.Logger] = None
 ) -> Any:
     """
-    Factory function to create appropriate chunker.
+    Factory function to create the appropriate chunker.
+
+    Selection priority:
+      1. ``TokenWindowChunker`` when a HuggingFace **fast** tokenizer is available
+         (true token-bounded windows, recommended for GLiNER).
+      2. ``SemanticTextChunker`` if semchunk is installed and overlap is 0
+         (legacy path, kept for explicit opt-in via ``use_semantic=True``).
+      3. ``FallbackChunker`` otherwise (char-based estimation, last resort).
 
     Args:
-        tokenizer: HuggingFace tokenizer (required for semantic chunking)
-        chunk_size: Maximum tokens per chunk (default: 378 for GLiNER)
-        overlap: Number of tokens to overlap (default: 50)
-        use_semantic: Use semantic chunking (default: False, semchunk doesn't support overlap)
-        logger: Optional logger instance
+        tokenizer: HuggingFace tokenizer (fast variant strongly preferred).
+        chunk_size: Maximum tokens per chunk (default 378, GLiNER limit).
+        overlap: Number of tokens to overlap between consecutive chunks.
+        use_semantic: Force semchunk-based semantic chunking when possible.
+        logger: Optional logger.
 
     Returns:
-        SemanticTextChunker or FallbackChunker instance
-
-    Note:
-        Character-based chunking is preferred because:
-        1. It properly supports overlap for context continuity
-        2. It has been tested and works well with GLiNER PII detection
-        3. semchunk library doesn't support overlap parameter
+        A chunker exposing ``chunk_text(text) -> List[ChunkResult]`` and
+        ``get_chunk_info() -> dict``.
     """
     logger = logger or logging.getLogger(__name__)
 
-    # Use semantic chunking only if explicitly requested AND overlap is 0
-    # (semchunk doesn't support overlap)
+    if _can_use_token_window(tokenizer):
+        try:
+            return TokenWindowChunker(
+                tokenizer=tokenizer,
+                chunk_size=chunk_size,
+                overlap=overlap,
+                logger=logger,
+            )
+        except (TypeError, ValueError) as exc:
+            logger.warning(
+                f"TokenWindowChunker unavailable ({exc}); falling back to char-based chunker."
+            )
+
     if use_semantic and SEMCHUNK_AVAILABLE and tokenizer is not None and overlap == 0:
         try:
             return SemanticTextChunker(
@@ -296,3 +405,8 @@ def create_chunker(
         overlap=overlap,
         logger=logger
     )
+
+
+def _can_use_token_window(tokenizer: Optional[Any]) -> bool:
+    """A fast HuggingFace tokenizer is required for offset-mapping support."""
+    return tokenizer is not None and bool(getattr(tokenizer, "is_fast", False))

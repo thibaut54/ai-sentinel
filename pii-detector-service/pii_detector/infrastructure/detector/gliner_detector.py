@@ -128,8 +128,8 @@ class GLiNERDetector:
             self.semantic_chunker = create_chunker(
                 tokenizer=tokenizer,
                 chunk_size=378,  # GLiNER's internal token limit (nvidia/gliner-pii)
-                overlap=100,     # ~300 char overlap to catch entities at boundaries
-                use_semantic=False,  # Character-based chunking supports overlap
+                overlap=128,     # aligned with NVIDIA inference server defaults
+                use_semantic=False,  # Token-window chunker is preferred when fast tokenizer is available
                 logger=self.logger
             )
 

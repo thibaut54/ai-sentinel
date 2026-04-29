@@ -42,9 +42,16 @@ from pii_detector.infrastructure.detector.gliner_detector import GLiNERDetector
 
 @dataclass(frozen=True, slots=True)
 class SpanKey:
-    """Key for grouping entities by span position."""
+    """
+    Key grouping entities by span position **and** pii_type.
+
+    Including ``pii_type`` keeps multi-label spans distinct (e.g. an IBAN that
+    is also a swift_bic): each label becomes its own finding, matching NVIDIA's
+    inference output when ``flat_ner=False`` is requested.
+    """
     start: int
     end: int
+    pii_type: str
 
 
 @dataclass
@@ -553,13 +560,65 @@ class MultiPassGlinerDetector:
         configured (chunk_chars=1134, overlap_chars=300 per startup logs).
         """
         chunks = self._build_chunks(text, detection_id, category)
-        raw_with_offset: List[Tuple[int, dict]] = []
-        for chunk_offset, chunk_text in chunks:
-            chunk_raw = self._gliner_detector.model.predict_entities(
-                chunk_text, labels, threshold=threshold
+        # DIAG: log chunk count and total chars to diagnose truncation suspicion
+        total_chars = sum(len(t) for _, t in chunks)
+        self.logger.info(
+            f"[CHUNK-DIAG][{detection_id}] cat={category} text_len={len(text)} chars "
+            f"-> {len(chunks)} chunks (total {total_chars} chars, "
+            f"avg {total_chars // max(len(chunks),1)} chars/chunk)"
+        )
+        # DIAG: peek at the actual GLiNER tokenizer to detect chunks > 378 tokens
+        # (GLiNER nvidia/gliner-pii silently truncates at 378 -> lost detections)
+        # Path: detector.model.data_processor.transformer_tokenizer (HF AutoTokenizer)
+        gliner_tokenizer = None
+        try:
+            data_processor = getattr(self._gliner_detector.model, "data_processor", None)
+            if data_processor is not None:
+                gliner_tokenizer = getattr(data_processor, "transformer_tokenizer", None)
+        except Exception:
+            gliner_tokenizer = None
+        if gliner_tokenizer is None:
+            self.logger.warning(
+                f"[CHUNK-DIAG][{detection_id}] could not access GLiNER tokenizer "
+                f"-> token counts will be unavailable"
             )
+
+        raw_with_offset: List[Tuple[int, dict]] = []
+        chunks_over_limit = 0
+        for idx, (chunk_offset, chunk_text) in enumerate(chunks):
+            # DIAG: real token count for this chunk
+            tok_count = -1
+            if gliner_tokenizer is not None:
+                try:
+                    tok_count = len(
+                        gliner_tokenizer.encode(chunk_text, add_special_tokens=False)
+                    )
+                except Exception as e:  # pragma: no cover - diag only
+                    self.logger.debug(f"[CHUNK-DIAG] tokenizer.encode failed: {e}")
+                    tok_count = -1
+
+            # flat_ner=False so a single span may carry multiple labels
+            # (e.g. an IBAN that is also a swift_bic) - aligned with NVIDIA.
+            chunk_raw = self._gliner_detector.model.predict_entities(
+                chunk_text, labels, threshold=threshold, flat_ner=False
+            )
+            over = tok_count > 378 if tok_count > 0 else False
+            if over:
+                chunks_over_limit += 1
+            self.logger.info(
+                f"[CHUNK-DIAG][{detection_id}] chunk#{idx} offset={chunk_offset} "
+                f"chars={len(chunk_text)} tokens={tok_count} "
+                f"OVER_378={'YES' if over else 'no'} entities={len(chunk_raw)}"
+            )
+
             for entity in chunk_raw:
                 raw_with_offset.append((chunk_offset, entity))
+
+        if chunks_over_limit > 0:
+            self.logger.warning(
+                f"[CHUNK-DIAG][{detection_id}] {chunks_over_limit}/{len(chunks)} chunks "
+                f"EXCEED 378-token GLiNER limit -> silent truncation, lost detections"
+            )
         return raw_with_offset
 
     def _build_chunks(
@@ -663,7 +722,7 @@ class MultiPassGlinerDetector:
         span_map: Dict[SpanKey, AggregatedSpan] = {}
 
         for entity in entities:
-            key = SpanKey(entity.start, entity.end)
+            key = SpanKey(entity.start, entity.end, entity.pii_type)
             span = span_map.get(key)
 
             if span is None:
@@ -753,39 +812,43 @@ class MultiPassGlinerDetector:
         entities: List[PIIEntity]
     ) -> List[PIIEntity]:
         """
-        Resolve overlapping spans by keeping the wider span.
+        Drop overlapping spans **of the same pii_type** by keeping the wider one.
 
-        When spans partially overlap, the wider (more complete) span wins.
-        This is applied after conflict resolution.
+        When ``flat_ner=False`` is used at the model level, a single span may
+        legitimately carry multiple labels (e.g. an IBAN that is also a swift_bic).
+        Such cross-label overlaps must be preserved; only intra-label overlaps
+        are reduced via the "wider span wins" rule.
 
         Args:
-            entities: Entities after conflict resolution
+            entities: Entities after conflict resolution.
 
         Returns:
-            Entities with overlaps removed
+            Entities with intra-pii_type overlaps removed; multi-label spans kept.
         """
         if not entities:
             return []
 
-        # Sort by start position, then by span length (longest first)
-        sorted_entities = sorted(
+        sorted_entities = self._sort_for_overlap_resolution(entities)
+        return self._dedupe_overlaps_per_pii_type(sorted_entities)
+
+    @staticmethod
+    def _sort_for_overlap_resolution(entities: List[PIIEntity]) -> List[PIIEntity]:
+        """Sort by (pii_type asc, start asc, length desc) so the widest span comes first per type."""
+        return sorted(
             entities,
-            key=lambda e: (e.start, -(e.end - e.start))
+            key=lambda entity: (entity.pii_type, entity.start, -(entity.end - entity.start)),
         )
 
+    @staticmethod
+    def _dedupe_overlaps_per_pii_type(sorted_entities: List[PIIEntity]) -> List[PIIEntity]:
+        """Keep one entity per pii_type per overlap region (the widest, thanks to the sort)."""
         kept: List[PIIEntity] = []
-        max_end = -1
-
+        max_end_by_pii_type: Dict[str, int] = {}
         for entity in sorted_entities:
-            # If current entity starts after (or at) the end of the last kept entity,
-            # it means no overlap with any previously kept entity (due to sort order).
-            if entity.start >= max_end:
+            previous_end = max_end_by_pii_type.get(entity.pii_type, -1)
+            if entity.start >= previous_end:
                 kept.append(entity)
-                max_end = max(max_end, entity.end)
-            # Else: It overlaps with a previously kept entity.
-            # Since we prioritized "longest first" for same start, and "earlier start" generally,
-            # the existing kept entity is preferred. We discard the current one.
-
+                max_end_by_pii_type[entity.pii_type] = max(previous_end, entity.end)
         return kept
 
     def _generate_detection_id(self) -> str:

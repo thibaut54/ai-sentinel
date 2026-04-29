@@ -370,6 +370,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
 
         # Use singleton detector instance
         self.detector = get_detector_instance()
+        detector_type = type(self.detector).__name__ if self.detector is not None else "None"
+        logger.info(f"[GLINER-DEBUG] Servicer initialized with detector type: {detector_type}")
 
         # LLM validation singleton (None if unavailable or disabled)
         self.llm_validator = get_llm_validator_instance()
@@ -712,19 +714,23 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'llm_validation_enabled': db_config.get('llm_validation_enabled', False),
             }
 
-            logger.debug(
-                f"[{request_id}] Applied database config: threshold={threshold}, "
+            logger.info(
+                f"[GLINER-DEBUG][{request_id}] Applied DB config: threshold={threshold}, "
                 f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
                 f"llm_validation={detector_flags['llm_validation_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
-            
+
             if pii_type_configs:
-                logger.debug(
-                    f"[{request_id}] Loaded {len(pii_type_configs)} PII type-specific configs"
+                gliner_configs = [k for k, v in pii_type_configs.items() if (v.get('detector') == 'GLINER' or k.startswith('GLINER:')) and v.get('enabled')]
+                logger.info(
+                    f"[GLINER-DEBUG][{request_id}] Loaded {len(pii_type_configs)} PII type configs total, "
+                    f"GLINER+enabled={len(gliner_configs)}: {sorted(gliner_configs)[:20]}{'...' if len(gliner_configs) > 20 else ''}"
                 )
+            else:
+                logger.warning(f"[GLINER-DEBUG][{request_id}] NO pii_type_configs loaded from DB - all entities will pass filter as 'no config'")
             
             return threshold, pii_type_configs, detector_flags, chunk_size
             
@@ -801,9 +807,21 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         call_kwargs = self._build_detection_kwargs(
             detector_flags, pii_type_configs, chunk_size, request_id
         )
+        detector_class = type(self.detector).__name__ if self.detector is not None else "None"
+        logger.info(
+            f"[GLINER-DEBUG][{request_id}] Calling {detector_class}.detect_pii(len={len(content)}, threshold={threshold}, kwargs_keys={list(call_kwargs.keys())})"
+        )
         entities = self.detector.detect_pii(content, threshold, **call_kwargs)
 
         processing_time = time.time() - processing_start
+        sources_count = {}
+        for e in entities or []:
+            src = e.get('source') if isinstance(e, dict) else getattr(e, 'source', None)
+            src_key = src.value if isinstance(src, DetectorSource) else str(src) if src else 'UNKNOWN'
+            sources_count[src_key] = sources_count.get(src_key, 0) + 1
+        logger.info(
+            f"[GLINER-DEBUG][{request_id}] RAW detector output: {len(entities)} entities in {processing_time:.2f}s, sources={sources_count}"
+        )
         self._log_detection_metrics(request_id, content, entities, processing_time)
         self._log_detected_entities(request_id, entities)
 
@@ -999,12 +1017,9 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 filter_reasons[reason] = filter_reasons.get(reason, 0) + 1
 
         filtered_count = len(entities) - len(filtered_entities)
-        logger.debug(
-            f"[{request_id}] POST-FILTER COMPLETE: Filtered {filtered_count} of {len(entities)} entities. "
-            f"Kept: {len(filtered_entities)}"
+        logger.info(
+            f"[GLINER-DEBUG][{request_id}] POST-FILTER: input={len(entities)} kept={len(filtered_entities)} dropped={filtered_count} reasons={dict(filter_reasons)}"
         )
-        if filter_reasons:
-            logger.debug(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
 
         return filtered_entities
 
