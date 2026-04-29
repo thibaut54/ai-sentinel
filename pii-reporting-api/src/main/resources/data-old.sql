@@ -130,7 +130,7 @@ VALUES
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category 6: IT_CREDENTIALS
--- ✅ enabled  : MAC_ADDRESS, DEVICE_ID, PASSWORD, API_KEY, ACCESS_TOKEN, SESSION_ID
+-- ✅ enabled  : MAC_ADDRESS, DEVICE_ID, PASSWORD, PIN_CODE, API_KEY, ACCESS_TOKEN, SESSION_ID
 -- ⛔ disabled : IP_ADDRESS, HOSTNAME, SECRET_KEY
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
@@ -141,6 +141,8 @@ VALUES
     ('HOSTNAME',     'GLINER', false, 0.80, 'IT_CREDENTIALS', 'url',               'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('DEVICE_ID',    'GLINER', true,  0.80, 'IT_CREDENTIALS', 'device_identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('PASSWORD',     'GLINER', true,  0.80, 'IT_CREDENTIALS', 'password',          'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    -- PIN_CODE : official NVIDIA label 'pin' (numeric authentication code).
+    ('PIN_CODE',     'GLINER', true,  0.80, 'IT_CREDENTIALS', 'pin',               'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('API_KEY',      'GLINER', true,  0.80, 'IT_CREDENTIALS', 'api_key',           'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     -- ACCESS_TOKEN / SECRET_KEY : both map to 'api_key' (closest machine-credential label).
     ('ACCESS_TOKEN', 'GLINER', true,  0.80, 'IT_CREDENTIALS', 'api_key',           'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
