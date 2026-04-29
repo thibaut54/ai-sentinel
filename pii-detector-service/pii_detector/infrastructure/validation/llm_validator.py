@@ -14,9 +14,12 @@ from pii_detector.infrastructure.validation.prompt_templates import (
 
 logger = logging.getLogger(__name__)
 
-# Compiled regex for O(N) response parsing -- compile once, use many times
+# Compiled regex for O(N) response parsing -- compile once, use many times.
+# Accepts permissive separators between index and verdict because Gemma may
+# emit "[0] FALSE_POSITIVE" (space only), "[0]: FALSE_POSITIVE", "[0]. FALSE_POSITIVE",
+# or "0 - FALSE_POSITIVE". Without this, valid verdicts were silently dropped.
 _VERDICT_PATTERN = re.compile(
-    r"^\s*\[?(\d+)\]?\s*[:\.]\s*(TRUE_POSITIVE|FALSE_POSITIVE)\s*$",
+    r"^\s*\[?(\d+)\]?[\s:\.\-]+(TRUE_POSITIVE|FALSE_POSITIVE)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -193,13 +196,14 @@ class LLMValidator:
                 confirmed.extend(batch)
 
         elapsed = time.monotonic() - start_time
-        rejected_count = len(entities) - len(confirmed)
-        logger.info(
-            "LLM validation: %d submitted, %d confirmed, %d rejected (%.2fs)",
+        # Summary log emitted by the caller (pii_service._validate_with_llm)
+        # which includes the request_id. Keep a debug-level trace here for
+        # standalone usage without polluting production INFO logs.
+        logger.debug(
+            "LLM validation finished in %.2fs (%d submitted, %d confirmed)",
+            elapsed,
             len(entities),
             len(confirmed),
-            rejected_count,
-            elapsed,
         )
         return confirmed
 

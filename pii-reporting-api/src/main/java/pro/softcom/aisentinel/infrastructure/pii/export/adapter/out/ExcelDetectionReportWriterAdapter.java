@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.application.pii.export.dto.DetectionReportEntry;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -81,7 +82,8 @@ public class ExcelDetectionReportWriterAdapter implements WriteDetectionReportPo
                     ExportColumn.EMITTED_AT,
                     ExportColumn.PAGE_TITLE,
                     ExportColumn.CONFIDENCE_SCORE,
-                    ExportColumn.PII_TYPE
+                    ExportColumn.PII_TYPE,
+                    ExportColumn.DETECTOR
             ).forEach(d -> detectionsSheet.setColumnWidth(d.position(), DEFAULT_COLUMN_CHAR_WIDTH * EXCEL_COLUMN_WIDTH_UNIT));
 
             workbook.write(outputStream);
@@ -98,10 +100,23 @@ public class ExcelDetectionReportWriterAdapter implements WriteDetectionReportPo
             populateUrlField(row, ExportColumn.DOCUMENT_URL.position(), detectionReportEntry.attachmentUrl());
             populateTextField(row, ExportColumn.PII_TYPE.position(), detectionReportEntry.typeLabel());
             populateTextField(row, ExportColumn.PII_CONTEXT.position(), detectionReportEntry.maskedContext());
+            populateTextField(row, ExportColumn.DETECTOR.position(), formatDetector(detectionReportEntry.detectorSource()));
 
             Cell scoreCell = row.createCell(ExportColumn.CONFIDENCE_SCORE.position());
             scoreCell.setCellValue(detectionReportEntry.confidenceScore());
             scoreCell.setCellStyle(decimalStyle);
+        }
+
+        private static String formatDetector(DetectorSource source) {
+            if (source == null) {
+                return "Inconnu";
+            }
+            return switch (source) {
+                case GLINER -> "GLiNER";
+                case PRESIDIO -> "Presidio";
+                case REGEX -> "Regex";
+                case UNKNOWN_SOURCE -> "Inconnu";
+            };
         }
 
         private void populateSummarySheet() {
@@ -244,7 +259,8 @@ public class ExcelDetectionReportWriterAdapter implements WriteDetectionReportPo
             DOCUMENT_URL(4, "Document Url"),
             CONFIDENCE_SCORE(5, "Confidence Score"),
             PII_TYPE(6, "PII Type"),
-            PII_CONTEXT(7, "PII Context");
+            PII_CONTEXT(7, "PII Context"),
+            DETECTOR(8, "Detector");
 
             private final int position;
             private final String header;

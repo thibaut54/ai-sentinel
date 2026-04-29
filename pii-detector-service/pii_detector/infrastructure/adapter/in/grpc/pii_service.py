@@ -581,13 +581,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 content, threshold, request_id, detector_flags, pii_type_configs, chunk_size
             )
 
-            # LLM post-detection validation: filter false positives
-            if self.llm_validator and self._is_llm_validation_enabled(detector_flags):
-                entities = self._validate_with_llm(entities, content, request_id)
-
-            # Apply PII type-specific filtering if configs were fetched
+            # Pre-filter by per-type config (enabled + threshold) BEFORE LLM:
+            # entities below their per-type threshold or with disabled types
+            # would be rejected anyway, so we save LLM/GPU time by filtering first.
             if pii_type_configs:
                 entities = self._filter_entities_by_type_config(entities, pii_type_configs, request_id)
+
+            # LLM post-detection validation: safety net to reject remaining false positives.
+            if self.llm_validator and self._is_llm_validation_enabled(detector_flags):
+                entities = self._validate_with_llm(entities, content, request_id)
             
             response = self._build_detection_response(content, entities, request_id)
             self._log_request_completion(request_id, start_time)

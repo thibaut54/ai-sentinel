@@ -39,6 +39,7 @@ public class DetectionReportMapper {
                 .type(detectedPersonallyIdentifiableInformation.piiType())
                 .typeLabel(detectedPersonallyIdentifiableInformation.piiTypeLabel())
                 .confidenceScore(detectedPersonallyIdentifiableInformation.confidence())
+                .detectorSource(detectedPersonallyIdentifiableInformation.source())
                 .build();
     }
 }

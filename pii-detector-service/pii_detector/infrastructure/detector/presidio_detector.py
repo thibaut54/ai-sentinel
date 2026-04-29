@@ -763,9 +763,10 @@ class PresidioDetector:
             List of PIIEntity objects that pass threshold filtering
         """
         scoring_overrides = self._resolve_scoring_overrides(fresh_configs)
-        
+
         entities = []
         filtered_count = 0
+        raw_count = len(results)
         
         for result in results:
             # Map Presidio entity type to our PIIType
@@ -814,11 +815,12 @@ class PresidioDetector:
 
             entities.append(entity)
         
-        if filtered_count > 0:
-            self.logger.info(
-                f"Post-filtered {filtered_count} results based on per-entity thresholds"
-            )
-        
+        kept_count = len(entities)
+        self.logger.info(
+            f"Post-filter: {filtered_count} dropped / {raw_count} raw "
+            f"({kept_count} kept) based on per-entity thresholds"
+        )
+
         return entities
 
 

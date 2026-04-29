@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import pro.softcom.aisentinel.application.pii.export.dto.DetectionReportEntry;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -90,6 +91,27 @@ class DetectionReportMapperTest {
         assertThat(entry.typeLabel()).isNotBlank();
         assertThat(entry.maskedContext()).isNotBlank();
         assertThat(entry.confidenceScore()).isPositive();
+    }
+
+    @Test
+    @DisplayName("Should_PropagateDetectorSource_When_Mapping")
+    void Should_PropagateDetectorSource_When_Mapping() {
+        // Given
+        DetectedPersonallyIdentifiableInformation entity = DetectedPersonallyIdentifiableInformation.builder()
+                .piiType("EMAIL")
+                .piiTypeLabel("Email")
+                .maskedContext("masked@example.com")
+                .confidence(0.91)
+                .source(DetectorSource.GLINER)
+                .build();
+        ConfluenceContentScanResult confluenceContentScanResult = createScanResult(List.of(entity));
+
+        // When
+        List<DetectionReportEntry> result = mapper.toDetectionReportEntries(confluenceContentScanResult);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().detectorSource()).isEqualTo(DetectorSource.GLINER);
     }
 
     @Test

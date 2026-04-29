@@ -378,7 +378,7 @@ class TestPresidioDetectorImprovements:
             )
         
         # Then
-        assert "Post-filtered 2 results based on per-entity thresholds" in caplog.text
+        assert "Post-filter: 2 dropped / 3 raw (1 kept) based on per-entity thresholds" in caplog.text
         assert len(entities) == 1
     
     def test_detect_pii_should_return_empty_list_when_no_entities_enabled(

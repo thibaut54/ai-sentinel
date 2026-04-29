@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.pii.export.dto;
 
 import lombok.Builder;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
 @Builder
 public record DetectionReportEntry(
@@ -14,6 +15,7 @@ public record DetectionReportEntry(
         String maskedContext,
         String type,
         String typeLabel,
-        double confidenceScore
+        double confidenceScore,
+        DetectorSource detectorSource
 ) {
 }

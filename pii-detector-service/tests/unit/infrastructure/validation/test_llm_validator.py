@@ -69,12 +69,16 @@ class TestBuildBatchPrompt:
         assert '"Jean Dupont"' in prompt
         assert "[1] Type: PHONE" in prompt
         assert '"06 12 34 56 78"' in prompt
-        assert "Reponds UNIQUEMENT avec le numero" in prompt
+        assert "Reponds UNIQUEMENT au format suivant" in prompt
+        assert "[0]: TRUE_POSITIVE" in prompt
+        assert "[1]: FALSE_POSITIVE" in prompt
 
     def test_empty_entities(self):
         prompt = build_batch_prompt([], SOURCE_TEXT)
         assert "Tu es un expert" in prompt
-        assert "[0]" not in prompt
+        # No entity lines (which start with "[N] Type:") rendered.
+        assert "Type:" not in prompt
+        assert "Texte:" not in prompt
 
 
 class TestBuildSinglePrompt:
@@ -142,6 +146,25 @@ class TestParseBatchResponse:
 
     def test_no_brackets(self):
         response = "0: TRUE_POSITIVE\n1: FALSE_POSITIVE\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_space_only_separator(self):
+        # Real Gemma 4 output observed in production logs:
+        # "[0] FALSE_POSITIVE" with a plain space (no colon, no dot).
+        # Regression guard for the bug where this format silently failed
+        # to match and all entities were "confirmed" by default.
+        response = "[0] TRUE_POSITIVE\n[1] FALSE_POSITIVE\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_dash_separator(self):
+        response = "0 - TRUE_POSITIVE\n1 - FALSE_POSITIVE\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_multiple_spaces_separator(self):
+        response = "[0]   TRUE_POSITIVE\n[1]   FALSE_POSITIVE\n"
         rejected = self.validator._parse_batch_response(response, 2)
         assert rejected == {1}
 
@@ -326,6 +349,11 @@ class TestVerdictPatternRegex:
             ("1. FALSE_POSITIVE", "1", "FALSE_POSITIVE"),
             ("  [2] : true_positive  ", "2", "true_positive"),
             ("[10]: FALSE_POSITIVE", "10", "FALSE_POSITIVE"),
+            # Regression: real Gemma 4 output uses space only separator
+            ("[0] FALSE_POSITIVE", "0", "FALSE_POSITIVE"),
+            ("[1] TRUE_POSITIVE", "1", "TRUE_POSITIVE"),
+            ("0 - TRUE_POSITIVE", "0", "TRUE_POSITIVE"),
+            ("[3]\tFALSE_POSITIVE", "3", "FALSE_POSITIVE"),
         ],
     )
     def test_pattern_matches(self, line, expected_idx, expected_verdict):

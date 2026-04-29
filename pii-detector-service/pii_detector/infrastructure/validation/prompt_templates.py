@@ -10,7 +10,13 @@ BATCH_ENTITY_TEMPLATE = (
     "\n"
     "{entities_block}\n"
     "\n"
-    "Reponds UNIQUEMENT avec le numero et le verdict, un par ligne :"
+    "Reponds UNIQUEMENT au format suivant, un verdict par ligne, sans texte\n"
+    "additionnel, sans commentaire, sans ligne vide :\n"
+    "[0]: TRUE_POSITIVE\n"
+    "[1]: FALSE_POSITIVE\n"
+    "[2]: TRUE_POSITIVE\n"
+    "\n"
+    "Le crochet, les deux-points et le verdict sont obligatoires."
 )
 
 _ENTITY_LINE_TEMPLATE = (

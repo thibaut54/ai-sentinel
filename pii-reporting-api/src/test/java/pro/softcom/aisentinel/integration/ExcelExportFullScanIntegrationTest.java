@@ -294,6 +294,9 @@ class ExcelExportFullScanIntegrationTest {
         softly.assertThat(getCellValue(headerRow, 7))
             .as("Column 7 header")
             .isEqualTo("PII Context");
+        softly.assertThat(getCellValue(headerRow, 8))
+            .as("Column 8 header")
+            .isEqualTo("Detector");
         
         // Compter les détections (sans compter le header)
         int totalDetections = detectionsSheet.getLastRowNum();

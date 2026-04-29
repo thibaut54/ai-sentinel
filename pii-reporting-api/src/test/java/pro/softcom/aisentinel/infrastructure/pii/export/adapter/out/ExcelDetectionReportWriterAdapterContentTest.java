@@ -15,6 +15,7 @@ import pro.softcom.aisentinel.application.pii.export.dto.DetectionReportEntry;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.domain.pii.export.DataSourceContact;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -236,6 +237,56 @@ class ExcelDetectionReportWriterAdapterContentTest {
             assertThat(headerRow).isNotNull();
             assertThat(scoreCell.getCellType()).isEqualTo(CellType.NUMERIC);
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideDetectorSourceScenarios")
+    @DisplayName("Should_WriteDetectorColumn_When_DetectorSourceProvided")
+    void Should_WriteDetectorColumn_When_DetectorSourceProvided(DetectorSource source, String expectedLabel) throws IOException {
+        // Given
+        ExportContext context = createExportContext(List.of());
+        DetectionReportEntry entry = DetectionReportEntry.builder()
+                .scanId("scan-detector")
+                .spaceKey("TEST")
+                .emittedAt("2024-01-15T10:00:00Z")
+                .pageTitle("Page")
+                .pageUrl("https://example.com/page")
+                .attachmentName("doc.pdf")
+                .attachmentUrl("https://example.com/att")
+                .maskedContext("ctx")
+                .type("EMAIL")
+                .typeLabel("Email")
+                .confidenceScore(0.9)
+                .detectorSource(source)
+                .build();
+
+        // When
+        try (WriteDetectionReportPort.ReportSession session = adapter.openReportSession("scan-detector", context)) {
+            session.startReport();
+            session.writeReportEntry(entry);
+            session.finishReport();
+        }
+
+        // Then
+        try (Workbook workbook = openWorkbook()) {
+            Sheet detectionsSheet = workbook.getSheet("Detection Report");
+            assertThat(detectionsSheet.getRow(0).getCell(8).getStringCellValue())
+                    .as("Header should be 'Detector'")
+                    .isEqualTo("Detector");
+            assertThat(detectionsSheet.getRow(1).getCell(8).getStringCellValue())
+                    .as("Detector value should be the human readable label")
+                    .isEqualTo(expectedLabel);
+        }
+    }
+
+    private static Stream<Arguments> provideDetectorSourceScenarios() {
+        return Stream.of(
+                Arguments.of(DetectorSource.GLINER, "GLiNER"),
+                Arguments.of(DetectorSource.PRESIDIO, "Presidio"),
+                Arguments.of(DetectorSource.REGEX, "Regex"),
+                Arguments.of(DetectorSource.UNKNOWN_SOURCE, "Inconnu"),
+                Arguments.of(null, "Inconnu")
+        );
     }
 
     @Test
