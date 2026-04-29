@@ -7,12 +7,126 @@ from the shared PostgreSQL database when requested via the gRPC fetch_config_fro
 
 import logging
 import os
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+try:
+    import tomllib  # Python 3.11+
+except ImportError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
 logger = logging.getLogger(__name__)
+
+
+# Cache du TOML de fallback : chargement paresseux puis re-utilise.
+# Cle = chemin absolu, valeur = dict parse.
+_TEST_FALLBACK_CACHE: dict[str, dict[str, Any]] = {}
+
+
+def _resolve_test_fallback_path() -> Optional[Path]:
+    """Resolve the path to the test fallback TOML, if configured.
+
+    Activated by env var ``PII_DETECTOR_TEST_FALLBACK_TOML`` which can be either:
+      - an absolute path to a TOML file
+      - a path relative to the pii-detector-service root
+
+    Returns None when the env var is not set or the file is missing.
+    """
+    raw = os.getenv("PII_DETECTOR_TEST_FALLBACK_TOML")
+    if not raw:
+        return None
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        # Resolve relative to pii-detector-service/ (5 levels up from this file)
+        service_root = Path(__file__).resolve().parents[4]
+        candidate = (service_root / candidate).resolve()
+    if not candidate.is_file():
+        logger.warning(
+            "PII_DETECTOR_TEST_FALLBACK_TOML points to a non-existent file: %s",
+            candidate,
+        )
+        return None
+    return candidate
+
+
+def _load_test_fallback() -> Optional[dict]:
+    """Load and cache the test fallback TOML if configured."""
+    path = _resolve_test_fallback_path()
+    if path is None:
+        return None
+    key = str(path)
+    if key in _TEST_FALLBACK_CACHE:
+        return _TEST_FALLBACK_CACHE[key]
+    try:
+        with path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not parse test fallback TOML %s: %s", path, exc)
+        return None
+    _TEST_FALLBACK_CACHE[key] = data
+    logger.info(
+        "Loaded test fallback PII config from %s (%d pii_types entries)",
+        path,
+        len(data.get("pii_types", [])),
+    )
+    return data
+
+
+def _fallback_detection_config() -> Optional[dict]:
+    """Build a fetch_config()-shaped dict from the test fallback TOML."""
+    data = _load_test_fallback()
+    if data is None:
+        return None
+    cfg = data.get("detection_config")
+    if not cfg:
+        return None
+    # Mirror RealDictRow shape returned by the live SQL query.
+    return {
+        "gliner_enabled": bool(cfg.get("gliner_enabled", True)),
+        "presidio_enabled": bool(cfg.get("presidio_enabled", True)),
+        "regex_enabled": bool(cfg.get("regex_enabled", False)),
+        "default_threshold": float(cfg.get("default_threshold", 0.5)),
+        "nb_of_label_by_pass": int(cfg.get("nb_of_label_by_pass", 35)),
+        "llm_validation_enabled": bool(cfg.get("llm_validation_enabled", False)),
+    }
+
+
+def _fallback_pii_type_configs(detector: Optional[str]) -> Optional[dict]:
+    """Build a fetch_pii_type_configs()-shaped dict from the test fallback TOML.
+
+    Same shape as the live method (primary key = pii_type, optional composite
+    key ``DETECTOR:PII_TYPE`` when no detector filter was passed).
+    """
+    data = _load_test_fallback()
+    if data is None:
+        return None
+    rows = data.get("pii_types", [])
+    if not rows:
+        return None
+    configs: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if detector and row.get("detector") != detector:
+            continue
+        pii_type = row.get("pii_type")
+        if not pii_type:
+            continue
+        entry = {
+            "enabled": bool(row.get("enabled", False)),
+            "threshold": float(row.get("threshold", 0.5)),
+            "detector": row.get("detector"),
+            "category": row.get("category"),
+            "country_code": row.get("country_code"),
+            "detector_label": row.get("detector_label"),
+        }
+        configs[pii_type] = entry
+        if not detector:
+            configs[f"{row.get('detector')}:{pii_type}"] = entry
+    if not configs:
+        return None
+    return configs
 
 
 class DatabaseConfigAdapter:
@@ -98,21 +212,21 @@ class DatabaseConfigAdapter:
                 "Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD environment variables. "
                 "Will use default configuration from TOML file."
             )
-            return None
+            return _fallback_detection_config()
 
         except psycopg2.Error as e:
             logger.error(
                 f"Database query failed: {e}. "
                 "Will use default configuration from TOML file."
             )
-            return None
+            return _fallback_detection_config()
 
         except Exception as e:
             logger.error(
                 f"Unexpected error fetching config: {e}. "
                 "Will use default configuration from TOML file."
             )
-            return None
+            return _fallback_detection_config()
 
         finally:
             if cursor:
@@ -238,21 +352,21 @@ class DatabaseConfigAdapter:
                 "Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD environment variables. "
                 "Will use default TOML configuration."
             )
-            return None
+            return _fallback_pii_type_configs(detector)
 
         except psycopg2.Error as e:
             logger.error(
                 f"Database query failed fetching PII type configs: {e}. "
                 "Will use default TOML configuration."
             )
-            return None
+            return _fallback_pii_type_configs(detector)
 
         except Exception as e:
             logger.error(
                 f"Unexpected error fetching PII type configs: {e}. "
                 "Will use default TOML configuration."
             )
-            return None
+            return _fallback_pii_type_configs(detector)
 
         finally:
             if cursor:

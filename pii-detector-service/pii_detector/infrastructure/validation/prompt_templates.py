@@ -20,7 +20,6 @@ BATCH_ENTITY_TEMPLATE = (
     "additionnel, sans commentaire, sans ligne vide :\n"
     "[0]: TRUE_POSITIVE\n"
     "[1]: FALSE_POSITIVE\n"
-    "[2]: TRUE_POSITIVE\n"
     "\n"
     "Le crochet, les deux-points et le verdict sont obligatoires."
 )
