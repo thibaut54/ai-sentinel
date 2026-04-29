@@ -521,12 +521,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             logger.info(
                 f"[{request_id}] LLM validation starting: {before_count} entities to validate"
             )
+            llm_start = time.monotonic()
             validated = self.llm_validator.validate_entities(entities, content)
+            llm_elapsed = time.monotonic() - llm_start
             rejected_count = before_count - len(validated)
             logger.info(
                 f"[{request_id}] LLM validation complete: {before_count} submitted, "
                 f"{len(validated)} confirmed, {rejected_count} rejected "
-                f"(rejection_rate={rejected_count/before_count*100:.1f}%)"
+                f"(rejection_rate={rejected_count/before_count*100:.1f}%, "
+                f"elapsed={llm_elapsed:.2f}s)"
             )
             return validated
         except Exception as e:
@@ -541,6 +544,19 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if detector_flags is None:
             return True  # Default: enabled if validator is loaded
         return bool(detector_flags.get('llm_validation_enabled', True))
+
+    @staticmethod
+    def _source_to_log_key(src) -> str:
+        """Resolve a detector source to a stable log key.
+
+        Avoids the nested ternary flagged by Sonar python:S3358 while keeping
+        the same precedence: enum.value > str(src) > 'UNKNOWN'.
+        """
+        if isinstance(src, DetectorSource):
+            return src.value
+        if src:
+            return str(src)
+        return 'UNKNOWN'
 
     def DetectPII(self, request, context):
         """Implement the DetectPII RPC method with memory management.
@@ -819,7 +835,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         sources_count = {}
         for e in entities or []:
             src = e.get('source') if isinstance(e, dict) else getattr(e, 'source', None)
-            src_key = src.value if isinstance(src, DetectorSource) else str(src) if src else 'UNKNOWN'
+            src_key = self._source_to_log_key(src)
             sources_count[src_key] = sources_count.get(src_key, 0) + 1
         logger.info(
             f"[GLINER-DEBUG][{request_id}] RAW detector output: {len(entities)} entities in {processing_time:.2f}s, sources={sources_count}"

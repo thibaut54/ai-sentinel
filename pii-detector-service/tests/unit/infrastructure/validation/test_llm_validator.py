@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import TimeoutError as FuturesTimeoutError
+import re
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
@@ -65,20 +65,31 @@ class TestBuildBatchPrompt:
         prompt = build_batch_prompt(entities, SOURCE_TEXT, context_window=30)
 
         assert "Tu es un expert en protection des donnees" in prompt
-        assert "[0] Type: PERSON" in prompt
+        # Localized type_label is used (consistent with build_single_prompt)
+        # so Gemma 4 sees French labels everywhere instead of opaque enum names.
+        assert "[0] Type: personne" in prompt
         assert '"Jean Dupont"' in prompt
-        assert "[1] Type: PHONE" in prompt
+        assert "[1] Type: telephone" in prompt
         assert '"06 12 34 56 78"' in prompt
         assert "Reponds UNIQUEMENT au format suivant" in prompt
         assert "[0]: TRUE_POSITIVE" in prompt
         assert "[1]: FALSE_POSITIVE" in prompt
 
+    def test_falls_back_to_pii_type_when_label_missing(self):
+        # type_label may be empty/None in legacy paths; we must not crash
+        # and should fall back to the raw pii_type identifier.
+        e = FakeEntity("Jean", "PERSON_NAME", "", 10, 14)
+        prompt = build_batch_prompt([e], SOURCE_TEXT, context_window=10)
+        assert "Type: PERSON_NAME" in prompt
+
     def test_empty_entities(self):
         prompt = build_batch_prompt([], SOURCE_TEXT)
         assert "Tu es un expert" in prompt
-        # No entity lines (which start with "[N] Type:") rendered.
-        assert "Type:" not in prompt
-        assert "Texte:" not in prompt
+        # Robust against template renames: assert no entity-row index marker
+        # (start of a line with "[N]" followed by something other than a verdict)
+        # is rendered. The example block "[0]: TRUE_POSITIVE" is OK because it
+        # is followed by ": TRUE_POSITIVE", not by " Type:".
+        assert re.search(r"^\[\d+\] Type:", prompt, re.MULTILINE) is None
 
 
 class TestBuildSinglePrompt:
@@ -167,6 +178,50 @@ class TestParseBatchResponse:
         response = "[0]   TRUE_POSITIVE\n[1]   FALSE_POSITIVE\n"
         rejected = self.validator._parse_batch_response(response, 2)
         assert rejected == {1}
+
+    def test_dash_no_spaces_separator(self):
+        # Compressed format: no spaces around the dash.
+        response = "[0]-TRUE_POSITIVE\n[1]-FALSE_POSITIVE\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_blank_lines_between_verdicts(self):
+        # Gemma may insert blank lines despite the prompt; MULTILINE handles each
+        # non-empty line independently.
+        response = "[0]: TRUE_POSITIVE\n\n[1]: FALSE_POSITIVE\n\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_preamble_text_before_verdicts(self):
+        # Gemma may add a French preamble. The preamble line does not match
+        # the verdict pattern and is ignored.
+        response = (
+            "Voici les verdicts pour chaque entite :\n"
+            "[0]: TRUE_POSITIVE\n"
+            "[1]: FALSE_POSITIVE\n"
+        )
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_markdown_code_fence_around_verdicts(self):
+        # Gemma may wrap output in markdown code fences; the fence lines
+        # do not match the verdict pattern and are ignored.
+        response = (
+            "```\n"
+            "[0]: TRUE_POSITIVE\n"
+            "[1]: FALSE_POSITIVE\n"
+            "```\n"
+        )
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == {1}
+
+    def test_index_and_verdict_on_separate_lines_not_matched(self):
+        # Critical guard: the parser MUST NOT cross newlines to pair an index
+        # with a verdict on the next line. Such a malformed answer should be
+        # treated as no verdict (conservative: keep both entities).
+        response = "[0]\nTRUE_POSITIVE\n[1]\nFALSE_POSITIVE\n"
+        rejected = self.validator._parse_batch_response(response, 2)
+        assert rejected == set()
 
 
 # --- LLMValidator tests ---
@@ -354,6 +409,9 @@ class TestVerdictPatternRegex:
             ("[1] TRUE_POSITIVE", "1", "TRUE_POSITIVE"),
             ("0 - TRUE_POSITIVE", "0", "TRUE_POSITIVE"),
             ("[3]\tFALSE_POSITIVE", "3", "FALSE_POSITIVE"),
+            # Compressed (no spaces around dash).
+            ("[0]-TRUE_POSITIVE", "0", "TRUE_POSITIVE"),
+            ("[5]-FALSE_POSITIVE", "5", "FALSE_POSITIVE"),
         ],
     )
     def test_pattern_matches(self, line, expected_idx, expected_verdict):
@@ -369,6 +427,10 @@ class TestVerdictPatternRegex:
             "TRUE_POSITIVE",
             "[abc]: TRUE_POSITIVE",
             "",
+            # No separator between index and verdict.
+            "[0]TRUE_POSITIVE",
+            # Verdict without separator and trailing text.
+            "[0]TRUE_POSITIVE garbage",
         ],
     )
     def test_pattern_rejects(self, line):

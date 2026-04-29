@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# NOTE: the prompt below mandates a strict format ("[N]: VERDICT" with the
+# bracket and colon required) but the parser in `llm_validator._VERDICT_PATTERN`
+# is intentionally more permissive (accepts space, tab, dot or dash separators
+# and missing brackets) so a Gemma 4 quirk does not silently kill rejection
+# decisions. Defense-in-depth: tighten the prompt, loosen the parser.
+
 from typing import List, Tuple
 
 BATCH_ENTITY_TEMPLATE = (
@@ -20,7 +26,7 @@ BATCH_ENTITY_TEMPLATE = (
 )
 
 _ENTITY_LINE_TEMPLATE = (
-    '[{index}] Type: {pii_type} | Texte: "{entity_text}"'
+    '[{index}] Type: {pii_type_label} | Texte: "{entity_text}"'
     ' | Contexte: "...{context}..."'
 )
 
@@ -58,7 +64,10 @@ def build_batch_prompt(
     lines = [
         _ENTITY_LINE_TEMPLATE.format(
             index=i,
-            pii_type=e.pii_type,
+            # Use the localized label (e.g. "Nom de personne") for consistency
+            # with build_single_prompt and to give Gemma a French signal that
+            # matches the rest of the prompt instead of an opaque enum name.
+            pii_type_label=getattr(e, "type_label", None) or e.pii_type,
             entity_text=e.text,
             context=source_text[
                 max(0, e.start - context_window):

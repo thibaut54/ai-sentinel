@@ -21,19 +21,37 @@ from pii_detector.infrastructure.detector.multi_pass_gliner_detector import (
     SpanKey,
     AggregatedSpan,
 )
+from pii_detector.infrastructure.text_processing.semantic_chunker import ChunkResult
+
+
+def _stub_chunker_passthrough(mock_gliner):
+    """Configure a mock GLiNERDetector so its chunker yields one chunk == full text.
+
+    The MultiPassGlinerDetector now calls
+    `self._gliner_detector.semantic_chunker.chunk_text(text)` and iterates the
+    returned ChunkResult objects. Without this stub, Mock returns a Mock that
+    isn't iterable and `_build_chunks` crashes.
+    """
+    mock_gliner.semantic_chunker.chunk_text.side_effect = lambda t: [
+        ChunkResult(text=t, start=0, end=len(t))
+    ]
 
 
 class TestSpanKey:
-    """Test cases for SpanKey dataclass."""
+    """Test cases for SpanKey dataclass.
+
+    SpanKey now includes pii_type to support multi-label spans
+    (e.g. an IBAN that is also a SWIFT BIC produces two distinct findings).
+    """
 
     def test_should_be_hashable(self):
         """Test SpanKey can be used as dict key."""
-        key1 = SpanKey(start=0, end=10)
-        key2 = SpanKey(start=0, end=10)
-        key3 = SpanKey(start=5, end=15)
+        key1 = SpanKey(start=0, end=10, pii_type="EMAIL")
+        key2 = SpanKey(start=0, end=10, pii_type="EMAIL")
+        key3 = SpanKey(start=5, end=15, pii_type="EMAIL")
 
         test_dict = {key1: "value1"}
-        test_dict[key2] = "value2"  # Should overwrite
+        test_dict[key2] = "value2"  # Should overwrite (same start/end/type)
         test_dict[key3] = "value3"
 
         assert len(test_dict) == 2
@@ -41,18 +59,26 @@ class TestSpanKey:
 
     def test_should_compare_equal_with_same_values(self):
         """Test SpanKey equality."""
-        key1 = SpanKey(start=10, end=20)
-        key2 = SpanKey(start=10, end=20)
+        key1 = SpanKey(start=10, end=20, pii_type="PERSON")
+        key2 = SpanKey(start=10, end=20, pii_type="PERSON")
 
         assert key1 == key2
         assert hash(key1) == hash(key2)
 
     def test_should_compare_not_equal_with_different_values(self):
         """Test SpanKey inequality."""
-        key1 = SpanKey(start=0, end=10)
-        key2 = SpanKey(start=0, end=15)
+        key1 = SpanKey(start=0, end=10, pii_type="EMAIL")
+        key2 = SpanKey(start=0, end=15, pii_type="EMAIL")
 
         assert key1 != key2
+
+    def test_should_distinguish_same_span_different_pii_types(self):
+        """Same start/end with different pii_type must be distinct keys."""
+        iban_key = SpanKey(start=0, end=20, pii_type="IBAN")
+        swift_key = SpanKey(start=0, end=20, pii_type="SWIFT_BIC")
+
+        assert iban_key != swift_key
+        assert hash(iban_key) != hash(swift_key)
 
 
 class TestAggregatedSpan:
@@ -281,6 +307,7 @@ class TestSinglePassDetection:
             mock_model = Mock()
             mock_gliner = Mock()
             mock_gliner.model = mock_model
+            _stub_chunker_passthrough(mock_gliner)
             mock_gliner_class.return_value = mock_gliner
 
             # Use a mock config to avoid DetectionConfig.__post_init__
@@ -334,7 +361,7 @@ class TestSinglePassDetection:
         assert isinstance(result[0], PIIEntity)
         assert result[0].pii_type == "PERSON_NAME"
         assert result[0].text == "John Doe"
-        assert result[0].score == 0.92
+        assert result[0].score == pytest.approx(0.92)
         assert result[0].source == DetectorSource.GLINER
 
     def test_should_extract_text_using_positions(self, detector_with_model):
@@ -398,22 +425,33 @@ class TestSpanAggregation:
             config.threshold = 0.3
             return MultiPassGlinerDetector(config=config)
 
-    def test_should_group_entities_by_position(self, detector):
-        """Test entities with same position are grouped."""
+    def test_should_group_entities_by_position_and_type(self, detector):
+        """Same span/type duplicates collapse; same span / different types are kept distinct.
+
+        SpanKey now embeds pii_type so an IBAN that is also a SWIFT_BIC produces
+        two distinct findings (NVIDIA flat_ner=False semantics).
+        """
         entities = [
             PIIEntity(text="192.168.1.1", pii_type="IP_ADDRESS", type_label="IP_ADDRESS",
                       start=0, end=11, score=0.90),
+            PIIEntity(text="192.168.1.1", pii_type="IP_ADDRESS", type_label="IP_ADDRESS",
+                      start=0, end=11, score=0.92),  # same span, same type → merged
             PIIEntity(text="192.168.1.1", pii_type="AVS_NUMBER", type_label="AVS_NUMBER",
                       start=0, end=11, score=0.85),
         ]
 
         spans = detector._aggregate_by_span(entities)
 
-        assert len(spans) == 1
-        assert len(spans[0].labels) == 2
+        # Two distinct (start, end, pii_type) keys: IP_ADDRESS and AVS_NUMBER.
+        assert len(spans) == 2
+        ip_span = next(s for s in spans if s.labels[0][0] == "IP_ADDRESS")
+        avs_span = next(s for s in spans if s.labels[0][0] == "AVS_NUMBER")
+        # Two IP_ADDRESS labels collapsed into one span (multiple scores kept).
+        assert len(ip_span.labels) == 2
+        assert len(avs_span.labels) == 1
 
-    def test_should_detect_conflicts_for_same_span(self, detector):
-        """Test conflicts are properly identified."""
+    def test_should_treat_same_span_different_type_as_separate(self, detector):
+        """Same start/end with different pii_type produces two single-label spans."""
         entities = [
             PIIEntity(text="test", pii_type="TYPE_A", type_label="TYPE_A",
                       start=0, end=4, score=0.90),
@@ -423,10 +461,12 @@ class TestSpanAggregation:
 
         spans = detector._aggregate_by_span(entities)
 
-        assert spans[0].has_conflict() is True
+        # No more cross-type "conflict": both labels survive as distinct spans.
+        assert len(spans) == 2
+        assert all(span.has_conflict() is False for span in spans)
 
-    def test_should_preserve_scores(self, detector):
-        """Test scores are preserved during aggregation."""
+    def test_should_preserve_scores_per_type(self, detector):
+        """Scores are preserved per (span, type) — one AggregatedSpan per type."""
         entities = [
             PIIEntity(text="data", pii_type="TYPE_A", type_label="TYPE_A",
                       start=0, end=4, score=0.95),
@@ -436,9 +476,12 @@ class TestSpanAggregation:
 
         spans = detector._aggregate_by_span(entities)
 
-        labels = spans[0].labels
-        assert ("TYPE_A", 0.95) in labels
-        assert ("TYPE_B", 0.88) in labels
+        all_labels = [label for span in spans for label in span.labels]
+        # Avoid float equality on tuple membership (Sonar python:S1244):
+        # extract by type and compare scores via pytest.approx.
+        scores_by_type = dict(all_labels)
+        assert scores_by_type["TYPE_A"] == pytest.approx(0.95)
+        assert scores_by_type["TYPE_B"] == pytest.approx(0.88)
 
     def test_should_handle_multiple_spans(self, detector):
         """Test multiple non-overlapping spans are kept separate."""
@@ -483,7 +526,7 @@ class TestConflictResolution:
 
         assert len(result) == 1
         assert result[0].pii_type == "EMAIL"
-        assert result[0].score == 0.95
+        assert result[0].score == pytest.approx(0.95)
 
     def test_should_delegate_to_conflict_resolver_for_multi_label(
         self, detector_with_resolver
@@ -545,27 +588,46 @@ class TestOverlapRemoval:
             config.threshold = 0.3
             return MultiPassGlinerDetector(config=config)
 
-    def test_should_remove_contained_spans(self, detector):
-        """Test smaller contained spans are removed."""
+    def test_should_remove_contained_spans_of_same_type(self, detector):
+        """Test smaller contained spans are removed when they share the pii_type.
+
+        Multi-label spans (different pii_types overlapping) are intentionally
+        preserved — see _resolve_overlapping_spans docstring (NVIDIA flat_ner=False).
+        """
         entities = [
+            PIIEntity(text="john.doe@example.com", pii_type="EMAIL", type_label="EMAIL",
+                      start=0, end=20, score=0.95),
             PIIEntity(text="john@example.com", pii_type="EMAIL", type_label="EMAIL",
-                      start=0, end=16, score=0.95),
-            PIIEntity(text="@example.com", pii_type="DOMAIN", type_label="DOMAIN",
-                      start=4, end=16, score=0.85),  # Contained in EMAIL
+                      start=4, end=20, score=0.85),  # Contained, same type → dropped
         ]
 
         result = detector._resolve_overlapping_spans(entities)
 
         assert len(result) == 1
-        assert result[0].pii_type == "EMAIL"
+        assert result[0].text == "john.doe@example.com"
 
-    def test_should_keep_wider_span(self, detector):
-        """Test wider span wins over narrower."""
+    def test_should_keep_overlapping_spans_of_different_types(self, detector):
+        """Cross-label overlaps (e.g. IBAN that is also SWIFT_BIC) are preserved."""
         entities = [
             PIIEntity(text="John Doe", pii_type="PERSON_NAME", type_label="PERSON_NAME",
                       start=0, end=8, score=0.90),
             PIIEntity(text="John", pii_type="FIRST_NAME", type_label="FIRST_NAME",
-                      start=0, end=4, score=0.92),  # Narrower, higher score
+                      start=0, end=4, score=0.92),  # Narrower, different type → kept
+        ]
+
+        result = detector._resolve_overlapping_spans(entities)
+
+        # Both kept: one entity per (pii_type) overlap region.
+        assert len(result) == 2
+        assert {e.pii_type for e in result} == {"PERSON_NAME", "FIRST_NAME"}
+
+    def test_should_keep_wider_span_of_same_type(self, detector):
+        """Within the same pii_type, the wider span wins over the narrower."""
+        entities = [
+            PIIEntity(text="John Doe", pii_type="PERSON_NAME", type_label="PERSON_NAME",
+                      start=0, end=8, score=0.90),
+            PIIEntity(text="John", pii_type="PERSON_NAME", type_label="PERSON_NAME",
+                      start=0, end=4, score=0.92),  # Narrower, same type → dropped
         ]
 
         result = detector._resolve_overlapping_spans(entities)
@@ -614,6 +676,7 @@ class TestDetectPII:
             mock_model = Mock()
             mock_gliner = Mock()
             mock_gliner.model = mock_model
+            _stub_chunker_passthrough(mock_gliner)
             mock_gliner_class.return_value = mock_gliner
 
             # Use a mock config to avoid DetectionConfig.__post_init__
@@ -642,6 +705,7 @@ class TestDetectPII:
             mock_model = Mock()
             mock_gliner = Mock()
             mock_gliner.model = mock_model
+            _stub_chunker_passthrough(mock_gliner)
             mock_gliner_class.return_value = mock_gliner
 
             config = Mock(spec=DetectionConfig)
@@ -702,7 +766,7 @@ class TestDetectPII:
         # Should only call once (for IDENTITY)
         assert fully_mocked_detector._gliner_detector.model.predict_entities.call_count == 1
 
-    def test_Should_InitializeConflictResolver_When_PiiTypeConfigsProvided(
+    def test_should_initialize_conflict_resolver_when_pii_type_configs_provided(
         self, detector_without_preloaded_categories
     ):
         """
@@ -825,6 +889,7 @@ class TestMasking:
             mock_model = Mock()
             mock_gliner = Mock()
             mock_gliner.model = mock_model
+            _stub_chunker_passthrough(mock_gliner)
             mock_gliner_class.return_value = mock_gliner
 
             # Use a mock config to avoid DetectionConfig.__post_init__

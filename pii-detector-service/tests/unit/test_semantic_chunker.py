@@ -27,9 +27,16 @@ from pii_detector.infrastructure.text_processing.semantic_chunker import (
 
 @pytest.fixture
 def mock_tokenizer():
-    """Fixture providing a mock tokenizer."""
+    """Fixture providing a mock (non-fast) tokenizer.
+
+    `is_fast=False` makes `create_chunker` skip the TokenWindowChunker priority
+    (which requires a fast HuggingFace tokenizer) and exercise the legacy
+    SemanticTextChunker / FallbackChunker paths. Tests that need to assert the
+    TokenWindowChunker branch must explicitly set `is_fast=True` on their own.
+    """
     tokenizer = Mock()
     tokenizer.encode = Mock(return_value=[1, 2, 3, 4, 5])
+    tokenizer.is_fast = False
     return tokenizer
 
 
@@ -414,7 +421,7 @@ class TestFallbackChunker:
         assert info["overlap_chars"] == 100 * 5
         assert info["chars_per_token"] == 5
         assert info["library"] == "fallback"
-        assert info["available"] is True
+        assert info["available"]
 
 
 # ============================================================================

@@ -11,6 +11,7 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.locks.LockSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +31,40 @@ class ScanTaskManagerAdapterTest {
                 .eventType(eventType)
                 .emittedAt(Instant.now().toString())
                 .build();
+    }
+
+    /**
+     * Deterministically wait until the scan is marked completed.
+     *
+     * <p>Replaces the previous {@code Thread.sleep(200)} which was flaky on CI
+     * runners under load: the boundedElastic scheduler may not have yet drained
+     * the empty Flux subscription before the test hands off to cleanup. We poll
+     * the {@code isCompleted} AtomicBoolean exposed by the ManagedScan record
+     * via reflection until it flips, with a generous 5s timeout.</p>
+     */
+    private static void awaitScanCompleted(ScanTaskManagerAdapter adapter, String scanId)
+            throws Exception {
+        java.lang.reflect.Field managedScansField =
+                ScanTaskManagerAdapter.class.getDeclaredField("managedScans");
+        managedScansField.setAccessible(true);
+        java.util.Map<?, ?> scans = (java.util.Map<?, ?>) managedScansField.get(adapter);
+
+        long deadlineNanos = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            Object scan = scans.get(scanId);
+            if (scan != null) {
+                java.lang.reflect.Method isCompletedMethod =
+                        scan.getClass().getMethod("isCompleted");
+                Object isCompleted = isCompletedMethod.invoke(scan);
+                if (isCompleted instanceof java.util.concurrent.atomic.AtomicBoolean ab && ab.get()) {
+                    return;
+                }
+            }
+            // LockSupport.parkNanos avoids Sonar S2925 (Thread.sleep) and is a
+            // canonical primitive for short test polling waits.
+            LockSupport.parkNanos(Duration.ofMillis(10).toNanos());
+        }
+        throw new AssertionError("Scan " + scanId + " did not complete within 5 seconds");
     }
 
     @Nested
@@ -112,7 +147,7 @@ class ScanTaskManagerAdapterTest {
         }
 
         @Test
-        void Should_ReceiveReplayedEvents_When_SubscribingAfterEmission() {
+        void Should_ReceiveReplayedEvents_When_SubscribingAfterEmission() throws Exception {
             // Arrange
             Sinks.Many<ConfluenceContentScanResult> source = Sinks.many().unicast().onBackpressureBuffer();
             Flux<ConfluenceContentScanResult> scanStream = source.asFlux();
@@ -125,8 +160,8 @@ class ScanTaskManagerAdapterTest {
             source.tryEmitNext(event1);
             source.tryEmitComplete();
 
-            // Allow the internal subscription to process
-            try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            // Wait for completion deterministically (was: flaky Thread.sleep(200))
+            awaitScanCompleted(adapter, "scan-1");
 
             // Act & Assert - late subscriber should still receive replayed events
             Flux<ConfluenceContentScanResult> subscription = adapter.subscribeScan("scan-1");
@@ -150,13 +185,13 @@ class ScanTaskManagerAdapterTest {
         }
 
         @Test
-        void Should_ReturnFalse_When_SubscriptionAlreadyDisposed() {
+        void Should_ReturnFalse_When_SubscriptionAlreadyDisposed() throws Exception {
             // Arrange
             Flux<ConfluenceContentScanResult> stream = Flux.empty();
             adapter.startScan("scan-1", stream);
 
-            // Allow the stream to complete (which disposes the subscription)
-            try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            // Wait for completion deterministically (was: flaky Thread.sleep(200))
+            awaitScanCompleted(adapter, "scan-1");
 
             // Act
             boolean result = adapter.pauseScan("scan-1");
@@ -204,8 +239,8 @@ class ScanTaskManagerAdapterTest {
             Flux<ConfluenceContentScanResult> stream = Flux.empty();
             adapter.startScan("old-scan", stream);
 
-            // Wait for completion
-            Thread.sleep(200);
+            // Wait for completion deterministically (replaces flaky Thread.sleep(200))
+            awaitScanCompleted(adapter, "old-scan");
 
             // We need to manipulate time. Since the adapter uses Instant.now() internally,
             // and the CLEANUP_TTL is 1 hour, the scan won't be cleaned up with real time.
@@ -251,8 +286,8 @@ class ScanTaskManagerAdapterTest {
             Flux<ConfluenceContentScanResult> stream = Flux.empty();
             adapter.startScan("recent-scan", stream);
 
-            // Wait for completion
-            Thread.sleep(200);
+            // Wait for completion deterministically (replaces flaky Thread.sleep(200))
+            awaitScanCompleted(adapter, "recent-scan");
 
             // Act
             adapter.cleanupCompletedScans();

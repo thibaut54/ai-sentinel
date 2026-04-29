@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional, Set
 
 from pii_detector.infrastructure.validation.prompt_templates import (
@@ -18,8 +18,12 @@ logger = logging.getLogger(__name__)
 # Accepts permissive separators between index and verdict because Gemma may
 # emit "[0] FALSE_POSITIVE" (space only), "[0]: FALSE_POSITIVE", "[0]. FALSE_POSITIVE",
 # or "0 - FALSE_POSITIVE". Without this, valid verdicts were silently dropped.
+#
+# IMPORTANT: separator class uses [ \t] (NOT \s) to forbid newlines inside the
+# index/verdict pair. Using \s would match "[0]\nTRUE_POSITIVE" as a valid
+# verdict for index 0, which is a malformed two-line answer we must NOT trust.
 _VERDICT_PATTERN = re.compile(
-    r"^\s*\[?(\d+)\]?[\s:\.\-]+(TRUE_POSITIVE|FALSE_POSITIVE)\s*$",
+    r"^[ \t]*\[?(\d+)\]?[ \t:\.\-]+(TRUE_POSITIVE|FALSE_POSITIVE)[ \t]*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -185,7 +189,10 @@ class LLMValidator:
                 )
                 batch_result = future.result(timeout=timeout)
                 confirmed.extend(batch_result)
-            except (FuturesTimeoutError, Exception):
+            # FuturesTimeoutError already inherits from Exception, so listing it
+            # twice is redundant (Sonar python:S5713). Catching Exception alone
+            # preserves the same conservative behavior.
+            except Exception:
                 logger.warning(
                     "Batch %d-%d: timeout or error, keeping %d entities (conservative).",
                     i,

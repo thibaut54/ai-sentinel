@@ -816,9 +816,14 @@ class PresidioDetector:
             entities.append(entity)
         
         kept_count = len(entities)
-        self.logger.info(
+        # Stay at DEBUG when there is nothing to report (no raw results) to
+        # avoid spamming production logs on requests where Presidio detects
+        # nothing. Anything with raw results is worth INFO for diagnostics.
+        log_level = logging.INFO if raw_count > 0 else logging.DEBUG
+        self.logger.log(
+            log_level,
             f"Post-filter: {filtered_count} dropped / {raw_count} raw "
-            f"({kept_count} kept) based on per-entity thresholds"
+            f"({kept_count} kept) based on per-entity thresholds",
         )
 
         return entities

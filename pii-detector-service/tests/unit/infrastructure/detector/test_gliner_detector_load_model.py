@@ -66,8 +66,8 @@ class TestGLiNERDetectorLoadModel:
             call_kwargs = mock_create.call_args.kwargs
             assert call_kwargs['tokenizer'] == mock_tokenizer
             assert call_kwargs['chunk_size'] == 378  # GLiNER's internal token limit
-            assert call_kwargs['overlap'] == 100
-            assert call_kwargs['use_semantic'] is False  # Character-based chunking
+            assert call_kwargs['overlap'] == 128  # aligned with NVIDIA inference server defaults
+            assert call_kwargs['use_semantic'] is False  # TokenWindowChunker preferred
 
     def test_should_loadmodel_when_tokenizer_not_in_data_processor_uses_fallback(self, detector):
         """
