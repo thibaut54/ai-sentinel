@@ -1,0 +1,30 @@
+spring:
+  main:
+    web-application-type: servlet
+  autoconfigure:
+    exclude:
+      - com.linecorp.armeria.spring.ArmeriaAutoConfiguration
+
+# Copy this file to application-integration-test.yml and fill in real values
+# (or set the env vars below). The real file is git-ignored on purpose:
+# do NOT commit secrets.
+sharepoint:
+  enabled: ${SHAREPOINT_ENABLED:true}
+  tenant-id: ${AZURE_TENANT_ID:<your-tenant-id>}
+  client-id: ${AZURE_CLIENT_ID:<your-client-id>}
+  client-secret: ${AZURE_CLIENT_SECRET:<your-client-secret>}
+  test-site-id: ${SHAREPOINT_TEST_SITE_ID:<your-tenant>.sharepoint.com:/sites/<site>:}
+
+server:
+  port: 0
+  servlet:
+    context-path: /ai-sentinel
+
+armeria:
+  internal-services:
+    port: 0
+
+logging:
+  level:
+    root: WARN
+    pro.softcom.aisentinel.infrastructure.sharepoint: DEBUG

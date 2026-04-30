@@ -2,6 +2,8 @@
 .env
 .mcp.json
 secrets/*.txt
+# Integration test config holds Azure AD secrets - use the .example template
+pii-reporting-api/src/test/resources/application-integration-test.yml
 
 # IDE and build artifacts
 /pii-detector-service/pii_detector/proto/generated/
