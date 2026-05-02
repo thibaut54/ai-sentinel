@@ -16,6 +16,10 @@ services:
       - ai-sentinel-npm:/home/vscode/.npm
       - ai-sentinel-pip:/home/vscode/.cache/pip
       - ai-sentinel-node-modules:/workspaces/ai-sentinel/pii-reporting-ui/node_modules
+      # Cache HF partagé avec l'hôte. Évite de re-télécharger nvidia/gliner-PII et autres modèles
+      # à chaque rebuild — et permet de bypasser le gating quand le token n'est pas dans le conteneur.
+      # Le contenu (hub/, xet/) est géré par huggingface_hub côté hôte ou conteneur indistinctement.
+      - ../.model-cache:/home/vscode/.cache/huggingface:cached
     command: sleep infinity
     networks:
       - ai-sentinel-dev
@@ -31,7 +35,7 @@ services:
       POSTGRES_DB: ai-sentinel
       # Requis par pii-reporting-api/src/main/resources/application.yml — sinon les placeholders
       # ne sont pas résolus et Spring Boot échoue avant même de joindre la DB.
-      PII_DATABASE_ENCRYPTION_KEY: 0VbKF4QQonigye2zwYnk4suDB4CV9YqM9w53EM/kKqY=
+      PII_DATABASE_ENCRYPTION_KEY: changeme
       PII_REPORTING_ALLOW_SECRET_REVEAL: "true"
 
   postgres:

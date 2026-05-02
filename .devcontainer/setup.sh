@@ -79,6 +79,34 @@ if [ -f pii-reporting-ui/package.json ]; then
     echo "!! pnpm install a échoué — vérifier manuellement dans pii-reporting-ui/"
 fi
 
+# --- Angular : run config dédiée au dev container ---
+# Pourquoi : la run config par défaut "start" lance `ng serve` qui bind sur 127.0.0.1
+# DANS le container. Le port-forwarding du devcontainer (cf. devcontainer.json forwardPorts)
+# ne peut pas joindre cette interface — il a besoin que le serveur écoute sur 0.0.0.0.
+# Symptôme : http://localhost:4200 sur l'hôte → ERR_EMPTY_RESPONSE.
+# Solution : générer une config "start (devcontainer)" qui exécute le script `start:dev`
+# (déjà défini dans pii-reporting-ui/package.json avec --host 0.0.0.0).
+# .run/ est dans .gitignore donc ce fichier reste local au container.
+RUN_CONFIG=".run/start (devcontainer).run.xml"
+if [ -f pii-reporting-ui/package.json ] && [ ! -f "$RUN_CONFIG" ]; then
+  echo ">> Génération run config Angular dédiée devcontainer ($RUN_CONFIG)"
+  mkdir -p .run
+  cat > "$RUN_CONFIG" <<'EOF'
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="start (devcontainer)" type="js.build_tools.npm">
+    <package-json value="$PROJECT_DIR$/pii-reporting-ui/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="start:dev" />
+    </scripts>
+    <node-interpreter value="project" />
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>
+EOF
+fi
+
 # --- Claude Code : info connexion ---
 echo ""
 echo "=== Claude Code ==="
