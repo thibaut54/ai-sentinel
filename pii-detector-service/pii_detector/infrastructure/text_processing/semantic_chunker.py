@@ -7,9 +7,10 @@ Critical for models like GLiNER that have internal sentence-level token limits.
 """
 
 import logging
+import re
 import time
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 try:
     import semchunk
@@ -247,6 +248,100 @@ class FallbackChunker:
             "chars_per_token": self.chars_per_token,
             "library": "fallback",
             "available": True
+        }
+
+
+class WhitespaceWordWindowChunker:
+    """
+    Word-window chunker aligned with GLiNER's internal ``WhitespaceTokenSplitter``.
+
+    GLiNER applies its ``max_len`` limit (e.g. 384) to *whitespace tokens* — words
+    plus isolated punctuation — not to subword tokens. Char-based or subword-based
+    chunking upstream may leave chunks that exceed the word limit on dense input
+    (URLs, identifiers, code), causing GLiNER to silently truncate beyond
+    ``max_len`` and drop entities at the tail.
+
+    This chunker reproduces the exact regex GLiNER uses
+    (``\\w+(?:[-_]\\w+)*|\\S``) to count whitespace tokens, so configuring
+    ``chunk_size`` strictly below ``max_len`` guarantees no internal truncation.
+
+    Char positions are taken from the regex match offsets, keeping
+    char-based offset alignment with the rest of the pipeline.
+    """
+
+    # Aligned with gliner.data_processing.tokenizer.WhitespaceTokenSplitter
+    _GLINER_WHITESPACE_PATTERN = re.compile(r"\w+(?:[-_]\w+)*|\S")
+
+    def __init__(
+        self,
+        chunk_size: int,
+        overlap: int,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
+        if chunk_size <= overlap:
+            raise ValueError(
+                f"chunk_size ({chunk_size}) must be greater than overlap ({overlap})"
+            )
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
+
+        self._chunk_size = chunk_size
+        self._overlap = overlap
+        self._stride = chunk_size - overlap
+        self._logger = logger or logging.getLogger(__name__)
+
+        self._logger.info(
+            "WhitespaceWordWindowChunker initialized: "
+            f"chunk_size={chunk_size} (whitespace tokens), overlap={overlap}, "
+            "aligned with GLiNER WhitespaceTokenSplitter"
+        )
+
+    def chunk_text(self, text: str) -> List[ChunkResult]:
+        """Split ``text`` into windows bounded by GLiNER-aligned token counts."""
+        if not text:
+            return []
+
+        token_spans: List[Tuple[int, int]] = [
+            (m.start(), m.end())
+            for m in self._GLINER_WHITESPACE_PATTERN.finditer(text)
+        ]
+        if not token_spans:
+            return []
+
+        total = len(token_spans)
+        if total <= self._chunk_size:
+            start_char = token_spans[0][0]
+            end_char = token_spans[-1][1]
+            return [ChunkResult(
+                text=text[start_char:end_char],
+                start=start_char,
+                end=end_char,
+                token_count=total,
+            )]
+
+        chunks: List[ChunkResult] = []
+        i = 0
+        while i < total:
+            j = min(i + self._chunk_size, total)
+            start_char = token_spans[i][0]
+            end_char = token_spans[j - 1][1]
+            chunks.append(ChunkResult(
+                text=text[start_char:end_char],
+                start=start_char,
+                end=end_char,
+                token_count=j - i,
+            ))
+            if j >= total:
+                break
+            i += self._stride
+        return chunks
+
+    def get_chunk_info(self) -> dict:
+        return {
+            "chunk_size": self._chunk_size,
+            "overlap": self._overlap,
+            "library": "gliner-aligned-whitespace",
+            "available": True,
         }
 
 
