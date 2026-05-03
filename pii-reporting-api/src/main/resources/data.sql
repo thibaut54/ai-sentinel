@@ -37,22 +37,31 @@ VALUES (1, true, true, true, 0.30, 35, CURRENT_TIMESTAMP, 'system')
 -- ============================================================================
 -- GLINER PII TYPES
 -- ============================================================================
+-- IMPORTANT: detector_label values MUST match the official label vocabulary
+-- the nvidia/gliner-PII model was trained on (Nemotron-PII dataset, snake_case).
+-- Source: https://build.nvidia.com/nvidia/gliner-pii (UI label list)
+--
+-- pii_types without an exact NVIDIA label are disabled here (REGEX/PRESIDIO
+-- handle them when applicable). Inventing descriptive labels yields
+-- unpredictable embeddings and hurts precision.
+-- ============================================================================
 
 -- Category 1: IDENTITY
--- ✅ enabled  : NATIONAL_ID, SSN, PASSPORT_NUMBER, DRIVER_LICENSE_NUMBER
--- ⛔ disabled : PERSON_NAME, DATE_OF_BIRTH, GENDER, NATIONALITY, AGE
+-- ✅ enabled  : NATIONAL_ID, SSN, DRIVER_LICENSE_NUMBER
+-- ⛔ disabled : PERSON_NAME (commonly accepted PII), DATE_OF_BIRTH, GENDER, AGE
+-- ⛔ unmapped : PASSPORT_NUMBER, NATIONALITY (no NVIDIA label — disabled)
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('PERSON_NAME',           'GLINER', false, 0.80, 'IDENTITY', 'person name',             'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('NATIONAL_ID',           'GLINER', true,  0.80, 'IDENTITY', 'national identity number', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SSN',                   'GLINER', true,  0.80, 'IDENTITY', 'social insurance number',   'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PASSPORT_NUMBER',       'GLINER', true,  0.80, 'IDENTITY', 'passport number',          'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DRIVER_LICENSE_NUMBER', 'GLINER', true,  0.80, 'IDENTITY', 'driver license identification', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DATE_OF_BIRTH',         'GLINER', false, 0.80, 'IDENTITY', 'date of birth',            'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('GENDER',                'GLINER', false, 0.80, 'IDENTITY', 'gender',                   'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('NATIONALITY',           'GLINER', false, 0.80, 'IDENTITY', 'nationality',              'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('AGE',                   'GLINER', false, 0.80, 'IDENTITY', 'age',                      'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('PERSON_NAME',           'GLINER', false, 0.80, 'IDENTITY', 'name',                      'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONAL_ID',           'GLINER', true,  0.80, 'IDENTITY', 'national_id',               'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SSN',                   'GLINER', true,  0.80, 'IDENTITY', 'ssn',                       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSPORT_NUMBER',       'GLINER', false, 0.80, 'IDENTITY', NULL,                        'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DRIVER_LICENSE_NUMBER', 'GLINER', true,  0.80, 'IDENTITY', 'certificate_license_number','MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_OF_BIRTH',         'GLINER', false, 0.80, 'IDENTITY', 'date_of_birth',             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('GENDER',                'GLINER', false, 0.80, 'IDENTITY', 'gender',                    'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONALITY',           'GLINER', false, 0.80, 'IDENTITY', NULL,                        'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('AGE',                   'GLINER', false, 0.80, 'IDENTITY', 'age',                       'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category 2: CONTACT
@@ -61,11 +70,11 @@ VALUES
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('EMAIL',        'GLINER', false, 0.80, 'CONTACT', 'email address', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PHONE_NUMBER', 'GLINER', false, 0.80, 'CONTACT', 'phone number',  'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMAIL',        'GLINER', false, 0.80, 'CONTACT', 'email',         'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PHONE_NUMBER', 'GLINER', false, 0.80, 'CONTACT', 'phone_number',  'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('ADDRESS',      'GLINER', false, 0.80, 'CONTACT', 'address',       'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('CITY',         'GLINER', false, 0.80, 'CONTACT', 'city',          'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ZIP_CODE',     'GLINER', false, 0.80, 'CONTACT', 'zip code',      'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('ZIP_CODE',     'GLINER', false, 0.80, 'CONTACT', 'postcode',      'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category 3: DIGITAL
@@ -75,66 +84,74 @@ VALUES
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('USERNAME',   'GLINER', true,  0.90, 'DIGITAL', 'system account name', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ACCOUNT_ID', 'GLINER', true,  0.80, 'DIGITAL', 'customer account',                                   'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('URL',        'GLINER', false, 0.80, 'DIGITAL', 'url',                                               'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('USERNAME',   'GLINER', false,  1, 'DIGITAL', 'user_name',   'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_ID', 'GLINER', true,  0.80, 'DIGITAL', 'customer_id', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('URL',        'GLINER', false, 0.80, 'DIGITAL', 'url',         'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
--- Category 4: FINANCIAL — all enabled
--- ⛔ SALARY disabled — salary figures are acceptable in HR/payroll documents
+-- Category 4: FINANCIAL
+-- ⛔ SALARY disabled — no NVIDIA label, salary figures acceptable in HR/payroll docs
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('CREDIT_CARD_NUMBER',  'GLINER', true,  0.80, 'FINANCIAL', 'credit card number',        'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('BANK_ACCOUNT_NUMBER', 'GLINER', true,  0.80, 'FINANCIAL', 'financial institution account number', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('IBAN',                'GLINER', true,  0.80, 'FINANCIAL', 'international banking identifier', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('BIC_SWIFT',           'GLINER', true,  0.80, 'FINANCIAL', 'swift code',                'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('TAX_ID',              'GLINER', true,  0.80, 'FINANCIAL', 'tax identifier',            'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SALARY',              'GLINER', false, 0.80, 'FINANCIAL', 'salary amount',             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('CREDIT_CARD_NUMBER',  'GLINER', false, 0.80, 'FINANCIAL', 'credit_debit_card', 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BANK_ACCOUNT_NUMBER', 'GLINER', true,  0.80, 'FINANCIAL', 'account_number',    'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IBAN',                'GLINER', false, 0.80, 'FINANCIAL', 'iban',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BIC_SWIFT',           'GLINER', true,  0.80, 'FINANCIAL', 'swift_bic',         'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TAX_ID',              'GLINER', false, 0.80, 'FINANCIAL', 'tax_id',            'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SALARY',              'GLINER', false, 0.80, 'FINANCIAL', NULL,                'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
--- Category 5: MEDICAL — all enabled
+-- Category 5: MEDICAL
+-- ✅ enabled  : MEDICAL_RECORD_NUMBER, HEALTH_INSURANCE_NUMBER
+-- ⛔ unmapped : AVS_NUMBER (REGEX handles it), PATIENT_ID, DIAGNOSIS, MEDICATION
+--              (no NVIDIA label — domain-specific entities not in Nemotron-PII vocabulary)
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('AVS_NUMBER',             'GLINER', true, 0.80, 'MEDICAL', 'Swiss AVS 13-digit personal number', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PATIENT_ID',             'GLINER', true, 0.80, 'MEDICAL', 'hospital patient identifier',        'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MEDICAL_RECORD_NUMBER',  'GLINER', true, 0.80, 'MEDICAL', 'medical file number',                'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('HEALTH_INSURANCE_NUMBER','GLINER', true, 0.80, 'MEDICAL', 'health insurance number', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DIAGNOSIS',              'GLINER', true, 0.80, 'MEDICAL', 'clinical diagnosis',      'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MEDICATION',             'GLINER', true, 0.80, 'MEDICAL', 'medication name',         'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('AVS_NUMBER',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PATIENT_ID',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MEDICAL_RECORD_NUMBER',  'GLINER', true,  0.80, 'MEDICAL', 'medical_record_number',          'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HEALTH_INSURANCE_NUMBER','GLINER', true,  0.80, 'MEDICAL', 'health_plan_beneficiary_number', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DIAGNOSIS',              'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MEDICATION',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category 6: IT_CREDENTIALS
--- ✅ enabled  : MAC_ADDRESS, DEVICE_ID, PASSWORD, API_KEY, ACCESS_TOKEN,
---               SECRET_KEY, SESSION_ID
--- ⛔ disabled : IP_ADDRESS, HOSTNAME — very common in technical logs and documentation
+-- ✅ enabled  : DEVICE_ID, PASSWORD, API_KEY, SESSION_ID (mapped to http_cookie)
+-- ⛔ disabled : IP_ADDRESS (REGEX handles it), MAC_ADDRESS (REGEX handles it)
+-- ⛔ unmapped : HOSTNAME, ACCESS_TOKEN, SECRET_KEY (would collide with api_key)
+--              SESSION_ID approximated to http_cookie (closest NVIDIA label)
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('IP_ADDRESS',   'GLINER', false, 0.80, 'IT_CREDENTIALS', 'IPv4 or IPv6 network address', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MAC_ADDRESS',  'GLINER', true,  0.80, 'IT_CREDENTIALS', 'mac address',   'LOW',  false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('HOSTNAME',     'GLINER', false, 0.80, 'IT_CREDENTIALS', 'hostname',      'LOW',  false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DEVICE_ID',    'GLINER', true,  0.80, 'IT_CREDENTIALS', 'mobile device unique identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PASSWORD',     'GLINER', true,  0.80, 'IT_CREDENTIALS', 'account password or PIN code', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('API_KEY',      'GLINER', true,  0.80, 'IT_CREDENTIALS', 'API authentication credential', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ACCESS_TOKEN', 'GLINER', true,  0.80, 'IT_CREDENTIALS', 'access token',  'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SECRET_KEY',   'GLINER', false,  0.80, 'IT_CREDENTIALS', 'secret key',    'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SESSION_ID',   'GLINER', true,  0.80, 'IT_CREDENTIALS', 'web session',   'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('IP_ADDRESS',   'GLINER', false, 0.80, 'IT_CREDENTIALS', 'ipv4',              'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MAC_ADDRESS',  'GLINER', false, 0.80, 'IT_CREDENTIALS', 'mac_address',       'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HOSTNAME',     'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DEVICE_ID',    'GLINER', true,  0.80, 'IT_CREDENTIALS', 'device_identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSWORD',     'GLINER', true,  0.80, 'IT_CREDENTIALS', 'password',          'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('API_KEY',      'GLINER', true,  0.80, 'IT_CREDENTIALS', 'api_key',           'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCESS_TOKEN', 'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SECRET_KEY',   'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SESSION_ID',   'GLINER', true,  1, 'IT_CREDENTIALS', 'http_cookie',       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
--- Category 7: LEGAL_ASSET — all enabled
+-- Category 7: LEGAL_ASSET
+-- ✅ enabled  : VEHICLE_REGISTRATION, LICENSE_PLATE
+-- ⛔ unmapped : CASE_NUMBER, CRIMINAL_RECORD, INSURANCE_POLICY_NUMBER (no NVIDIA label)
+--              LICENSE_NUMBER (would collide with DRIVER_LICENSE_NUMBER on certificate_license_number)
+--              VIN (would collide with VEHICLE_REGISTRATION on vehicle_identifier)
 -- Threshold 0.90 for vehicle-related types (short tokens, high false-positive risk)
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
 VALUES
-    ('CASE_NUMBER',             'GLINER', true, 0.80, 'LEGAL_ASSET', 'court case reference number',           'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('LICENSE_NUMBER',          'GLINER', true, 0.80, 'LEGAL_ASSET', 'regulatory license identifier',          'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('CRIMINAL_RECORD',         'GLINER', true, 0.80, 'LEGAL_ASSET', 'criminal background record',             'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('VEHICLE_REGISTRATION',    'GLINER', true, 0.90, 'LEGAL_ASSET', 'vehicle registration plate number',      'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('LICENSE_PLATE',           'GLINER', true, 0.90, 'LEGAL_ASSET', 'vehicle license plate',                  'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('VIN',                     'GLINER', true, 0.90, 'LEGAL_ASSET', 'vehicle chassis identification number',  'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('INSURANCE_POLICY_NUMBER', 'GLINER', true, 0.80, 'LEGAL_ASSET', 'insurance policy identifier',            'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('CASE_NUMBER',             'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LICENSE_NUMBER',          'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CRIMINAL_RECORD',         'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VEHICLE_REGISTRATION',    'GLINER', true,  0.90, 'LEGAL_ASSET', 'vehicle_identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LICENSE_PLATE',           'GLINER', false,  1, 'LEGAL_ASSET', 'license_plate',      'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VIN',                     'GLINER', false, 0.90, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('INSURANCE_POLICY_NUMBER', 'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- ============================================================================
@@ -152,7 +169,7 @@ VALUES
     ('IBAN_CODE',       'PRESIDIO', true,  0.75, 'Financial', 'IBAN_CODE',       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('CRYPTO',          'PRESIDIO', true,  0.80, 'Financial', 'CRYPTO',          'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('MAC_ADDRESS',     'PRESIDIO', true,  0.80, 'Network',   'MAC_ADDRESS',     'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MEDICAL_LICENSE', 'PRESIDIO', true,  0.90, 'Medical',   'MEDICAL_LICENSE', 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MEDICAL_LICENSE', 'PRESIDIO', false,  0.90, 'Medical',   'MEDICAL_LICENSE', 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('NRP',             'PRESIDIO', true,  0.90, 'Personal',  'NRP',             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
