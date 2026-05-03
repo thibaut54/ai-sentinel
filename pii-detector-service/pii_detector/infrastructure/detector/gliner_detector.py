@@ -17,7 +17,7 @@ from pii_detector.domain.exception.exceptions import ModelNotLoadedError, PIIDet
 from pii_detector.infrastructure.model_management.gliner_model_manager import \
     GLiNERModelManager
 from pii_detector.infrastructure.text_processing.semantic_chunker import \
-    create_chunker
+    WhitespaceWordWindowChunker
 
 
 class GLiNERDetector:
@@ -70,9 +70,8 @@ class GLiNERDetector:
             self.model = self.model_manager.load_model()
             self.logger.info("GLiNER model loaded successfully")
             
-            # Initialize text chunker with GLiNER's tokenizer
-            # GLiNER (nvidia/gliner-pii) has internal 378-token limit
-            # Character-based chunking with overlap handles long texts
+            # Initialize whitespace-token chunker aligned with GLiNER's
+            # 384 max_len (counted on whitespace tokens, not subwords).
             self._initialize_text_chunker()
                 
         except Exception as e:
@@ -120,16 +119,15 @@ class GLiNERDetector:
         """
         Initialize text chunker for GLiNER processing.
 
-        Uses character-based chunking with overlap to handle GLiNER's 378 token limit.
+        Uses ``WhitespaceWordWindowChunker`` which counts tokens with the same
+        regex as GLiNER's internal ``WhitespaceTokenSplitter`` — guarantees
+        no chunk exceeds GLiNER's 384-token max_len and prevents the silent
+        truncation observed with subword/char-based chunking.
         """
         try:
-            tokenizer = self._get_tokenizer_from_model()
-
-            self.semantic_chunker = create_chunker(
-                tokenizer=tokenizer,
-                chunk_size=378,  # GLiNER's internal token limit (nvidia/gliner-pii)
-                overlap=100,     # ~300 char overlap to catch entities at boundaries
-                use_semantic=False,  # Character-based chunking supports overlap
+            self.semantic_chunker = WhitespaceWordWindowChunker(
+                chunk_size=380,  # GLiNER max_len is 384 whitespace tokens; 4 of margin
+                overlap=80,      # ~21% overlap for cross-boundary entity detection
                 logger=self.logger
             )
 
