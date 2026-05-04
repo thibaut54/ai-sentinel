@@ -27,3 +27,14 @@ personally-identifiable-information-scan-results/
 
 # Logs
 **/logs/
+
+# Package manager caches (pnpm content-addressable store) — local cache, never versioned
+.pnpm-store/
+
+# IDE artefact: IntelliJ sometimes materialises an unresolved ${PROJECT_DIR} variable
+# as a literal directory. Always noise.
+${PROJECT_DIR}/
+
+# Top-level coverage / benchmark scratch artefacts produced by test runs
+/coverage.xml
+/bench-pii-scan.tsv
