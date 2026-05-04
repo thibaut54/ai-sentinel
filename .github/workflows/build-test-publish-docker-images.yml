@@ -44,7 +44,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') &&
       (github.event.inputs.build_detector != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
@@ -102,7 +102,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') &&
       (github.event.inputs.build_api != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
@@ -159,7 +159,7 @@ jobs:
     needs: [tests]
     if: |
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch') &&
       (github.event.inputs.build_ui != 'false' || github.event_name != 'workflow_dispatch')
     permissions:
       contents: read
