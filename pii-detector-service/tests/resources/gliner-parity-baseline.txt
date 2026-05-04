@@ -1,0 +1,27 @@
+PII DETECTION INTEGRATION TEST FIXTURE
+
+Identity verification (HR file):
+- National ID: 9876543210
+- Social Security Number: 123-45-6789
+- Driver licence number: DL-9876543
+
+Banking and tax data (payroll setup):
+- Bank account number: 0012345678901234
+- Credit card on file: 4532 1488 0343 6467
+- IBAN: CH93 0076 2011 6238 5295 7
+- SWIFT/BIC code: UBSWCHZH80A
+- Tax identification number: 123-45-6789-00
+
+Medical and insurance (occupational health):
+- Medical record number: MRN-4456789
+- Health plan beneficiary number: HPB-998877665544
+
+IT account provisioning (helpdesk ticket):
+- Password: P@ssw0rd!2024Secure
+- PIN code: 4729
+- API key: sk-proj-abcd1234567890efghijklmnop
+- HTTP cookie: session=eyJzZXNzaW9uIjoiYWJjMTIzZGVmNDU2In0
+
+Asset assignment (fleet and devices):
+- Workstation MAC address: 00:1A:2B:3C:4D:5E
+- License plate: ZH-456789

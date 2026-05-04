@@ -1,0 +1,922 @@
+# =============================================================================
+# Test fallback PII configuration
+# =============================================================================
+# Snapshot fidele de la config DB de DEV (postgres / pii_detection_config +
+# pii_type_config) au 2026-04-29. Utilise par DatabaseConfigAdapter quand la
+# variable d'environnement PII_DETECTOR_TEST_FALLBACK_TOML pointe sur ce
+# fichier, ce qui permet de faire tourner le pipeline COMPLET (categories
+# multipass + filtres par type) sans Postgres - notamment pour le TI
+# scripts/test_pipeline_real_pdf.py.
+#
+# Pour re-synchroniser depuis la DB : voir scripts/test_pipeline_real_pdf.py
+# (commentaire en tete) ou requeter directement pii_detection_config /
+# pii_type_config.
+# =============================================================================
+
+[detection_config]
+# Equivalent de la ligne unique pii_detection_config (id=1)
+gliner_enabled = true
+presidio_enabled = true
+regex_enabled = false
+default_threshold = 0.30
+nb_of_label_by_pass = 35
+llm_validation_enabled = true
+
+# -----------------------------------------------------------------------------
+# Per-type configs : equivalent de pii_type_config (1 ligne par tuple
+# (pii_type, detector)). Chaque entree expose les memes champs que ceux lus
+# par DatabaseConfigAdapter.fetch_pii_type_configs() :
+#   pii_type, detector, detector_label, category, enabled, threshold,
+#   country_code, severity, is_custom
+# -----------------------------------------------------------------------------
+
+# ============================== GLINER ======================================
+
+[[pii_types]]
+pii_type = "ADDRESS"
+detector = "GLINER"
+detector_label = "address"
+category = "CONTACT"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "CITY"
+detector = "GLINER"
+detector_label = "city"
+category = "CONTACT"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "EMAIL"
+detector = "GLINER"
+detector_label = "email address"
+category = "CONTACT"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "PHONE_NUMBER"
+detector = "GLINER"
+detector_label = "phone number"
+category = "CONTACT"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "ZIP_CODE"
+detector = "GLINER"
+detector_label = "zip code"
+category = "CONTACT"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "ACCOUNT_ID"
+detector = "GLINER"
+detector_label = "customer_id"
+category = "DIGITAL"
+enabled = true
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "URL"
+detector = "GLINER"
+detector_label = "url"
+category = "DIGITAL"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "USERNAME"
+detector = "GLINER"
+detector_label = "user_name"
+category = "DIGITAL"
+enabled = true
+threshold = 0.9
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "BANK_ACCOUNT_NUMBER"
+detector = "GLINER"
+detector_label = "account_number"
+category = "FINANCIAL"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "BIC_SWIFT"
+detector = "GLINER"
+detector_label = "swift_bic"
+category = "FINANCIAL"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "CREDIT_CARD_NUMBER"
+detector = "GLINER"
+detector_label = "credit_debit_card"
+category = "FINANCIAL"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "IBAN"
+detector = "GLINER"
+detector_label = "iban"
+category = "FINANCIAL"
+enabled = false
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "SALARY"
+detector = "GLINER"
+detector_label = "salary amount"
+category = "FINANCIAL"
+enabled = false
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "TAX_ID"
+detector = "GLINER"
+detector_label = "tax_id"
+category = "FINANCIAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "AGE"
+detector = "GLINER"
+detector_label = "age"
+category = "IDENTITY"
+enabled = false
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "DATE_OF_BIRTH"
+detector = "GLINER"
+detector_label = "date of birth"
+category = "IDENTITY"
+enabled = false
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "DRIVER_LICENSE_NUMBER"
+detector = "GLINER"
+detector_label = "certificate_license_number"
+category = "IDENTITY"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "GENDER"
+detector = "GLINER"
+detector_label = "gender"
+category = "IDENTITY"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "NATIONAL_ID"
+detector = "GLINER"
+detector_label = "national_id"
+category = "IDENTITY"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "NATIONALITY"
+detector = "GLINER"
+detector_label = "nationality"
+category = "IDENTITY"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "PASSPORT_NUMBER"
+detector = "GLINER"
+detector_label = "passport number"
+category = "IDENTITY"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "PERSON_NAME"
+detector = "GLINER"
+detector_label = "person name"
+category = "IDENTITY"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "SSN"
+detector = "GLINER"
+detector_label = "ssn"
+category = "IDENTITY"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "ACCESS_TOKEN"
+detector = "GLINER"
+detector_label = "access token"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "API_KEY"
+detector = "GLINER"
+detector_label = "api_key"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "DEVICE_ID"
+detector = "GLINER"
+detector_label = "device_identifier"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "HOSTNAME"
+detector = "GLINER"
+detector_label = "hostname"
+category = "IT_CREDENTIALS"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "IP_ADDRESS"
+detector = "GLINER"
+detector_label = "IPv4 or IPv6 network address"
+category = "IT_CREDENTIALS"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "MAC_ADDRESS"
+detector = "GLINER"
+detector_label = "mac_address"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "PASSWORD"
+detector = "GLINER"
+detector_label = "password"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "SECRET_KEY"
+detector = "GLINER"
+detector_label = "secret key"
+category = "IT_CREDENTIALS"
+enabled = false
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "SESSION_ID"
+detector = "GLINER"
+detector_label = "web session"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "CASE_NUMBER"
+detector = "GLINER"
+detector_label = "court case reference number"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "CRIMINAL_RECORD"
+detector = "GLINER"
+detector_label = "criminal background record"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "INSURANCE_POLICY_NUMBER"
+detector = "GLINER"
+detector_label = "insurance policy identifier"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "LICENSE_NUMBER"
+detector = "GLINER"
+detector_label = "regulatory license identifier"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "LICENSE_PLATE"
+detector = "GLINER"
+detector_label = "license_plate"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.9
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "VEHICLE_REGISTRATION"
+detector = "GLINER"
+detector_label = "vehicle registration plate number"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.9
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "VIN"
+detector = "GLINER"
+detector_label = "vehicle_identifier"
+category = "LEGAL_ASSET"
+enabled = true
+threshold = 0.9
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "AVS_NUMBER"
+detector = "GLINER"
+detector_label = "Swiss AVS 13-digit personal number"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "DIAGNOSIS"
+detector = "GLINER"
+detector_label = "clinical diagnosis"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "HEALTH_INSURANCE_NUMBER"
+detector = "GLINER"
+detector_label = "health_plan_beneficiary_number"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "MEDICAL_RECORD_NUMBER"
+detector = "GLINER"
+detector_label = "medical_record_number"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "MEDICATION"
+detector = "GLINER"
+detector_label = "medication name"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "PATIENT_ID"
+detector = "GLINER"
+detector_label = "hospital patient identifier"
+category = "MEDICAL"
+enabled = true
+threshold = 0.8
+severity = "MEDIUM"
+
+# ============================== PRESIDIO ====================================
+
+[[pii_types]]
+pii_type = "AU_ABN"
+detector = "PRESIDIO"
+detector_label = "AU_ABN"
+category = "Business"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "AU"
+
+[[pii_types]]
+pii_type = "AU_ACN"
+detector = "PRESIDIO"
+detector_label = "AU_ACN"
+category = "Business"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "AU"
+
+[[pii_types]]
+pii_type = "SG_UEN"
+detector = "PRESIDIO"
+detector_label = "SG_UEN"
+category = "Business"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "SG"
+
+[[pii_types]]
+pii_type = "EMAIL_ADDRESS"
+detector = "PRESIDIO"
+detector_label = "EMAIL_ADDRESS"
+category = "Contact"
+enabled = false
+threshold = 0.7
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "PHONE_NUMBER"
+detector = "PRESIDIO"
+detector_label = "PHONE"
+category = "Contact"
+enabled = false
+threshold = 0.9
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "URL"
+detector = "PRESIDIO"
+detector_label = "URL"
+category = "Contact"
+enabled = false
+threshold = 0.7
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "CREDIT_CARD"
+detector = "PRESIDIO"
+detector_label = "CREDIT_CARD"
+category = "Financial"
+enabled = true
+threshold = 0.75
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "CRYPTO"
+detector = "PRESIDIO"
+detector_label = "CRYPTO"
+category = "Financial"
+enabled = true
+threshold = 0.8
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "IBAN_CODE"
+detector = "PRESIDIO"
+detector_label = "IBAN_CODE"
+category = "Financial"
+enabled = true
+threshold = 0.75
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "IT_VAT_CODE"
+detector = "PRESIDIO"
+detector_label = "IT_VAT_CODE"
+category = "Financial"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "IT"
+
+[[pii_types]]
+pii_type = "US_BANK_NUMBER"
+detector = "PRESIDIO"
+detector_label = "US_BANK_NUMBER"
+category = "Financial"
+enabled = false
+threshold = 0.9
+severity = "HIGH"
+country_code = "US"
+
+[[pii_types]]
+pii_type = "AU_TFN"
+detector = "PRESIDIO"
+detector_label = "AU_TFN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "AU"
+
+[[pii_types]]
+pii_type = "ES_NIE"
+detector = "PRESIDIO"
+detector_label = "ES_NIE"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "ES"
+
+[[pii_types]]
+pii_type = "ES_NIF"
+detector = "PRESIDIO"
+detector_label = "ES_NIF"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "ES"
+
+[[pii_types]]
+pii_type = "FI_PERSONAL_IDENTITY_CODE"
+detector = "PRESIDIO"
+detector_label = "FI_PERSONAL_IDENTITY_CODE"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "FI"
+
+[[pii_types]]
+pii_type = "IN_AADHAAR"
+detector = "PRESIDIO"
+detector_label = "IN_AADHAAR"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "HIGH"
+country_code = "IN"
+
+[[pii_types]]
+pii_type = "IN_PAN"
+detector = "PRESIDIO"
+detector_label = "IN_PAN"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "IN"
+
+[[pii_types]]
+pii_type = "IN_PASSPORT"
+detector = "PRESIDIO"
+detector_label = "IN_PASSPORT"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "IN"
+
+[[pii_types]]
+pii_type = "IN_VEHICLE_REGISTRATION"
+detector = "PRESIDIO"
+detector_label = "IN_VEHICLE_REGISTRATION"
+category = "Government ID"
+enabled = false
+threshold = 0.85
+severity = "MEDIUM"
+country_code = "IN"
+
+[[pii_types]]
+pii_type = "IN_VOTER"
+detector = "PRESIDIO"
+detector_label = "IN_VOTER"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "IN"
+
+[[pii_types]]
+pii_type = "IT_DRIVER_LICENSE"
+detector = "PRESIDIO"
+detector_label = "IT_DRIVER_LICENSE"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "IT"
+
+[[pii_types]]
+pii_type = "IT_FISCAL_CODE"
+detector = "PRESIDIO"
+detector_label = "IT_FISCAL_CODE"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "IT"
+
+[[pii_types]]
+pii_type = "IT_IDENTITY_CARD"
+detector = "PRESIDIO"
+detector_label = "IT_IDENTITY_CARD"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "IT"
+
+[[pii_types]]
+pii_type = "IT_PASSPORT"
+detector = "PRESIDIO"
+detector_label = "IT_PASSPORT"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "IT"
+
+[[pii_types]]
+pii_type = "KR_RRN"
+detector = "PRESIDIO"
+detector_label = "KR_RRN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "KR"
+
+[[pii_types]]
+pii_type = "PL_PESEL"
+detector = "PRESIDIO"
+detector_label = "PL_PESEL"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "PL"
+
+[[pii_types]]
+pii_type = "SG_NRIC_FIN"
+detector = "PRESIDIO"
+detector_label = "SG_NRIC_FIN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "SG"
+
+[[pii_types]]
+pii_type = "TH_TNIN"
+detector = "PRESIDIO"
+detector_label = "TH_TNIN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "TH"
+
+[[pii_types]]
+pii_type = "UK_NHS"
+detector = "PRESIDIO"
+detector_label = "UK_NHS"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "UK"
+
+[[pii_types]]
+pii_type = "UK_NINO"
+detector = "PRESIDIO"
+detector_label = "UK_NINO"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "UK"
+
+[[pii_types]]
+pii_type = "US_DRIVER_LICENSE"
+detector = "PRESIDIO"
+detector_label = "US_DRIVER_LICENSE"
+category = "Government ID"
+enabled = false
+threshold = 0.9
+severity = "MEDIUM"
+country_code = "US"
+
+[[pii_types]]
+pii_type = "US_ITIN"
+detector = "PRESIDIO"
+detector_label = "US_ITIN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "US"
+
+[[pii_types]]
+pii_type = "US_PASSPORT"
+detector = "PRESIDIO"
+detector_label = "US_PASSPORT"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "MEDIUM"
+country_code = "US"
+
+[[pii_types]]
+pii_type = "US_SSN"
+detector = "PRESIDIO"
+detector_label = "US_SSN"
+category = "Government ID"
+enabled = false
+threshold = 0.95
+severity = "HIGH"
+country_code = "US"
+
+[[pii_types]]
+pii_type = "LOCATION"
+detector = "PRESIDIO"
+detector_label = "LOCATION"
+category = "Location"
+enabled = false
+threshold = 0.75
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "AU_MEDICARE"
+detector = "PRESIDIO"
+detector_label = "AU_MEDICARE"
+category = "Medical"
+enabled = false
+threshold = 0.95
+severity = "HIGH"
+country_code = "AU"
+
+[[pii_types]]
+pii_type = "MEDICAL_LICENSE"
+detector = "PRESIDIO"
+detector_label = "MEDICAL_LICENSE"
+category = "Medical"
+enabled = true
+threshold = 0.9
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "IP_ADDRESS"
+detector = "PRESIDIO"
+detector_label = "IP_ADDRESS"
+category = "Network"
+enabled = false
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "MAC_ADDRESS"
+detector = "PRESIDIO"
+detector_label = "MAC_ADDRESS"
+category = "Network"
+enabled = true
+threshold = 0.8
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "AGE"
+detector = "PRESIDIO"
+detector_label = "AGE"
+category = "Personal"
+enabled = false
+threshold = 0.7
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "DATE_TIME"
+detector = "PRESIDIO"
+detector_label = "DATE"
+category = "Personal"
+enabled = false
+threshold = 0.75
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "NRP"
+detector = "PRESIDIO"
+detector_label = "NRP"
+category = "Personal"
+enabled = true
+threshold = 0.9
+severity = "MEDIUM"
+
+[[pii_types]]
+pii_type = "PERSON"
+detector = "PRESIDIO"
+detector_label = "PERSON"
+category = "Personal"
+enabled = false
+threshold = 0.9
+severity = "LOW"
+
+# =============================== REGEX ======================================
+
+[[pii_types]]
+pii_type = "PHONE_NUMBER"
+detector = "REGEX"
+detector_label = "PHONE_NUMBER"
+category = "CONTACT"
+enabled = true
+threshold = 0.9
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "CREDIT_CARD_NUMBER"
+detector = "REGEX"
+detector_label = "credit card number"
+category = "FINANCIAL"
+enabled = true
+threshold = 0.9
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "SOCIALNUM"
+detector = "REGEX"
+detector_label = "social security number"
+category = "IDENTITY"
+enabled = true
+threshold = 0.75
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "API_KEY"
+detector = "REGEX"
+detector_label = "api key"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.95
+severity = "HIGH"
+
+[[pii_types]]
+pii_type = "IP_ADDRESS"
+detector = "REGEX"
+detector_label = "ip address"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.95
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "MAC_ADDRESS"
+detector = "REGEX"
+detector_label = "mac address"
+category = "IT_CREDENTIALS"
+enabled = true
+threshold = 0.95
+severity = "LOW"
+
+[[pii_types]]
+pii_type = "AVS_NUMBER"
+detector = "REGEX"
+detector_label = "avs number"
+category = "MEDICAL"
+enabled = true
+threshold = 0.95
+severity = "HIGH"
+country_code = "CH"
