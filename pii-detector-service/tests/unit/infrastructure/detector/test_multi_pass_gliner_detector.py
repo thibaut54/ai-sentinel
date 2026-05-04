@@ -302,7 +302,7 @@ class TestSinglePassDetection:
 
     def test_should_call_gliner_with_category_labels(self, detector_with_model):
         """Test GLiNER is called with correct labels for category."""
-        detector_with_model._gliner_detector.model.predict_entities.return_value = []
+        detector_with_model._gliner_detector.predict_chunked.return_value = []
 
         detector_with_model._run_single_pass(
             text="John Doe",
@@ -312,13 +312,13 @@ class TestSinglePassDetection:
             pass_categories=detector_with_model._pass_categories
         )
 
-        detector_with_model._gliner_detector.model.predict_entities.assert_called_once()
-        call_args = detector_with_model._gliner_detector.model.predict_entities.call_args
+        detector_with_model._gliner_detector.predict_chunked.assert_called_once()
+        call_args = detector_with_model._gliner_detector.predict_chunked.call_args
         assert "person name" in call_args[0][1]  # labels argument
 
     def test_should_convert_raw_entities_to_pii_entities(self, detector_with_model):
         """Test raw GLiNER output is converted to PIIEntity."""
-        detector_with_model._gliner_detector.model.predict_entities.return_value = [
+        detector_with_model._gliner_detector.predict_chunked.return_value = [
             {"text": "John Doe", "label": "person name", "start": 0, "end": 8, "score": 0.92}
         ]
 
@@ -340,7 +340,7 @@ class TestSinglePassDetection:
     def test_should_extract_text_using_positions(self, detector_with_model):
         """Test text is extracted using start/end positions."""
         full_text = "Contact john@example.com for info"
-        detector_with_model._gliner_detector.model.predict_entities.return_value = [
+        detector_with_model._gliner_detector.predict_chunked.return_value = [
             {"text": full_text, "label": "email address", "start": 8, "end": 24, "score": 0.95}
         ]
 
@@ -359,7 +359,7 @@ class TestSinglePassDetection:
 
     def test_should_handle_empty_results(self, detector_with_model):
         """Test handling of empty detection results."""
-        detector_with_model._gliner_detector.model.predict_entities.return_value = []
+        detector_with_model._gliner_detector.predict_chunked.return_value = []
 
         result = detector_with_model._run_single_pass(
             text="No PII here",
@@ -662,7 +662,7 @@ class TestDetectPII:
 
     def test_should_detect_pii_across_categories(self, fully_mocked_detector):
         """Test detection runs across all categories."""
-        fully_mocked_detector._gliner_detector.model.predict_entities.side_effect = [
+        fully_mocked_detector._gliner_detector.predict_chunked.side_effect = [
             # IDENTITY pass
             [{"text": "John Doe", "label": "person name", "start": 0, "end": 8, "score": 0.92}],
             # CONTACT pass
@@ -678,7 +678,7 @@ class TestDetectPII:
 
     def test_should_handle_empty_detection(self, fully_mocked_detector):
         """Test handling when no PII is detected."""
-        fully_mocked_detector._gliner_detector.model.predict_entities.return_value = []
+        fully_mocked_detector._gliner_detector.predict_chunked.return_value = []
 
         result = fully_mocked_detector.detect_pii("No PII in this text")
 
@@ -686,21 +686,21 @@ class TestDetectPII:
 
     def test_should_use_provided_threshold(self, fully_mocked_detector):
         """Test custom threshold is passed to detection."""
-        fully_mocked_detector._gliner_detector.model.predict_entities.return_value = []
+        fully_mocked_detector._gliner_detector.predict_chunked.return_value = []
 
         fully_mocked_detector.detect_pii("text", threshold=0.7)
 
-        call_args = fully_mocked_detector._gliner_detector.model.predict_entities.call_args
+        call_args = fully_mocked_detector._gliner_detector.predict_chunked.call_args
         assert call_args[1]["threshold"] == 0.7
 
     def test_should_filter_categories(self, fully_mocked_detector):
         """Test running only specified categories."""
-        fully_mocked_detector._gliner_detector.model.predict_entities.return_value = []
+        fully_mocked_detector._gliner_detector.predict_chunked.return_value = []
 
         fully_mocked_detector.detect_pii("text", categories=["IDENTITY"])
 
         # Should only call once (for IDENTITY)
-        assert fully_mocked_detector._gliner_detector.model.predict_entities.call_count == 1
+        assert fully_mocked_detector._gliner_detector.predict_chunked.call_count == 1
 
     def test_Should_InitializeConflictResolver_When_PiiTypeConfigsProvided(
         self, detector_without_preloaded_categories
@@ -720,7 +720,7 @@ class TestDetectPII:
         detector = detector_without_preloaded_categories
         
         # Simulate detection with conflicts (two types for same span)
-        detector._gliner_detector.model.predict_entities.side_effect = [
+        detector._gliner_detector.predict_chunked.side_effect = [
             # IDENTITY pass
             [{"text": "192.168.1.1", "label": "person name", "start": 0, "end": 11, "score": 0.85}],
             # DIGITAL pass - conflict on same span
@@ -840,7 +840,7 @@ class TestMasking:
     def test_should_mask_pii_with_type_placeholders(self, detector_for_masking):
         """Test PII is replaced with [TYPE] placeholders."""
         text = "Contact john@example.com for info"
-        detector_for_masking._gliner_detector.model.predict_entities.return_value = [
+        detector_for_masking._gliner_detector.predict_chunked.return_value = [
             {"text": "john@example.com", "label": "email address", "start": 8, "end": 24, "score": 0.95}
         ]
 

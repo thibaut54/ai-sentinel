@@ -541,11 +541,13 @@ class MultiPassGlinerDetector:
 
         pass_start = time.time()
 
-        # Use GLiNER's model directly to predict with specific labels
-        raw_entities = self._gliner_detector.model.predict_entities(
+        # Use GLiNER through the whitespace-token chunker. Calling predict_entities
+        # directly would let GLiNER silently truncate any input exceeding 384
+        # whitespace tokens, dropping every entity past the cutoff.
+        raw_entities = self._gliner_detector.predict_chunked(
             text,
             labels,
-            threshold=threshold
+            threshold=threshold,
         )
 
         # Convert to PIIEntity format

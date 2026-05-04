@@ -555,8 +555,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         logger.debug(f"[{request_id}] Received DetectPII request #{self.request_counter}")
         logger.debug(f"[{request_id}] Client: {peer_info}")
-        logger.debug(f"[{request_id}] Content length: {len(content)} characters")
-        logger.debug(f"[{request_id}] Threshold: {threshold}")
+        logger.info(f"[{request_id}] gRPC content length: {len(content)} chars, threshold={threshold}")
         
         if len(content) > 100:
             logger.debug(f"[{request_id}] Content preview: {content[:100]}...")

@@ -138,6 +138,61 @@ class GLiNERDetector:
             self.logger.error(f"CRITICAL: Failed to initialize text chunker: {e}")
             raise RuntimeError(f"Text chunker initialization failed: {str(e)}") from e
 
+    def predict_chunked(
+        self,
+        text: str,
+        labels: List[str],
+        threshold: float,
+    ) -> List[Dict]:
+        """
+        Run GLiNER predict_entities through the WhitespaceWordWindowChunker.
+
+        Returns raw GLiNER dicts (label/score/start/end/text) with start/end offsets
+        re-aligned to the original text. Callers (e.g. MultiPassGlinerDetector) are
+        responsible for converting them into PIIEntity instances.
+
+        Without this chunking, predict_entities silently truncates input texts whose
+        whitespace-token count exceeds the model max_len (384) — a regression
+        observed on long unpunctuated payloads (~10k+ tokens) where the model
+        returned 0 entities while emitting only the GLiNER UserWarning.
+        """
+        if not self.model:
+            raise ModelNotLoadedError("The GLiNER model must be loaded before use")
+        if not self.semantic_chunker:
+            raise RuntimeError("Semantic chunker not initialized. Call load_model() first.")
+        if not text:
+            return []
+
+        chunk_results = self.semantic_chunker.chunk_text(text)
+        aggregated: List[Dict] = []
+        total_tokens = 0
+        per_chunk_entities: List[int] = []
+        for chunk_result in chunk_results:
+            total_tokens += getattr(chunk_result, "token_count", 0)
+            raw_entities = self.model.predict_entities(
+                chunk_result.text,
+                labels,
+                threshold=threshold,
+            )
+            per_chunk_entities.append(len(raw_entities))
+            for entity in raw_entities:
+                start = entity.get("start", 0)
+                end = entity.get("end", 0)
+                adjusted = dict(entity)
+                adjusted["start"] = start + chunk_result.start
+                adjusted["end"] = end + chunk_result.start
+                aggregated.append(adjusted)
+        self.logger.info(
+            "predict_chunked: text=%d chars -> %d chunks, %d tokens covered, %d entities (per_chunk=%s, labels=%d)",
+            len(text),
+            len(chunk_results),
+            total_tokens,
+            len(aggregated),
+            per_chunk_entities,
+            len(labels),
+        )
+        return aggregated
+
     def detect_pii(self, text: str, threshold: Optional[float] = None, pii_type_configs: Optional[Dict] = None) -> List[PIIEntity]:
         """
         Detect PII in text content using GLiNER with token-based chunking.
