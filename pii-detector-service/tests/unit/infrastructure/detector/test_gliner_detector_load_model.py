@@ -52,7 +52,7 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "semchunk"})
         
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker', 
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker', 
                    return_value=mock_chunker) as mock_create:
             # Act
             detector.load_model()
@@ -61,13 +61,14 @@ class TestGLiNERDetectorLoadModel:
             assert detector.model == mock_model
             assert detector.semantic_chunker == mock_chunker
             
-            # Verify WhitespaceWordWindowChunker was instantiated with correct params.
-            # chunk_size must stay strictly below GLiNER's max_len (384 whitespace
-            # tokens) so the model never silently truncates a chunk.
+            # Verify GlinerSubwordChunker was instantiated with correct params.
+            # chunk_size matches GLiNER's max_len exactly (subword tokens, not
+            # whitespace tokens), with overlap aligned on NVIDIA hosted parity.
             mock_create.assert_called_once()
             call_kwargs = mock_create.call_args.kwargs
-            assert call_kwargs['chunk_size'] == 380
-            assert call_kwargs['overlap'] == 80
+            assert call_kwargs['chunk_size'] == 384
+            assert call_kwargs['overlap'] == 128
+            assert call_kwargs['tokenizer'] is mock_tokenizer
 
     def test_should_loadmodel_when_tokenizer_not_in_data_processor_uses_fallback(self, detector):
         """
@@ -95,7 +96,7 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "semchunk"})
         
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    return_value=mock_chunker):
             with patch('transformers.AutoTokenizer.from_pretrained',
                        return_value=mock_auto_tokenizer) as mock_from_pretrained:
@@ -106,9 +107,10 @@ class TestGLiNERDetectorLoadModel:
                 assert detector.model == mock_model
                 assert detector.semantic_chunker == mock_chunker
                 
-                # The whitespace-aligned chunker no longer depends on a HF
-                # tokenizer, so the AutoTokenizer fallback path stays dormant.
-                mock_from_pretrained.assert_not_called()
+                # GlinerSubwordChunker requires the HF tokenizer; when neither
+                # transformer_tokenizer nor config.tokenizer is set, the fallback
+                # path must download via AutoTokenizer.
+                mock_from_pretrained.assert_called_once()
 
     def test_should_load_model_when_chunker_uses_fallback_library(self, detector):
         """
@@ -128,7 +130,7 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "fallback"})
 
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    return_value=mock_chunker):
             # Act - should complete without error
             detector.load_model()
@@ -150,7 +152,7 @@ class TestGLiNERDetectorLoadModel:
         detector.model_manager.load_model = Mock(return_value=mock_model)
 
         # Mock create_chunker to raise an exception
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    side_effect=Exception("Chunker initialization failed")):
             # Act & Assert
             with pytest.raises(RuntimeError,
@@ -191,7 +193,7 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "semchunk"})
 
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    return_value=mock_chunker) as mock_create:
             # Act
             detector.load_model()
@@ -219,18 +221,18 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "semchunk"})
 
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    return_value=mock_chunker):
             with patch('transformers.AutoTokenizer.from_pretrained',
                        return_value=mock_auto_tokenizer) as mock_from_pretrained:
                 # Act
                 detector.load_model()
 
-                # Assert - should complete successfully without touching the
-                # HF tokenizer (chunker is now whitespace-aligned).
+                # data_processor is None -> _get_tokenizer_from_model falls back
+                # to downloading via AutoTokenizer to feed GlinerSubwordChunker.
                 assert detector.model == mock_model
                 assert detector.semantic_chunker == mock_chunker
-                mock_from_pretrained.assert_not_called()
+                mock_from_pretrained.assert_called_once()
 
     def test_should_log_success_when_model_loads_correctly(self, detector, caplog):
         """
@@ -247,7 +249,7 @@ class TestGLiNERDetectorLoadModel:
         mock_chunker = Mock()
         mock_chunker.get_chunk_info = Mock(return_value={"library": "semchunk"})
 
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    return_value=mock_chunker):
             # Act
             with caplog.at_level("INFO"):
@@ -269,7 +271,7 @@ class TestGLiNERDetectorLoadModel:
 
         detector.model_manager.load_model = Mock(return_value=mock_model)
 
-        with patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker',
+        with patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker',
                    side_effect=Exception("Chunker failed")):
             # Act & Assert
             with caplog.at_level("ERROR"):

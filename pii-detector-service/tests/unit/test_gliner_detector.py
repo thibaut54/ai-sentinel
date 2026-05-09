@@ -71,7 +71,7 @@ class TestModelManagement:
         
         mock_manager.download_model.assert_called_once()
     
-    @patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker')
+    @patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker')
     @patch('pii_detector.infrastructure.detector.gliner_detector.GLiNERModelManager')
     @patch('transformers.AutoTokenizer')
     def test_should_load_model_successfully(self, mock_tokenizer_class, mock_manager_class, mock_create_chunker):
@@ -100,15 +100,16 @@ class TestModelManagement:
         assert detector.model is mock_model
         assert detector.semantic_chunker is mock_chunker
     
-    @patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker')
+    @patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker')
     @patch('pii_detector.infrastructure.detector.gliner_detector.GLiNERModelManager')
     @patch('transformers.AutoTokenizer')
     def test_should_load_without_external_tokenizer(self, mock_tokenizer_class, mock_manager_class, mock_create_chunker):
-        """Loading must not require any external tokenizer download.
+        """Loading falls back to AutoTokenizer when GLiNER provides no tokenizer.
 
-        The chunker is now ``WhitespaceWordWindowChunker``, aligned with GLiNER's
-        whitespace splitter. It does not need a HuggingFace tokenizer, so the
-        ``AutoTokenizer.from_pretrained`` fallback path must remain dormant.
+        The chunker is now ``GlinerSubwordChunker`` which requires a HF tokenizer
+        to size chunks in subword tokens. When neither
+        ``data_processor.transformer_tokenizer`` nor ``data_processor.config.tokenizer``
+        is set, ``AutoTokenizer.from_pretrained`` is the documented fallback.
         """
         mock_manager = Mock()
         mock_model = Mock()
@@ -125,16 +126,16 @@ class TestModelManagement:
         mock_manager_class.return_value = mock_manager
 
         mock_chunker = Mock()
-        mock_chunker.get_chunk_info.return_value = {"library": "gliner-aligned-whitespace"}
+        mock_chunker.get_chunk_info.return_value = {"library": "semchunk"}
         mock_create_chunker.return_value = mock_chunker
 
         detector = GLiNERDetector()
         detector.load_model()
 
-        mock_tokenizer_class.from_pretrained.assert_not_called()
+        mock_tokenizer_class.from_pretrained.assert_called_once()
         assert detector.semantic_chunker is mock_chunker
     
-    @patch('pii_detector.infrastructure.detector.gliner_detector.WhitespaceWordWindowChunker')
+    @patch('pii_detector.infrastructure.detector.gliner_detector.GlinerSubwordChunker')
     @patch('pii_detector.infrastructure.detector.gliner_detector.GLiNERModelManager')
     @patch('transformers.AutoTokenizer')
     def test_should_accept_fallback_chunker(self, mock_tokenizer_class, mock_manager_class, mock_create_chunker):

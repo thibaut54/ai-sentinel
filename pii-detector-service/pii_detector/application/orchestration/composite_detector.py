@@ -260,6 +260,33 @@ class CompositePIIDetector:
             f"Presidio: {counts[self.presidio_detector]})"
         )
 
+        # TEMPORARY: parity recall investigation — remove with git revert
+        per_detector_per_type = {}
+        for detector, entities in results_per_detector:
+            label = (
+                "ML" if detector is self.ml_detector
+                else "Regex" if detector is self.regex_detector
+                else "Presidio" if detector is self.presidio_detector
+                else "Unknown"
+            )
+            type_counts = {}
+            for ent in entities:
+                type_counts[ent.pii_type] = type_counts.get(ent.pii_type, 0) + 1
+            per_detector_per_type[label] = type_counts
+
+        merged_type_counts = {}
+        for ent in merged_entities:
+            merged_type_counts[ent.pii_type] = merged_type_counts.get(ent.pii_type, 0) + 1
+
+        self.logger.info(
+            "[PARITY_DEBUG] COMPOSITE_PRE_MERGE per_detector_per_type=%s",
+            per_detector_per_type
+        )
+        self.logger.info(
+            "[PARITY_DEBUG] COMPOSITE_POST_MERGE total=%d per_type=%s",
+            len(merged_entities), merged_type_counts
+        )
+
     def mask_pii(
         self, text: str, threshold: Optional[float] = None
     ) -> Tuple[str, List[PIIEntity]]:
@@ -279,21 +306,21 @@ class CompositePIIDetector:
         return masked_text, entities
     
     def _run_ml_detection(
-        self, 
-        text: str, 
+        self,
+        text: str,
         threshold: Optional[float],
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None
     ) -> List[PIIEntity]:
         """
         Run ML-based detection with error handling.
-        
+
         Args:
             text: Text to analyze
             threshold: Optional confidence threshold
             pii_type_configs: Optional PII type configs for dynamic settings
             chunk_size: Optional chunk size for optimizing passes
-            
+
         Returns:
             List of detected entities (empty if detection fails)
         """
@@ -301,56 +328,79 @@ class CompositePIIDetector:
             # Check if ML detector supports parameters using inspection
             import inspect
             sig = inspect.signature(self.ml_detector.detect_pii)
-            
+
             kwargs = {}
             if 'pii_type_configs' in sig.parameters:
                 kwargs['pii_type_configs'] = pii_type_configs
-                
+
             if 'chunk_size' in sig.parameters and chunk_size is not None:
                 kwargs['chunk_size'] = chunk_size
-                
+
             return self.ml_detector.detect_pii(text, threshold, **kwargs)
-            
+
         except Exception as e:
-            self.logger.error(f"ML detection failed: {e}")
-            return []
-    
+            # TEMPORARY: parity recall investigation — was silently returning [] on any ML
+            # failure (OOM, model crash, thread deadlock), turning the request into a
+            # Presidio/Regex-only response with no error visible to the caller.
+            # Now we log the full stack trace at ERROR and re-raise so the gRPC client
+            # gets a real INTERNAL error and we don't silently lose hundreds of findings.
+            self.logger.error(
+                "[PARITY_DEBUG] ML_DETECTION_FAILED text_len=%d threshold=%s configs=%s chunk_size=%s: %s",
+                len(text) if text else 0, threshold,
+                len(pii_type_configs) if pii_type_configs else None,
+                chunk_size, e,
+                exc_info=True
+            )
+            raise
+
     def _run_regex_detection(
         self, text: str, threshold: Optional[float]
     ) -> List[PIIEntity]:
         """
         Run regex-based detection with error handling.
-        
+
         Args:
             text: Text to analyze
             threshold: Optional confidence threshold
-            
+
         Returns:
             List of detected entities (empty if detection fails)
         """
         try:
             return self.regex_detector.detect_pii(text, threshold)
         except Exception as e:
-            self.logger.error(f"Regex detection failed: {e}")
+            # TEMPORARY: parity recall investigation — log full trace before swallowing.
+            # Regex detector silently failing should not kill the whole request, but we
+            # need it visible in logs so we can correlate with missing findings.
+            self.logger.error(
+                "[PARITY_DEBUG] REGEX_DETECTION_FAILED text_len=%d threshold=%s: %s",
+                len(text) if text else 0, threshold, e,
+                exc_info=True
+            )
             return []
-    
+
     def _run_presidio_detection(
         self, text: str, threshold: Optional[float]
     ) -> List[PIIEntity]:
         """
         Run Presidio-based detection with error handling.
-        
+
         Args:
             text: Text to analyze
             threshold: Optional confidence threshold
-            
+
         Returns:
             List of detected entities (empty if detection fails)
         """
         try:
             return self.presidio_detector.detect_pii(text, threshold)
         except Exception as e:
-            self.logger.error(f"Presidio detection failed: {e}")
+            # TEMPORARY: parity recall investigation — log full trace before swallowing.
+            self.logger.error(
+                "[PARITY_DEBUG] PRESIDIO_DETECTION_FAILED text_len=%d threshold=%s: %s",
+                len(text) if text else 0, threshold, e,
+                exc_info=True
+            )
             return []
     
     def _apply_masks(self, text: str, entities: List[PIIEntity]) -> str:

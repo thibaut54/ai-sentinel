@@ -41,21 +41,31 @@ class DetectionMerger:
     ) -> List[PIIEntity]:
         """
         Merge detection results from multiple detectors.
-        
+
         Business process:
         1. Deduplicate identical entities keeping highest confidence
         2. Resolve overlapping entities preferring longer spans
         3. Return final unified entity list
-        
+
         Args:
             results_per_detector: List of (detector, entities) tuples
-            
+
         Returns:
             Unified list of PII entities with duplicates removed and overlaps resolved
         """
+        # TEMPORARY: parity recall investigation — remove with git revert
+        total_in = sum(len(ents) for _, ents in results_per_detector)
         merged_entities, _ = self._merge_and_deduplicate_entities(results_per_detector)
+        # TEMPORARY: parity recall investigation — remove with git revert
+        after_dedup = len(merged_entities)
         resolved = self._resolve_overlapping_entities(merged_entities)
         self._log_overlap_resolution(len(merged_entities), len(resolved))
+        # TEMPORARY: parity recall investigation — remove with git revert
+        self.logger.info(
+            "[PARITY_DEBUG] MERGER total_in=%d after_dedup=%d after_overlap=%d (lost_dedup=%d lost_overlap=%d)",
+            total_in, after_dedup, len(resolved),
+            total_in - after_dedup, after_dedup - len(resolved)
+        )
         return resolved
 
     def _merge_and_deduplicate_entities(

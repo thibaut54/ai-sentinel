@@ -1,0 +1,209 @@
+================================================================================
+DOCUMENT DE TEST PII — AI Sentinel
+================================================================================
+Ce document est destine a etre uploade sur Confluence pour valider la detection
+PII (vrais positifs) et les faux positifs de chaque type active par defaut.
+
+Chaque section couvre un type PII avec :
+  [TP] = Vrai positif (DOIT etre detecte)
+  [FP] = Faux positif (NE DOIT PAS etre detecte)
+
+Configuration testee : PII types GLiNER + Presidio + Regex actifs par defaut.
+================================================================================
+
+
+================================================================================
+SECTION 1 — IDENTITE (IDENTITY)
+================================================================================
+
+1. Le numero d'identite nationale du demandeur est 85 07 23 456 789.
+2. Carte d'identite francaise : 920123456789.
+3. National ID: 1234567890123 (delivre par le Service des migrations).
+4. Le numero CNI est 080275103456.
+5. Le requrant a presente sa carte d'identite numero 7501234567.
+6. Document d'identite no 940312003421 valide jusqu'en 2030.
+7. Identite nationale numero 2001234567890 enregistree dans le systeme.
+8. National identification number: GBR-123456789.
+9. L'identifiant national du collaborateur est CH-756-1234-5.
+10. Le numero sur la carte d'identite italienne est CA12345AA.
+
+1. Le numero de version de l'application est 1.2.3.456789.
+2. Code projet interne : PRJ-20250312-001.
+3. Le numero de serie du disque dur est WD-WMC1T0123456.
+4. Reference du ticket JIRA : PROJ-123456789.
+5. La version du firmware est V3.2.1 build 456789012.
+6. Numero de commande SAP : 4500123456.
+7. Le code article du catalogue est ART-789012345.
+8. Identifiant de la base de donnees : DB-2025-00123456.
+9. Le hash SHA-256 du fichier est e3b0c44298fc1c149afb...
+10. Numero de batch de production : LOT-2025-001234567.
+
+
+--- 1.2 SSN (social security number) ---
+
+1. Le numero de securite sociale est 1 85 07 75 123 456 78.
+2. SSN du salarie : 2 90 12 13 456 789 12.
+3. N de securite sociale : 1 75 03 69 123 456 23.
+4. Social Security Number: 078-05-1120.
+5. Le numero SS inscrit sur la carte Vitale est 2 64 11 75 234 567 89.
+6. N securite sociale (conjoint) : 1 92 08 33 456 789 34.
+7. SSN beneficiaire : 2 85 02 06 345 678 45.
+8. Numero de secu : 1 70 06 75 012 345 56.
+9. Security number: 1 88 04 69 567 890 67.
+10. Le numero SS du patient est 2 95 01 13 678 901 78.
+
+
+1. Le numero de serie du serveur est SN-2025-078051120.
+2. Reference de la facture : FA-2025-185077512.
+3. Identifiant de session : sess_190121345678912.
+4. Numero de lot de fabrication : 1750369-123456.
+5. Code EAN du produit : 5901234123457.
+6. Code de tracking DHL : 1234567890123456789.
+7. Hash MD5 : d41d8cd98f00b204e9800998ecf8427e.
+8. Reference interne comptable : 2640117523456789.
+9. Le timeout du service est de 185077 millisecondes.
+10. Port de communication : 19012 (plage reservee).
+
+================================================================================
+SECTION 2 — DIGITAL
+================================================================================
+
+--- 2.1 USERNAME (system account name) ---
+
+
+1. L'utilisateur jdoe a tente une connexion a 14:35 sur le serveur de production.
+2. Le compte admin_user a ete approuve pour l'acces a la base de donnees.
+3. L'identifiant mdupuis84 a ete cree hier pour le nouveau collaborateur.
+4. Le compte de service svc_backup_prod est utilise pour les sauvegardes nocturnes.
+5. L'acces a ete refuse pour le login t.martin sur le domaine CORP.
+6. Le sAMAccountName de l'utilisateur est tvuillaume dans Active Directory.
+7. Compte operateur : op.monitoring (lecture seule sur Grafana).
+8. Le compte applicatif app_crm_v2 a les droits API uniquement.
+9. Les comptes invites guest_2024_q1 et guest_2024_q2 expirent le 31 mars.
+10. Service account sa_etl_pipeline accessed the data warehouse at 03:00 UTC.
+
+
+1. Marie Dupont, responsable des ressources humaines, a valide le rapport.
+2. Le directeur Jean-Pierre Martin sera present a la reunion de mardi.
+3. Sophie Bernard a signe le proces-verbal de la seance du comite.
+4. Contactez David Brown, Security Lead, pour toute question.
+5. Le projet a ete lance par Pierre Morel en janvier 2025.
+6. Ivan Gouin est l'architecte CEI du projet RAPAC.
+7. La presentation sera donnee par Cedric Rime, responsable DSOL.
+8. Thierry Birre coordonne les travaux du programme Lagapeo.
+9. Guillaume Vial est le chef de projet Plassdata depuis Q3 2024.
+10. Julie de la Bouchere gere le projet EDT Reseau au sein du pole FC.
+
+
+--- 2.2 ACCOUNT_ID (account id) ---
+
+
+1. L'identifiant du compte client est ACC-2025-001234.
+2. Account ID: 123456789012 (AWS root account).
+3. Le numero de compte utilisateur est USR-00045678.
+4. Identifiant de compte bancaire en ligne : CL-789012.
+5. Account identifier: acct_1MkPb2Ij6u5P7v3X.
+6. Le compte Azure AD a l'identifiant 550e8400-e29b-41d4-a716-446655440000.
+7. Le client est identifie par le numero de compte CTR-A-2025-5678.
+8. Account number: 987654321 (Salesforce CRM).
+9. L'ID du compte Stripe est acct_1N2O3P4Q5R6S7T8U.
+10. Numero de compte interne : IC-2025-00789.
+
+
+1. Le sprint numero 42 a ete planifie pour la semaine prochaine.
+2. La salle de reunion B-123 est reservee pour 14h00.
+3. Le budget alloue est de CHF 42'350 pour le Q1 2025.
+4. Code de l'espace Confluence : IT-OPS.
+5. Le numero de version est 2.4.0 (release stable).
+6. Reference du document : DOC-2025-00123.
+7. L'incident INC-2025-0342 a ete resolu en 23 minutes.
+8. Le code JIRA du projet est SENTINEL-456.
+9. Nombre de pods Kubernetes actifs : 12.
+10. L'ID du merge request GitLab est 5678.
+
+
+================================================================================
+SECTION 3 — FINANCIAL
+================================================================================
+
+--- 3.1 CREDIT_CARD_NUMBER (credit card number) ---
+
+
+1. Numero de carte de credit : 4532 0123 4567 8901.
+2. Le paiement a ete effectue avec la carte 5425 2334 3010 9903.
+3. Credit card: 3714 496353 98431 (American Express).
+4. Carte Visa se terminant par 8901 : 4916 3388 1234 8901.
+5. Numero de carte bancaire : 5105 1051 0510 5100.
+6. Le client a fourni la carte 6011 0009 9013 9424.
+7. Payment card number: 3566 0020 2036 0505.
+8. Carte MasterCard du fournisseur : 2221 0012 3412 3456.
+9. Transaction CB avec la carte 4000 0566 5566 5556.
+10. Numero inscrit sur la carte : 6759 6498 2643 8453.
+
+
+1. Le numero de serie du serveur Dell est 4532012345678901.
+2. Le code EAN-13 du produit est 5425233430109.
+3. Identifiant de transaction interne : TXN-3714496353984.
+4. Le numero de tracking UPS est 1Z999AA10123456784.
+5. Reference comptable : 49163388-12348901.
+6. Le hash CRC32 du fichier est 51051051.
+7. Numero de telephone international : +33 6 011 00 99 01.
+8. Code IMEI du telephone : 356602020360505.
+9. Le numero de lot de production est 22210012-34123456.
+10. Nombre de lignes dans la table : 40,000,566,556.
+
+
+--- 3.2 BANK_ACCOUNT_NUMBER (bank account number) ---
+
+
+1. Le numero de compte bancaire est 12345 67890 12345678901 23.
+2. Bank account number: 00762011623852957 (BCV).
+3. Compte bancaire du fournisseur : 370400440532013000.
+4. Le RIB est : 30006 00001 12345678901 89.
+5. Clearing number + account: 80-2-2 / 1234567.
+6. Le compte du beneficiaire est 01-234567-8 (PostFinance).
+7. Account number: 608-900123-40 (UBS).
+8. Le numero de compte BCGE est 12.345.678.9.
+9. Compte courant : 0076-2011-6238-5295-7.
+10. Numero de compte du salarie : CCP 10-12345-6.
+
+
+1. Le numero de version du schema Flyway est V2.4.0__add_source.
+2. Reference de la commande interne : 12345-67890-12345.
+3. Le code barre du colis est 370400440532013000.
+4. L'adresse IP du serveur de backup est 10.0.2.42.
+5. Le code SWIFT mentionné est BCVLCH2LXXX.
+6. Numero de ticket ServiceNow : INC0123456.
+7. Le numero de chassis du vehicule de service commence par WBA.
+8. Reference cadastrale : RF-1234567-8.
+9. Numero de parcelle VD : 0076-2011-6238.
+10. Identifiant du pipeline CI/CD : pipe-0101234567.
+
+
+--- 3.3 IBAN (international banking identifier) ---
+
+
+1. IBAN du fournisseur : CH93 0076 2011 6238 5295 7.
+2. Pour le paiement en EUR : IBAN DE89 3704 0044 0532 0130 00.
+3. Virement sur le compte IBAN FR76 3000 6000 0112 3456 7890 189.
+4. Le compte IBAN du beneficiaire est CH48 0483 5012 3456 7100 0.
+5. IBAN: GB29 NWBK 6016 1331 9268 19.
+6. Coordonnees bancaires : IBAN AT61 1904 3002 3457 3201.
+7. Le paiement doit etre effectue sur CH9300762011623852957.
+8. IBAN: LU28 0019 4006 4475 0000.
+9. Compte bancaire IBAN : BE68 5390 0754 7034.
+10. IBAN du salarie : CH31 8123 9000 0012 4568 9.
+
+
+1. Code projet : P01564 — RAPAC (pole SEJ, architecte CEI).
+2. Reference interne : M02054 — projet I2 (departement SES).
+3. Statut du ticket : EN COURS (priorite haute, Sprint 42).
+4. Sigle du departement : EUCM / SOCLE / INST.
+5. Nom du collaborateur : Ivan Gouin, architecte technique.
+6. Abbreviation technique : DNS DHCP VPN MFA RSA PKI SIEM WAF.
+7. Le code postal est 1003 Lausanne, Suisse.
+8. Reference administrative : CHE-123.456.789 (IDE).
+9. Numero AVS : 756.1234.5678.97.
+10. Reference cadastrale : VD-2024-00145 (commune 5586).
+
+

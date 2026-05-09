@@ -345,6 +345,113 @@ class WhitespaceWordWindowChunker:
         }
 
 
+class GlinerSubwordChunker:
+    """
+    Token-aware chunker aligned with GLiNER's actual subword tokenizer.
+
+    GLiNER's max_len (e.g. 384) applies to the **subword tokens** produced by its
+    HuggingFace tokenizer (DeBERTa for ``nvidia/gliner-PII``), not to whitespace
+    tokens. On accent-rich / contraction-rich French text, 380 whitespace tokens
+    can correspond to 600+ subword tokens, causing GLiNER to silently truncate.
+
+    This chunker uses ``semchunk.chunkerify(tokenizer, chunk_size)`` so the chunk
+    size is measured in the same unit GLiNER consumes, with native ``overlap``
+    support and exact char-offset return (``chunks[i] == text[off[i][0]:off[i][1]]``).
+    """
+
+    def __init__(
+        self,
+        tokenizer: Any,
+        chunk_size: int,
+        overlap: int,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
+        if not SEMCHUNK_AVAILABLE:
+            raise ImportError(
+                "semchunk library is required for GlinerSubwordChunker. "
+                "Install it with: pip install semchunk>=2.2.0"
+            )
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
+        if overlap < 0:
+            raise ValueError(f"overlap ({overlap}) must be >= 0")
+        if overlap >= chunk_size:
+            raise ValueError(
+                f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
+            )
+
+        self._tokenizer = tokenizer
+        self._chunk_size = chunk_size
+        self._overlap = overlap
+        self._logger = logger or logging.getLogger(__name__)
+
+        # semchunk.chunkerify accepts a HF tokenizer, a model name, or a callable.
+        # The returned chunker is reusable and memoized.
+        self._chunker = semchunk.chunkerify(tokenizer, chunk_size)
+
+        self._logger.info(
+            "GlinerSubwordChunker initialized: chunk_size=%d (subword tokens), "
+            "overlap=%d, tokenizer=%s",
+            chunk_size,
+            overlap,
+            type(tokenizer).__name__,
+        )
+
+    def chunk_text(self, text: str) -> List[ChunkResult]:
+        """Split ``text`` into chunks bounded by ``chunk_size`` subword tokens."""
+        if not text:
+            return []
+
+        # semchunk returns (chunks, offsets) with offsets=True; offsets is a list
+        # of (start, end) char positions guaranteeing chunks[i] == text[s:e].
+        # The overlap parameter is supported natively since semchunk 2.2.
+        try:
+            chunks, offsets = self._chunker(
+                text,
+                offsets=True,
+                overlap=self._overlap if self._overlap > 0 else None,
+            )
+        except TypeError:
+            # Older semchunk without overlap kwarg: fall back to no-overlap call.
+            chunks, offsets = self._chunker(text, offsets=True)
+            self._logger.warning(
+                "Installed semchunk does not support overlap kwarg; "
+                "running without overlap (chunks=%d)",
+                len(chunks),
+            )
+
+        results: List[ChunkResult] = []
+        for chunk_text, (start, end) in zip(chunks, offsets):
+            # Encode without special tokens to match how the chunk size is
+            # measured by semchunk (raw subword token count). Lets predict_chunked
+            # log accurate token coverage instead of falling back to 0.
+            try:
+                token_count = len(self._tokenizer.encode(chunk_text, add_special_tokens=False))
+            except Exception:
+                token_count = None
+            results.append(ChunkResult(
+                text=chunk_text,
+                start=int(start),
+                end=int(end),
+                token_count=token_count,
+            ))
+
+        self._logger.debug(
+            "GlinerSubwordChunker: %d chars -> %d chunks (chunk_size=%d, overlap=%d)",
+            len(text), len(results), self._chunk_size, self._overlap,
+        )
+        return results
+
+    def get_chunk_info(self) -> dict:
+        return {
+            "chunk_size": self._chunk_size,
+            "overlap": self._overlap,
+            "library": "semchunk",
+            "available": SEMCHUNK_AVAILABLE,
+            "tokenizer": type(self._tokenizer).__name__,
+        }
+
+
 def create_chunker(
     tokenizer: Optional[Any] = None,
     chunk_size: int = 378,

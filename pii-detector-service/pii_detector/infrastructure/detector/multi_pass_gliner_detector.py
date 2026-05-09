@@ -385,6 +385,20 @@ class MultiPassGlinerDetector:
             f"with {len(categories_to_run)} categories, threshold={threshold}"
         )
 
+        # TEMPORARY: parity recall investigation — remove with git revert
+        batch_sizes = {name: len(labels) for name, labels in pass_categories.items()}
+        all_labels_per_batch = {
+            name: sorted(labels.keys()) for name, labels in pass_categories.items()
+        }
+        self.logger.info(
+            "[PARITY_DEBUG] [%s] PASS_PLAN threshold=%.3f text_len=%d batches=%d sizes=%s",
+            detection_id, threshold, len(text), len(pass_categories), batch_sizes
+        )
+        self.logger.info(
+            "[PARITY_DEBUG] [%s] PASS_LABELS=%s",
+            detection_id, all_labels_per_batch
+        )
+
         start_time = time.time()
 
         try:
@@ -586,6 +600,29 @@ class MultiPassGlinerDetector:
                 detection_id, category, pass_time
             )
 
+        # TEMPORARY: parity recall investigation — remove with git revert
+        per_type_counts: Dict[str, int] = {}
+        per_type_score_sum: Dict[str, float] = {}
+        per_type_min_score: Dict[str, float] = {}
+        for ent in entities:
+            t = ent.pii_type
+            per_type_counts[t] = per_type_counts.get(t, 0) + 1
+            per_type_score_sum[t] = per_type_score_sum.get(t, 0.0) + ent.score
+            cur_min = per_type_min_score.get(t)
+            per_type_min_score[t] = ent.score if cur_min is None else min(cur_min, ent.score)
+        per_type_stats = {
+            t: {
+                "n": n,
+                "avg": round(per_type_score_sum[t] / n, 3),
+                "min": round(per_type_min_score[t], 3),
+            }
+            for t, n in per_type_counts.items()
+        }
+        self.logger.info(
+            "[PARITY_DEBUG] [%s] PASS_RESULT category=%s n=%d time=%.2fs per_type=%s",
+            detection_id, category, len(entities), pass_time, per_type_stats
+        )
+
         return entities
 
     def _aggregate_by_span(
@@ -719,6 +756,10 @@ class MultiPassGlinerDetector:
 
         kept: List[PIIEntity] = []
         max_end = -1
+        # TEMPORARY: parity recall investigation — remove with git revert
+        discarded_samples: List[str] = []
+        discarded_count = 0
+        discarded_per_type: Dict[str, int] = {}
 
         for entity in sorted_entities:
             # If current entity starts after (or at) the end of the last kept entity,
@@ -726,9 +767,23 @@ class MultiPassGlinerDetector:
             if entity.start >= max_end:
                 kept.append(entity)
                 max_end = max(max_end, entity.end)
-            # Else: It overlaps with a previously kept entity.
-            # Since we prioritized "longest first" for same start, and "earlier start" generally,
-            # the existing kept entity is preferred. We discard the current one.
+            else:
+                # Else: It overlaps with a previously kept entity.
+                # TEMPORARY: parity recall investigation — log what we drop here
+                discarded_count += 1
+                discarded_per_type[entity.pii_type] = discarded_per_type.get(entity.pii_type, 0) + 1
+                if len(discarded_samples) < 10:
+                    txt_preview = (entity.text or "")[:30].replace("\n", " ")
+                    discarded_samples.append(
+                        f"({entity.start}-{entity.end} {entity.pii_type} score={entity.score:.2f} '{txt_preview}')"
+                    )
+
+        # TEMPORARY: parity recall investigation — remove with git revert
+        self.logger.info(
+            "[PARITY_DEBUG] OVERLAP_RESOLUTION input=%d kept=%d discarded=%d per_type=%s samples=%s",
+            len(sorted_entities), len(kept), discarded_count,
+            discarded_per_type, discarded_samples
+        )
 
         return kept
 

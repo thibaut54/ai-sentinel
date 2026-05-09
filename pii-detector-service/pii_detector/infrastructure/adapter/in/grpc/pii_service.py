@@ -908,6 +908,26 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if filter_reasons:
             logger.debug(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
 
+        # TEMPORARY: parity recall investigation — remove with git revert
+        in_per_type: Dict[str, int] = {}
+        in_per_source: Dict[str, int] = {}
+        out_per_type: Dict[str, int] = {}
+        for ent in entities:
+            t = _normalize_pii_type_for_grpc(ent.get('type'))
+            in_per_type[t] = in_per_type.get(t, 0) + 1
+            raw_source = ent.get('source', 'UNKNOWN')
+            src = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
+            in_per_source[src] = in_per_source.get(src, 0) + 1
+        for ent in filtered_entities:
+            t = _normalize_pii_type_for_grpc(ent.get('type'))
+            out_per_type[t] = out_per_type.get(t, 0) + 1
+        logger.info(
+            "[PARITY_DEBUG] [%s] POST_FILTER input=%d output=%d filtered=%d "
+            "in_per_type=%s in_per_source=%s out_per_type=%s reasons=%s",
+            request_id, len(entities), len(filtered_entities), filtered_count,
+            in_per_type, in_per_source, out_per_type, dict(filter_reasons)
+        )
+
         return filtered_entities
 
     def _evaluate_entity_filter(

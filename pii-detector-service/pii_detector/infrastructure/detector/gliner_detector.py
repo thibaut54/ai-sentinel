@@ -16,8 +16,10 @@ from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.exception.exceptions import ModelNotLoadedError, PIIDetectionError
 from pii_detector.infrastructure.model_management.gliner_model_manager import \
     GLiNERModelManager
-from pii_detector.infrastructure.text_processing.semantic_chunker import \
-    WhitespaceWordWindowChunker
+from pii_detector.infrastructure.text_processing.semantic_chunker import (
+    GlinerSubwordChunker,
+    WhitespaceWordWindowChunker,
+)
 
 
 class GLiNERDetector:
@@ -119,16 +121,22 @@ class GLiNERDetector:
         """
         Initialize text chunker for GLiNER processing.
 
-        Uses ``WhitespaceWordWindowChunker`` which counts tokens with the same
-        regex as GLiNER's internal ``WhitespaceTokenSplitter`` — guarantees
-        no chunk exceeds GLiNER's 384-token max_len and prevents the silent
-        truncation observed with subword/char-based chunking.
+        Uses ``GlinerSubwordChunker`` (semchunk-backed) sized in the SAME unit
+        GLiNER consumes — subword tokens from its HF tokenizer — instead of
+        whitespace tokens. This prevents the silent truncation observed when
+        a 380-word chunk maps to 600+ subword tokens on accent-rich text.
+
+        Parity target: ``chunk_size=384`` matches GLiNER ``max_len`` exactly,
+        ``overlap=128`` mirrors the configuration that NVIDIA hosted
+        playground appears to use (see test_gliner_chunking_strategies_benchmark).
         """
         try:
-            self.semantic_chunker = WhitespaceWordWindowChunker(
-                chunk_size=380,  # GLiNER max_len is 384 whitespace tokens; 4 of margin
-                overlap=80,      # ~21% overlap for cross-boundary entity detection
-                logger=self.logger
+            tokenizer = self._get_tokenizer_from_model()
+            self.semantic_chunker = GlinerSubwordChunker(
+                tokenizer=tokenizer,
+                chunk_size=384,  # GLiNER max_len (subword tokens), exact parity
+                overlap=128,     # ~33% overlap, matches NVIDIA hosted parity
+                logger=self.logger,
             )
 
             self._verify_semantic_chunker()
@@ -145,16 +153,16 @@ class GLiNERDetector:
         threshold: float,
     ) -> List[Dict]:
         """
-        Run GLiNER predict_entities through the WhitespaceWordWindowChunker.
+        Run GLiNER predict_entities through ``self.semantic_chunker``.
 
         Returns raw GLiNER dicts (label/score/start/end/text) with start/end offsets
         re-aligned to the original text. Callers (e.g. MultiPassGlinerDetector) are
         responsible for converting them into PIIEntity instances.
 
         Without this chunking, predict_entities silently truncates input texts whose
-        whitespace-token count exceeds the model max_len (384) — a regression
-        observed on long unpunctuated payloads (~10k+ tokens) where the model
-        returned 0 entities while emitting only the GLiNER UserWarning.
+        subword-token count exceeds the model max_len (384) — a regression
+        observed on long unpunctuated payloads where the model returned 0 entities
+        while emitting only the GLiNER UserWarning.
         """
         if not self.model:
             raise ModelNotLoadedError("The GLiNER model must be loaded before use")
@@ -168,7 +176,7 @@ class GLiNERDetector:
         total_tokens = 0
         per_chunk_entities: List[int] = []
         for chunk_result in chunk_results:
-            total_tokens += getattr(chunk_result, "token_count", 0)
+            total_tokens += getattr(chunk_result, "token_count", 0) or 0
             raw_entities = self.model.predict_entities(
                 chunk_result.text,
                 labels,
