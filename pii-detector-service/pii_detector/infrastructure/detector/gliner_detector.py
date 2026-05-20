@@ -22,6 +22,31 @@ from pii_detector.infrastructure.text_processing.semantic_chunker import (
 )
 
 
+def _iterate_gliner_configs(pii_type_configs: dict):
+    """Yield (pii_type, config) pairs for GLiNER configs only.
+
+    Mirrors the helper in ``multi_pass_gliner_detector`` to handle both layouts of
+    ``pii_type_configs`` (multi-detector dict with composite keys vs filtered
+    GLiNER-only dict) without leaking REGEX/PRESIDIO configs that share the same
+    ``pii_type`` (e.g. ``API_KEY``).
+    """
+    has_composite = any(
+        isinstance(k, str) and k.startswith('GLINER:') for k in pii_type_configs
+    )
+    if has_composite:
+        for key, config in pii_type_configs.items():
+            if isinstance(key, str) and key.startswith('GLINER:'):
+                yield key.split(':', 1)[1], config
+        return
+    for key, config in pii_type_configs.items():
+        if not isinstance(key, str) or ':' in key:
+            continue
+        cfg_detector = config.get('detector')
+        if cfg_detector and cfg_detector != 'GLINER':
+            continue
+        yield key, config
+
+
 class GLiNERDetector:
     """
     GLiNER-based PII detector compatible with PIIDetector interface.
@@ -380,14 +405,11 @@ class GLiNERDetector:
             Dictionary mapping detector labels to PII types
         """
         mapping = {}
-        for pii_type, config in pii_type_configs.items():
-            # Skip composite keys (e.g. "GLINER:EMAIL") added by database_config_adapter
-            # for per-detector lookup — they are not real PII type names
-            if ':' in pii_type:
-                continue
+        # Read the GLiNER namespace explicitly so REGEX/PRESIDIO rows that share
+        # the same pii_type (e.g. API_KEY) cannot shadow the GLiNER detector_label.
+        for pii_type, config in _iterate_gliner_configs(pii_type_configs):
             detector_label = config.get('detector_label')
-            # Only include GLINER configs - skip PRESIDIO and REGEX labels
-            if detector_label and config.get('enabled', False) and config.get('detector') == 'GLINER':
+            if detector_label and config.get('enabled', False):
                 mapping[detector_label] = pii_type
 
         if not mapping:
@@ -407,12 +429,10 @@ class GLiNERDetector:
             Dictionary mapping PII types to minimum confidence thresholds
         """
         scoring = {}
-        for pii_type, config in pii_type_configs.items():
-            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
-            if ':' in pii_type:
-                continue
-            # Only include GLINER configs - skip PRESIDIO and REGEX thresholds
-            if config.get('enabled', False) and config.get('detector') == 'GLINER':
+        # Read GLiNER namespace explicitly to avoid picking up the threshold of a
+        # REGEX/PRESIDIO row that may have overwritten the primary key.
+        for pii_type, config in _iterate_gliner_configs(pii_type_configs):
+            if config.get('enabled', False):
                 scoring[pii_type] = config['threshold']
 
         return scoring

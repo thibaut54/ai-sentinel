@@ -250,6 +250,25 @@ class CompositePIIDetector:
         merged_entities: List[PIIEntity],
     ) -> None:
         """Log per-detector entity counts after merge."""
+        self._log_per_detector_counts(results_per_detector, merged_entities)
+        self._log_parity_debug(results_per_detector, merged_entities)
+        self._log_finding_tracker(results_per_detector, merged_entities)
+
+    def _resolve_detector_label(self, detector: PIIDetectorProtocol) -> str:
+        """Return a stable, human-readable label for a detector instance."""
+        if detector is self.ml_detector:
+            return "ML"
+        if detector is self.regex_detector:
+            return "Regex"
+        if detector is self.presidio_detector:
+            return "Presidio"
+        return "Unknown"
+
+    def _log_per_detector_counts(
+        self,
+        results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]],
+        merged_entities: List[PIIEntity],
+    ) -> None:
         counts = {self.ml_detector: 0, self.regex_detector: 0, self.presidio_detector: 0}
         for detector, entities in results_per_detector:
             if detector in counts:
@@ -260,21 +279,21 @@ class CompositePIIDetector:
             f"Presidio: {counts[self.presidio_detector]})"
         )
 
+    def _log_parity_debug(
+        self,
+        results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]],
+        merged_entities: List[PIIEntity],
+    ) -> None:
         # TEMPORARY: parity recall investigation — remove with git revert
-        per_detector_per_type = {}
+        per_detector_per_type: dict = {}
         for detector, entities in results_per_detector:
-            label = (
-                "ML" if detector is self.ml_detector
-                else "Regex" if detector is self.regex_detector
-                else "Presidio" if detector is self.presidio_detector
-                else "Unknown"
-            )
-            type_counts = {}
+            label = self._resolve_detector_label(detector)
+            type_counts: dict = {}
             for ent in entities:
                 type_counts[ent.pii_type] = type_counts.get(ent.pii_type, 0) + 1
             per_detector_per_type[label] = type_counts
 
-        merged_type_counts = {}
+        merged_type_counts: dict = {}
         for ent in merged_entities:
             merged_type_counts[ent.pii_type] = merged_type_counts.get(ent.pii_type, 0) + 1
 
@@ -285,6 +304,23 @@ class CompositePIIDetector:
         self.logger.info(
             "[PARITY_DEBUG] COMPOSITE_POST_MERGE total=%d per_type=%s",
             len(merged_entities), merged_type_counts
+        )
+
+    def _log_finding_tracker(
+        self,
+        results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]],
+        merged_entities: List[PIIEntity],
+    ) -> None:
+        for detector, entities in results_per_detector:
+            branch = self._resolve_detector_label(detector).upper()
+            self.logger.info(
+                "[FINDING_TRACKER] step=COMPOSITE_%s_RAW count=%d",
+                branch, len(entities),
+            )
+        total_in = sum(len(e) for _, e in results_per_detector)
+        self.logger.info(
+            "[FINDING_TRACKER] step=COMPOSITE_AFTER_MERGE in=%d out=%d dropped=%d",
+            total_in, len(merged_entities), total_in - len(merged_entities),
         )
 
     def mask_pii(

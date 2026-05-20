@@ -83,7 +83,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
 @ActiveProfiles("test")
-@EnabledIfEnvironmentVariable(named = "RUN_CORPUS_BENCHMARK", matches = "true")
+//@EnabledIfEnvironmentVariable(named = "RUN_CORPUS_BENCHMARK", matches = "true")
 class CorpusBenchmarkIT {
 
     private static final Logger log = LoggerFactory.getLogger(CorpusBenchmarkIT.class);

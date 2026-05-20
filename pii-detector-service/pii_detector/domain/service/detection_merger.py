@@ -66,6 +66,15 @@ class DetectionMerger:
             total_in, after_dedup, len(resolved),
             total_in - after_dedup, after_dedup - len(resolved)
         )
+        # FINDING_TRACKER : 2 sous-etapes du DetectionMerger
+        self.logger.info(
+            "[FINDING_TRACKER] step=MERGER_AFTER_DEDUP in=%d out=%d dropped=%d",
+            total_in, after_dedup, total_in - after_dedup,
+        )
+        self.logger.info(
+            "[FINDING_TRACKER] step=MERGER_AFTER_OVERLAP in=%d out=%d dropped=%d",
+            after_dedup, len(resolved), after_dedup - len(resolved),
+        )
         return resolved
 
     def _merge_and_deduplicate_entities(

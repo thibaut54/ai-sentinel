@@ -83,6 +83,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# CPU threading configuration for GLiNER inference.
+# Bounds the BLAS thread count per torch op to avoid oversubscription when
+# MultiPass / ThreadPoolExecutor runs several forward passes concurrently.
+# Math: N_python_threads * K_blas_threads <= N_physical_cores.
+# Default K=4 matches 3-4 parallel MultiPass batches on a 16-core CPU.
+# Override at runtime via env var TORCH_NUM_THREADS (e.g. 2, 4, 8).
+try:
+    import torch as _torch_for_threads
+    _TORCH_NUM_THREADS = int(os.getenv('TORCH_NUM_THREADS', '4'))
+    _torch_for_threads.set_num_threads(_TORCH_NUM_THREADS)
+    logger.info(
+        "PyTorch CPU threading configured: torch.set_num_threads(%d) "
+        "(override via TORCH_NUM_THREADS env var)",
+        _TORCH_NUM_THREADS,
+    )
+    del _torch_for_threads
+except Exception as _torch_thread_err:
+    logger.warning("Failed to configure PyTorch threading: %s", _torch_thread_err)
+
 # Asynchronous PII logging infrastructure
 _pii_log_queue: Queue = Queue(maxsize=10_000)
 _pii_queue_handler = QueueHandler(_pii_log_queue)
@@ -487,12 +506,26 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             entities = self._execute_detection(
                 content, threshold, request_id, detector_flags, pii_type_configs, chunk_size
             )
-            
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_AFTER_DETECTION count=%d",
+                request_id, len(entities),
+            )
+
             # Apply PII type-specific filtering if configs were fetched
+            entities_before_type_filter = len(entities)
             if pii_type_configs:
                 entities = self._filter_entities_by_type_config(entities, pii_type_configs, request_id)
-            
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_AFTER_TYPE_CONFIG_FILTER in=%d out=%d dropped=%d",
+                request_id, entities_before_type_filter, len(entities),
+                entities_before_type_filter - len(entities),
+            )
+
             response = self._build_detection_response(content, entities, request_id)
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_FINAL_RESPONSE count=%d",
+                request_id, len(response.entities) if hasattr(response, "entities") else len(entities),
+            )
             self._log_request_completion(request_id, start_time)
             self._perform_periodic_gc()
             

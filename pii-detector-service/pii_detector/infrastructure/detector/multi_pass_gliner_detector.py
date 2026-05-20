@@ -40,6 +40,45 @@ from pii_detector.infrastructure.detector.conflict_resolver import (
 from pii_detector.infrastructure.detector.gliner_detector import GLiNERDetector
 
 
+def _iterate_gliner_configs(pii_type_configs: dict):
+    """Yield (pii_type, config) pairs for GLiNER configs only.
+
+    Supports both layouts produced by ``DatabaseConfigAdapter.fetch_pii_type_configs`` :
+
+    1. Multi-detector dict (no detector filter) : contains composite keys
+       ``GLINER:X``, ``REGEX:X``, ``PRESIDIO:X`` plus a primary key ``X`` that may
+       be overwritten across detectors. We iterate the ``GLINER:*`` namespace
+       directly so the GLiNER config never gets shadowed by a REGEX or PRESIDIO
+       row sharing the same ``pii_type`` (e.g. ``API_KEY``).
+
+    2. Filtered dict (``detector='GLINER'``) : composite keys are not added by the
+       adapter ; primary keys are guaranteed to be GLiNER configs by SQL filter.
+       We fall back to those.
+
+    Yields:
+        Tuple of (pii_type, config dict). Skips entries with non-GLiNER detector
+        explicitly set so callers don't need a redundant filter.
+    """
+    has_composite = any(
+        isinstance(k, str) and k.startswith('GLINER:') for k in pii_type_configs
+    )
+    if has_composite:
+        for key, config in pii_type_configs.items():
+            if isinstance(key, str) and key.startswith('GLINER:'):
+                yield key.split(':', 1)[1], config
+        return
+    for key, config in pii_type_configs.items():
+        if not isinstance(key, str) or ':' in key:
+            continue
+        # In filtered mode, configs may still expose a 'detector' field; keep
+        # only those that are GLINER (or unspecified, treated as GLiNER by the
+        # caller).
+        cfg_detector = config.get('detector')
+        if cfg_detector and cfg_detector != 'GLINER':
+            continue
+        yield key, config
+
+
 @dataclass(frozen=True, slots=True)
 class SpanKey:
     """Key for grouping entities by span position."""
@@ -173,11 +212,10 @@ class MultiPassGlinerDetector:
 
             # Build pii_type_to_category mapping (needed for ConflictResolver logic)
             # This respects the BUSINESS categories from DB
+            # Read from the GLiNER namespace explicitly to survive primary-key
+            # collisions when a pii_type is configured for several detectors.
             pii_type_to_category: Dict[str, str] = {}
-            for pii_type, config in pii_type_configs.items():
-                # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
-                if ':' in pii_type:
-                    continue
+            for pii_type, config in _iterate_gliner_configs(pii_type_configs):
                 if config.get('enabled', False):
                     category = config.get('category', 'UNKNOWN')
                     pii_type_to_category[pii_type] = category
@@ -214,20 +252,15 @@ class MultiPassGlinerDetector:
         Returns:
             Dictionary of {pass_name: {label: pii_type}}
         """
-        # Collect all enabled (label, pii_type) pairs
+        # Collect all enabled (label, pii_type) pairs from the GLiNER namespace.
+        # _iterate_gliner_configs handles both dict layouts (composite keys
+        # 'GLINER:X' when fetched without filter, primary keys when fetched with
+        # detector='GLINER') and isolates GLiNER configs from REGEX/PRESIDIO
+        # entries that may share the same pii_type (e.g. API_KEY).
         all_labels: List[Tuple[str, str]] = []
-        for pii_type, config in pii_type_configs.items():
-            # Skip composite keys (e.g. "GLINER:EMAIL") — not real PII type names
-            if ':' in pii_type:
-                continue
+        for pii_type, config in _iterate_gliner_configs(pii_type_configs):
             if not config.get('enabled', False):
                 continue
-
-            # Skip if not GLINER or ALL
-            config_detector = config.get('detector', 'ALL')
-            if config_detector != 'ALL' and config_detector != 'GLINER':
-                continue
-
             detector_label = config.get('detector_label')
             if detector_label:
                 all_labels.append((detector_label, pii_type))
@@ -406,15 +439,34 @@ class MultiPassGlinerDetector:
             all_entities = self._run_parallel_passes(
                 text, threshold, detection_id, categories_to_run, pass_categories
             )
+            self.logger.info(
+                "[FINDING_TRACKER] [%s] step=MULTIPASS_RAW count=%d",
+                detection_id, len(all_entities),
+            )
 
             # Step 2: Aggregate by span
             aggregated_spans = self._aggregate_by_span(all_entities)
+            self.logger.info(
+                "[FINDING_TRACKER] [%s] step=MULTIPASS_AFTER_AGGREGATE in=%d out=%d dropped=%d",
+                detection_id, len(all_entities), len(aggregated_spans),
+                len(all_entities) - len(aggregated_spans),
+            )
 
             # Step 3: Resolve conflicts
             resolved_entities = self._resolve_conflicts(aggregated_spans, detection_id)
+            self.logger.info(
+                "[FINDING_TRACKER] [%s] step=MULTIPASS_AFTER_CONFLICT in=%d out=%d dropped=%d",
+                detection_id, len(aggregated_spans), len(resolved_entities),
+                len(aggregated_spans) - len(resolved_entities),
+            )
 
             # Step 4: Handle overlapping spans (wider span wins)
             final_entities = self._resolve_overlapping_spans(resolved_entities)
+            self.logger.info(
+                "[FINDING_TRACKER] [%s] step=MULTIPASS_AFTER_OVERLAP in=%d out=%d dropped=%d",
+                detection_id, len(resolved_entities), len(final_entities),
+                len(resolved_entities) - len(final_entities),
+            )
 
             elapsed = time.time() - start_time
 

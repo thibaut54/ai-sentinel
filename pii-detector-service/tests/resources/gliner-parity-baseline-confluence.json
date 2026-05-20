@@ -1,0 +1,935 @@
+{
+  "_meta": {
+    "source": "NVIDIA hosted nvidia/gliner-pii (captured by user)",
+    "captured_on": "2026-05-09",
+    "model": "nvidia/gliner-pii",
+    "fixture_text_file": "../../../my-files/confluence-pii-test-document-docanno.txt",
+    "request_params": {
+      "threshold": 0.8,
+      "chunk_length": 384,
+      "overlap": 128,
+      "flat_ner": false
+    },
+    "labels": [
+      "national_id",
+      "ssn",
+      "certificate_license_number",
+      "customer_id",
+      "account_number",
+      "swift_bic",
+      "medical_record_number",
+      "health_plan_beneficiary_number",
+      "device_identifier",
+      "password",
+      "api_key",
+      "http_cookie",
+      "license_plate"
+    ]
+  },
+  "total_entities": 129,
+  "entities": [
+    {
+      "text": "85",
+      "label": "national_id",
+      "start": 894,
+      "end": 896,
+      "score": 0.961
+    },
+    {
+      "text": "1234567890123",
+      "label": "national_id",
+      "start": 974,
+      "end": 987,
+      "score": 1.0
+    },
+    {
+      "text": "GBR-123456789",
+      "label": "national_id",
+      "start": 1297,
+      "end": 1310,
+      "score": 1.0
+    },
+    {
+      "text": "CH-756-1234-5",
+      "label": "national_id",
+      "start": 1359,
+      "end": 1372,
+      "score": 1.0
+    },
+    {
+      "text": "WD-WMC1T0123456",
+      "label": "device_identifier",
+      "start": 1580,
+      "end": 1595,
+      "score": 0.999
+    },
+    {
+      "text": "1 85 07 75 123 456 78",
+      "label": "ssn",
+      "start": 2040,
+      "end": 2061,
+      "score": 1.0
+    },
+    {
+      "text": "2 90 12 13 456 789 12",
+      "label": "ssn",
+      "start": 2083,
+      "end": 2104,
+      "score": 0.986
+    },
+    {
+      "text": "078-05-1120",
+      "label": "ssn",
+      "start": 2183,
+      "end": 2194,
+      "score": 1.0
+    },
+    {
+      "text": "2 85 02 06 345 678 45",
+      "label": "ssn",
+      "start": 2347,
+      "end": 2368,
+      "score": 0.994
+    },
+    {
+      "text": "2 85 02 06 345 678 45",
+      "label": "health_plan_beneficiary_number",
+      "start": 2347,
+      "end": 2368,
+      "score": 0.983
+    },
+    {
+      "text": "2640117523456789",
+      "label": "national_id",
+      "start": 2885,
+      "end": 2901,
+      "score": 0.82
+    },
+    {
+      "text": "HB-JBA",
+      "label": "license_plate",
+      "start": 3633,
+      "end": 3639,
+      "score": 0.924
+    },
+    {
+      "text": "EP-D12345678",
+      "label": "certificate_license_number",
+      "start": 3926,
+      "end": 3938,
+      "score": 0.881
+    },
+    {
+      "text": "D123-4567-8901",
+      "label": "certificate_license_number",
+      "start": 4103,
+      "end": 4117,
+      "score": 0.814
+    },
+    {
+      "text": "SMITH-603121-AB9CD",
+      "label": "national_id",
+      "start": 4292,
+      "end": 4310,
+      "score": 0.903
+    },
+    {
+      "text": "S123-4567-8901-23",
+      "label": "certificate_license_number",
+      "start": 4387,
+      "end": 4404,
+      "score": 0.994
+    },
+    {
+      "text": "CH-1003 Lausanne",
+      "label": "license_plate",
+      "start": 4610,
+      "end": 4626,
+      "score": 0.862
+    },
+    {
+      "text": "cn=A12345678,ou=Users",
+      "label": "http_cookie",
+      "start": 4650,
+      "end": 4671,
+      "score": 0.947
+    },
+    {
+      "text": "vm-750123456789",
+      "label": "device_identifier",
+      "start": 4923,
+      "end": 4938,
+      "score": 0.988
+    },
+    {
+      "text": "mdupuis84",
+      "label": "password",
+      "start": 5384,
+      "end": 5393,
+      "score": 0.905
+    },
+    {
+      "text": "st tvuillaume",
+      "label": "password",
+      "start": 5632,
+      "end": 5645,
+      "score": 0.962
+    },
+    {
+      "text": "tvuillaume",
+      "label": "password",
+      "start": 5635,
+      "end": 5645,
+      "score": 0.87
+    },
+    {
+      "text": "ACC-2025-001234",
+      "label": "customer_id",
+      "start": 6681,
+      "end": 6696,
+      "score": 1.0
+    },
+    {
+      "text": "ACC-2025-001234",
+      "label": "account_number",
+      "start": 6681,
+      "end": 6696,
+      "score": 0.994
+    },
+    {
+      "text": "123456789012",
+      "label": "account_number",
+      "start": 6713,
+      "end": 6725,
+      "score": 1.0
+    },
+    {
+      "text": "USR-00045678",
+      "label": "customer_id",
+      "start": 6785,
+      "end": 6797,
+      "score": 0.806
+    },
+    {
+      "text": "acct_1MkPb2Ij6u5P7v3X",
+      "label": "account_number",
+      "start": 6878,
+      "end": 6899,
+      "score": 0.871
+    },
+    {
+      "text": "550e8400-e29b-41d4-a716-446655440000",
+      "label": "device_identifier",
+      "start": 6939,
+      "end": 6975,
+      "score": 0.827
+    },
+    {
+      "text": "987654321 (Salesforce CRM)",
+      "label": "account_number",
+      "start": 7064,
+      "end": 7090,
+      "score": 0.996
+    },
+    {
+      "text": "acct_1N2O3P4Q5R6S7T8U",
+      "label": "customer_id",
+      "start": 7121,
+      "end": 7142,
+      "score": 0.907
+    },
+    {
+      "text": "5425 2334 3010 9903",
+      "label": "account_number",
+      "start": 8024,
+      "end": 8043,
+      "score": 0.95
+    },
+    {
+      "text": "6011 0009 9013 9424",
+      "label": "account_number",
+      "start": 8240,
+      "end": 8259,
+      "score": 0.867
+    },
+    {
+      "text": "6759 6498 2643 8453",
+      "label": "account_number",
+      "start": 8451,
+      "end": 8470,
+      "score": 1.0
+    },
+    {
+      "text": "4532012345678901",
+      "label": "device_identifier",
+      "start": 8516,
+      "end": 8532,
+      "score": 0.957
+    },
+    {
+      "text": "49163388-12348901",
+      "label": "account_number",
+      "start": 8719,
+      "end": 8736,
+      "score": 1.0
+    },
+    {
+      "text": "00762011623852957 (BCV)",
+      "label": "account_number",
+      "start": 9140,
+      "end": 9163,
+      "score": 0.996
+    },
+    {
+      "text": "30006 00001 12345678901 89",
+      "label": "ssn",
+      "start": 9237,
+      "end": 9263,
+      "score": 0.853
+    },
+    {
+      "text": "608-900123-40",
+      "label": "account_number",
+      "start": 9392,
+      "end": 9405,
+      "score": 1.0
+    },
+    {
+      "text": "BCVLCH2LXXX",
+      "label": "swift_bic",
+      "start": 9809,
+      "end": 9820,
+      "score": 1.0
+    },
+    {
+      "text": "CH9300762011623852957",
+      "label": "health_plan_beneficiary_number",
+      "start": 10506,
+      "end": 10527,
+      "score": 0.914
+    },
+    {
+      "text": "LU28 0019 4006 4475 0000",
+      "label": "account_number",
+      "start": 10538,
+      "end": 10562,
+      "score": 0.922
+    },
+    {
+      "text": "BE68 5390 0754 7034",
+      "label": "account_number",
+      "start": 10590,
+      "end": 10609,
+      "score": 0.99
+    },
+    {
+      "text": "CHE-123.456.789 (IDE)",
+      "label": "national_id",
+      "start": 11089,
+      "end": 11110,
+      "score": 0.881
+    },
+    {
+      "text": "BCVLCH2LXXX",
+      "label": "swift_bic",
+      "start": 11272,
+      "end": 11283,
+      "score": 1.0
+    },
+    {
+      "text": "BBRUCHGT",
+      "label": "swift_bic",
+      "start": 11530,
+      "end": 11538,
+      "score": 0.976
+    },
+    {
+      "text": "BNPAFRPP (BNP Paribas)",
+      "label": "swift_bic",
+      "start": 11555,
+      "end": 11577,
+      "score": 0.977
+    },
+    {
+      "text": "SPRING_PROFILES_ACTIVE",
+      "label": "http_cookie",
+      "start": 11936,
+      "end": 11958,
+      "score": 0.992
+    },
+    {
+      "text": "ES-X1234567A (NIE fiscal)",
+      "label": "national_id",
+      "start": 12558,
+      "end": 12583,
+      "score": 0.996
+    },
+    {
+      "text": "a1b2c3d4e5f6",
+      "label": "device_identifier",
+      "start": 12862,
+      "end": 12874,
+      "score": 0.983
+    },
+    {
+      "text": "MRN-2025-09876",
+      "label": "medical_record_number",
+      "start": 14604,
+      "end": 14618,
+      "score": 1.0
+    },
+    {
+      "text": "pod-987654-xk2lm",
+      "label": "device_identifier",
+      "start": 14855,
+      "end": 14871,
+      "score": 0.905
+    },
+    {
+      "text": "DM-CH-789012",
+      "label": "medical_record_number",
+      "start": 15408,
+      "end": 15420,
+      "score": 0.999
+    },
+    {
+      "text": "REC-2025-045678",
+      "label": "medical_record_number",
+      "start": 15696,
+      "end": 15711,
+      "score": 1.0
+    },
+    {
+      "text": "80756012345678901234567890",
+      "label": "national_id",
+      "start": 16389,
+      "end": 16415,
+      "score": 0.855
+    },
+    {
+      "text": "756.1234.5678.97-ASSURA",
+      "label": "license_plate",
+      "start": 16587,
+      "end": 16610,
+      "score": 0.972
+    },
+    {
+      "text": "LMAL-2025-123456",
+      "label": "certificate_license_number",
+      "start": 16905,
+      "end": 16921,
+      "score": 0.976
+    },
+    {
+      "text": "MB-001B-6384-45E6",
+      "label": "certificate_license_number",
+      "start": 20974,
+      "end": 20991,
+      "score": 0.858
+    },
+    {
+      "text": "ACDE-4800-1122",
+      "label": "certificate_license_number",
+      "start": 21115,
+      "end": 21129,
+      "score": 1.0
+    },
+    {
+      "text": "550e8400-e29b",
+      "label": "device_identifier",
+      "start": 21363,
+      "end": 21376,
+      "score": 1.0
+    },
+    {
+      "text": "550e8400-e29b-41d4-a716-446655440000",
+      "label": "device_identifier",
+      "start": 21363,
+      "end": 21399,
+      "score": 0.999
+    },
+    {
+      "text": "ANDROID-a1b2c3d4e5f6g7h8",
+      "label": "device_identifier",
+      "start": 21536,
+      "end": 21560,
+      "score": 0.998
+    },
+    {
+      "text": "DNQJK2PXG5QT",
+      "label": "device_identifier",
+      "start": 21590,
+      "end": 21602,
+      "score": 1.0
+    },
+    {
+      "text": "025-0042",
+      "label": "national_id",
+      "start": 21760,
+      "end": 21768,
+      "score": 0.85
+    },
+    {
+      "text": "DESKTOP-AB1CD2E",
+      "label": "device_identifier",
+      "start": 21793,
+      "end": 21808,
+      "score": 1.0
+    },
+    {
+      "text": "8f14e45f-ceea-367f",
+      "label": "device_identifier",
+      "start": 22215,
+      "end": 22233,
+      "score": 0.893
+    },
+    {
+      "text": "DESKTOP-AB1CD2E",
+      "label": "device_identifier",
+      "start": 22327,
+      "end": 22342,
+      "score": 0.962
+    },
+    {
+      "text": "Xk9$mP2!vL7#nQ4",
+      "label": "password",
+      "start": 22445,
+      "end": 22460,
+      "score": 0.999
+    },
+    {
+      "text": "admin123",
+      "label": "password",
+      "start": 22475,
+      "end": 22483,
+      "score": 0.85
+    },
+    {
+      "text": "P@ssword!2024",
+      "label": "password",
+      "start": 22556,
+      "end": 22569,
+      "score": 0.995
+    },
+    {
+      "text": "Guest#2025!Secure",
+      "label": "password",
+      "start": 22738,
+      "end": 22755,
+      "score": 0.979
+    },
+    {
+      "text": "Summer2024!Pass",
+      "label": "password",
+      "start": 22839,
+      "end": 22854,
+      "score": 0.992
+    },
+    {
+      "text": "VpN$ecure!2025",
+      "label": "password",
+      "start": 22887,
+      "end": 22901,
+      "score": 0.996
+    },
+    {
+      "text": "QUI IN VA PR",
+      "label": "password",
+      "start": 23161,
+      "end": 23173,
+      "score": 0.989
+    },
+    {
+      "text": "AIzaSyD-abc123DEF456ghi789JKL012mno345p",
+      "label": "api_key",
+      "start": 23593,
+      "end": 23632,
+      "score": 1.0
+    },
+    {
+      "text": "pk.eyJ1IjoibXl1c2VyIn0.abc123def",
+      "label": "api_key",
+      "start": 23796,
+      "end": 23828,
+      "score": 0.863
+    },
+    {
+      "text": "sk-abc123def456ghi789jklmnopqrstuvwxyz12345678",
+      "label": "api_key",
+      "start": 23914,
+      "end": 23960,
+      "score": 0.997
+    },
+    {
+      "text": "DD-API-KEY-abcdef1234567890abcdef12345678",
+      "label": "api_key",
+      "start": 23983,
+      "end": 24024,
+      "score": 0.976
+    },
+    {
+      "text": "X-API-KEY: sentinel-2025-abcdef123456",
+      "label": "api_key",
+      "start": 24111,
+      "end": 24148,
+      "score": 0.904
+    },
+    {
+      "text": "X-API-Key",
+      "label": "password",
+      "start": 24521,
+      "end": 24530,
+      "score": 0.964
+    },
+    {
+      "text": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIx",
+      "label": "api_key",
+      "start": 24887,
+      "end": 24936,
+      "score": 1.0
+    },
+    {
+      "text": "Beare",
+      "label": "password",
+      "start": 24955,
+      "end": 24960,
+      "score": 0.882
+    },
+    {
+      "text": "ya29.a0AfB_byC1D2E3F4G5H6I7J8K9L0",
+      "label": "password",
+      "start": 25023,
+      "end": 25056,
+      "score": 0.932
+    },
+    {
+      "text": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9",
+      "label": "api_key",
+      "start": 25215,
+      "end": 25251,
+      "score": 0.825
+    },
+    {
+      "text": "pat-na1-abcdef12-3456-7890-abcd-ef1234567890",
+      "label": "api_key",
+      "start": 25347,
+      "end": 25391,
+      "score": 0.915
+    },
+    {
+      "text": "JSESSIONID=ABC123DEF456GHI789JKL012",
+      "label": "http_cookie",
+      "start": 26184,
+      "end": 26219,
+      "score": 0.999
+    },
+    {
+      "text": "sid=a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "label": "http_cookie",
+      "start": 26294,
+      "end": 26334,
+      "score": 0.998
+    },
+    {
+      "text": "ASP.NET_SessionId=xyz789abc123",
+      "label": "http_cookie",
+      "start": 26481,
+      "end": 26511,
+      "score": 0.928
+    },
+    {
+      "text": "7f8b9c6d4e3f2a1b",
+      "label": "http_cookie",
+      "start": 26666,
+      "end": 26682,
+      "score": 0.98
+    },
+    {
+      "text": "REL-2025-3456",
+      "label": "national_id",
+      "start": 28417,
+      "end": 28430,
+      "score": 0.878
+    },
+    {
+      "text": "LIC-PRO-2025-1234",
+      "label": "certificate_license_number",
+      "start": 28680,
+      "end": 28697,
+      "score": 0.99
+    },
+    {
+      "text": "EXP-CH-2025-5678",
+      "label": "certificate_license_number",
+      "start": 28734,
+      "end": 28750,
+      "score": 0.973
+    },
+    {
+      "text": "MED-CH-2025-3456",
+      "label": "medical_record_number",
+      "start": 28835,
+      "end": 28851,
+      "score": 0.877
+    },
+    {
+      "text": "PC-VD-2025-5678",
+      "label": "certificate_license_number",
+      "start": 28984,
+      "end": 28999,
+      "score": 0.971
+    },
+    {
+      "text": "ZH 789012",
+      "label": "national_id",
+      "start": 31246,
+      "end": 31255,
+      "score": 0.989
+    },
+    {
+      "text": "GE 345678",
+      "label": "license_plate",
+      "start": 31299,
+      "end": 31308,
+      "score": 1.0
+    },
+    {
+      "text": "NE 901234",
+      "label": "license_plate",
+      "start": 31612,
+      "end": 31621,
+      "score": 0.921
+    },
+    {
+      "text": "BE-901234",
+      "label": "device_identifier",
+      "start": 31827,
+      "end": 31836,
+      "score": 0.931
+    },
+    {
+      "text": "VD 456 789",
+      "label": "license_plate",
+      "start": 32236,
+      "end": 32246,
+      "score": 0.998
+    },
+    {
+      "text": "ZH 12 345",
+      "label": "license_plate",
+      "start": 32266,
+      "end": 32275,
+      "score": 1.0
+    },
+    {
+      "text": "GE 678 901",
+      "label": "license_plate",
+      "start": 32306,
+      "end": 32316,
+      "score": 0.989
+    },
+    {
+      "text": "AG 890 123",
+      "label": "license_plate",
+      "start": 32382,
+      "end": 32392,
+      "score": 0.803
+    },
+    {
+      "text": "1-ABC-234 (format belge)",
+      "label": "license_plate",
+      "start": 32509,
+      "end": 32533,
+      "score": 0.957
+    },
+    {
+      "text": "TI 012 345",
+      "label": "license_plate",
+      "start": 32552,
+      "end": 32562,
+      "score": 0.981
+    },
+    {
+      "text": "VS 678 901",
+      "label": "license_plate",
+      "start": 32591,
+      "end": 32601,
+      "score": 0.908
+    },
+    {
+      "text": "VS-678-901",
+      "label": "license_plate",
+      "start": 33054,
+      "end": 33064,
+      "score": 0.969
+    },
+    {
+      "text": "1HGBH41JXMN123456",
+      "label": "national_id",
+      "start": 33299,
+      "end": 33316,
+      "score": 0.914
+    },
+    {
+      "text": "SVC3A5G59DNP",
+      "label": "device_identifier",
+      "start": 33674,
+      "end": 33686,
+      "score": 0.994
+    },
+    {
+      "text": "3VWDX7AJ5DM",
+      "label": "device_identifier",
+      "start": 34011,
+      "end": 34022,
+      "score": 0.864
+    },
+    {
+      "text": "WAUZZZ4G5BN",
+      "label": "certificate_license_number",
+      "start": 34059,
+      "end": 34070,
+      "score": 0.993
+    },
+    {
+      "text": "AUTO-CH-2025-3456",
+      "label": "license_plate",
+      "start": 34491,
+      "end": 34508,
+      "score": 0.996
+    },
+    {
+      "text": "BAT-VD-2025-2345",
+      "label": "national_id",
+      "start": 34652,
+      "end": 34668,
+      "score": 0.891
+    },
+    {
+      "text": "NP-2025-001234",
+      "label": "certificate_license_number",
+      "start": 34829,
+      "end": 34843,
+      "score": 0.948
+    },
+    {
+      "text": "12 caracteres minimum",
+      "label": "password",
+      "start": 34990,
+      "end": 35011,
+      "score": 0.928
+    },
+    {
+      "text": "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy",
+      "label": "account_number",
+      "start": 35890,
+      "end": 35924,
+      "score": 0.994
+    },
+    {
+      "text": "bc1qw",
+      "label": "password",
+      "start": 35963,
+      "end": 35968,
+      "score": 0.997
+    },
+    {
+      "text": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT",
+      "label": "account_number",
+      "start": 36233,
+      "end": 36267,
+      "score": 0.908
+    },
+    {
+      "text": "LaMT348PWRnrq",
+      "label": "certificate_license_number",
+      "start": 36793,
+      "end": 36806,
+      "score": 0.999
+    },
+    {
+      "text": "cale du Dr. Martin",
+      "label": "license_plate",
+      "start": 37120,
+      "end": 37138,
+      "score": 0.929
+    },
+    {
+      "text": "MED-CH-2025-1234",
+      "label": "certificate_license_number",
+      "start": 37143,
+      "end": 37159,
+      "score": 0.999
+    },
+    {
+      "text": "RPS-2025-3456",
+      "label": "certificate_license_number",
+      "start": 37405,
+      "end": 37418,
+      "score": 0.999
+    },
+    {
+      "text": "RM-2025-2345",
+      "label": "medical_record_number",
+      "start": 37520,
+      "end": 37532,
+      "score": 0.983
+    },
+    {
+      "text": "MedReg-123456",
+      "label": "certificate_license_number",
+      "start": 37664,
+      "end": 37677,
+      "score": 0.999
+    },
+    {
+      "text": "SN-MED-2025",
+      "label": "certificate_license_number",
+      "start": 38039,
+      "end": 38050,
+      "score": 0.99
+    },
+    {
+      "text": "85.07.15-123.45",
+      "label": "national_id",
+      "start": 38432,
+      "end": 38447,
+      "score": 0.987
+    },
+    {
+      "text": "900312-34567",
+      "label": "national_id",
+      "start": 38487,
+      "end": 38499,
+      "score": 0.974
+    },
+    {
+      "text": "NR-2025-567890",
+      "label": "national_id",
+      "start": 38645,
+      "end": 38659,
+      "score": 0.863
+    },
+    {
+      "text": "756.1234.5678.97",
+      "label": "national_id",
+      "start": 38738,
+      "end": 38754,
+      "score": 1.0
+    },
+    {
+      "text": "NATI",
+      "label": "national_id",
+      "start": 42108,
+      "end": 42112,
+      "score": 0.963
+    },
+    {
+      "text": "CCOUNT_NUMBER",
+      "label": "account_number",
+      "start": 42240,
+      "end": 42253,
+      "score": 0.912
+    }
+  ]
+}
