@@ -120,6 +120,25 @@
                                 [ariaLabel]="'settings.detectors.regex.label' | transloco">
                             </p-toggleswitch>
                         </div>
+
+                        <!-- OpenMed -->
+                        <div class="detector-card openmed"
+                             [class.enabled]="configForm.get('openmedEnabled')?.value"
+                             [class.disabled]="!configForm.get('openmedEnabled')?.value">
+                            <div class="detector-avatar openmed"
+                                 [class.disabled-avatar]="!configForm.get('openmedEnabled')?.value">OM</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('openmedEnabled')?.value">
+                                    {{ 'settings.detectors.openmed.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.openmed.description' | transloco }}</div>
+                            </div>
+                            <p-toggleswitch
+                                formControlName="openmedEnabled"
+                                [ariaLabel]="'settings.detectors.openmed.label' | transloco">
+                            </p-toggleswitch>
+                        </div>
                     </div>
 
                     <!-- Validation error: at least one detector -->
@@ -268,7 +287,8 @@
                                 <span class="detector-badge"
                                       [class.gliner]="detectorGroup.detector === 'GLINER'"
                                       [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
-                                      [class.regex]="detectorGroup.detector === 'REGEX'">
+                                      [class.regex]="detectorGroup.detector === 'REGEX'"
+                                      [class.openmed]="detectorGroup.detector === 'OPENMED'">
                                     {{ detectorGroup.detector }}
                                 </span>
                                 @if (detectorGroup.detector === 'GLINER') {

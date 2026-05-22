@@ -275,6 +275,10 @@
       "regex": {
         "label": "Regex Detector",
         "description": "Pattern-based detection using regular expressions for structured data"
+      },
+      "openmed": {
+        "label": "OpenMed (multilingual)",
+        "description": "Multilingual ML detector (FR/EN/DE/IT/ES) covering financial, crypto, vehicle and IT credential patterns."
       }
     },
     "threshold": {
@@ -305,7 +309,8 @@
       "toggle": "Toggle {{type}}",
       "detectors": {
         "gliner": "GLiNER Detector",
-        "presidio": "Presidio Detector"
+        "presidio": "Presidio Detector",
+        "openmed": "OpenMed"
       },
       "categoryNames": {
         "CONTACT": "Contact Information",
@@ -480,7 +485,23 @@
         "MEDICAL_RECORD_NUMBER": "Medical Record Number",
         "HEALTH_INSURANCE_NUMBER": "Health Insurance Number",
         "DIAGNOSIS": "Diagnosis",
-        "MEDICATION": "Medication"
+        "MEDICATION": "Medication",
+        "ACCOUNT_NAME": "Account name",
+        "BANK_ACCOUNT": "Bank account",
+        "CREDIT_CARD_ISSUER": "Card issuer",
+        "PIN": "PIN code",
+        "MASKED_NUMBER": "Masked number",
+        "AMOUNT": "Amount",
+        "CURRENCY": "Currency",
+        "CURRENCY_CODE": "Currency code",
+        "CURRENCY_NAME": "Currency name",
+        "CURRENCY_SYMBOL": "Currency symbol",
+        "BITCOIN_ADDRESS": "Bitcoin address",
+        "ETHEREUM_ADDRESS": "Ethereum address",
+        "LITECOIN_ADDRESS": "Litecoin address",
+        "VEHICLE_VIN": "Vehicle VIN",
+        "IMEI": "IMEI",
+        "EYE_COLOR": "Eye color"
       },
       "typeDescriptions": {
         "EMAIL": "Email addresses in standard format (e.g., user@domain.com)",

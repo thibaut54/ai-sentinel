@@ -1,4 +1,4 @@
-export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX';
+export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX' | 'OPENMED';
 
 /**
  * PII Detection Configuration model matching backend DTO.
@@ -7,6 +7,7 @@ export interface PiiDetectionConfig {
   glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  openmedEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
   updatedAt?: string;
@@ -20,6 +21,7 @@ export interface UpdatePiiDetectionConfigRequest {
   glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  openmedEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
 }
@@ -77,7 +79,7 @@ export interface BulkUpdatePiiTypeConfigRequest {
  * Grouped PII types by detector and category for UI display.
  */
 export interface GroupedPiiTypes {
-  detector: 'GLINER' | 'PRESIDIO';
+  detector: 'GLINER' | 'PRESIDIO' | 'OPENMED';
   categories: CategoryGroup[];
 }
 

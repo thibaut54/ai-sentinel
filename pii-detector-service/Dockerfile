@@ -26,7 +26,8 @@ COPY pii-detector-service/config ./config
 COPY proto /proto
 
 RUN pip install --upgrade pip \
-    && pip install -e . --extra-index-url https://download.pytorch.org/whl/cpu \
+    && pip install --pre -e . --extra-index-url https://download.pytorch.org/whl/cpu \
+    && pip install --pre --upgrade --no-deps "transformers>=5.9.0,<6.0.0" \
     && python -m pii_detector.proto.generate_pb
 
 FROM python:3.11-slim AS runtime

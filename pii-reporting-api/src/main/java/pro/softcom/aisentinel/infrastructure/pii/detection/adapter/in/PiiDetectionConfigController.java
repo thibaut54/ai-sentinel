@@ -69,17 +69,18 @@ public class PiiDetectionConfigController {
             @Valid @RequestBody UpdatePiiDetectionConfigRequestDto request) {
         
         log.info("PUT /api/v1/pii-detection/config - Updating configuration: gliner={}, " +
-                "presidio={}, regex={}, threshold={}", 
-                request.glinerEnabled(), request.presidioEnabled(), 
-                request.regexEnabled(), request.defaultThreshold());
-        
+                "presidio={}, regex={}, openmed={}, threshold={}",
+                request.glinerEnabled(), request.presidioEnabled(),
+                request.regexEnabled(), request.openmedEnabled(), request.defaultThreshold());
+
         try {
             String updatedBy = ADMIN_USERNAME;
-            
+
             UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
                 request.glinerEnabled(),
                 request.presidioEnabled(),
                 request.regexEnabled(),
+                request.openmedEnabled(),
                 request.defaultThreshold(),
                 request.nbOfLabelByPass(),
                 updatedBy
@@ -109,6 +110,7 @@ public class PiiDetectionConfigController {
             config.glinerEnabled(),
             config.presidioEnabled(),
             config.regexEnabled(),
+            config.openmedEnabled(),
             config.defaultThreshold(),
             config.nbOfLabelByPass(),
             config.updatedAt(),

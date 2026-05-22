@@ -9,30 +9,35 @@ import java.math.BigDecimal;
 
 /**
  * DTO for updating PII detection configuration via REST API.
- * 
+ *
  * <p>Business purpose: Allows clients to modify detector enable/disable states
  * and confidence thresholds used by the PII detection service.
- * 
+ *
  * <p>Validation: Ensures at least one detector is enabled and threshold is within valid range.
- * 
+ *
  * @param glinerEnabled    Whether GLiNER detector should be enabled
  * @param presidioEnabled  Whether Presidio detector should be enabled
  * @param regexEnabled     Whether custom regex detector should be enabled
+ * @param openmedEnabled   Whether OpenMed detector should be enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("glinerEnabled")
     @NotNull(message = "glinerEnabled is required")
     Boolean glinerEnabled,
-    
+
     @JsonProperty("presidioEnabled")
     @NotNull(message = "presidioEnabled is required")
     Boolean presidioEnabled,
-    
+
     @JsonProperty("regexEnabled")
     @NotNull(message = "regexEnabled is required")
     Boolean regexEnabled,
-    
+
+    @JsonProperty("openmedEnabled")
+    @NotNull(message = "openmedEnabled is required")
+    Boolean openmedEnabled,
+
     @JsonProperty("defaultThreshold")
     @NotNull(message = "defaultThreshold is required")
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
@@ -46,10 +51,10 @@ public record UpdatePiiDetectionConfigRequestDto(
 ) {
     /**
      * Validates business rules for the configuration request.
-     * 
+     *
      * <p>Business rule: At least one detector must be enabled to ensure
      * the system can perform PII detection.
-     * 
+     *
      * @throws IllegalArgumentException if no detectors are enabled
      */
     public UpdatePiiDetectionConfigRequestDto {
@@ -62,8 +67,10 @@ public record UpdatePiiDetectionConfigRequestDto(
         return glinerEnabled != null
             && presidioEnabled != null
             && regexEnabled != null
+            && openmedEnabled != null
             && !glinerEnabled
             && !presidioEnabled
-            && !regexEnabled;
+            && !regexEnabled
+            && !openmedEnabled;
     }
 }

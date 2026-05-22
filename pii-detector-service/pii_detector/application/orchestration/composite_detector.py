@@ -57,20 +57,24 @@ class CompositePIIDetector:
         ml_detector: Optional[PIIDetectorProtocol] = None,
         regex_detector: Optional[RegexDetector] = None,
         presidio_detector: Optional[PresidioDetector] = None,
+        openmed_detector: Optional[PIIDetectorProtocol] = None,
         merger: Optional[DetectionMerger] = None,
         enable_regex: bool = True,
-        enable_presidio: bool = True
+        enable_presidio: bool = True,
+        enable_openmed: bool = False
     ):
         """
         Initialize composite detector.
-        
+
         Args:
             ml_detector: ML-based detector (MultiModelPIIDetector or single detector). Can be None if only Presidio/Regex is used.
             regex_detector: Regex-based detector
             presidio_detector: Presidio-based detector
+            openmed_detector: OpenMed Privacy Filter Multilingual detector (optional, opt-in)
             merger: Detection merger for result fusion
             enable_regex: Enable regex detection (default: True)
             enable_presidio: Enable Presidio detection (default: True)
+            enable_openmed: Enable OpenMed detection (default: False, opt-in per DB flag)
         """
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         
@@ -102,14 +106,19 @@ class CompositePIIDetector:
                 self.logger.warning(f"Failed to initialize PresidioDetector: {e}")
                 self.enable_presidio = False
         
+        # Initialize OpenMed detector slot (opt-in)
+        self.openmed_detector = openmed_detector
+        self.enable_openmed = enable_openmed and self.openmed_detector is not None
+
         # Initialize merger
         self._merger = merger or DetectionMerger(log_provenance=True)
-        
+
         self.logger.info(
             "CompositePIIDetector initialized: "
             f"ML={'enabled' if ml_detector else 'disabled'}, "
             f"Regex={'enabled' if self.enable_regex else 'disabled'}, "
-            f"Presidio={'enabled' if self.enable_presidio else 'disabled'}"
+            f"Presidio={'enabled' if self.enable_presidio else 'disabled'}, "
+            f"OpenMed={'enabled' if self.enable_openmed else 'disabled'}"
         )
     
     @property
@@ -126,14 +135,20 @@ class CompositePIIDetector:
                 self.ml_detector.download_model()
             except Exception as e:
                 self.logger.warning(f"ML detector download failed: {e}")
-        
+
         if self.regex_detector:
             self.regex_detector.download_model()  # No-op for regex
-        
+
         if self.presidio_detector:
             # Presidio doesn't need download
             pass
-    
+
+        if self.openmed_detector and self.enable_openmed:
+            try:
+                self.openmed_detector.download_model()
+            except Exception as e:
+                self.logger.warning(f"OpenMed detector download failed: {e}")
+
     def load_model(self) -> None:
         """Load models for all underlying detectors."""
         if self.ml_detector:
@@ -142,21 +157,31 @@ class CompositePIIDetector:
             except Exception as e:
                 self.logger.error(f"ML detector load failed: {e}")
                 raise
-        
+
         if self.regex_detector:
             self.regex_detector.load_model()  # No-op for regex
-        
+
         if self.presidio_detector:
             # Presidio models are loaded on first use
             pass
+
+        if self.openmed_detector and self.enable_openmed:
+            try:
+                self.openmed_detector.load_model()
+            except Exception as e:
+                # Do not block other detectors if OpenMed fails to load
+                # (e.g. transformers < 5 installed). It will be skipped at request time.
+                self.logger.error(f"OpenMed detector load failed: {e}")
+                self.enable_openmed = False
     
     def detect_pii(
-        self, 
-        text: str, 
+        self,
+        text: str,
         threshold: Optional[float] = None,
         enable_ml: Optional[bool] = None,
         enable_regex: Optional[bool] = None,
         enable_presidio: Optional[bool] = None,
+        enable_openmed: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None
     ) -> List[PIIEntity]:
@@ -188,13 +213,14 @@ class CompositePIIDetector:
         if not text:
             return []
 
-        use_ml, use_regex, use_presidio = self._resolve_detector_flags(
-            enable_ml, enable_regex, enable_presidio
+        use_ml, use_regex, use_presidio, use_openmed = self._resolve_detector_flags(
+            enable_ml, enable_regex, enable_presidio, enable_openmed
         )
-        self._log_active_detectors(use_ml, use_regex, use_presidio)
+        self._log_active_detectors(use_ml, use_regex, use_presidio, use_openmed)
 
         results_per_detector = self._collect_detection_results(
-            text, threshold, use_ml, use_regex, use_presidio, pii_type_configs, chunk_size
+            text, threshold, use_ml, use_regex, use_presidio, use_openmed,
+            pii_type_configs, chunk_size
         )
 
         if not results_per_detector:
@@ -210,18 +236,29 @@ class CompositePIIDetector:
         enable_ml: Optional[bool],
         enable_regex: Optional[bool],
         enable_presidio: Optional[bool],
-    ) -> Tuple[bool, bool, bool]:
+        enable_openmed: Optional[bool] = None,
+    ) -> Tuple[bool, bool, bool, bool]:
         """Resolve runtime overrides into concrete detector activation flags."""
         use_ml = enable_ml if enable_ml is not None else (self.ml_detector is not None)
         use_regex = enable_regex if enable_regex is not None else self.enable_regex
         use_presidio = enable_presidio if enable_presidio is not None else self.enable_presidio
-        return use_ml, use_regex, use_presidio
+        use_openmed = enable_openmed if enable_openmed is not None else self.enable_openmed
+        return use_ml, use_regex, use_presidio, use_openmed
 
-    def _log_active_detectors(self, use_ml: bool, use_regex: bool, use_presidio: bool) -> None:
+    def _log_active_detectors(
+        self, use_ml: bool, use_regex: bool, use_presidio: bool, use_openmed: bool = False
+    ) -> None:
         """Log which detectors are active for debugging."""
         if not self.logger.isEnabledFor(logging.DEBUG):
             return
-        names = [n for flag, n in [(use_ml, "ML"), (use_regex, "Regex"), (use_presidio, "Presidio")] if flag]
+        names = [
+            n for flag, n in [
+                (use_ml, "ML"),
+                (use_regex, "Regex"),
+                (use_presidio, "Presidio"),
+                (use_openmed, "OpenMed"),
+            ] if flag
+        ]
         self.logger.debug("Detecting PII with active detectors: %s", ', '.join(names) or 'NONE')
 
     def _collect_detection_results(
@@ -231,6 +268,7 @@ class CompositePIIDetector:
         use_ml: bool,
         use_regex: bool,
         use_presidio: bool,
+        use_openmed: bool,
         pii_type_configs: Optional[dict],
         chunk_size: Optional[int],
     ) -> List[Tuple[PIIDetectorProtocol, List[PIIEntity]]]:
@@ -242,6 +280,8 @@ class CompositePIIDetector:
             results.append((self.regex_detector, self._run_regex_detection(text, threshold)))
         if use_presidio and self.presidio_detector:
             results.append((self.presidio_detector, self._run_presidio_detection(text, threshold)))
+        if use_openmed and self.openmed_detector:
+            results.append((self.openmed_detector, self._run_openmed_detection(text, threshold, pii_type_configs)))
         return results
 
     def _log_detection_summary(
@@ -262,6 +302,8 @@ class CompositePIIDetector:
             return "Regex"
         if detector is self.presidio_detector:
             return "Presidio"
+        if detector is self.openmed_detector:
+            return "OpenMed"
         return "Unknown"
 
     def _log_per_detector_counts(
@@ -269,14 +311,20 @@ class CompositePIIDetector:
         results_per_detector: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]],
         merged_entities: List[PIIEntity],
     ) -> None:
-        counts = {self.ml_detector: 0, self.regex_detector: 0, self.presidio_detector: 0}
+        counts = {
+            self.ml_detector: 0,
+            self.regex_detector: 0,
+            self.presidio_detector: 0,
+            self.openmed_detector: 0,
+        }
         for detector, entities in results_per_detector:
             if detector in counts:
                 counts[detector] = len(entities)
         self.logger.debug(
             f"Composite detection complete: {len(merged_entities)} entities "
             f"(ML: {counts[self.ml_detector]}, Regex: {counts[self.regex_detector]}, "
-            f"Presidio: {counts[self.presidio_detector]})"
+            f"Presidio: {counts[self.presidio_detector]}, "
+            f"OpenMed: {counts[self.openmed_detector]})"
         )
 
     def _log_parity_debug(
@@ -412,6 +460,40 @@ class CompositePIIDetector:
                 "[PARITY_DEBUG] REGEX_DETECTION_FAILED text_len=%d threshold=%s: %s",
                 len(text) if text else 0, threshold, e,
                 exc_info=True
+            )
+            return []
+
+    def _run_openmed_detection(
+        self,
+        text: str,
+        threshold: Optional[float],
+        pii_type_configs: Optional[dict] = None,
+    ) -> List[PIIEntity]:
+        """
+        Run OpenMed detection with error handling.
+
+        Args:
+            text: Text to analyze
+            threshold: Optional confidence threshold
+            pii_type_configs: Optional fresh PII type configs from database
+
+        Returns:
+            List of detected entities (empty if detection fails or OpenMed disabled)
+        """
+        try:
+            import inspect
+            sig = inspect.signature(self.openmed_detector.detect_pii)
+            kwargs: dict = {}
+            if 'pii_type_configs' in sig.parameters:
+                kwargs['pii_type_configs'] = pii_type_configs
+            return self.openmed_detector.detect_pii(text, threshold, **kwargs)
+        except Exception as e:
+            # Do not fail the whole request if OpenMed crashes (e.g. transformers
+            # version mismatch on a partially-upgraded environment).
+            self.logger.error(
+                "OPENMED_DETECTION_FAILED text_len=%d threshold=%s: %s",
+                len(text) if text else 0, threshold, e,
+                exc_info=True,
             )
             return []
 
@@ -582,36 +664,58 @@ def _create_presidio_detector_if_enabled(presidio_enabled: bool) -> Optional[Pre
         return None
 
 
+def _create_openmed_detector_if_available() -> Optional[PIIDetectorProtocol]:
+    """
+    Create an ``OpenMedDetector`` instance. The detector is always instantiated
+    so it can be toggled on at runtime via the ``openmed_enabled`` DB flag,
+    but the HF model is downloaded/loaded lazily — only when the composite
+    actually activates it via ``enable_openmed``.
+    """
+    try:
+        from pii_detector.infrastructure.detector.openmed_detector import OpenMedDetector
+
+        detector = OpenMedDetector()
+        logger.debug("Created OpenMedDetector instance (lazy model load)")
+        return detector
+    except Exception as exc:
+        logger.warning(f"Failed to create OpenMedDetector: {exc}")
+        return None
+
+
 def create_composite_detector(
     ml_detector: Optional[PIIDetectorProtocol] = None
 ) -> CompositePIIDetector:
     """
     Factory function to create composite detector with default configuration.
-    
+
     Args:
         ml_detector: Optional ML detector to use (creates default if None)
-        
+
     Returns:
         Configured CompositePIIDetector instance
     """
     # Load detection configuration
     regex_enabled, presidio_enabled = _load_detection_config()
-    
+
     # Create detectors based on configuration
     regex_detector = _create_regex_detector_if_enabled(regex_enabled)
     presidio_detector = _create_presidio_detector_if_enabled(presidio_enabled)
-    
+    openmed_detector = _create_openmed_detector_if_available()
+
     # Create merger with provenance logging
     merger = DetectionMerger(log_provenance=True)
-    
+
     # Create composite detector
     composite = CompositePIIDetector(
         ml_detector=ml_detector,
         regex_detector=regex_detector,
         presidio_detector=presidio_detector,
+        openmed_detector=openmed_detector,
         merger=merger,
         enable_regex=regex_enabled and regex_detector is not None,
-        enable_presidio=presidio_enabled and presidio_detector is not None
+        enable_presidio=presidio_enabled and presidio_detector is not None,
+        # OpenMed default: disabled at startup, activated at request time via DB flag
+        enable_openmed=False,
     )
-    
+
     return composite

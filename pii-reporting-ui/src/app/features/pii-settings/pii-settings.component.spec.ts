@@ -11,6 +11,7 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   glinerEnabled: true,
   presidioEnabled: true,
   regexEnabled: true,
+  openmedEnabled: false,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
@@ -37,6 +38,7 @@ const FR_TRANSLATIONS = {
       gliner: { label: 'GLiNER', description: 'desc' },
       presidio: { label: 'Presidio', description: 'desc' },
       regex: { label: 'Regex', description: 'desc' },
+      openmed: { label: 'OpenMed', description: 'desc' },
     },
     messages: { loadError: 'Erreur', saveAllSuccess: 'Sauvegardé', saveAllError: 'Erreur' },
     confluence: { messages: { loadError: 'Erreur', saveSuccess: 'OK', saveError: 'Erreur' } },
@@ -143,5 +145,38 @@ describe('PiiSettingsComponent', () => {
 
     // saving should be false after response (flush is synchronous)
     expect(component.saving()).toBe(false);
+  });
+
+  it('Should_CreateOpenmedEnabledControl_When_FormInitialized', () => {
+    // Then - openmedEnabled control exists and defaults to false
+    const openmedControl = component.configForm.get('openmedEnabled');
+    expect(openmedControl).toBeTruthy();
+    expect(openmedControl?.value).toBe(false);
+  });
+
+  it('Should_PassAtLeastOneDetectorValidation_When_OnlyOpenmedEnabled', () => {
+    // Given - All other detectors disabled, only openmed enabled
+    component.configForm.patchValue({
+      glinerEnabled: false,
+      presidioEnabled: false,
+      regexEnabled: false,
+      openmedEnabled: true,
+    });
+
+    // Then - Form must not carry atLeastOneDetector error
+    expect(component.configForm.hasError('atLeastOneDetector')).toBe(false);
+  });
+
+  it('Should_FailAtLeastOneDetectorValidation_When_AllDetectorsDisabled', () => {
+    // Given - All detectors disabled (including openmed)
+    component.configForm.patchValue({
+      glinerEnabled: false,
+      presidioEnabled: false,
+      regexEnabled: false,
+      openmedEnabled: false,
+    });
+
+    // Then - Form must carry atLeastOneDetector error
+    expect(component.configForm.hasError('atLeastOneDetector')).toBe(true);
   });
 });

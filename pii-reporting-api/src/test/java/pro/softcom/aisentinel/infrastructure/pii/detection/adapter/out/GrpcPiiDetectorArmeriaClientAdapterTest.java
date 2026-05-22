@@ -270,6 +270,61 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
     }
 
     @Test
+    @DisplayName("Should_MapProtoDetectorSourceToDomain_When_EntitiesCarrySource")
+    void Should_MapProtoDetectorSourceToDomain_When_EntitiesCarrySource() {
+        // Given - one entity per known proto DetectorSource (proto currently exposes GLINER/PRESIDIO/REGEX)
+        PiiDetection.PIIEntity glinerEntity = PiiDetection.PIIEntity.newBuilder()
+                .setType("EMAIL").setText("a@b.com").setStart(0).setEnd(7).setScore(0.9f)
+                .setSource(PiiDetection.DetectorSource.GLINER).build();
+        PiiDetection.PIIEntity presidioEntity = PiiDetection.PIIEntity.newBuilder()
+                .setType("PHONE").setText("0612345678").setStart(10).setEnd(20).setScore(0.9f)
+                .setSource(PiiDetection.DetectorSource.PRESIDIO).build();
+        PiiDetection.PIIEntity regexEntity = PiiDetection.PIIEntity.newBuilder()
+                .setType("IP_ADDRESS").setText("127.0.0.1").setStart(30).setEnd(39).setScore(0.9f)
+                .setSource(PiiDetection.DetectorSource.REGEX).build();
+        PiiDetection.PIIEntity unknownEntity = PiiDetection.PIIEntity.newBuilder()
+                .setType("MYSTERY").setText("?").setStart(40).setEnd(41).setScore(0.1f)
+                .setSource(PiiDetection.DetectorSource.UNKNOWN_SOURCE).build();
+
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder()
+                .addEntities(glinerEntity)
+                .addEntities(presidioEntity)
+                .addEntities(regexEntity)
+                .addEntities(unknownEntity)
+                .build();
+
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+
+        // When
+        ContentPiiDetection result = service.analyzePageContent("p", "t", "s", "payload");
+
+        // Then - sources are mapped to the domain enum
+        assertSoftly(softly -> {
+            softly.assertThat(result.sensitiveDataFound().get(0).source())
+                    .isEqualTo(ContentPiiDetection.DetectorSource.GLINER);
+            softly.assertThat(result.sensitiveDataFound().get(1).source())
+                    .isEqualTo(ContentPiiDetection.DetectorSource.PRESIDIO);
+            softly.assertThat(result.sensitiveDataFound().get(2).source())
+                    .isEqualTo(ContentPiiDetection.DetectorSource.REGEX);
+            softly.assertThat(result.sensitiveDataFound().get(3).source())
+                    .isEqualTo(ContentPiiDetection.DetectorSource.UNKNOWN_SOURCE);
+        });
+    }
+
+    @Test
+    @DisplayName("Should_ExposeOpenmedInDomainEnum_When_AdapterIsReady")
+    void Should_ExposeOpenmedInDomainEnum_When_AdapterIsReady() {
+        // Given - the domain enum exposes OPENMED (forward-compatible mapping in the adapter
+        // uses proto.name() so it will recognise OPENMED once the proto stub is regenerated)
+        // When / Then
+        assertThat(ContentPiiDetection.DetectorSource.valueOf("OPENMED"))
+                .isEqualTo(ContentPiiDetection.DetectorSource.OPENMED);
+    }
+
+    @Test
     @DisplayName("Should_KeepPositionsUnchanged_When_ContentContainsOnlyBmpChars")
     void Should_KeepPositionsUnchanged_When_ContentContainsOnlyBmpChars() {
         // BMP-only content: no supplementary chars, positions stay the same

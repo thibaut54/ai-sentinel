@@ -30,6 +30,12 @@
   border: 1px solid var(--sentinel-regex-border);
 }
 
+.detector-openmed {
+  background: var(--sentinel-openmed-bg);
+  color: var(--sentinel-openmed-fg);
+  border: 1px solid var(--sentinel-openmed-border);
+}
+
 .detector-unknown {
   background: var(--sentinel-detector-unknown-bg);
   color: var(--sentinel-detector-unknown-color);

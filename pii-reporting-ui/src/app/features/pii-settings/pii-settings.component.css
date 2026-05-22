@@ -199,6 +199,17 @@
   background: var(--sentinel-bg-surface);
 }
 
+/* OpenMed */
+.detector-card.openmed.enabled {
+  border-color: var(--sentinel-openmed-border);
+  background: var(--sentinel-openmed-bg);
+}
+
+.detector-card.openmed.disabled {
+  border-color: var(--sentinel-border-default);
+  background: var(--sentinel-bg-surface);
+}
+
 .detector-avatar {
   width: 36px;
   height: 36px;
@@ -243,6 +254,18 @@
 }
 
 .detector-avatar.regex.disabled-avatar {
+  background: var(--sentinel-bg-input-disabled);
+  color: var(--sentinel-text-subtle);
+  border-color: var(--sentinel-border-medium);
+}
+
+.detector-avatar.openmed {
+  background: var(--sentinel-openmed-avatar-bg);
+  color: var(--sentinel-openmed-fg);
+  border: 1px solid var(--sentinel-openmed-avatar-border);
+}
+
+.detector-avatar.openmed.disabled-avatar {
   background: var(--sentinel-bg-input-disabled);
   color: var(--sentinel-text-subtle);
   border-color: var(--sentinel-border-medium);
@@ -589,6 +612,12 @@
   background: var(--sentinel-presidio-bg);
   color: var(--sentinel-presidio-color);
   border: 1px solid var(--sentinel-presidio-border);
+}
+
+.detector-badge.openmed {
+  background: var(--sentinel-openmed-bg);
+  color: var(--sentinel-openmed-fg);
+  border: 1px solid var(--sentinel-openmed-border);
 }
 
 .detector-badge.regex {

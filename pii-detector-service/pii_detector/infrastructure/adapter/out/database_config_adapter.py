@@ -58,20 +58,43 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # Query the single-row configuration table
+            # Query the single-row configuration table.
+            # ``openmed_enabled`` is read defensively: ``COALESCE`` keeps existing
+            # rows readable even if the column has not been added yet by Hibernate
+            # DDL update on a freshly-pulled environment.
             query = """
-                SELECT 
+                SELECT
                     gliner_enabled,
                     presidio_enabled,
                     regex_enabled,
+                    COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
                     default_threshold,
                     nb_of_label_by_pass
                 FROM pii_detection_config
                 WHERE id = 1
             """
 
-            cursor.execute(query)
-            result = cursor.fetchone()
+            try:
+                cursor.execute(query)
+                result = cursor.fetchone()
+            except psycopg2.Error:
+                # Fallback for environments where the column has not been
+                # provisioned yet (older Hibernate run, fresh checkout).
+                connection.rollback()
+                cursor.execute(
+                    """
+                    SELECT
+                        gliner_enabled,
+                        presidio_enabled,
+                        regex_enabled,
+                        FALSE AS openmed_enabled,
+                        default_threshold,
+                        nb_of_label_by_pass
+                    FROM pii_detection_config
+                    WHERE id = 1
+                    """
+                )
+                result = cursor.fetchone()
 
             if result is None:
                 logger.warning(
@@ -86,6 +109,7 @@ class DatabaseConfigAdapter:
                 f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
+                f"openmed={config['openmed_enabled']}, "
                 f"threshold={config['default_threshold']}"
             )
             return config

@@ -47,6 +47,10 @@ public class PiiDetectionConfigEntity {
     private Boolean regexEnabled;
 
     @NotNull
+    @Column(name = "openmed_enabled", nullable = false)
+    private Boolean openmedEnabled;
+
+    @NotNull
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")
     @Column(name = "default_threshold", nullable = false, precision = 3, scale = 2)

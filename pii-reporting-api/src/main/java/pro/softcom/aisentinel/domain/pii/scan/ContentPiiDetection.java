@@ -171,7 +171,8 @@ public record ContentPiiDetection(
         UNKNOWN_SOURCE,
         GLINER,
         PRESIDIO,
-        REGEX
+        REGEX,
+        OPENMED
     }
     
     /**

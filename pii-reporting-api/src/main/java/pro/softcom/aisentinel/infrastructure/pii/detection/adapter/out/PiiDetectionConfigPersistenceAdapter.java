@@ -53,9 +53,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, threshold={}, nbOfLabelByPass={}, updatedBy={}",
+                "regexEnabled={}, openmedEnabled={}, threshold={}, nbOfLabelByPass={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
-                config.regexEnabled(), config.defaultThreshold(),
+                config.regexEnabled(), config.openmedEnabled(), config.defaultThreshold(),
                 config.nbOfLabelByPass(), config.updatedBy());
         
         PiiDetectionConfigEntity entity = toEntity(config);
@@ -76,6 +76,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 true,  // glinerEnabled
                 true,  // presidioEnabled
                 true,  // regexEnabled
+                false, // openmedEnabled
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
                 LocalDateTime.now(),
@@ -95,6 +96,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getGlinerEnabled(),
                 entity.getPresidioEnabled(),
                 entity.getRegexEnabled(),
+                entity.getOpenmedEnabled() != null && entity.getOpenmedEnabled(),
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
                 entity.getUpdatedAt(),
@@ -111,6 +113,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .glinerEnabled(config.glinerEnabled())
                 .presidioEnabled(config.presidioEnabled())
                 .regexEnabled(config.regexEnabled())
+                .openmedEnabled(config.openmedEnabled())
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())

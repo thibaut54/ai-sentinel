@@ -7,12 +7,14 @@ import java.time.LocalDateTime;
  * Domain model for PII detection configuration.
  * Represents the configuration settings for PII detection detectors and thresholds.
  * This is the single source of truth for detection configuration in the system.
+ * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED.
  */
 public record PiiDetectionConfig(
         Integer id,
         boolean glinerEnabled,
         boolean presidioEnabled,
         boolean regexEnabled,
+        boolean openmedEnabled,
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
         LocalDateTime updatedAt,
@@ -41,7 +43,7 @@ public record PiiDetectionConfig(
                     "Default threshold must be less than or equal to " + MAX_THRESHOLD);
         }
 
-        if (!glinerEnabled && !presidioEnabled && !regexEnabled) {
+        if (!glinerEnabled && !presidioEnabled && !regexEnabled && !openmedEnabled) {
             throw new IllegalArgumentException(
                     "At least one detector must be enabled");
         }

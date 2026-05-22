@@ -37,6 +37,15 @@ describe('DetectorTagComponent', () => {
     expect(el.classList).toContain('detector-regex');
   });
 
+  it('Should_RenderOpenmedTag_When_DetectorIsOpenmed', () => {
+    fixture = TestBed.createComponent(DetectorTagComponent);
+    fixture.componentRef.setInput('detector', 'OPENMED');
+    fixture.detectChanges();
+    const el = fixture.nativeElement.querySelector('.detector-tag');
+    expect(el.textContent.trim()).toBe('OPENMED');
+    expect(el.classList).toContain('detector-openmed');
+  });
+
   it('Should_ApplySmallClass_When_SmallIsTrue', () => {
     fixture = TestBed.createComponent(DetectorTagComponent);
     fixture.componentRef.setInput('detector', 'GLINER');

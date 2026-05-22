@@ -9,8 +9,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- ============================================================================
 -- PII Detection Global Config (Singleton with id=1)
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, default_threshold, nb_of_label_by_pass, updated_at, updated_by)
-VALUES (1, true, true, true, 0.30, 35, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, default_threshold, nb_of_label_by_pass, updated_at, updated_by)
+VALUES (1, true, true, true, false, 0.30, 35, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -298,5 +298,57 @@ VALUES
     ('MAC_ADDRESS',        'REGEX', true, 0.95, 'IT_CREDENTIALS','mac address',         'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('API_KEY',            'REGEX', true, 0.95, 'IT_CREDENTIALS','api key',             'HIGH', false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- ============================================================================
+-- OPENMED PII TYPES
+-- ============================================================================
+-- Source: OpenMed/privacy-filter-multilingual
+-- 24 labels mapped to canonical pii_type. 12 others kept for UI visibility.
+-- ============================================================================
+
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    -- Enabled by default (per Thibaut's decision)
+    -- NOTE: detector_label MUST match the raw OpenMed model label exactly (no
+    -- snake_case) — it is the key used by the inference pipeline to map model
+    -- outputs back to the canonical pii_type. pii_type itself stays in the
+    -- project-wide snake_case convention for cross-detector consistency.
+    ('SSN',                'OPENMED', true,  0.85, 'IDENTITY',       'SSN',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_NAME',       'OPENMED', true,  0.85, 'FINANCIAL',      'ACCOUNTNAME',      'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BANK_ACCOUNT',       'OPENMED', true,  0.85, 'FINANCIAL',      'BANKACCOUNT',      'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IBAN',               'OPENMED', true,  0.85, 'FINANCIAL',      'IBAN',             'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BIC_SWIFT',          'OPENMED', true,  0.85, 'FINANCIAL',      'BIC',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CREDIT_CARD',        'OPENMED', true,  0.85, 'FINANCIAL',      'CREDITCARD',       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CREDIT_CARD_ISSUER', 'OPENMED', true,  0.85, 'FINANCIAL',      'CREDITCARDISSUER', 'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CVV',                'OPENMED', true,  0.85, 'FINANCIAL',      'CVV',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PIN',                'OPENMED', true,  0.85, 'FINANCIAL',      'PIN',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MASKED_NUMBER',      'OPENMED', false, 0.80, 'FINANCIAL',      'MASKEDNUMBER',     'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('AMOUNT',             'OPENMED', true,  0.85, 'FINANCIAL',      'AMOUNT',           'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CURRENCY',           'OPENMED', false, 0.85, 'FINANCIAL',      'CURRENCY',         'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CURRENCY_CODE',      'OPENMED', true,  0.85, 'FINANCIAL',      'CURRENCYCODE',     'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CURRENCY_NAME',      'OPENMED', false, 0.85, 'FINANCIAL',      'CURRENCYNAME',     'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CURRENCY_SYMBOL',    'OPENMED', false, 0.85, 'FINANCIAL',      'CURRENCYSYMBOL',   'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BITCOIN_ADDRESS',    'OPENMED', true,  0.85, 'FINANCIAL',      'BITCOINADDRESS',   'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ETHEREUM_ADDRESS',   'OPENMED', true,  0.85, 'FINANCIAL',      'ETHEREUMADDRESS',  'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LITECOIN_ADDRESS',   'OPENMED', true,  0.85, 'FINANCIAL',      'LITECOINADDRESS',  'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VEHICLE_VIN',        'OPENMED', true,  0.85, 'LEGAL_ASSET',    'VIN',              'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VEHICLE_REGISTRATION','OPENMED',true,  0.85, 'LEGAL_ASSET',    'VRM',              'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IP_ADDRESS',         'OPENMED', true,  0.85, 'IT_CREDENTIALS', 'IPADDRESS',        'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MAC_ADDRESS',        'OPENMED', true,  0.85, 'IT_CREDENTIALS', 'MACADDRESS',       'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IMEI',               'OPENMED', true,  0.85, 'IT_CREDENTIALS', 'IMEI',             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSWORD',           'OPENMED', true,  0.85, 'IT_CREDENTIALS', 'PASSWORD',         'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    -- Disabled by default (visible in UI but inactive)
+    ('PERSON_NAME',        'OPENMED', false, 0.80, 'IDENTITY',       'FIRSTNAME',        'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMAIL',              'OPENMED', false, 0.70, 'CONTACT',        'EMAIL',            'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PHONE',              'OPENMED', false, 0.80, 'CONTACT',        'PHONE',            'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('USERNAME',           'OPENMED', false, 0.90, 'DIGITAL',        'USERNAME',         'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('URL',                'OPENMED', false, 0.80, 'DIGITAL',        'URL',              'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_OF_BIRTH',      'OPENMED', false, 0.80, 'IDENTITY',       'DATEOFBIRTH',      'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CITY',               'OPENMED', false, 0.80, 'CONTACT',        'CITY',             'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ADDRESS',            'OPENMED', false, 0.80, 'CONTACT',        'STREET',           'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ZIP_CODE',           'OPENMED', false, 0.80, 'CONTACT',        'ZIPCODE',          'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EYE_COLOR',          'OPENMED', false, 0.85, 'IDENTITY',       'EYECOLOR',         'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+ON CONFLICT (pii_type, detector) DO NOTHING;
 
 COMMIT;

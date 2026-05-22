@@ -645,14 +645,16 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             detector_flags = {
                 'gliner_enabled': db_config.get('gliner_enabled', True),
                 'presidio_enabled': db_config.get('presidio_enabled', True),
-                'regex_enabled': db_config.get('regex_enabled', False)
+                'regex_enabled': db_config.get('regex_enabled', False),
+                'openmed_enabled': db_config.get('openmed_enabled', False)
             }
-            
+
             logger.debug(
                 f"[{request_id}] Applied database config: threshold={threshold}, "
                 f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
+                f"openmed={detector_flags['openmed_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
             
@@ -771,11 +773,14 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"[{request_id}] Applying dynamic detector flags: "
                 f"ML={detector_flags.get('gliner_enabled')}, "
                 f"Presidio={detector_flags.get('presidio_enabled')}, "
-                f"Regex={detector_flags.get('regex_enabled')}"
+                f"Regex={detector_flags.get('regex_enabled')}, "
+                f"OpenMed={detector_flags.get('openmed_enabled')}"
             )
             kwargs['enable_ml'] = detector_flags.get('gliner_enabled')
             kwargs['enable_presidio'] = detector_flags.get('presidio_enabled')
             kwargs['enable_regex'] = detector_flags.get('regex_enabled')
+            if 'enable_openmed' in sig.parameters:
+                kwargs['enable_openmed'] = detector_flags.get('openmed_enabled')
 
         return kwargs
     

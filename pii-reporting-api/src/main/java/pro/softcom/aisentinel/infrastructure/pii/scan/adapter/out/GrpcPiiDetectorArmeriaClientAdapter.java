@@ -154,10 +154,14 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
         if (protoSource == null) {
             return DetectorSource.UNKNOWN_SOURCE;
         }
-        return switch (protoSource) {
-            case GLINER -> GLINER;
-            case PRESIDIO -> PRESIDIO;
-            case REGEX -> REGEX;
+        // Name-based mapping keeps the adapter forward-compatible:
+        // OPENMED is supported even before the proto stub is regenerated with
+        // the new enum value (see openmed-api-contract.md §2).
+        return switch (protoSource.name()) {
+            case "GLINER" -> GLINER;
+            case "PRESIDIO" -> PRESIDIO;
+            case "REGEX" -> REGEX;
+            case "OPENMED" -> OPENMED;
             default -> DetectorSource.UNKNOWN_SOURCE;
         };
     }

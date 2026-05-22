@@ -65,6 +65,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(config.glinerEnabled()).isTrue();
         softly.assertThat(config.presidioEnabled()).isTrue();
         softly.assertThat(config.regexEnabled()).isTrue();
+        softly.assertThat(config.openmedEnabled()).isFalse();
         softly.assertThat(config.defaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
         softly.assertThat(config.updatedAt()).isNotNull();
@@ -76,6 +77,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(entity.getGlinerEnabled()).isTrue();
         softly.assertThat(entity.getPresidioEnabled()).isTrue();
         softly.assertThat(entity.getRegexEnabled()).isTrue();
+        softly.assertThat(entity.getOpenmedEnabled()).isFalse();
         softly.assertThat(entity.getDefaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
         softly.assertThat(entity.getUpdatedAt()).isNotNull();
@@ -99,6 +101,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             false,
             existingConfig.presidioEnabled(),
             existingConfig.regexEnabled(),
+            existingConfig.openmedEnabled(),
             newThreshold,
                 30,
             updateTime,

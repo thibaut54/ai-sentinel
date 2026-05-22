@@ -24,6 +24,7 @@ export class DetectorTagComponent {
       case 'GLINER': return 'detector-gliner';
       case 'PRESIDIO': return 'detector-presidio';
       case 'REGEX': return 'detector-regex';
+      case 'OPENMED': return 'detector-openmed';
       default: return 'detector-unknown';
     }
   }

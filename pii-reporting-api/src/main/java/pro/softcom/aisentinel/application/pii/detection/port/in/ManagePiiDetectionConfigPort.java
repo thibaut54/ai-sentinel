@@ -32,6 +32,7 @@ public interface ManagePiiDetectionConfigPort {
      * @param glinerEnabled    Whether GLiNER detector should be enabled
      * @param presidioEnabled  Whether Presidio detector should be enabled
      * @param regexEnabled     Whether custom regex detector should be enabled
+     * @param openmedEnabled   Whether OpenMed detector should be enabled
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
      * @param updatedBy        User identifier who is updating the configuration
      */
@@ -39,6 +40,7 @@ public interface ManagePiiDetectionConfigPort {
             boolean glinerEnabled,
             boolean presidioEnabled,
             boolean regexEnabled,
+            boolean openmedEnabled,
             BigDecimal defaultThreshold,
             Integer nbOfLabelByPass,
             String updatedBy

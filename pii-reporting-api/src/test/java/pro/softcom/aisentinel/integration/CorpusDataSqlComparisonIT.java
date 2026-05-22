@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.tika.Tika;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -395,6 +392,169 @@ class CorpusDataSqlComparisonIT {
     @Order(5)
     void retryBaselineFailedInImproved() throws Exception {
         retryFailedFiles("improved", "classpath:sql/data-improved.sql", BASELINE_FAILED_PATHS);
+    }
+
+    /**
+     * Variante "improved-v3-openmed" : data-improved-2 corrigée selon les verdicts
+     * LLM-as-judge du run "improved" + ajout du détecteur OpenMed restreint au
+     * complémentaire des autres détecteurs.
+     *
+     * <p>Sortie : {@code target/corpus-data-sql-comparison/improved-v3-openmed/findings.jsonl}
+     * + {@code report.md}. Format JSONL strictement identique aux runs baseline/improved
+     * pour être consommable par {@code D:\ai-sentinel-result-eval\scripts\llm_judge_corpus.py}
+     * sans modification.
+     *
+     * <p>Run isolé :
+     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#runImprovedV3WithOpenMed ... test</pre>
+     */
+    @Test
+    @Order(6)
+    void runImprovedV3WithOpenMed() throws Exception {
+        runVariant("improved-v3-openmed", "classpath:sql/data-improved-3.sql");
+    }
+
+    /**
+     * Texte synthetique couvrant des PII de chacun des types qu'on peut activer
+     * dans {@code data-improved-3.sql}. Sert au {@link #smokeAllConfiguredDetectorsProduceFindings}
+     * pour verifier qu'aucun detecteur active en config ne reste muet (cas typique :
+     * modele OpenMed pas charge dans l'image Docker du pii-detector).
+     *
+     * <p>Les labels explicites ("Mot de passe :", "Carte de credit :", "IBAN :")
+     * aident les detecteurs ML (GLiNER, OpenMed) a accrocher le contexte.
+     */
+    private static final String SMOKE_TEXT_FOR_ALL_DETECTORS = String.join("\n",
+        "Identite et coordonnees du collaborateur",
+        "Numero AVS : 756.3047.5009.62",
+        "Numero SOCIALNUM : 444-66-8123",
+        "Date de naissance : 12.03.1985",
+        "",
+        "Coordonnees bancaires",
+        "IBAN : CH9300762011623852957",
+        "BIC : UBSWCHZH80A",
+        "Numero de compte bancaire : 12345678901",
+        "Account name : Jean Dupont Personal Account",
+        "",
+        "Cartes de paiement",
+        "Carte de credit : 4111 1111 1111 1111",
+        "CVV : 123",
+        "Code PIN : 4567",
+        "",
+        "Adresses crypto",
+        "Bitcoin : 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+        "Ethereum : 0x32Be343B94f860124dC4fEe278FDCBD38C102D88",
+        "Litecoin : LZHvBkaJqKJRa8N7Pyb5gJxn5b2gA8U6vR",
+        "",
+        "Infrastructure",
+        "Adresse IP : 192.168.1.42",
+        "Adresse MAC : 00:1A:2B:3C:4D:5E",
+        "Telephone : +41 21 316 01 57",
+        "",
+        "Securite et acces",
+        "Mot de passe utilisateur : MotDePasseSecret123!",
+        "Cle API : sk_live_abc123xyz456def789ghijklmnop",
+        "Identifiant client (customer_id) : CUST-987654321",
+        "",
+        "Identifiants medicaux",
+        "Numero de licence medicale : MD-CA-12345",
+        "",
+        "Vehicules",
+        "VIN du vehicule : 1HGBH41JXMN109186",
+        "Plaque d'immatriculation : VD-123456",
+        "",
+        "Telephonie mobile",
+        "IMEI : 490154203237518"
+    );
+
+    /**
+     * Smoke test : reseed la DB avec data-improved-3.sql, puis verifie que CHAQUE
+     * detecteur (GLINER/PRESIDIO/REGEX/OPENMED) dont le flag global est true ET qui
+     * a au moins un {@code pii_type_config.enabled=true} produit AU MOINS 1 finding
+     * sur {@link #SMOKE_TEXT_FOR_ALL_DETECTORS}.
+     *
+     * <p>Cas typique catche : OpenMed flag {@code true} en DB mais detecteur jamais
+     * instancie cote pii-detector (modele HF non telecharge, env var manquante, etc.)
+     * — on l'a observe sur le run improved-v3-openmed du 2026-05-22 ou aucun finding
+     * OPENMED n'est sorti malgre {@code openmed_enabled=true}.
+     *
+     * <p>Verification au niveau DETECTEUR uniquement (pas type-par-type) car les
+     * modeles ML peuvent rater un type isole sur du texte synthetique court, mais
+     * pas tous les types d'un detecteur entier — c'est exactement ce qui revele un
+     * detecteur non charge.
+     *
+     * <p>Run isole :
+     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#smokeAllConfiguredDetectorsProduceFindings ... test</pre>
+     */
+    @Test
+    @Order(7)
+    void smokeAllConfiguredDetectorsProduceFindings() throws Exception {
+        log.info("[smoke-detectors] === START ===");
+        String sqlClasspath = "classpath:sql/data-improved-3.sql";
+        resetAndReseedDb(sqlClasspath);
+
+        Set<String> expectedDetectors = queryExpectedActiveDetectors();
+        log.info("[smoke-detectors] detecteurs attendus selon config : {}", expectedDetectors);
+        org.junit.jupiter.api.Assertions.assertFalse(expectedDetectors.isEmpty(),
+            "Aucun detecteur actif dans la config — impossible de smoker.");
+
+        ContentPiiDetection detection = piiDetectorClient.analyzeContent(SMOKE_TEXT_FOR_ALL_DETECTORS);
+        org.junit.jupiter.api.Assertions.assertNotNull(detection.sensitiveDataFound(),
+            "sensitiveDataFound is null");
+
+        Map<String, Long> countByDetector = detection.sensitiveDataFound().stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                CorpusDataSqlComparisonIT::detectorName,
+                java.util.stream.Collectors.counting()));
+        log.info("[smoke-detectors] findings par detecteur : {}", countByDetector);
+        detection.sensitiveDataFound().forEach(sd ->
+            log.info("[smoke-detectors]   {} [{}] score={} value={}",
+                sd.type(), detectorName(sd), sd.score(), truncate(sd.value(), 60)));
+
+        Set<String> missing = new java.util.TreeSet<>(expectedDetectors);
+        missing.removeAll(countByDetector.keySet());
+
+        Assertions.assertTrue(missing.isEmpty(),
+            "Detecteurs actives en config (flag global + >=1 type enabled) mais sans aucun"
+            + " finding sur le smoke text : " + missing
+            + ". Findings par detecteur observes : " + countByDetector
+            + ". Cause probable : modele non charge dans l'image pii-detector"
+            + " (HF cache vide, env var manquante, dependance non installee).");
+
+        log.info("[smoke-detectors] === DONE — tous les detecteurs actifs produisent des findings ===");
+    }
+
+    /**
+     * Retourne l'intersection des detecteurs (i) dont le flag global est {@code true}
+     * dans {@code pii_detection_config} ET (ii) qui ont au moins un type avec
+     * {@code pii_type_config.enabled=true}. Ce sont les detecteurs dont on attend
+     * concretement des findings.
+     */
+    private Set<String> queryExpectedActiveDetectors() {
+        Boolean glinerOn   = jdbcTemplate.queryForObject(
+            "SELECT gliner_enabled   FROM pii_detection_config WHERE id = 1", Boolean.class);
+        Boolean presidioOn = jdbcTemplate.queryForObject(
+            "SELECT presidio_enabled FROM pii_detection_config WHERE id = 1", Boolean.class);
+        Boolean regexOn    = jdbcTemplate.queryForObject(
+            "SELECT regex_enabled    FROM pii_detection_config WHERE id = 1", Boolean.class);
+        Boolean openmedOn  = jdbcTemplate.queryForObject(
+            "SELECT openmed_enabled  FROM pii_detection_config WHERE id = 1", Boolean.class);
+
+        List<String> detectorsWithEnabledTypes = jdbcTemplate.queryForList(
+            "SELECT DISTINCT detector FROM pii_type_config WHERE enabled = true", String.class);
+
+        Set<String> result = new java.util.TreeSet<>();
+        for (String detector : detectorsWithEnabledTypes) {
+            boolean globallyEnabled = switch (detector) {
+                case "GLINER"   -> Boolean.TRUE.equals(glinerOn);
+                case "PRESIDIO" -> Boolean.TRUE.equals(presidioOn);
+                case "REGEX"    -> Boolean.TRUE.equals(regexOn);
+                case "OPENMED"  -> Boolean.TRUE.equals(openmedOn);
+                default         -> false;
+            };
+            if (globallyEnabled) {
+                result.add(detector);
+            }
+        }
+        return result;
     }
 
     /**

@@ -275,6 +275,10 @@
       "regex": {
         "label": "Détecteur Regex",
         "description": "Détection basée sur des motifs utilisant des expressions régulières pour les données structurées"
+      },
+      "openmed": {
+        "label": "OpenMed (multilingue)",
+        "description": "Détecteur ML multilingue (FR/EN/DE/IT/ES) couvrant les patterns financiers, crypto, véhicules et IT credentials."
       }
     },
     "threshold": {
@@ -305,7 +309,8 @@
       "toggle": "Activer/désactiver {{type}}",
       "detectors": {
         "gliner": "Détecteur GLiNER",
-        "presidio": "Détecteur Presidio"
+        "presidio": "Détecteur Presidio",
+        "openmed": "OpenMed"
       },
       "categoryNames": {
         "CONTACT": "Informations de contact",
@@ -480,7 +485,23 @@
         "MEDICAL_RECORD_NUMBER": "Numéro de dossier médical",
         "HEALTH_INSURANCE_NUMBER": "Numéro d'assurance maladie",
         "DIAGNOSIS": "Diagnostic",
-        "MEDICATION": "Médicament"
+        "MEDICATION": "Médicament",
+        "ACCOUNT_NAME": "Nom de compte",
+        "BANK_ACCOUNT": "Compte bancaire",
+        "CREDIT_CARD_ISSUER": "Émetteur carte",
+        "PIN": "Code PIN",
+        "MASKED_NUMBER": "Numéro masqué",
+        "AMOUNT": "Montant",
+        "CURRENCY": "Devise",
+        "CURRENCY_CODE": "Code devise",
+        "CURRENCY_NAME": "Nom devise",
+        "CURRENCY_SYMBOL": "Symbole devise",
+        "BITCOIN_ADDRESS": "Adresse Bitcoin",
+        "ETHEREUM_ADDRESS": "Adresse Ethereum",
+        "LITECOIN_ADDRESS": "Adresse Litecoin",
+        "VEHICLE_VIN": "VIN véhicule",
+        "IMEI": "IMEI",
+        "EYE_COLOR": "Couleur des yeux"
       },
       "typeDescriptions": {
         "EMAIL": "Adresses email au format standard (ex: utilisateur@domaine.com)",

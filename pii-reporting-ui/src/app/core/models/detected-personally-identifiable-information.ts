@@ -1,5 +1,5 @@
 
-export type DetectorSource = 'UNKNOWN_SOURCE' | 'GLINER' | 'PRESIDIO' | 'REGEX';
+export type DetectorSource = 'UNKNOWN_SOURCE' | 'GLINER' | 'PRESIDIO' | 'REGEX' | 'OPENMED';
 
 export interface DetectedPersonallyIdentifiableInformation {
   startPosition: number;

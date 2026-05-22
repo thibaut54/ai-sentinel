@@ -59,7 +59,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistAndRetrieveConfig_When_UpdatingConfiguration() {
         // Arrange
         UpdatePiiDetectionConfigCommand command =   new UpdatePiiDetectionConfigCommand(
-            true, false, true, new BigDecimal("0.85"), 30,"integrationtest"
+            true, false, true, false, new BigDecimal("0.85"), 30,"integrationtest"
         );
 
         // Act
@@ -83,13 +83,13 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateExistingConfig_When_ConfigAlreadyExists() {
         // Arrange - Create initial config
         UpdatePiiDetectionConfigCommand initialCommand = new UpdatePiiDetectionConfigCommand(
-            true, true, false, new BigDecimal("0.60"),30, "user1"
+            true, true, false, false, new BigDecimal("0.60"),30, "user1"
         );
         managePiiDetectionConfigPort.updateConfig(initialCommand);
 
         // Act - Update config
         UpdatePiiDetectionConfigCommand updateCommand = new UpdatePiiDetectionConfigCommand(
-            false, true, true, new BigDecimal("0.90"), 30,"user2"
+            false, true, true, false, new BigDecimal("0.90"), 30,"user2"
         );
         PiiDetectionConfig updated = managePiiDetectionConfigPort.updateConfig(updateCommand);
 
@@ -112,7 +112,7 @@ class ManagePiiDetectionConfigUseCaseTest {
         // Arrange & Act - Multiple updates
         for (int i = 0; i < 5; i++) {
             UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-                i % 2 == 0, i % 2 != 0, true, 
+                i % 2 == 0, i % 2 != 0, true, false,
                 new BigDecimal("0." + (70 + i)), 30,"user" + i
             );
             managePiiDetectionConfigPort.updateConfig(command);
@@ -131,7 +131,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistBoundaryThresholds_When_ThresholdIsZeroOrOne() {
         // Act - Update with threshold 0.0
         UpdatePiiDetectionConfigCommand zeroCommand = new UpdatePiiDetectionConfigCommand(
-            true, false, false, BigDecimal.ZERO, 30,"testuser"
+            true, false, false, false, BigDecimal.ZERO, 30,"testuser"
         );
         PiiDetectionConfig zeroConfig = managePiiDetectionConfigPort.updateConfig(zeroCommand);
 
@@ -140,7 +140,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Act - Update with threshold 1.0
         UpdatePiiDetectionConfigCommand oneCommand = new UpdatePiiDetectionConfigCommand(
-            true, false, false, BigDecimal.ONE, 30,"testuser"
+            true, false, false, false, BigDecimal.ONE, 30,"testuser"
         );
         PiiDetectionConfig oneConfig = managePiiDetectionConfigPort.updateConfig(oneCommand);
 
@@ -152,28 +152,30 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistDetectorStates_When_OnlyOneDetectorEnabled() {
         // Test with only GLiNER enabled
         UpdatePiiDetectionConfigCommand glinerCommand = new UpdatePiiDetectionConfigCommand(
-            true, false, false, new BigDecimal("0.75"),30, "testuser"
+            true, false, false, false, new BigDecimal("0.75"),30, "testuser"
         );
         PiiDetectionConfig glinerConfig = managePiiDetectionConfigPort.updateConfig(glinerCommand);
-        
+
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(glinerConfig.glinerEnabled()).isTrue();
         softly.assertThat(glinerConfig.presidioEnabled()).isFalse();
         softly.assertThat(glinerConfig.regexEnabled()).isFalse();
+        softly.assertThat(glinerConfig.openmedEnabled()).isFalse();
 
         // Test with only Presidio enabled
         UpdatePiiDetectionConfigCommand presidioCommand = new UpdatePiiDetectionConfigCommand(
-            false, true, false, new BigDecimal("0.75"),30, "testuser"
+            false, true, false, false, new BigDecimal("0.75"),30, "testuser"
         );
         PiiDetectionConfig presidioConfig = managePiiDetectionConfigPort.updateConfig(presidioCommand);
-        
+
         softly.assertThat(presidioConfig.glinerEnabled()).isFalse();
         softly.assertThat(presidioConfig.presidioEnabled()).isTrue();
         softly.assertThat(presidioConfig.regexEnabled()).isFalse();
+        softly.assertThat(presidioConfig.openmedEnabled()).isFalse();
 
         // Test with only Regex enabled
         UpdatePiiDetectionConfigCommand regexCommand = new UpdatePiiDetectionConfigCommand(
-            false, false, true, new BigDecimal("0.75"),30, "testuser"
+            false, false, true, false, new BigDecimal("0.75"),30, "testuser"
         );
         PiiDetectionConfig regexConfig = managePiiDetectionConfigPort.updateConfig(regexCommand);
         
