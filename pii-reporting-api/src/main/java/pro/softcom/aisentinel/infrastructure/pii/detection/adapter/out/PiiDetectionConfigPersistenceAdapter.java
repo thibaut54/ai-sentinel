@@ -53,24 +53,25 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, openmedEnabled={}, threshold={}, nbOfLabelByPass={}, updatedBy={}",
+                "regexEnabled={}, openmedEnabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
                 config.regexEnabled(), config.openmedEnabled(), config.defaultThreshold(),
-                config.nbOfLabelByPass(), config.updatedBy());
-        
+                config.nbOfLabelByPass(), config.llmJudgeEnabled(), config.updatedBy());
+
+
         PiiDetectionConfigEntity entity = toEntity(config);
         jpaRepository.save(entity);
-        
+
         log.info("PII detection configuration updated successfully");
     }
 
     /**
      * Creates and persists default configuration.
-     * Default: All detectors enabled, threshold 0.75
+     * Default: All detectors enabled, threshold 0.75, LLM judge OFF.
      */
     private PiiDetectionConfig createDefaultConfig() {
         log.info("Creating default PII detection configuration");
-        
+
         PiiDetectionConfig defaultConfig = new PiiDetectionConfig(
                 CONFIG_ID,
                 true,  // glinerEnabled
@@ -79,10 +80,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 false, // openmedEnabled
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
+                false, // llmJudgeEnabled (cf. spec §1.4 — zero-effect MVP default)
                 LocalDateTime.now(),
                 "system"
         );
-        
+
         self.updateConfig(defaultConfig);
         return defaultConfig;
     }
@@ -99,6 +101,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getOpenmedEnabled() != null && entity.getOpenmedEnabled(),
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
+                entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -116,6 +119,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .openmedEnabled(config.openmedEnabled())
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
+                .llmJudgeEnabled(config.llmJudgeEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
                 .updatedBy(config.updatedBy())
                 .build();

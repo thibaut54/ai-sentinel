@@ -8,6 +8,9 @@ import java.time.LocalDateTime;
  * Represents the configuration settings for PII detection detectors and thresholds.
  * This is the single source of truth for detection configuration in the system.
  * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED.
+ *
+ * <p>The {@code llmJudgeEnabled} flag activates the LLM-as-Judge post-filtering
+ * stage that audits GLiNER findings to reduce false positives (cf. spec §1.4).
  */
 public record PiiDetectionConfig(
         Integer id,
@@ -17,6 +20,7 @@ public record PiiDetectionConfig(
         boolean openmedEnabled,
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
+        boolean llmJudgeEnabled,
         LocalDateTime updatedAt,
         String updatedBy) {
 

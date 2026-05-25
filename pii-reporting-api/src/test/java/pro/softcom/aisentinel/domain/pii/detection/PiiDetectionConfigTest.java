@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PiiDetectionConfigTest {
 
     @Test
-    void should_CreateConfig_When_AllParametersValid() {
+    void Should_CreateConfig_When_AllParametersValid() {
         // Arrange
         Integer id = 1;
         boolean glinerEnabled = true;
@@ -28,7 +28,11 @@ class PiiDetectionConfigTest {
 
         // Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             id, glinerEnabled, presidioEnabled, regexEnabled, openmedEnabled, threshold, 30, updatedAt, updatedBy
+=======
+            id, glinerEnabled, presidioEnabled, regexEnabled, threshold, 30, false, updatedAt, updatedBy
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -40,49 +44,77 @@ class PiiDetectionConfigTest {
         softly.assertThat(config.openmedEnabled()).isEqualTo(openmedEnabled);
         softly.assertThat(config.defaultThreshold()).isEqualByComparingTo(threshold);
         softly.assertThat(config.nbOfLabelByPass()).isEqualTo(30);
+        softly.assertThat(config.llmJudgeEnabled()).isFalse();
         softly.assertThat(config.updatedAt()).isEqualTo(updatedAt);
         softly.assertThat(config.updatedBy()).isEqualTo(updatedBy);
         softly.assertAll();
     }
 
     @Test
-    void should_ThrowException_When_ThresholdIsNull() {
+    void Should_ExposeLlmJudgeEnabledFlag_When_Enabled() {
+        // Arrange & Act
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            1, true, true, true, new BigDecimal("0.75"), 30, true, LocalDateTime.now(), "system"
+        );
+
+        // Assert
+        assertThat(config.llmJudgeEnabled()).isTrue();
+    }
+
+    @Test
+    void Should_ThrowException_When_ThresholdIsNull() {
         LocalDateTime now = LocalDateTime.now();
         // Arrange & Act & Assert
         assertThatThrownBy(() -> new PiiDetectionConfig(
+<<<<<<< HEAD
                 1, true, true, true, false, null, 30, now, "testuser"
+=======
+            1, true, true, true, null, 30, false, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         ))
         .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void should_ThrowException_When_ThresholdLessThanZero() {
+    void Should_ThrowException_When_ThresholdLessThanZero() {
         LocalDateTime now = LocalDateTime.now();
         BigDecimal defaultThreshold = new BigDecimal("-0.75");
         // Arrange & Act & Assert
         assertThatThrownBy(() -> new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, true, true, false, defaultThreshold, 30, now, "testuser"
+=======
+            1, true, true, true, defaultThreshold, 30, false, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         ))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Default threshold must be greater than or equal to 0");
     }
 
     @Test
-    void should_ThrowException_When_ThresholdGreaterThanOne() {
+    void Should_ThrowException_When_ThresholdGreaterThanOne() {
         LocalDateTime now = LocalDateTime.now();
         BigDecimal defaultThreshold = new BigDecimal("1.1");
         // Arrange & Act & Assert
         assertThatThrownBy(() -> new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, true, true, false, defaultThreshold, 30, now, "testuser"
+=======
+            1, true, true, true, defaultThreshold, 30, false, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         ))
         .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void should_AcceptThreshold_When_ThresholdIsZero() {
+    void Should_AcceptThreshold_When_ThresholdIsZero() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, false, false, false, BigDecimal.ZERO, 30, LocalDateTime.now(), "testuser"
+=======
+            1, true, false, false, BigDecimal.ZERO, 30, false, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -90,10 +122,14 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_AcceptThreshold_When_ThresholdIsOne() {
+    void Should_AcceptThreshold_When_ThresholdIsOne() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, false, false, false, BigDecimal.ONE, 30, LocalDateTime.now(), "testuser"
+=======
+            1, true, false, false, BigDecimal.ONE, 30, false, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -101,22 +137,30 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_ThrowException_When_NoDetectorsEnabled() {
+    void Should_ThrowException_When_NoDetectorsEnabled() {
         LocalDateTime now = LocalDateTime.now();
         BigDecimal defaultThreshold = new BigDecimal("0.75");
         // Arrange & Act & Assert
         assertThatThrownBy(() -> new PiiDetectionConfig(
+<<<<<<< HEAD
                 1, false, false, false, false, defaultThreshold, 30, now, "testuser"
+=======
+            1, false, false, false, defaultThreshold, 30, false, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         ))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("At least one detector must be enabled");
     }
 
     @Test
-    void should_AcceptConfig_When_OnlyGlinerEnabled() {
+    void Should_AcceptConfig_When_OnlyGlinerEnabled() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, false, false, false, new BigDecimal("0.75"), 30, LocalDateTime.now(), "testuser"
+=======
+            1, true, false, false, new BigDecimal("0.75"), 30, false, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -129,10 +173,14 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_AcceptConfig_When_OnlyPresidioEnabled() {
+    void Should_AcceptConfig_When_OnlyPresidioEnabled() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, false, true, false, false, new BigDecimal("0.75"), 30, LocalDateTime.now(), "testuser"
+=======
+            1, false, true, false, new BigDecimal("0.75"), 30, false, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -145,10 +193,14 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_AcceptConfig_When_OnlyRegexEnabled() {
+    void Should_AcceptConfig_When_OnlyRegexEnabled() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, false, false, true, false, new BigDecimal("0.75"), 30, LocalDateTime.now(), "testuser"
+=======
+            1, false, false, true, new BigDecimal("0.75"), 30, false, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Assert
@@ -177,14 +229,21 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_BeEqual_When_AllFieldsMatch() {
+    void Should_BeEqual_When_AllFieldsMatch() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         PiiDetectionConfig config1 = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, true, false, false, new BigDecimal("0.75"), 30, now, "testuser"
         );
         PiiDetectionConfig config2 = new PiiDetectionConfig(
             1, true, true, false, false, new BigDecimal("0.75"), 30, now, "testuser"
+=======
+            1, true, true, false, new BigDecimal("0.75"), 30, true, now, "testuser"
+        );
+        PiiDetectionConfig config2 = new PiiDetectionConfig(
+            1, true, true, false, new BigDecimal("0.75"), 30, true, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Act & Assert
@@ -194,14 +253,36 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_NotBeEqual_When_ThresholdDiffers() {
+    void Should_NotBeEqual_When_LlmJudgeEnabledDiffers() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
+        PiiDetectionConfig configOff = new PiiDetectionConfig(
+            1, true, true, false, new BigDecimal("0.75"), 30, false, now, "testuser"
+        );
+        PiiDetectionConfig configOn = new PiiDetectionConfig(
+            1, true, true, false, new BigDecimal("0.75"), 30, true, now, "testuser"
+        );
+
+        // Act & Assert
+        assertThat(configOff).isNotEqualTo(configOn);
+    }
+
+    @Test
+    void Should_NotBeEqual_When_ThresholdDiffers() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         PiiDetectionConfig config1 = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, true, false, false, new BigDecimal("0.75"), 30, now, "testuser"
         );
         PiiDetectionConfig config2 = new PiiDetectionConfig(
             1, true, true, false, false, new BigDecimal("0.80"), 30, now, "testuser"
+=======
+            1, true, true, false, new BigDecimal("0.75"), 30, false, now, "testuser"
+        );
+        PiiDetectionConfig config2 = new PiiDetectionConfig(
+            1, true, true, false, new BigDecimal("0.80"), 30, false, now, "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Act & Assert
@@ -209,10 +290,14 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void should_ReturnValidString_When_ToStringCalled() {
+    void Should_ReturnValidString_When_ToStringCalled() {
         // Arrange
         PiiDetectionConfig config = new PiiDetectionConfig(
+<<<<<<< HEAD
             1, true, true, false, false, new BigDecimal("0.75"), 30, LocalDateTime.now(), "testuser"
+=======
+            1, true, true, false, new BigDecimal("0.75"), 30, true, LocalDateTime.now(), "testuser"
+>>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
         );
 
         // Act
@@ -227,6 +312,7 @@ class PiiDetectionConfigTest {
         softly.assertThat(result).contains("regexEnabled=false");
         softly.assertThat(result).contains("openmedEnabled=false");
         softly.assertThat(result).contains("defaultThreshold=0.75");
+        softly.assertThat(result).contains("llmJudgeEnabled=true");
         softly.assertThat(result).contains("updatedBy=testuser");
         softly.assertAll();
     }

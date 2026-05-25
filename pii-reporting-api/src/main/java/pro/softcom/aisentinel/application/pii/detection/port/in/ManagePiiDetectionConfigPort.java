@@ -34,6 +34,8 @@ public interface ManagePiiDetectionConfigPort {
      * @param regexEnabled     Whether custom regex detector should be enabled
      * @param openmedEnabled   Whether OpenMed detector should be enabled
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
+     * @param nbOfLabelByPass  Maximum labels per detector batch
+     * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled
      * @param updatedBy        User identifier who is updating the configuration
      */
     record UpdatePiiDetectionConfigCommand(
@@ -43,6 +45,7 @@ public interface ManagePiiDetectionConfigPort {
             boolean openmedEnabled,
             BigDecimal defaultThreshold,
             Integer nbOfLabelByPass,
+            boolean llmJudgeEnabled,
             String updatedBy
     ) {
     }

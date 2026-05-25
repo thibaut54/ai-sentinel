@@ -68,6 +68,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(config.openmedEnabled()).isFalse();
         softly.assertThat(config.defaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(config.llmJudgeEnabled()).isFalse();
         softly.assertThat(config.updatedAt()).isNotNull();
         softly.assertThat(config.updatedBy()).isEqualTo("system");
 
@@ -80,6 +81,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(entity.getOpenmedEnabled()).isFalse();
         softly.assertThat(entity.getDefaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(entity.getLlmJudgeEnabled()).isFalse();
         softly.assertThat(entity.getUpdatedAt()).isNotNull();
         softly.assertThat(entity.getUpdatedBy()).isEqualTo("system");
 
@@ -103,7 +105,8 @@ class PiiDetectionConfigPersistenceAdapterTest {
             existingConfig.regexEnabled(),
             existingConfig.openmedEnabled(),
             newThreshold,
-                30,
+            30,
+            false,
             updateTime,
             "integration-test"
         );
@@ -132,6 +135,33 @@ class PiiDetectionConfigPersistenceAdapterTest {
             .isEqualByComparingTo(newThreshold);
         softly.assertThat(entity.getUpdatedBy()).isEqualTo("integration-test");
 
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_PersistAndRetrieveLlmJudgeEnabled_When_FlagIsEnabled() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig enabledConfig = new PiiDetectionConfig(
+            CONFIG_ID,
+            true,
+            true,
+            true,
+            new BigDecimal("0.75"),
+            30,
+            true,
+            LocalDateTime.now(),
+            "judge-enabler"
+        );
+
+        persistenceAdapter.updateConfig(enabledConfig);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.llmJudgeEnabled()).isTrue();
+        softly.assertThat(entity.getLlmJudgeEnabled()).isTrue();
         softly.assertAll();
     }
 }

@@ -20,6 +20,9 @@ import java.math.BigDecimal;
  * @param regexEnabled     Whether custom regex detector should be enabled
  * @param openmedEnabled   Whether OpenMed detector should be enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
+ * @param nbOfLabelByPass  Maximum labels per detector batch
+ * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled.
+ *                         Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("glinerEnabled")
@@ -47,7 +50,10 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("nbOfLabelByPass")
     @NotNull(message = "nbOfLabelByPass is required")
     @DecimalMin(value = "1", message = "nbOfLabelByPass must be at least 1")
-    Integer nbOfLabelByPass
+    Integer nbOfLabelByPass,
+
+    @JsonProperty("llmJudgeEnabled")
+    Boolean llmJudgeEnabled
 ) {
     /**
      * Validates business rules for the configuration request.
@@ -61,6 +67,14 @@ public record UpdatePiiDetectionConfigRequestDto(
         if (notAtLeastOneAnalyserEnabled()) {
                 throw new IllegalArgumentException("At least one detector must be enabled");
             }
+    }
+
+    /**
+     * Returns the {@code llmJudgeEnabled} flag value with a {@code false} default
+     * when the client omits the field. Keeps the MVP rollout zero-effect.
+     */
+    public boolean llmJudgeEnabledOrDefault() {
+        return llmJudgeEnabled != null && llmJudgeEnabled;
     }
 
     private boolean notAtLeastOneAnalyserEnabled(){

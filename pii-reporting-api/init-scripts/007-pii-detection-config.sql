@@ -25,5 +25,13 @@ CREATE INDEX IF NOT EXISTS idx_pii_type_config_detector_label
 ON pii_type_config(detector_label);
 
 -- Add comment explaining detector_label purpose
-COMMENT ON COLUMN pii_type_config.detector_label IS 
+COMMENT ON COLUMN pii_type_config.detector_label IS
     'Detector-specific label used for detection. For GLINER: natural language labels (e.g., "email"). For PRESIDIO/REGEX: may be NULL or same as pii_type.';
+
+-- Add LLM-as-Judge flag for post-detection false positive filtering (spec §1.4).
+-- Defaults to false so the MVP rollout has zero behavioral impact until explicitly enabled.
+ALTER TABLE pii_detection_config
+ADD COLUMN IF NOT EXISTS llm_judge_enabled BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN pii_detection_config.llm_judge_enabled IS
+    'Enables the LLM-as-Judge post-filtering stage (Qwen 3.6) that audits GLiNER findings to reduce false positives. Default: false.';

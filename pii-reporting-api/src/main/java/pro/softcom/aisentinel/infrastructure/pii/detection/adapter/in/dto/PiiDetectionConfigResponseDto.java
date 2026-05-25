@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
  * @param regexEnabled     Whether custom regex detector is enabled
  * @param openmedEnabled   Whether OpenMed detector is enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
+ * @param nbOfLabelByPass  Maximum labels per detector batch
+ * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled
  * @param updatedAt        Timestamp of last configuration update
  * @param updatedBy        User who last updated the configuration
  */
@@ -24,6 +26,7 @@ public record PiiDetectionConfigResponseDto(
     boolean openmedEnabled,
     BigDecimal defaultThreshold,
     Integer nbOfLabelByPass,
+    boolean llmJudgeEnabled,
     LocalDateTime updatedAt,
     String updatedBy
 ) {

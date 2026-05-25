@@ -61,6 +61,14 @@ public class PiiDetectionConfigEntity {
     @Min(value = 1, message = "nbOfLabelByPass must be >= 1")
     private Integer nbOfLabelByPass;
 
+    /**
+     * Activates the LLM-as-Judge post-filtering stage (cf. spec §1.4).
+     * Defaults to {@code false} for a zero-effect MVP rollout.
+     */
+    @NotNull
+    @Column(name = "llm_judge_enabled", nullable = false)
+    private Boolean llmJudgeEnabled;
+
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
