@@ -6,71 +6,391 @@ This module exposes :class:`LLMJudgeValidator`, an implementation of the
 that audits detected PII entities by asking a Qwen 3.6 thinking model whether
 each finding is a true positive or a false positive.
 
-Current state: SKELETON only. The actual wiring (HTTP client, prompt building,
-JSON parsing) is implemented in commits 2 and 3 of the
-``feature/qwen-as-judge`` plan.
+Key design points (see spec section 2.3):
+
+- **Remote-only MVP**: the ``local`` backend is documented but stays a no-op
+  (LM Studio handles inference on a remote GPU).
+- **Dynamic model resolution**: at first use we GET ``/v1/models`` and pick
+  ``qwen/qwen3.6-35b-a3b`` (exact match) or a fuzzy fallback excluding the
+  fine-tunes (``uncensored``, ``heretic``, ``distilled``, ``aggressive``,
+  ``finetune``).
+- **Strict JSON Schema**: payload uses ``response_format: json_schema`` with
+  ``strict: true`` and ``max_tokens=2048`` to absorb Qwen 3.6's reasoning
+  tokens (verified empirically in spec section 1.6).
+- **Defensive parser**: ``message.reasoning_content`` is read in priority,
+  ``message.content`` as fallback. Defense-in-depth strips ``<think>``
+  blocks and markdown fences if the runtime ever leaks them.
+- **Fail-open policy** (configurable): on timeout / HTTP error / JSON
+  invalid, the entity is kept (recall preserved at all costs).
+- **Concurrency**: a :class:`ThreadPoolExecutor` parallelises HTTP calls
+  (``max_workers=4`` by default, aligned with LM Studio's
+  ``Max Concurrent Predictions``). Cleanly shut down via ``atexit``.
 
 References:
-- Spec: ``_bmad-output/planning-artifacts/llm-judge-qwen-spec.md`` (sections
-  2.3 and 2.4 for the adapter contract).
-- Predecessor branch: ``feature/gemma4-as-judge``.
+- Spec: ``_bmad-output/planning-artifacts/llm-judge-qwen-spec.md``
+  sections 1.5 (constraints), 1.6 (empirical tests), 2.3 (adapter),
+  2.4 (payload), 2.5 (decision rule), 2.6 (configuration).
 """
 
 from __future__ import annotations
 
+import atexit
+import json
 import logging
-from typing import List, Optional
+import os
+import re
+import threading
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
+from pydantic import ValidationError
+
+from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.port.pii_post_filter_protocol import (
     PIIPostFilterProtocol,
+)
+from pii_detector.infrastructure.validation.prompt_templates import (
+    DEFAULT_CONTEXT_WINDOW,
+    PiiVerdict,
+    SYSTEM_PROMPT,
+    VERDICT_SCHEMA,
+    build_user_prompt,
 )
 
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Singleton lazy stub (will be expanded in commit 3).
+# Constants
 # ---------------------------------------------------------------------------
+
+
+# Backend keys (the ``local`` backend is intentionally out of scope for the
+# MVP; it stays here so a future commit can plug llama-cpp without changing
+# the public contract).
+BACKEND_REMOTE = "remote"
+BACKEND_LOCAL = "local"
+
+# Suffixes that identify Qwen 3.6 fine-tunes we must NOT pick by default.
+# See spec section 8.4: the LM Studio instance hosts several uncensored or
+# distilled variants whose behaviour has not been validated for this MVP.
+_FINETUNE_BLACKLIST: Tuple[str, ...] = (
+    "uncensored",
+    "heretic",
+    "distilled",
+    "aggressive",
+    "finetune",
+)
+
+# Preferred model id (exact match priority) and fuzzy match tokens.
+_DEFAULT_PREFERRED_MODEL = "qwen/qwen3.6-35b-a3b"
+_FUZZY_MATCH_TOKENS = ("qwen3.6", "a3b")
+
+# Default LM Studio endpoint (validated empirically on 2026-05-25).
+_DEFAULT_BASE_URL = "http://172.22.22.63:1234/v1"
+
+
+# ---------------------------------------------------------------------------
+# Env helpers
+# ---------------------------------------------------------------------------
+
+
+def _env_bool(key: str, default: bool) -> bool:
+    """Parse ``key`` as a boolean (truthy if value in ``{1, true, yes, on}``)."""
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(key: str, default: int) -> int:
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid integer for env var %s=%r, falling back on default %d",
+            key,
+            raw,
+            default,
+        )
+        return default
+
+
+def _env_float(key: str, default: float) -> float:
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid float for env var %s=%r, falling back on default %s",
+            key,
+            raw,
+            default,
+        )
+        return default
+
+
+# ---------------------------------------------------------------------------
+# Module-level functions (testable in isolation)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_model_id(
+    base_url: str,
+    preferred: str = _DEFAULT_PREFERRED_MODEL,
+    timeout: float = 5.0,
+) -> str:
+    """Call ``GET /v1/models`` and return the model id to use.
+
+    Resolution order (spec section 2.4):
+
+    1. Exact match on ``preferred``.
+    2. Fuzzy match containing both ``qwen3.6`` and ``a3b`` and excluding any
+       fine-tune marker (see :data:`_FINETUNE_BLACKLIST`).
+    3. ``RuntimeError`` if nothing matches.
+
+    Args:
+        base_url: LM Studio base URL (with the ``/v1`` suffix).
+        preferred: Canonical model id; tried first via exact match.
+        timeout: Per-call HTTP timeout (seconds).
+
+    Returns:
+        The exact id to inject into the chat completion payload.
+
+    Raises:
+        RuntimeError: When no candidate is found on the server.
+    """
+    url = f"{base_url.rstrip('/')}/models"
+    resp = httpx.get(url, timeout=timeout)
+    resp.raise_for_status()
+    ids = [m["id"] for m in resp.json().get("data", [])]
+
+    if preferred in ids:
+        return preferred
+
+    candidates: List[str] = []
+    for model_id in ids:
+        lower = model_id.lower()
+        if not all(token in lower for token in _FUZZY_MATCH_TOKENS):
+            continue
+        if any(b in lower for b in _FINETUNE_BLACKLIST):
+            continue
+        candidates.append(model_id)
+
+    if not candidates:
+        raise RuntimeError(
+            f"No Qwen 3.6 A3B model exposed by LM Studio at {base_url}. "
+            f"Available: {ids!r}"
+        )
+    return candidates[0]
+
+
+def _extract_json_payload(response_json: dict) -> dict:
+    """Extract the JSON verdict from a LM Studio + Qwen 3.6 response.
+
+    Qwen 3.6 is a thinking model. With ``response_format: json_schema strict``
+    LM Studio places the well-formed JSON inside
+    ``message.reasoning_content``, leaving ``message.content`` empty
+    (verified empirically -- spec section 1.6 test 3). This parser reads
+    ``reasoning_content`` in priority and falls back on ``content``, with a
+    defense-in-depth pass to strip residual ``<think>`` blocks and markdown
+    fences.
+
+    Args:
+        response_json: Decoded HTTP response body from ``/chat/completions``.
+
+    Returns:
+        The parsed JSON payload (a dict).
+
+    Raises:
+        ValueError: If both ``reasoning_content`` and ``content`` are empty.
+        json.JSONDecodeError: If the extracted text is not valid JSON.
+    """
+    msg = response_json["choices"][0]["message"]
+    raw = (msg.get("reasoning_content") or msg.get("content") or "").strip()
+    if not raw:
+        raise ValueError(
+            "Empty reasoning_content and content in LM Studio response"
+        )
+
+    # Defense-in-depth: in case LM Studio ever surfaces a non-strict path,
+    # strip residual <think> blocks and markdown fences before parsing.
+    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    if not raw.startswith("{"):
+        match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+        if match:
+            raw = match.group(0)
+
+    return json.loads(raw)
+
+
+def _log_inference_metrics(response_json: dict, request_id: str) -> None:
+    """Log inference cost metrics (Qwen 3.6 surfaces reasoning tokens).
+
+    The log tag ``[LLM-JUDGE] inference`` is parsed by the throughput
+    reporter (spec section 3.3).
+    """
+    usage = response_json.get("usage", {})
+    details = usage.get("completion_tokens_details", {})
+    logger.info(
+        "[LLM-JUDGE] inference request_id=%s prompt_tokens=%d "
+        "completion_tokens=%d reasoning_tokens=%d total_tokens=%d",
+        request_id,
+        usage.get("prompt_tokens", 0),
+        usage.get("completion_tokens", 0),
+        details.get("reasoning_tokens", 0),
+        usage.get("total_tokens", 0),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Singleton
+# ---------------------------------------------------------------------------
+
+
 _INSTANCE: Optional["LLMJudgeValidator"] = None
+_INSTANCE_LOCK = threading.Lock()
 
 
 def get_instance() -> "LLMJudgeValidator":
     """Return the process-wide :class:`LLMJudgeValidator` singleton.
 
-    The singleton is intentionally lazy: it is built on first call so that
-    importing this module does not trigger HTTP I/O. The actual HTTP client,
-    model resolution and atexit shutdown are wired in commit 3.
+    The validator is built lazily (no HTTP I/O at import time). The atexit
+    shutdown hook is wired by the constructor so the executor is cleaned up
+    even if the singleton is built late in the process lifetime.
     """
     global _INSTANCE
     if _INSTANCE is None:
-        _INSTANCE = LLMJudgeValidator()
+        with _INSTANCE_LOCK:
+            if _INSTANCE is None:
+                _INSTANCE = LLMJudgeValidator()
     return _INSTANCE
 
 
+def _reset_singleton_for_tests() -> None:
+    """Reset the module-level singleton (test-only helper)."""
+    global _INSTANCE
+    with _INSTANCE_LOCK:
+        if _INSTANCE is not None:
+            _INSTANCE.shutdown()
+        _INSTANCE = None
+
+
+# ---------------------------------------------------------------------------
+# Validator
+# ---------------------------------------------------------------------------
+
+
 class LLMJudgeValidator(PIIPostFilterProtocol):
-    """LLM-as-Judge post-filter (Qwen 3.6 — skeleton).
+    """LLM-as-Judge post-filter targeting Qwen 3.6 via LM Studio.
 
-    At this stage :meth:`filter` is a no-op that returns the entities
-    untouched. It exists only so that the wiring (port -> adapter ->
-    composite detector) can be put in place without dragging the full HTTP
-    client implementation into this commit.
+    Behaviour summary:
 
-    Commit roadmap:
-    - Commit 1 (this one): skeleton, no-op filter, port wired.
-    - Commit 2: prompt templates + Pydantic verdict schema.
-    - Commit 3: LM Studio HTTP client, /v1/models resolution, JSON parsing,
-      ``response_format: json_schema strict`` payload.
+    - Only entities whose ``source == DetectorSource.GLINER`` are audited
+      (spec section 2.5). Deterministic detectors (Regex, Presidio,
+      OpenMed) are passed through untouched.
+    - Each finding is converted to a single ``/chat/completions`` call
+      using the system + user prompts from
+      :mod:`prompt_templates`. ``response_format`` is the OpenAI-compatible
+      ``json_schema strict`` shape.
+    - The verdict is validated by :class:`PiiVerdict` (Pydantic) and acted
+      upon:
+
+      - ``FALSE_POSITIVE`` -> entity discarded
+      - ``TRUE_POSITIVE``  -> entity kept
+      - ``UNSURE``         -> entity kept (recall-preserving policy)
+
+    - On any error (timeout, HTTP, JSON invalid) the entity is kept when
+      :attr:`fail_open` is ``True`` (default).
+
+    The default values mirror the spec section 2.6 environment variables
+    so the validator behaves identically whether configured via env or
+    constructor.
     """
 
     NAME = "llm-judge-qwen-3.6"
 
-    def __init__(self) -> None:
-        # Placeholder slots that will hold the wired client/executor in
-        # commit 3. Keep them here so the public surface is stable.
-        self._client = None
-        self._executor = None
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        preferred_model: Optional[str] = None,
+        timeout_seconds: Optional[float] = None,
+        max_batch_size: Optional[int] = None,
+        max_workers: Optional[int] = None,
+        fail_open: Optional[bool] = None,
+        backend: Optional[str] = None,
+        context_window: int = DEFAULT_CONTEXT_WINDOW,
+        max_tokens: int = 2048,
+        temperature: float = 0.2,
+        top_p: float = 1.0,
+        http_client: Optional[httpx.Client] = None,
+    ) -> None:
+        self.base_url = (
+            base_url
+            or os.getenv("LLM_JUDGE_BASE_URL")
+            or _DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.preferred_model = (
+            preferred_model
+            or os.getenv("LLM_JUDGE_PREFERRED_MODEL")
+            or _DEFAULT_PREFERRED_MODEL
+        )
+        self.timeout_seconds = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else _env_float("LLM_JUDGE_TIMEOUT_SECONDS", 120.0)
+        )
+        self.max_batch_size = (
+            max_batch_size
+            if max_batch_size is not None
+            else _env_int("LLM_JUDGE_MAX_BATCH_SIZE", 1)
+        )
+        self.max_workers = (
+            max_workers
+            if max_workers is not None
+            else _env_int("LLM_JUDGE_MAX_WORKERS", 4)
+        )
+        self.fail_open = (
+            fail_open
+            if fail_open is not None
+            else _env_bool("LLM_JUDGE_FAIL_OPEN", True)
+        )
+        self.backend = (
+            backend or os.getenv("LLM_JUDGE_BACKEND") or BACKEND_REMOTE
+        ).strip().lower()
+        self.context_window = context_window
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.top_p = top_p
+
+        self._client: Optional[httpx.Client] = http_client
+        self._owns_client = http_client is None
+        self._executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(
+            max_workers=max(1, self.max_workers),
+            thread_name_prefix="llm-judge",
+        )
         self._resolved_model_id: Optional[str] = None
+        self._resolve_lock = threading.Lock()
+        self._shutdown_called = False
+
+        atexit.register(self.shutdown)
+
+        if self.backend == BACKEND_LOCAL:
+            logger.warning(
+                "[LLM-JUDGE] local backend out of scope for MVP "
+                "(use 'remote' or disable judge). Filter is a no-op."
+            )
 
     # -- PIIPostFilterProtocol -----------------------------------------------
 
@@ -82,18 +402,227 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
     def filter(
         self, text: str, entities: List[PIIEntity]
     ) -> List[PIIEntity]:
-        """No-op skeleton; returns the input list unchanged.
+        """Filter GLiNER entities through the LLM judge.
 
-        Args:
-            text: Source text (unused at this stage).
-            entities: Merged entities from the detection pipeline.
-
-        Returns:
-            A shallow copy of ``entities`` (callers must not rely on identity).
+        Non-GLiNER entities (Regex / Presidio / OpenMed / Unknown) bypass
+        the LLM and are kept as-is. GLiNER entities are submitted in
+        parallel via the thread-pool executor.
         """
-        logger.debug(
-            "LLMJudgeValidator skeleton -- wiring deferred (entities=%d)",
-            len(entities),
+        if self.backend == BACKEND_LOCAL:
+            # Local backend is intentionally a no-op for the MVP.
+            return list(entities)
+        if not entities:
+            return []
+
+        gliner_entities: List[PIIEntity] = []
+        for entity in entities:
+            if self._is_gliner(entity):
+                gliner_entities.append(entity)
+
+        if not gliner_entities:
+            return list(entities)
+
+        verdicts = self._judge_batch(text, gliner_entities)
+        kept_ids = {
+            id(entity)
+            for entity, verdict in zip(gliner_entities, verdicts)
+            if self._should_keep(verdict)
+        }
+
+        # Preserve the original ordering while filtering out the rejected
+        # GLiNER entities; non-GLiNER entities are passed through as-is.
+        result: List[PIIEntity] = []
+        for entity in entities:
+            if self._is_gliner(entity):
+                if id(entity) in kept_ids:
+                    result.append(entity)
+            else:
+                result.append(entity)
+        return result
+
+    # -- Internals -----------------------------------------------------------
+
+    @staticmethod
+    def _is_gliner(entity: PIIEntity) -> bool:
+        source = getattr(entity, "source", None)
+        if isinstance(source, DetectorSource):
+            return source == DetectorSource.GLINER
+        if isinstance(source, str):
+            return source.upper() == DetectorSource.GLINER.value
+        return False
+
+    @staticmethod
+    def _should_keep(verdict: Optional[PiiVerdict]) -> bool:
+        """Implement the MVP decision rule (spec section 2.5).
+
+        ``FALSE_POSITIVE`` -> discard, anything else (including ``None``
+        when fail-open) -> keep.
+        """
+        if verdict is None:
+            return True
+        return verdict.verdict != "FALSE_POSITIVE"
+
+    def _judge_batch(
+        self, text: str, entities: List[PIIEntity]
+    ) -> List[Optional[PiiVerdict]]:
+        """Submit one judge call per entity using the executor."""
+        if self._executor is None:  # pragma: no cover - defensive
+            raise RuntimeError("LLMJudgeValidator already shut down")
+
+        futures = []
+        for entity in entities:
+            request_id = uuid.uuid4().hex[:12]
+            futures.append(
+                self._executor.submit(
+                    self._judge_one, text, entity, request_id
+                )
+            )
+
+        results: List[Optional[PiiVerdict]] = []
+        for future in futures:
+            try:
+                results.append(future.result(timeout=self.timeout_seconds))
+            except Exception:
+                logger.warning(
+                    "[LLM-JUDGE] judge call failed; %s entity",
+                    "keeping" if self.fail_open else "discarding",
+                    exc_info=True,
+                )
+                results.append(
+                    None if self.fail_open else self._reject_verdict()
+                )
+        return results
+
+    @staticmethod
+    def _reject_verdict() -> PiiVerdict:
+        """Build a synthetic FALSE_POSITIVE verdict (used when fail-closed)."""
+        return PiiVerdict(
+            verdict="FALSE_POSITIVE",
+            confidence=0.0,
+            reason="forced rejection (fail_open=false)",
         )
-        # Return a shallow copy to honor the contract "never mutate inputs".
-        return list(entities)
+
+    def _judge_one(
+        self, text: str, entity: PIIEntity, request_id: str
+    ) -> Optional[PiiVerdict]:
+        """Build the prompt, hit LM Studio, and validate the verdict.
+
+        Returns ``None`` on any error when :attr:`fail_open` is ``True``;
+        otherwise re-raises so the caller can synthesise a rejection.
+        """
+        try:
+            user_prompt = build_user_prompt(
+                entity, text, context_window=self.context_window
+            )
+            response_json = self._invoke_remote(user_prompt, request_id)
+            _log_inference_metrics(response_json, request_id)
+            payload = _extract_json_payload(response_json)
+            return PiiVerdict.model_validate(payload)
+        except (
+            httpx.TimeoutException,
+            httpx.HTTPError,
+            ValueError,
+            json.JSONDecodeError,
+            ValidationError,
+        ) as exc:
+            logger.warning(
+                "[LLM-JUDGE] request_id=%s failed (%s: %s); fail_open=%s",
+                request_id,
+                exc.__class__.__name__,
+                exc,
+                self.fail_open,
+            )
+            if self.fail_open:
+                return None
+            raise
+
+    def _resolve_model_id_lazy(self) -> str:
+        """Resolve the LM Studio model id once and cache it for reuse."""
+        if self._resolved_model_id is not None:
+            return self._resolved_model_id
+        with self._resolve_lock:
+            if self._resolved_model_id is None:
+                self._resolved_model_id = _resolve_model_id(
+                    self.base_url, self.preferred_model
+                )
+                logger.info(
+                    "[LLM-JUDGE] resolved model id=%s (preferred=%s)",
+                    self._resolved_model_id,
+                    self.preferred_model,
+                )
+        return self._resolved_model_id
+
+    def _get_client(self) -> httpx.Client:
+        if self._client is None:
+            self._client = httpx.Client(timeout=self.timeout_seconds)
+        return self._client
+
+    def _build_payload(self, user_prompt: str) -> Dict[str, Any]:
+        return {
+            "model": self._resolve_model_id_lazy(),
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "max_tokens": self.max_tokens,
+            "stream": False,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "pii_verdict",
+                    "strict": True,
+                    "schema": VERDICT_SCHEMA,
+                },
+            },
+            # Best-effort -- LM Studio ignores this kwarg today (spec
+            # section 1.5) but it is forward-compatible.
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+
+    def _invoke_remote(self, user_prompt: str, request_id: str) -> dict:
+        """POST ``/chat/completions`` and return the decoded JSON response."""
+        client = self._get_client()
+        url = f"{self.base_url}/chat/completions"
+        payload = self._build_payload(user_prompt)
+        start = time.monotonic()
+        resp = client.post(url, json=payload, timeout=self.timeout_seconds)
+        elapsed = time.monotonic() - start
+        resp.raise_for_status()
+        data = resp.json()
+        logger.debug(
+            "[LLM-JUDGE] request_id=%s completed in %.3fs (status=%d)",
+            request_id,
+            elapsed,
+            resp.status_code,
+        )
+        return data
+
+    # -- Lifecycle -----------------------------------------------------------
+
+    def shutdown(self) -> None:
+        """Shutdown the executor and close the HTTP client. Idempotent."""
+        if self._shutdown_called:
+            return
+        self._shutdown_called = True
+        if self._executor is not None:
+            self._executor.shutdown(wait=False)
+            self._executor = None
+        if self._client is not None and self._owns_client:
+            try:
+                self._client.close()
+            except Exception:  # pragma: no cover - defensive
+                logger.debug("LLM judge HTTP client close failed", exc_info=True)
+            self._client = None
+
+
+__all__ = [
+    "BACKEND_LOCAL",
+    "BACKEND_REMOTE",
+    "LLMJudgeValidator",
+    "_extract_json_payload",
+    "_log_inference_metrics",
+    "_resolve_model_id",
+    "get_instance",
+]
