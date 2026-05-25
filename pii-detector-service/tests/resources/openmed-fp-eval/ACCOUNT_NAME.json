@@ -1,0 +1,241 @@
+{
+  "pii_type": "ACCOUNT_NAME",
+  "detector_label": "ACCOUNTNAME",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "ACCOUNT_NAME_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Titulaire du compte bancaire : Jean Dupont",
+      "expected_spans": [
+        {
+          "start": 31,
+          "end": 42,
+          "value": "Jean Dupont"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Account holder name: Alice Anderson",
+      "expected_spans": [
+        {
+          "start": 21,
+          "end": 35,
+          "value": "Alice Anderson"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Kontoinhaber: Hans Mueller",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 26,
+          "value": "Hans Mueller"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Intestatario del conto: Marco Rossi",
+      "expected_spans": [
+        {
+          "start": 24,
+          "end": 35,
+          "value": "Marco Rossi"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "IBAN CH9300762011623852957 — Marie Martin",
+      "expected_spans": [
+        {
+          "start": 29,
+          "end": 41,
+          "value": "Marie Martin"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Beneficiary: Bob Brown",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 22,
+          "value": "Bob Brown"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Empfaenger: Greta Schmidt",
+      "expected_spans": [
+        {
+          "start": 12,
+          "end": 25,
+          "value": "Greta Schmidt"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Destinatario: Giulia Bianchi",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 28,
+          "value": "Giulia Bianchi"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Hostname pattern: athena-api-prod-zh1, athena-batch-prod-zh2.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Project codename: PHOENIX 2024 — internal tracking only.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Nom du dossier sur le partage reseau: rapports_annuels_2023.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Branch office: Lausanne Centre. Department: Operations North.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_en_04",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Linux user: appsvc. Group: athena-developers. Shell: /bin/bash.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Dateiname: jahresbericht_2024_final_v3.pdf im Ordner Berichte.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Nome del repository: piattaforma-athena su GitHub Enterprise.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Le titulaire du compte doit etre indique dans le formulaire de virement. Aucun nom n'est rempli sur ce gabarit modele.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Account holder name (FREE TEXT FIELD, max 70 chars per SEPA spec).",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Feld 'Kontoinhaber' im SEPA-Formular: max. 70 Zeichen. Bitte ausfuellen.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Compilare il campo 'intestatario del conto' nel modulo SEPA prima dell'invio.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Titulaire :\nJean\nDupont",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_NAME_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Account holder: A L I C E   A N D E R S O N",
+      "expected_spans": [
+        {
+          "start": 16,
+          "end": 43,
+          "value": "A L I C E   A N D E R S O N"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Kontoinhaber:  Hans  Mueller  ",
+      "expected_spans": [
+        {
+          "start": 15,
+          "end": 28,
+          "value": "Hans  Mueller"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Procedure de remboursement de frais professionnels — version 3.1.\n\nCe document decrit la procedure standard pour la soumission et le traitement des notes de frais des collaborateurs. Elle s'applique uniformement a tous les sites (Lausanne, Geneve, Zurich, Bale, Lugano) et a tous les niveaux hierarchiques.\n\nEtape 1 — soumission de la note de frais:\nLe collaborateur soumet sa note via le portail Expense Manager accessible depuis l'intranet. Les justificatifs doivent etre scannes en PDF ou photographies en haute resolution. Le delai de soumission est de 30 jours apres l'engagement de la depense.\n\nEtape 2 — validation:\nLa note est routee automatiquement vers le manager direct du collaborateur pour validation. En cas d'absence, la delegation remonte automatiquement au N+2. Le delai de validation cible est de 5 jours ouvres.\n\nEtape 3 — remboursement:\nUne fois validee, la note est integree au cycle de paiement hebdomadaire (chaque vendredi). Le virement est emis sur le compte bancaire personnel du collaborateur enregistre dans le SIRH. Pour cet exemple, le compte beneficiaire est l'IBAN CH9300762011623852957, le titulaire du compte etant Marie Martin (collaboratrice de demonstration uniquement, pas une employee reelle).\n\nIdentifiants cites dans cette procedure qui ne sont PAS des noms de titulaires de compte: nom du portail Expense Manager, nom du SIRH Workday, nom du repository code expense-mgr, nom du projet PHOENIX 2024, nom du dossier reseau rapports_finance_2024, nom du hostname athena-api-prod-zh1.\n\nReference du processus: PROC-FIN-2024-018. Contact: expenses@example.test.\n",
+      "expected_spans": [
+        {
+          "start": 1149,
+          "end": 1161,
+          "value": "Marie Martin"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_NAME_long_context_en_neg_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Internal naming conventions — engineering organization handbook.\n\nThis page captures the naming conventions used across the engineering organization for codebases, services, hosts, projects, branches and shared resources. None of the names below are person names or bank account holders — they are technical identifiers managed by the platform team.\n\nProject codenames (alphabetical):\n- ATHENA — main customer-facing platform.\n- BOREAS — internal cost management tool.\n- CYCLOPS — anti-fraud screening engine.\n- DELPHI — predictive analytics for capacity planning.\n- EREBUS — log aggregation and observability platform.\n- FENRIR — incident management workflow.\n- GALATEA — data quality monitoring system.\n- HELIOS — single sign-on and identity broker.\n- IKARUS — sandboxing service for external code execution.\n- JANUS — API gateway and traffic shaping.\n\nHostname conventions:\n- {service}-{role}-{env}-{zone}{index}\n- athena-api-prod-zh1, athena-api-prod-zh2, athena-batch-prod-zh1.\n- helios-auth-stag-ge1, fenrir-worker-dev-bsl1.\n\nBranch naming:\n- main, develop, feature/<ticket>-<slug>, hotfix/<ticket>-<slug>.\n- release/<version> for tagged release candidates.\n\nRepository names:\n- piattaforma-athena (formerly athena-monorepo).\n- piattaforma-helios.\n- piattaforma-erebus.\n- piattaforma-janus.\n\nShared drive folders:\n- /shared/finance/rapports_annuels_2024.\n- /shared/finance/jahresbericht_2024_final_v3.pdf.\n- /shared/legal/contrats_2024_q1.\n- /shared/marketing/campagne_phoenix_2024.\n\nLinux service accounts (NOT person names): appsvc, dbsvc, monitorsvc, backupsvc. These are unprivileged accounts used by the platform services to access shared resources.\n\nReference: NAMING-CONV-2024-007 in the engineering wiki.\n",
+      "expected_spans": []
+    }
+  ]
+}

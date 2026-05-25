@@ -38,6 +38,20 @@ OPENMED_MODEL_ID = "OpenMed/privacy-filter-multilingual"
 # final cut downstream.
 DEFAULT_GLOBAL_THRESHOLD = 0.30
 
+# Sliding-window chunking parameters used when the input exceeds
+# ``CHUNK_TRIGGER_CHARS``. Tuned for CPU inference on
+# OpenMed/privacy-filter-multilingual:
+#   - effective banded attention = 257 tokens, so any window >> 257 captures
+#     full local context; we use 1024.
+#   - overlap of 256 tokens is well above the maximum PII span length (a few
+#     dozen tokens), and matches the band radius so any token near a chunk
+#     edge in window N has a non-edge position in window N+1.
+#   - 'simple' aggregation already runs the model's Viterbi BIOES decoder
+#     per chunk; we only need to merge spans across overlaps in Python.
+CHUNK_WINDOW_TOKENS = 1024
+CHUNK_OVERLAP_TOKENS = 256
+CHUNK_TRIGGER_CHARS = 4000
+
 
 class OpenMedDetector:
     """PII detector backed by ``OpenMed/privacy-filter-multilingual``.
@@ -180,12 +194,221 @@ class OpenMedDetector:
         The pipeline's output schema is the HF token-classification format
         (``entity_group``, ``score``, ``start``, ``end``, ``word``). The
         Viterbi decoder runs inside the model itself via the custom
-        ``OpenAIPrivacyFilterForTokenClassification`` architecture, so no
-        post-merging is needed here.
+        ``OpenAIPrivacyFilterForTokenClassification`` architecture.
+
+        For texts above ``CHUNK_TRIGGER_CHARS`` we switch to sliding-window
+        chunking: the model's 128k native context is fine functionally, but a
+        single 25k-token forward pass on CPU is prohibitively slow and risks
+        request-level timeouts. Chunking trades a small post-merge cost for
+        bounded per-call latency.
         """
-        raw = self._pipeline(text)
         threshold_f = float(threshold)
+        if len(text) <= CHUNK_TRIGGER_CHARS:
+            raw_pre_merge = self._pipeline(text)
+        else:
+            raw_pre_merge = self._run_inference_chunked(text)
+        # Recoalesce adjacent BIOES fragments the openmed pipeline emits
+        # as separate entities (e.g. "Tr0ub4dor!202" + "4" -> "Tr0ub4dor!2024").
+        # Documented in doc/openmed-integration-spec.md §4.3, diagnosed
+        # empirically on 2026-05-25 via OPENMED_RAW_DUMP — cf. lessons.md
+        # entry DIAGNOSE_ML_PIPELINE_BUGS_EMPIRICALLY_BEFORE_PROPOSING_FIXES.
+        raw = self._merge_adjacent_fragments(raw_pre_merge, text)
+        # Diagnostic dump of pre/post-merge pipeline output BEFORE threshold
+        # filtering. Gated by env var so it never fires in prod. Used to
+        # validate the merge fix and to investigate future fragmentation
+        # regressions. Activate with: OPENMED_RAW_DUMP=1
+        import os
+        if os.environ.get("OPENMED_RAW_DUMP"):
+            self.logger.warning(
+                "[RAW_DUMP] text_len=%d threshold=%.2f pre_merge=%d "
+                "post_merge=%d text_preview=%r",
+                len(text), threshold_f, len(raw_pre_merge), len(raw),
+                text[:120],
+            )
+            for i, item in enumerate(raw):
+                start = int(item.get("start", 0) or 0)
+                end = int(item.get("end", 0) or 0)
+                slice_ = text[start:end] if 0 <= start < end <= len(text) else "<OOB>"
+                self.logger.warning(
+                    "[RAW_DUMP]   #%02d label=%s start=%d end=%d "
+                    "score=%.3f word=%r text_slice=%r",
+                    i,
+                    item.get("entity_group") or item.get("entity"),
+                    start, end,
+                    float(item.get("score", 0.0) or 0.0),
+                    item.get("word"),
+                    slice_,
+                )
         return [item for item in raw if float(item.get("score", 0.0)) >= threshold_f]
+
+    def _run_inference_chunked(self, text: str) -> List[Any]:
+        """Run the pipeline on sliding token-aligned windows and merge spans.
+
+        Strategy (see Privacy Filter model card §2 banded attention 257):
+          1. Tokenize once with ``return_offsets_mapping`` to know each
+             token's character span in the original text.
+          2. Walk the token stream with window ``CHUNK_WINDOW_TOKENS`` and
+             stride ``CHUNK_WINDOW_TOKENS - CHUNK_OVERLAP_TOKENS``.
+          3. For each window, decode the corresponding substring with the HF
+             pipeline (which runs the model's Viterbi BIOES decoder).
+          4. The pipeline returns offsets *relative to that substring*; we
+             rebase to global character offsets.
+          5. Merge across overlaps: drop spans that are exact duplicates
+             (same global ``(start, end, label)``); for overlapping spans
+             with the same label, keep the one with the highest score.
+        """
+        tokenizer = self._pipeline.tokenizer
+        enc = tokenizer(
+            text,
+            return_offsets_mapping=True,
+            add_special_tokens=False,
+            truncation=False,
+        )
+        offsets = enc["offset_mapping"]
+        total_tokens = len(offsets)
+        if total_tokens == 0:
+            return []
+
+        stride = max(1, CHUNK_WINDOW_TOKENS - CHUNK_OVERLAP_TOKENS)
+        all_raw: List[Dict[str, Any]] = []
+        for token_start in range(0, total_tokens, stride):
+            token_end = min(token_start + CHUNK_WINDOW_TOKENS, total_tokens)
+            # Char-level slice aligned on subword boundaries
+            char_start = offsets[token_start][0]
+            char_end = offsets[token_end - 1][1]
+            if char_end <= char_start:
+                continue
+            chunk_text = text[char_start:char_end]
+            chunk_raw = self._pipeline(chunk_text)
+            for ent in chunk_raw:
+                rebased = dict(ent)
+                rebased["start"] = int(ent.get("start", 0) or 0) + char_start
+                rebased["end"] = int(ent.get("end", 0) or 0) + char_start
+                # 'word' from chunk-local view stays valid since we just shifted offsets
+                all_raw.append(rebased)
+            if token_end >= total_tokens:
+                break
+
+        return self._merge_overlapping_spans(all_raw)
+
+    @staticmethod
+    def _merge_overlapping_spans(spans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Deduplicate spans produced by overlapping chunks.
+
+        Two spans are considered duplicates when they share the same label
+        (``entity_group``) and overlap on character offsets; we keep the one
+        with the highest score and the widest span.
+        """
+        if not spans:
+            return []
+        # Sort by start ASC, then by score DESC so the strongest span wins
+        # when we hit overlapping candidates with the same label.
+        spans_sorted = sorted(
+            spans,
+            key=lambda s: (
+                int(s.get("start", 0) or 0),
+                -float(s.get("score", 0.0) or 0.0),
+            ),
+        )
+        merged: List[Dict[str, Any]] = []
+        for ent in spans_sorted:
+            label = ent.get("entity_group") or ent.get("entity") or ""
+            start = int(ent.get("start", 0) or 0)
+            end = int(ent.get("end", 0) or 0)
+            score = float(ent.get("score", 0.0) or 0.0)
+            replaced = False
+            for idx, kept in enumerate(merged):
+                kept_label = kept.get("entity_group") or kept.get("entity") or ""
+                if kept_label != label:
+                    continue
+                kept_start = int(kept.get("start", 0) or 0)
+                kept_end = int(kept.get("end", 0) or 0)
+                # Overlap predicate (touch counts as adjacent, not overlap).
+                if start < kept_end and end > kept_start:
+                    kept_score = float(kept.get("score", 0.0) or 0.0)
+                    # Prefer wider span; tie-break on score.
+                    cur_width = end - start
+                    kept_width = kept_end - kept_start
+                    if (cur_width, score) > (kept_width, kept_score):
+                        merged[idx] = ent
+                    replaced = True
+                    break
+            if not replaced:
+                merged.append(ent)
+        return merged
+
+    @staticmethod
+    def _merge_adjacent_fragments(
+        entities: List[Dict[str, Any]],
+        text: str,
+        max_gap_chars: int = 2,
+    ) -> List[Dict[str, Any]]:
+        """Recoalesce sub-token BPE fragments that the openmed pipeline emits
+        as separate entities.
+
+        Empirically (RAW_DUMP diagnostic of 2026-05-25), the pipeline returns
+        BIOES boundary-tagged tokens as **separate** entities instead of a
+        single coalesced span. For example, on ``"Mot de passe utilisateur : Tr0ub4dor!2024"``
+        the pipeline emits two entities:
+
+        * ``#00 PASSWORD (27, 40) "Tr0ub4dor!202"``
+        * ``#01 PASSWORD (40, 41) "4"``
+
+        Both touch (gap = 0) and share the same ``entity_group``. Downstream
+        IoU matching at 0.5 then fails on the second fragment, inflating the
+        FP rate. This is the bug documented in
+        ``doc/openmed-integration-spec.md`` §4.3 (sub-token reconstruction)
+        but never implemented until now.
+
+        Merge predicate (intentionally tight to avoid silently chaining
+        unrelated spans):
+
+        * same ``entity_group`` / ``entity``
+        * gap (= next.start - prev.end) in [0, ``max_gap_chars``]
+        * the gap text contains no line break (``\\n``, ``\\r``) — that's a
+          structural boundary that should NOT be crossed
+        * gap text may contain a single short separator like ``" "``,
+          ``"-"``, ``"."``, ``"_"`` (filled by tolerating up to
+          ``max_gap_chars`` arbitrary chars)
+
+        The merged entity inherits the first fragment's start, the last
+        fragment's end, and the max score across fragments. The ``word``
+        field becomes the text slice, which is the only ground-truth
+        representation of the merged span.
+        """
+        if not entities:
+            return []
+        sorted_e = sorted(entities, key=lambda e: int(e.get("start", 0) or 0))
+        merged: List[Dict[str, Any]] = [dict(sorted_e[0])]
+        for ent in sorted_e[1:]:
+            last = merged[-1]
+            last_label = last.get("entity_group") or last.get("entity") or ""
+            ent_label = ent.get("entity_group") or ent.get("entity") or ""
+            ent_start = int(ent.get("start", 0) or 0)
+            last_end = int(last.get("end", 0) or 0)
+            gap = ent_start - last_end
+            gap_text = (
+                text[last_end:ent_start]
+                if 0 <= last_end <= ent_start <= len(text) else ""
+            )
+            if (last_label != ent_label
+                    or gap < 0 or gap > max_gap_chars
+                    or "\n" in gap_text or "\r" in gap_text):
+                merged.append(dict(ent))
+                continue
+            # Extend the kept entity to cover both fragments.
+            new_end = int(ent.get("end", 0) or 0)
+            last["end"] = new_end
+            last["score"] = max(
+                float(last.get("score", 0.0) or 0.0),
+                float(ent.get("score", 0.0) or 0.0),
+            )
+            # Refresh the word field to the actual merged text slice (the
+            # original fragments' ``word`` no longer represents the span).
+            last_start = int(last.get("start", 0) or 0)
+            if 0 <= last_start < new_end <= len(text):
+                last["word"] = text[last_start:new_end]
+        return merged
 
     # ------------------------------------------------------------------
     # Mapping + filtering

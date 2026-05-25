@@ -1,0 +1,247 @@
+{
+  "pii_type": "IMEI",
+  "detector_label": "IMEI",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "IMEI_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "IMEI du telephone professionnel : 490154203237518",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 49,
+          "value": "490154203237518"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Device IMEI: 356938035643809 (verified at activation)",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 28,
+          "value": "356938035643809"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Geraete-IMEI: 869462050274319",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 29,
+          "value": "869462050274319"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "IMEI dello smartphone aziendale: 358240051111110",
+      "expected_spans": [
+        {
+          "start": 33,
+          "end": 48,
+          "value": "358240051111110"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "Fiche materiel: 490154203237518",
+      "expected_spans": [
+        {
+          "start": 16,
+          "end": 31,
+          "value": "490154203237518"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Device record: 356938035643809",
+      "expected_spans": [
+        {
+          "start": 15,
+          "end": 30,
+          "value": "356938035643809"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Geraet: 869462050274319",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 23,
+          "value": "869462050274319"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Dispositivo: 358240051111110",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 28,
+          "value": "358240051111110"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Tracking number for the shipment: 749382017456290 via DHL Express.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Patent reference WO/2019/183421058 was cited in the legal review.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Numero de commande client 928340172650183 a livrer avant le 15.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Container ID MSCU 583927401628395 cleared customs on March 14.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Sendungsnummer 374821059463720 wurde am Mittwoch zugestellt.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Bolla di consegna 615028471293650 ricevuta in magazzino il martedi.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_look_alikes_en_04",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Build number 482910374625183 was promoted to staging by the bot.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "L'IMEI doit etre fourni au service IT en cas de declaration de perte ou de vol. Aucun IMEI n'est consigne dans cette page.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "To check your device IMEI, dial *#06# on the keypad of your phone.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Bei Diebstahl die IMEI-Nummer dem IT-Support melden. Wert hier nicht hinterlegt.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Per ottenere l'IMEI digitare *#06# sul tastierino del telefono.",
+      "expected_spans": []
+    },
+    {
+      "id": "IMEI_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "IMEI : 49 01 54 20 32 37 51 8",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 29,
+          "value": "49 01 54 20 32 37 51 8"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "IMEI:\n356-938-035-643-809",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 25,
+          "value": "356-938-035-643-809"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "IMEI: 8 6 9 4 6 2 0 5 0 2 7 4 3 1 9",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 35,
+          "value": "8 6 9 4 6 2 0 5 0 2 7 4 3 1 9"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Mobile device asset management — Q2 2024 inventory snapshot.\n\nThis page tracks the corporate fleet of mobile devices issued to employees. Each device is assigned a unique inventory number, the IMEI is recorded for theft recovery and the cellular plan is managed centrally via the corporate mobile portal.\n\nInventory excerpt (sample of 6 devices out of 248 total):\n\n| Inventory | Model            | Assignee   | Activation | Notes        |\n|-----------|------------------|------------|------------|--------------|\n| ASSET-001 | iPhone 14 Pro    | M. Smith   | 2024-01-15 | active       |\n| ASSET-002 | Samsung S23      | J. Doe     | 2024-01-22 | active       |\n| ASSET-003 | iPhone 13        | L. Martin  | 2023-11-08 | active       |\n| ASSET-004 | iPhone 14        | A. Bernard | 2024-02-19 | active       |\n| ASSET-005 | Samsung A54      | T. Garcia  | 2024-03-04 | active       |\n| ASSET-006 | iPhone 14 Pro    | P. Dupont  | 2024-03-18 | active       |\n\nDevice IMEI for ASSET-006 (iPhone 14 Pro assigned to P. Dupont): 353294105672834. This value is required by the carrier when reporting a stolen device and is also used to lock the device remotely if needed.\n\nTracking numbers for recent shipments (these are NOT IMEIs, they are courier references): 749382017456290, 928340172650183, 374821059463720, 615028471293650.\n\nProcedure for a stolen device:\n1. Lock the device via MDM within 15 minutes of report.\n2. File an incident in ServiceNow (severity 3).\n3. Submit a police report with the IMEI.\n4. Order a replacement via the mobile portal.\n",
+      "expected_spans": [
+        {
+          "start": 1023,
+          "end": 1038,
+          "value": "353294105672834"
+        }
+      ]
+    },
+    {
+      "id": "IMEI_long_context_fr_neg_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Statistiques d'expedition du centre logistique de Renens — Q1 2024.\n\nCette page consolide les chiffres de production et de livraison du centre logistique principal pour le premier trimestre. Toutes les expeditions sont tracees via des numeros de suivi a 15 chiffres fournis par les transporteurs partenaires (DHL, La Poste, Chronopost). Ces numeros NE SONT PAS des IMEI de telephones — ils n'identifient pas un appareil mobile et ne permettent pas de geolocaliser une personne.\n\nTop 10 des expeditions du trimestre par tonnage:\n- 749382017456290 — 18.4 tonnes — Genève\n- 928340172650183 — 16.2 tonnes — Berne\n- 374821059463720 — 15.7 tonnes — Zurich\n- 615028471293650 — 14.9 tonnes — Lugano\n- 482910374625183 — 14.1 tonnes — Bale\n- 583927401628395 — 13.8 tonnes — Lausanne\n- 729384105672834 — 13.5 tonnes — Sion\n- 836204195283746 — 13.2 tonnes — Fribourg\n- 947561038264915 — 12.9 tonnes — Neuchatel\n- 158293704162735 — 12.6 tonnes — Saint-Gall\n\nVolumes mensuels: janvier 4820 tonnes, fevrier 5174 tonnes, mars 5638 tonnes. Le pic du trimestre a ete observe le 14 mars avec 847 expeditions traitees en 24 heures.\n\nPour rappel, les numeros de tracking ne sont pas couverts par la politique de protection des donnees personnelles (PDP-018). Ils peuvent etre conserves pendant 5 ans pour des raisons douanieres et fiscales. Les eventuelles donnees personnelles associees a une expedition sont traitees separement et anonymisees apres 90 jours.\n",
+      "expected_spans": []
+    }
+  ]
+}

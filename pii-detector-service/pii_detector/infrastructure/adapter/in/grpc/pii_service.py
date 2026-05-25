@@ -853,24 +853,22 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             entities: Detected entities
             processing_time: Processing duration in seconds
         """
-        if self.log_throughput:
-            throughput = len(content) / processing_time if processing_time > 0 else 0
-            # Throughput and per-request metrics are useful in diagnostics but
-            # too verbose for production traffic. Keep them at DEBUG level.
-            logger.debug(
-                "[%s] PII detection completed in %.3fs, found %s entities, throughput: %.0f chars/s",
-                request_id,
-                processing_time,
-                len(entities),
-                throughput,
-            )
-        else:
-            logger.debug(
-                "[%s] PII detection completed in %.3fs with %s entities",
-                request_id,
-                processing_time,
-                len(entities),
-            )
+        chars = len(content) if content else 0
+        throughput = chars / processing_time if processing_time > 0 else 0.0
+        # [VELOCITY] tag makes per-request throughput grep-able for benchmark
+        # post-processing on both server-side stdout and the client-side log
+        # consumer. Emitted at INFO level (vs DEBUG previously) because the
+        # benchmark UI displays a corpus-wide ETA based on this metric and
+        # needs to consume it from the container log stream without changing
+        # the global log level.
+        logger.info(
+            "[VELOCITY] req=%s chars=%d duration_s=%.3f velocity_chars_per_s=%.0f entities=%d",
+            request_id,
+            chars,
+            processing_time,
+            throughput,
+            len(entities),
+        )
 
         # Always enqueue detailed PII logs asynchronously to avoid
         # impacting request latency.
@@ -1535,13 +1533,32 @@ class MemoryLimitedServer:
             thread_name_prefix='grpc-worker'
         )
         
-        # Create server with custom executor
+        # Create server with custom executor.
+        # Keepalive options are critical for long-running PII scans (200+ seconds
+        # on 100k-char Excel docs). Without these, an HTTP/2 PING from the client
+        # at default cadence (Armeria 30s when enabled, or any client-side
+        # liveness probe) triggers GOAWAY ENHANCE_YOUR_CALM via the default
+        # `grpc.http2.max_pings_without_data=2` guard. We loosen those guards
+        # and explicitly accept long idle streams since each inference can hold
+        # a single stream open for several minutes with no DATA frames in transit.
         self.server = grpc.server(
             self.executor,
             options=[
                 ('grpc.max_receive_message_length', 10 * 1024 * 1024),  # 10MB max message size
                 ('grpc.max_send_message_length', 10 * 1024 * 1024),
                 ('grpc.max_concurrent_streams', 100),
+                # Accept PINGs without data (long inferences send no DATA frames
+                # for minutes, so the default max_pings_without_data=2 trips).
+                ('grpc.http2.max_pings_without_data', 0),
+                ('grpc.http2.min_time_between_pings_ms', 10_000),
+                # Allow clients to send keepalive pings even when there's no
+                # active RPC (some clients open the connection eagerly before
+                # the first call).
+                ('grpc.keepalive_permit_without_calls', 1),
+                # No server-initiated GOAWAY based on connection age; benchmark
+                # runs intentionally keep the same connection alive for an hour.
+                ('grpc.max_connection_age_ms', 0x7FFFFFFF),
+                ('grpc.max_connection_idle_ms', 0x7FFFFFFF),
             ]
         )
         

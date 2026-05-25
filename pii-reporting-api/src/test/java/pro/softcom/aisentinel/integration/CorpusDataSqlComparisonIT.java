@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.tika.Tika;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.sax.BodyContentHandler;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -54,6 +59,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -209,6 +215,22 @@ class CorpusDataSqlComparisonIT {
         .withEnv("DB_NAME", DB_NAME)
         .withEnv("DB_USER", DB_USER)
         .withEnv("DB_PASSWORD", DB_PASSWORD)
+        // Stream the Python container logs to a dedicated file so that when the
+        // pii-detector process crashes mid-bench (OOM, segfault, unhandled
+        // Python exception) we keep its stderr/stdout for post-mortem. Without
+        // this, Ryuk removes the container after the JVM detects the failure
+        // and the only trace left is the Java-side "analyze failed" log lines.
+        //
+        // NOTE: we use a custom log consumer instead of the default Slf4jLogConsumer
+        // because Python's `logging.StreamHandler()` (and ML libs like httpx,
+        // transformers, presidio) write *everything* — INFO included — to stderr.
+        // Slf4jLogConsumer routes stderr → ERROR-level slf4j by default, which
+        // makes the container output read as a wall of fake ERRORs ("misleading
+        // as fuck"). Here we parse the Python log level embedded in each line
+        // (" - INFO - ", " - WARNING - ", " - ERROR - ", " - DEBUG - ") and
+        // forward to slf4j at the matching level. Lines without an explicit
+        // level (e.g. progress bars, raw prints) fall back to INFO.
+        .withLogConsumer(CorpusDataSqlComparisonIT::routeContainerLog)
         .waitingFor(Wait.forLogMessage(".*Server started on port.*", 1))
         .withStartupTimeout(Duration.ofMinutes(10));
 
@@ -219,6 +241,36 @@ class CorpusDataSqlComparisonIT {
             throw new IllegalStateException("Cannot create HF cache dir: " + HF_CACHE_DIR, e);
         }
         return HF_CACHE_DIR.toString();
+    }
+
+    private static final org.slf4j.Logger CONTAINER_LOG =
+        LoggerFactory.getLogger("pii-detector-container");
+
+    /**
+     * Forwards a container {@link OutputFrame} to slf4j at the level Python
+     * actually used, instead of the Testcontainers default that maps stderr
+     * to ERROR. Python writes <i>everything</i> to stderr by default, so the
+     * default mapping floods the test log with fake ERRORs.
+     */
+    private static void routeContainerLog(OutputFrame frame) {
+        String raw = frame.getUtf8String();
+        if (raw == null || raw.isEmpty()) {
+            return;
+        }
+        String line = raw.endsWith("\n") ? raw.substring(0, raw.length() - 1) : raw;
+        // Python's standard logging format embeds the level as " - LEVEL - "
+        // (e.g. "2026-05-23 09:03:15,599 - presidio-analyzer - INFO - Using device of type: cpu").
+        if (line.contains(" - DEBUG - ")) {
+            CONTAINER_LOG.debug(line);
+        } else if (line.contains(" - WARNING - ") || line.contains(" - WARN - ")) {
+            CONTAINER_LOG.warn(line);
+        } else if (line.contains(" - ERROR - ") || line.contains(" - CRITICAL - ")) {
+            CONTAINER_LOG.error(line);
+        } else {
+            // INFO is the most common, and any unstructured output (progress
+            // bars, raw prints) should not pollute the ERROR channel.
+            CONTAINER_LOG.info(line);
+        }
     }
 
     private static ImageFromDockerfile buildPiiDetectorImage() {
@@ -249,10 +301,16 @@ class CorpusDataSqlComparisonIT {
 
         registry.add("pii-detector.host",                     piiDetector::getHost);
         registry.add("pii-detector.port",                     () -> piiDetector.getMappedPort(GRPC_PORT));
-        // 900s (15 min) requis pour les Excel volumineux du corpus (ex: Saga-Appareil*.xlsx
-        // genere ~1k findings, depasse les 5 min par defaut, cf. DEADLINE_EXCEEDED sur le retry).
-        registry.add("pii-detector.connection-timeout-ms",    () -> "900000");
-        registry.add("pii-detector.request-timeout-ms",       () -> "900000");
+        // Timeout client gRPC bumpe a 2h pour couvrir le cas extreme du corpus :
+        // ISO 20022 for Dummies.pdf (8.5 MB binaire, ~1.6 MB de texte extrait) sur
+        // lequel OpenMed avec chunking 1024/256 tokens fait ~500 chunks sequentiels
+        // sur CPU. Les Excel volumineux comme Saga-Appareil tournent en ~4 min ;
+        // l'objectif ici est de ne pas declencher DEADLINE_EXCEEDED sur le cas pire
+        // raisonnable, ce qui est confirme empiriquement par runSingleIso20022Pdf.
+        // Le scan complet a observe des req individuelles jusqu'a 4178s (70 min)
+        // sur les fichiers >1MB ; 7200s (2h) laisse une marge de securite.
+        registry.add("pii-detector.connection-timeout-ms",    () -> "7200000");
+        registry.add("pii-detector.request-timeout-ms",       () -> "7200000");
 
         registry.add("PII_DATABASE_ENCRYPTION_KEY",
             () -> "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
@@ -265,6 +323,22 @@ class CorpusDataSqlComparisonIT {
     @Autowired private HtmlContentParser htmlContentParser;
 
     private static final Tika TIKA = new Tika();
+
+    private String parseWithTika(Path file) throws Exception {
+        // Bypass {@code Tika.parseToString}'s implicit {@code
+        // BodyContentHandler(100_000)} character cap. We deliberately use the
+        // unlimited-buffer handler because both OpenMed (128k-token native
+        // context, then chunked on the detector side for CPU) and GLiNER
+        // (chunked internally) are designed to handle full document bodies;
+        // truncation here would silently mask any PII past 100k chars.
+        AutoDetectParser parser = new AutoDetectParser();
+        BodyContentHandler handler = new BodyContentHandler(-1);
+        Metadata metadata = new Metadata();
+        try (java.io.InputStream stream = java.nio.file.Files.newInputStream(file)) {
+            parser.parse(stream, handler, metadata, new ParseContext());
+        }
+        return handler.toString();
+    }
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /**
@@ -410,7 +484,164 @@ class CorpusDataSqlComparisonIT {
     @Test
     @Order(6)
     void runImprovedV3WithOpenMed() throws Exception {
-        runVariant("improved-v3-openmed", "classpath:sql/data-improved-3.sql");
+        runVariant("improved-v3-openmed", "classpath:sql/data-openmed-no-gliner.sql");
+    }
+
+    /**
+     * Test isole sur le fichier qui declenche la cascade UNAVAILABLE dans
+     * {@link #runImprovedV3WithOpenMed} : un Excel de 133 KB dont Tika extrait
+     * exactement 100 000 chars, ce qui sature le pipeline pii-detector pendant
+     * ~226s (GLiNER multipass 212s + Presidio + OpenMed) et apres lequel le
+     * container Python devient {@code UNAVAILABLE}, cassant les 372 fichiers
+     * suivants.
+     *
+     * <p>Permet d'iterer rapidement sur le fix de stabilite (cap content, retry
+     * client, restart container, healthcheck pre-call) sans relancer le scan
+     * complet de 6 minutes.
+     *
+     * <p>Run isole :
+     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#runSingleSagaAppareilXlsx ... test</pre>
+     */
+    @Test
+    @Order(8)
+    void runSingleSagaAppareilXlsx() throws Exception {
+        log.info("[single-saga] === START ===");
+        resetAndReseedDb("classpath:sql/data-openmed-no-gliner.sql");
+
+        // Warmup: scan a tiny dummy text first to force ALL detectors (incl. OpenMed
+        // 2.7 GB model) to load. Without this, the very first analyzeContent call
+        // triggers a lazy load mid-request which has been observed to crash the
+        // gRPC worker thread on heavy content (cf. the 100k-char Saga-Appareil
+        // case below). Separating warmup from the real scan rules out the lazy-load
+        // hypothesis: if the real scan still crashes here, the cause is the content,
+        // not the load timing.
+        Instant tWarm = Instant.now();
+        try {
+            ContentPiiDetection warm = piiDetectorClient.analyzeContent(
+                "Warmup: IBAN CH9300762011623852957 (force detectors to load).");
+            log.info("[single-saga] warmup OK in {}s : {} findings",
+                Duration.between(tWarm, Instant.now()).toSeconds(),
+                warm.sensitiveDataFound().size());
+        } catch (Throwable t) {
+            log.error("[single-saga] warmup FAILED in {}s : {}",
+                Duration.between(tWarm, Instant.now()).toSeconds(), t.toString(), t);
+            throw t;
+        }
+
+        Path corpusRoot = Paths.get(CORPUS_ROOT).toAbsolutePath();
+        String relPath = "Adresse_MAC/01_Informations_complementaires_SAGA_Mobiles_1468268633"
+            + "/attachments/Saga-Appareil à jour-07.12.2023.07.33.xlsx";
+        Path file = corpusRoot.resolve(relPath.replace('/', java.io.File.separatorChar));
+        Assertions.assertTrue(Files.isRegularFile(file),
+            "file not found: " + file);
+
+        log.info("[single-saga] file size: {} bytes", Files.size(file));
+
+        Instant tExtract = Instant.now();
+        String text = extractText(file);
+        long extractSec = Duration.between(tExtract, Instant.now()).toSeconds();
+        Assertions.assertNotNull(text, "extractText returned null");
+        Assertions.assertFalse(text.isBlank(), "extractText returned blank");
+        log.info("[single-saga] extracted text: {} chars in {}s", text.length(), extractSec);
+
+        Instant tAnalyze = Instant.now();
+        try {
+            ContentPiiDetection detection = piiDetectorClient.analyzeContent(text);
+            long analyzeSec = Duration.between(tAnalyze, Instant.now()).toSeconds();
+            log.info("[single-saga] SUCCESS in {}s : {} findings",
+                analyzeSec, detection.sensitiveDataFound().size());
+            Map<String, Long> byType = detection.sensitiveDataFound().stream()
+                .collect(Collectors.groupingBy(SensitiveData::type,
+                    Collectors.counting()));
+            Map<String, Long> byDetector = detection.sensitiveDataFound().stream()
+                .collect(Collectors.groupingBy(
+                    CorpusDataSqlComparisonIT::detectorName,
+                    Collectors.counting()));
+            log.info("[single-saga] findings par type     : {}", byType);
+            log.info("[single-saga] findings par detector : {}", byDetector);
+        } catch (Throwable t) {
+            long analyzeSec = Duration.between(tAnalyze, Instant.now()).toSeconds();
+            log.error("[single-saga] FAILED after {}s : {}", analyzeSec, t.toString(), t);
+            throw t;
+        }
+        log.info("[single-saga] === DONE ===");
+    }
+
+    /**
+     * Test isole sur le fichier le plus volumineux du corpus :
+     * {@code Identifiant_bancaire_international_IBAN/03_Documents_623509835/attachments/ISO 20022 for Dummies.pdf}
+     * (8.5 MB binaire, ~1.6-2 MB de texte apres extraction Tika).
+     *
+     * <p>Objectif : calibrer le timeout cote client gRPC. Sur les fichiers de
+     * cette taille, OpenMed avec chunking 1024/256 tokens fait ~500-700 chunks
+     * sequentiels sur CPU, ce qui peut prendre 30-90 min selon la machine. Le
+     * timeout actuel de 900s (15 min) declenche {@code DEADLINE_EXCEEDED} et
+     * la requete est consideree comme echouee cote client, alors que le
+     * container continue a la traiter en background.
+     *
+     * <p>Ce test permet de mesurer le temps reel d'analyse d'un cas pire
+     * raisonnable pour fixer un timeout adequat dans {@code registerProps}.
+     *
+     * <p>Run isole :
+     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#runSingleIso20022Pdf ... test</pre>
+     */
+    @Test
+    @Order(9)
+    void runSingleIso20022Pdf() throws Exception {
+        log.info("[single-biggest] === START ===");
+        resetAndReseedDb("classpath:sql/data-openmed-no-gliner.sql");
+
+        Instant tWarm = Instant.now();
+        ContentPiiDetection warm = piiDetectorClient.analyzeContent(
+            "Warmup: IBAN CH9300762011623852957 (force detectors to load).");
+        log.info("[single-biggest] warmup OK in {}s : {} findings",
+            Duration.between(tWarm, Instant.now()).toSeconds(),
+            warm.sensitiveDataFound().size());
+
+        Path corpusRoot = Paths.get(CORPUS_ROOT).toAbsolutePath();
+        // Sur ce corpus, les fichiers qui produisent le plus de texte ne sont
+        // pas les plus gros en binaire (ISO 20022.pdf = 8.5 MB binaire ne donne
+        // que ~95k chars de texte a cause des images/diagrammes). Le pire cas
+        // observe pour le contenu textuel pur est cet HTML de scan securite
+        // (4.5 MB binaire -> ~1.6 MB de texte extrait, ~400k tokens).
+        String relPath = "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015"
+            + "/attachments/pssec-masters-scan-sla6182t.etat-de-vaud.ch-pod.html";
+        Path file = corpusRoot.resolve(relPath.replace('/', java.io.File.separatorChar));
+        org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(file),
+            "file not found: " + file);
+
+        log.info("[single-biggest] file size: {} bytes", Files.size(file));
+
+        Instant tExtract = Instant.now();
+        String text = extractText(file);
+        long extractSec = Duration.between(tExtract, Instant.now()).toSeconds();
+        org.junit.jupiter.api.Assertions.assertNotNull(text, "extractText returned null");
+        org.junit.jupiter.api.Assertions.assertFalse(text.isBlank(), "extractText returned blank");
+        log.info("[single-biggest] extracted text: {} chars in {}s", text.length(), extractSec);
+
+        Instant tAnalyze = Instant.now();
+        try {
+            ContentPiiDetection detection = piiDetectorClient.analyzeContent(text);
+            long analyzeSec = Duration.between(tAnalyze, Instant.now()).toSeconds();
+            log.info("[single-biggest] SUCCESS in {}s : {} findings",
+                analyzeSec, detection.sensitiveDataFound().size());
+            log.info("[single-biggest] >>> RECOMMENDED TIMEOUT: {} ms (= {}s analyze * 1.5 safety margin)",
+                (long) (analyzeSec * 1500), (long) (analyzeSec * 1.5));
+            Map<String, Long> byType = detection.sensitiveDataFound().stream()
+                .collect(java.util.stream.Collectors.groupingBy(SensitiveData::type,
+                    java.util.stream.Collectors.counting()));
+            Map<String, Long> byDetector = detection.sensitiveDataFound().stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                    CorpusDataSqlComparisonIT::detectorName,
+                    java.util.stream.Collectors.counting()));
+            log.info("[single-biggest] findings par type     : {}", byType);
+            log.info("[single-biggest] findings par detector : {}", byDetector);
+        } catch (Throwable t) {
+            long analyzeSec = Duration.between(tAnalyze, Instant.now()).toSeconds();
+            log.error("[single-biggest] FAILED after {}s : {}", analyzeSec, t.toString(), t);
+            throw t;
+        }
+        log.info("[single-biggest] === DONE ===");
     }
 
     /**
@@ -488,7 +719,7 @@ class CorpusDataSqlComparisonIT {
     @Order(7)
     void smokeAllConfiguredDetectorsProduceFindings() throws Exception {
         log.info("[smoke-detectors] === START ===");
-        String sqlClasspath = "classpath:sql/data-improved-3.sql";
+        String sqlClasspath = "classpath:sql/data-openmed-no-gliner.sql";
         resetAndReseedDb(sqlClasspath);
 
         Set<String> expectedDetectors = queryExpectedActiveDetectors();
@@ -703,6 +934,119 @@ class CorpusDataSqlComparisonIT {
         return added;
     }
 
+    /**
+     * Thread-safe tracker for live progress + ETA during a full-corpus scan.
+     * Maintained per variant; nulled out between variants.
+     */
+    private volatile ProgressTracker progressTracker;
+
+    private static final class ProgressTracker {
+        private final long totalCharsToScan;
+        private final int totalFiles;
+        private final java.util.concurrent.atomic.AtomicLong scannedChars =
+            new java.util.concurrent.atomic.AtomicLong();
+        private final java.util.concurrent.atomic.AtomicLong analyzedChars =
+            new java.util.concurrent.atomic.AtomicLong();
+        private final java.util.concurrent.atomic.AtomicLong totalAnalyzeMillis =
+            new java.util.concurrent.atomic.AtomicLong();
+        private final java.util.concurrent.atomic.AtomicInteger doneFiles =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private final Instant startedAt = Instant.now();
+
+        ProgressTracker(long totalCharsToScan, int totalFiles) {
+            this.totalCharsToScan = totalCharsToScan;
+            this.totalFiles = totalFiles;
+        }
+
+        void recordFile(int chars, long analyzeMillis, boolean successful) {
+            scannedChars.addAndGet(chars);
+            if (successful) {
+                analyzedChars.addAndGet(chars);
+                totalAnalyzeMillis.addAndGet(Math.max(0, analyzeMillis));
+            }
+            doneFiles.incrementAndGet();
+        }
+
+        /** Logs an ASCII progress bar with rolling-average velocity and ETA. */
+        void logProgress(String variantName, String currentFile) {
+            long scanned = scannedChars.get();
+            long analyzed = analyzedChars.get();
+            long analyzeMs = totalAnalyzeMillis.get();
+            int filesDone = doneFiles.get();
+
+            double pct = totalCharsToScan > 0
+                ? (100.0 * scanned / totalCharsToScan) : 0.0;
+            double velocity = analyzeMs > 0
+                ? (analyzed * 1000.0 / analyzeMs) : 0.0;
+            long remainingChars = Math.max(0L, totalCharsToScan - scanned);
+            long etaSec = velocity > 0 ? (long) (remainingChars / velocity) : -1;
+
+            // 30-char ASCII bar; floor(pct/100 * 30) filled cells.
+            int filled = Math.min(30, Math.max(0, (int) (pct / 100.0 * 30)));
+            StringBuilder bar = new StringBuilder(32).append('[');
+            for (int i = 0; i < 30; i++) bar.append(i < filled ? '#' : '.');
+            bar.append(']');
+
+            log.info(
+                "[{}] [PROGRESS] {} {} files {}/{} chars {}/{} ({}%) velocity {} chars/s ETA {} (last: {})",
+                variantName, bar,
+                filesDone, totalFiles,
+                scanned, totalCharsToScan,
+                String.format(Locale.ROOT, "%.1f", pct),
+                String.format(Locale.ROOT, "%.0f", velocity),
+                formatEta(etaSec),
+                currentFile);
+        }
+
+        private static String formatEta(long etaSec) {
+            if (etaSec < 0) return "computing...";
+            long h = etaSec / 3600;
+            long m = (etaSec % 3600) / 60;
+            long s = etaSec % 60;
+            if (h > 0) return String.format(Locale.ROOT, "%dh%02dm%02ds", h, m, s);
+            if (m > 0) return String.format(Locale.ROOT, "%dm%02ds", m, s);
+            return s + "s";
+        }
+    }
+
+    /**
+     * Walk the full corpus once in parallel, extract text with Tika, and sum
+     * the character counts to produce a {@link ProgressTracker} pre-loaded
+     * with the total work to do. We discard the extracted bodies immediately
+     * (only keep the length) so RAM stays bounded — the actual scan pass
+     * re-extracts each file. The duplicate Tika cost is paid once and yields
+     * an accurate live ETA across the multi-hour scan.
+     */
+    private ProgressTracker precomputeProgressTracker(String variantName, Path corpusRoot) throws IOException {
+        Instant tPre = Instant.now();
+        log.info("[{}] [PRE-CALC] walking corpus to compute total char budget...", variantName);
+
+        List<Path> allFiles = new java.util.ArrayList<>();
+        for (Path piiTypeDir : listDirectories(corpusRoot)) {
+            for (Path pageDir : listDirectories(piiTypeDir)) {
+                allFiles.addAll(collectScannableFiles(pageDir));
+            }
+        }
+        log.info("[{}] [PRE-CALC] {} files to evaluate", variantName, allFiles.size());
+
+        java.util.concurrent.atomic.AtomicLong totalChars = new java.util.concurrent.atomic.AtomicLong();
+        allFiles.parallelStream().forEach(file -> {
+            try {
+                String t = extractText(file);
+                if (t != null) totalChars.addAndGet(t.length());
+            } catch (Throwable ignored) {
+                // Unreadable files are skipped both in pre-calc and scan,
+                // so they don't bias the ETA.
+            }
+        });
+
+        long total = totalChars.get();
+        long preSec = Duration.between(tPre, Instant.now()).toSeconds();
+        log.info("[{}] [PRE-CALC] total {} chars across {} files (pre-calc {}s)",
+            variantName, total, allFiles.size(), preSec);
+        return new ProgressTracker(total, allFiles.size());
+    }
+
     private void runVariant(String variantName, String sqlClasspath) throws Exception {
         log.info("[{}] === START variant {} from {} ===", variantName, variantName, sqlClasspath);
         Instant start = Instant.now();
@@ -716,6 +1060,13 @@ class CorpusDataSqlComparisonIT {
 
         Stats stats = new Stats();
         Path findingsPath = outDir.resolve("findings.jsonl");
+
+        // Pre-extract total char count to drive a meaningful progress bar.
+        // We do this in parallel and only sum lengths (no caching of bodies)
+        // so RAM stays bounded. Cost: a few minutes of Tika extraction, paid
+        // upfront in exchange for a real ETA during the multi-hour scan.
+        ProgressTracker progress = precomputeProgressTracker(variantName, corpusRoot);
+        this.progressTracker = progress;
 
         try (BufferedWriter findingsWriter = Files.newBufferedWriter(findingsPath, StandardCharsets.UTF_8)) {
             List<Path> piiTypeDirs = listDirectories(corpusRoot);
@@ -732,6 +1083,8 @@ class CorpusDataSqlComparisonIT {
                     scanPage(variantName, corpusRoot, piiTypeFolder, expectedTypes, pageDir, stats, findingsWriter);
                 }
             }
+        } finally {
+            this.progressTracker = null;
         }
 
         Path reportPath = outDir.resolve("report.md");
@@ -761,16 +1114,23 @@ class CorpusDataSqlComparisonIT {
                 continue;
             }
 
-            ContentPiiDetection detection;
-            try {
-                detection = piiDetectorClient.analyzeContent(text);
-            } catch (Throwable t) {
-                log.warn("[{}] analyze failed for {}: {}", variantName, relPath, t.toString());
+            Instant tAnalyze = Instant.now();
+            ContentPiiDetection detection = analyzeWithRetry(variantName, relPath, text);
+            long analyzeMillis = Duration.between(tAnalyze, Instant.now()).toMillis();
+            if (detection == null) {
                 stats.failedFiles.add(relPath);
+                if (progressTracker != null) {
+                    progressTracker.recordFile(text.length(), analyzeMillis, false);
+                    progressTracker.logProgress(variantName, relPath);
+                }
                 continue;
             }
 
             stats.filesScanned++;
+            if (progressTracker != null) {
+                progressTracker.recordFile(text.length(), analyzeMillis, true);
+                progressTracker.logProgress(variantName, relPath);
+            }
 
             for (SensitiveData sd : detection.sensitiveDataFound()) {
                 boolean expectedHit = expectedTypes.contains(sd.type());
@@ -790,6 +1150,51 @@ class CorpusDataSqlComparisonIT {
         if (pageStats.expectedFindings > 0) {
             rc.hitPages++;
         }
+    }
+
+    /**
+     * Wrap {@link PiiDetectorClient#analyzeContent} with a small retry on transient
+     * gRPC errors. Without this, a single transient {@code UNAVAILABLE} (e.g. the
+     * pii-detector container momentarily unreachable due to network hiccup or
+     * service restart) immediately marked the file as failed, and the cascading
+     * failures observed in the run pre-Armeria-fix would propagate to all 372
+     * subsequent files.
+     *
+     * <p>Strategy: 3 attempts, exponential backoff (5s, 15s). Stops fast on
+     * non-retryable errors ({@code INVALID_ARGUMENT}, {@code Content too large})
+     * since those will never succeed regardless of retry.
+     *
+     * @return the detection result, or {@code null} if all attempts failed
+     */
+    private ContentPiiDetection analyzeWithRetry(String variantName, String relPath, String text) {
+        int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return piiDetectorClient.analyzeContent(text);
+            } catch (Throwable t) {
+                String msg = t.toString();
+                if (msg.contains("INVALID_ARGUMENT") || msg.contains("Content too large")) {
+                    log.warn("[{}] non-retryable analyze failure for {}: {}",
+                        variantName, relPath, msg);
+                    return null;
+                }
+                if (attempt == maxAttempts) {
+                    log.warn("[{}] analyze failed for {} after {} attempts: {}",
+                        variantName, relPath, maxAttempts, msg);
+                    return null;
+                }
+                long backoffMs = 5_000L * attempt;
+                log.warn("[{}] analyze attempt {}/{} failed for {} : {} — retrying in {}ms",
+                    variantName, attempt, maxAttempts, relPath, msg, backoffMs);
+                try {
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     private static List<Path> listDirectories(Path parent) throws IOException {
@@ -838,10 +1243,13 @@ class CorpusDataSqlComparisonIT {
     private String extractText(Path file) {
         String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
         try {
+            String raw;
             if (name.endsWith(".html") || name.endsWith(".htm")) {
-                return htmlContentParser.cleanText(Files.readString(file, StandardCharsets.UTF_8));
+                raw = htmlContentParser.cleanText(Files.readString(file, StandardCharsets.UTF_8));
+            } else {
+                raw = parseWithTika(file);
             }
-            return TIKA.parseToString(file);
+            return raw;
         } catch (Throwable t) {
             // Catch Throwable (not Exception) so a NoClassDefFoundError raised by Tika sub-parsers
             // (e.g. OutlookExtractor → jsoup TagSet on .msg files) doesn't abort the whole run.

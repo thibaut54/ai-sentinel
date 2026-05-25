@@ -1,0 +1,241 @@
+{
+  "pii_type": "CREDIT_CARD",
+  "detector_label": "CREDITCARD",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "CREDIT_CARD_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Numero de carte de credit pour le test E2E : 4111 1111 1111 1111",
+      "expected_spans": [
+        {
+          "start": 45,
+          "end": 64,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Credit card number (Stripe test): 4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 53,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Kreditkartennummer (Testkonto): 5555 5555 5555 4444",
+      "expected_spans": [
+        {
+          "start": 32,
+          "end": 51,
+          "value": "5555 5555 5555 4444"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Numero della carta di credito (Amex test): 3782 822463 10005",
+      "expected_spans": [
+        {
+          "start": 43,
+          "end": 60,
+          "value": "3782 822463 10005"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "4111 1111 1111 1111",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Charge: 4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 27,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Bezahlung: 5105 1051 0510 5100",
+      "expected_spans": [
+        {
+          "start": 11,
+          "end": 30,
+          "value": "5105 1051 0510 5100"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Pagamento: 5555 5555 5555 4444",
+      "expected_spans": [
+        {
+          "start": 11,
+          "end": 30,
+          "value": "5555 5555 5555 4444"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "DHL tracking number for shipment Q1: 7493 8201 7456 2904.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Order reference: 9283 4017 2650 1830 placed via the legacy portal.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Numero de patent europeen: EP 1234 5678 9012 3456 — depose en 2018.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Container ID combined: 5839 2740 1628 3950 (MSCU prefix removed).",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_en_04",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Build number sequence: 4829 1037 4625 1830 (CI artifact ID).",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Versandbeleg-Nummer: 6150 2847 1293 6500 (interne Logistik).",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Numero bolla di consegna: 8362 0419 5283 7460 del fornitore X.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Aucun numero de carte de credit reel ne doit etre saisi dans Confluence. Utiliser uniquement les cartes de test Stripe.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "PCI-DSS forbids storing the full PAN (credit card number) outside the secure payment vault.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Echte Kreditkartennummern duerfen niemals in Confluence eingetragen werden.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "I numeri reali di carta di credito non devono essere salvati in Confluence.",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Carte:\n4111\n1111\n1111\n1111",
+      "expected_spans": []
+    },
+    {
+      "id": "CREDIT_CARD_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Card: 4 2 4 2  4 2 4 2  4 2 4 2  4 2 4 2",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 40,
+          "value": "4 2 4 2  4 2 4 2  4 2 4 2  4 2 4 2"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Kreditkarte:  5555 5555 5555 4444  ",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 33,
+          "value": "5555 5555 5555 4444"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Test plan — end-to-end payment flow — Athena checkout — Q2 2024.\n\nThis document captures the full set of scenarios executed during the quarterly E2E regression of the Athena checkout. The plan exercises the happy path, the most common error cases and a handful of edge conditions identified during last quarter's incident review. The test suite runs nightly against the staging environment with the standard Stripe test cards.\n\nTest scenarios:\n\n1. Happy path — single item purchase with a successful Visa card. Card number used: 4242 4242 4242 4242, expiry 04/27, CVV 421. Expected outcome: order confirmed, receipt emailed within 30 seconds, status updated to PAID in the order ledger.\n\n2. Insufficient funds — same card with the test-mode trigger to simulate a 'card declined' response. Expected outcome: order stays in PENDING, retry banner shown to the customer.\n\n3. CVV check failure — same card, wrong CVV. Expected outcome: order rejected, no charge attempted.\n\n4. International card — Amex test 3782 822463 10005, expiry 12/26, CVV 1234. Expected outcome: order confirmed, currency conversion applied, receipt shows both the original and converted amount.\n\n5. 3DS challenge — card with the 3DS test trigger. Expected outcome: customer redirected to the issuer's authentication page, returns to the checkout with the order completed.\n\nIdentifiers cited in this test plan that are NOT credit card numbers: DHL tracking 7493 8201 7456 2904, order reference 9283 4017 2650 1830, container ID 5839 2740 1628 3950, build number 4829 1037 4625 1830.\n\nReference: QA-E2E-PAY-2024-Q2.\n",
+      "expected_spans": [
+        {
+          "start": 1003,
+          "end": 1020,
+          "value": "3782 822463 10005"
+        }
+      ]
+    },
+    {
+      "id": "CREDIT_CARD_long_context_fr_neg_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Rapport annuel des incidents de production — division Athena — annee 2023.\n\nCe rapport consolide l'ensemble des incidents de severite 1 et 2 survenus sur la plateforme Athena durant l'annee 2023. Il presente le nombre d'incidents par mois, la duree moyenne de resolution, les causes racines identifiees et les actions correctives mises en place. Aucun numero de carte de credit, IBAN ou autre donnee personnelle n'est mentionne dans ce rapport — uniquement des references techniques.\n\nVolumetrie 2023:\n- Incidents severite 1: 4 (avril x1, juillet x2, novembre x1).\n- Incidents severite 2: 18.\n- Incidents severite 3: 147.\n- Duree moyenne de resolution sev-1: 2h47.\n- Duree moyenne de resolution sev-2: 8h12.\n\nTableau des incidents sev-1:\n\n| Reference incident | Date         | Duree | Cause racine                |\n|--------------------|--------------|-------|----------------------------|\n| INC-2023-0418      | 2023-04-18   | 3h11  | Mise a jour DB sans test    |\n| INC-2023-0712      | 2023-07-12   | 2h44  | Saturation cache redis      |\n| INC-2023-0729      | 2023-07-29   | 2h18  | Panne DNS upstream          |\n| INC-2023-1108      | 2023-11-08   | 3h02  | Pic de trafic non absorbe   |\n\nReferences techniques citees dans le rapport (NE SONT PAS des numeros de carte):\n- Tracking colis (incident livraison): 7493 8201 7456 2904\n- Reference commande (rapport client): 9283 4017 2650 1830\n- Conteneur logistique cite: 5839 2740 1628 3950\n- Numero de build de la regression: 4829 1037 4625 1830\n- Bon de transport: 6150 2847 1293 6500\n- Bolla logistica: 8362 0419 5283 7460\n\nActions correctives prioritaires pour 2024:\n1. Mise en place d'un test de charge automatise sur le cache redis (suite a INC-2023-0712).\n2. Migration vers un DNS resilient multi-fournisseurs (suite a INC-2023-0729).\n3. Doublement de la capacite de l'API gateway (suite a INC-2023-1108).\n4. Formation des operations sur les procedures de mise a jour DB (suite a INC-2023-0418).\n\nReference du rapport: RAP-INC-2023-ANNUAL. Auteurs: equipe SRE Athena.\n",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "pii_type": "VEHICLE_VIN",
+  "detector_label": "VIN",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "VEHICLE_VIN_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Numero de chassis (VIN) du vehicule de fonction : 1HGCM82633A123456",
+      "expected_spans": [
+        {
+          "start": 50,
+          "end": 67,
+          "value": "1HGCM82633A123456"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Vehicle VIN: WBA3B5C50DF592846 (registered 2023-09-12)",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 30,
+          "value": "WBA3B5C50DF592846"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Fahrzeug-Identifikationsnummer (FIN/VIN): JHMFA16526S012345",
+      "expected_spans": [
+        {
+          "start": 42,
+          "end": 59,
+          "value": "JHMFA16526S012345"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Numero di telaio (VIN) del veicolo aziendale: 5YJSA1E26HF184729",
+      "expected_spans": [
+        {
+          "start": 46,
+          "end": 63,
+          "value": "5YJSA1E26HF184729"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "Carte grise: 1HGCM82633A123456",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 30,
+          "value": "1HGCM82633A123456"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Registration document: WBA3B5C50DF592846",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 40,
+          "value": "WBA3B5C50DF592846"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Fahrzeugbrief: JHMFA16526S012345",
+      "expected_spans": [
+        {
+          "start": 15,
+          "end": 32,
+          "value": "JHMFA16526S012345"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Libretto di circolazione: 5YJSA1E26HF184729",
+      "expected_spans": [
+        {
+          "start": 26,
+          "end": 43,
+          "value": "5YJSA1E26HF184729"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Product SKU: QXPLM77QRNF1B2DG4 (note: contains Q which a real VIN cannot).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Batch number BN18A3F9C1D2E4B5A (lot tracking, 17 chars, not a VIN).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Code produit interne: PROD2024A3F9C1D2E (utilise par la chaine SCM).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Asset tag for the laptop: ASSET77QRNF1B2D4G (lab inventory, 17 chars).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Lizenzschluessel: LIC2024QRNF1B2D4G (Desktop-Lizenz, kein Fahrzeug).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Codice articolo ART2024QRNF1B2D4G del catalogo Q1 2024.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_look_alikes_en_04",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Cargo container ID MSCU58392740162 (11 chars, ISO 6346 standard).",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Le numero VIN du vehicule doit etre transmis a l'assurance dans le formulaire de declaration. Aucun VIN n'est consigne dans cette page.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "VIN format is 17 alphanumeric characters excluding I, O and Q.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Fahrzeug-Identifikationsnummer (FIN) ist 17-stellig.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il numero di telaio (VIN) e composto da 17 caratteri alfanumerici.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "VIN:\n1HGCM8\n2633A1\n23456",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_VIN_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "VIN: W B A 3 B 5 C 5 0 D F 5 9 2 8 4 6",
+      "expected_spans": [
+        {
+          "start": 5,
+          "end": 38,
+          "value": "W B A 3 B 5 C 5 0 D F 5 9 2 8 4 6"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "FIN:  JHMFA16526S012345  ",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 23,
+          "value": "JHMFA16526S012345"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Fleet management — Q1 2024 — corporate vehicle assignments.\n\nThis page tracks the company-owned vehicle fleet across the Lausanne and Zurich offices. Each car is uniquely identified by its VIN (Vehicle Identification Number), which is recorded in the insurance file, the maintenance log and the leasing contract. Personal data of the driver is stored separately in the HR system, never on this page.\n\nFleet excerpt (current assignments):\n\n| Internal ID | Make / Model    | Driver category | VIN              | License plate |\n|-------------|------------------|------------------|------------------|---------------|\n| VEH-001     | Skoda Octavia    | Pool car         | WAUDH48H88K012345| VD 184 290    |\n| VEH-002     | Tesla Model 3    | Management       | 5YJSA1E26HF184729| GE 471 928    |\n| VEH-003     | Honda Civic      | Pool car         | 1HGCM82633A123456| VD 384 712    |\n| VEH-004     | BMW 3 Series     | Sales            | WBA3B5C50DF592846| ZH 928 401    |\n\nVIN format reminder: 17 alphanumeric characters, excluding I, O and Q to avoid confusion with 1, 0 and a typewriter Q. Maintenance history is keyed by VIN in the Carlog system. The reference manual is MAINT-VIN-018.\n\nCodes used in this page that are NOT VINs (do not flag): asset tag ASSET77QRNF1B2D4G (laptop inventory, contains Q), batch number BN18A3F9C1D2E4B5A (parts ordering), product SKU QXPLM77QRNF1B2DG4 (catalog 2024).\n\nInsurance contact: fleet@example.test, claims line 0848-FLEET-01.\n",
+      "expected_spans": [
+        {
+          "start": 847,
+          "end": 864,
+          "value": "1HGCM82633A123456"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_VIN_long_context_fr_neg_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Catalogue produits — Q1 2024 — division Industries Manufacturieres.\n\nCe catalogue interne liste l'ensemble des references produits actives pour la division Industries Manufacturieres au premier trimestre 2024. Les codes SKU font 17 caracteres alphanumeriques et incluent volontairement les lettres I, O et Q (interdites dans un VIN automobile) pour eviter toute confusion avec des numeros de chassis de vehicules. Aucun produit liste ici n'est un vehicule motorise.\n\nTop 15 des SKU par chiffre d'affaires Q1:\n- SKU QXPLM77QRNF1B2DG4 — pieces detachees industrielles\n- SKU IIO2024QRNF1B2D4G — composants electroniques\n- SKU ART2024QRNF1B2D4G — articles de bureau\n- SKU LIC2024QRNF1B2D4G — licences logicielles\n- SKU BN18A3F9C1D2E4B5A — lots de production batch 18\n- SKU PROD2024A3F9C1D2E — gamme generique 2024\n- SKU ASSET77QRNF1B2D4G — actifs informatiques\n- SKU CATA2024QRNF1B2D4 — produits du catalogue principal\n- SKU IIIQ2024A3F9C1D2E — composants I/O/Q-rich (test interne)\n- SKU OOO77QRNF1B2D4GH — produits de la gamme O77\n- SKU QQQ77QRNF1B2D4GH — produits de la gamme Q77\n- SKU PARK2024QRNF1B2D — accessoires de parking\n- SKU CARG58392740162B — references container cargo\n- SKU FLOT2024QRNF1B2D — composants flotte legere\n- SKU AUTO2024QRNF1B2D — composants automotive (PIECES SEULES)\n\nAucune ligne de ce catalogue ne correspond a un VIN de vehicule complet — il s'agit uniquement de pieces detachees, composants, accessoires et licences. La traceabilite est assuree par le code SKU et le numero de lot batch. La politique de gestion des references est decrite dans le document REF-MGMT-2024-018.\n\nPour toute question, contacter le service catalogue au poste 4053 ou via Teams sur le canal #ops-catalogue.\n",
+      "expected_spans": []
+    }
+  ]
+}

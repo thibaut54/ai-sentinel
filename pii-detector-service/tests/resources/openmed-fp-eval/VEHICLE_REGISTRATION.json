@@ -1,0 +1,241 @@
+{
+  "pii_type": "VEHICLE_REGISTRATION",
+  "detector_label": "VRM",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Plaque d'immatriculation du vehicule : AB-123-CD",
+      "expected_spans": [
+        {
+          "start": 39,
+          "end": 48,
+          "value": "AB-123-CD"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "License plate of the test car: AB12 XYZ",
+      "expected_spans": [
+        {
+          "start": 31,
+          "end": 39,
+          "value": "AB12 XYZ"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Kennzeichen des Firmenwagens: M-AB 1234",
+      "expected_spans": [
+        {
+          "start": 30,
+          "end": 39,
+          "value": "M-AB 1234"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Targa di immatricolazione: AB123CD",
+      "expected_spans": [
+        {
+          "start": 27,
+          "end": 34,
+          "value": "AB123CD"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "Parking: VD 184290",
+      "expected_spans": [
+        {
+          "start": 9,
+          "end": 18,
+          "value": "VD 184290"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Lot 2 — AB12 XYZ",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 16,
+          "value": "AB12 XYZ"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Hof B: M-AB 1234",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 16,
+          "value": "M-AB 1234"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Garage 4: AB123CD",
+      "expected_spans": [
+        {
+          "start": 10,
+          "end": 17,
+          "value": "AB123CD"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Conference badge code AB-123-CD was issued to attendee #4827.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Lab sample ID AB12-XYZ logged in the sequencing batch 2024-04-02.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Code batiment B-12 secteur Nord, salle 184 du campus.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Route postale RP-184 dessert les communes de la region Nord.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Lagerregal-Kennung M-AB 1234 im Lagerhaus B des Logistikzentrums.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Build agent AB-123-CD is offline since 14:32 UTC, see runbook RB-021.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Codice aula AB123CD del padiglione est, capienza 45 persone.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "La plaque d'immatriculation doit etre transmise a la conciergerie lors de la reservation d'une place de parking visiteur.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Please provide your license plate when booking visitor parking on level -2.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Kennzeichen muss bei der Rezeption fuer Besucherparkplaetze gemeldet werden.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "La targa va comunicata alla reception per il parcheggio visitatori.",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Plaque : A B - 1 2 3 - C D",
+      "expected_spans": [
+        {
+          "start": 9,
+          "end": 26,
+          "value": "A B - 1 2 3 - C D"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Plate:\nAB12\nXYZ",
+      "expected_spans": []
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Kennzeichen:  M-AB 1234  ",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 23,
+          "value": "M-AB 1234"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Procedure d'acces visiteurs au site de Lausanne — version 4.2.\n\nCette procedure decrit les modalites d'accueil et de circulation des visiteurs externes sur le site principal de Lausanne. Elle couvre les pre-requis, l'enregistrement, l'attribution du badge, le parking et les regles de circulation interne.\n\nPre-requis avant la visite:\n- L'invitation doit etre saisie au moins 24 heures a l'avance dans le portail Visiteurs (lien sur l'intranet).\n- Le visiteur doit fournir une piece d'identite officielle a la reception le jour de la visite.\n- Si le visiteur vient en voiture, la plaque d'immatriculation doit etre communiquee en avance via le formulaire en ligne. Pour l'exemple de cette procedure, on utilise la plaque AB-123-CD (plaque de demonstration uniquement, pas un vehicule reel).\n\nIdentifiants techniques cites dans cette procedure et qui NE SONT PAS des plaques d'immatriculation:\n- Code badge visiteur: VIS-AB-123-CD (format different du systeme national de plaques)\n- Reference du formulaire d'invitation: FORM-VIS-2024-Q1\n- Identifiant de la place de parking visiteur: P-V-12\n- Code postal du site: 1003 Lausanne\n- Numero de telephone de la reception: 021 555 18 42\n\nApres l'arrivee, le badge visiteur est remis a la reception, associe au profil dans le systeme de controle d'acces et desactive automatiquement a la fin de la plage de validite (generalement la journee meme). Le visiteur est tenu de respecter les regles de circulation interne et de ne pas se rendre dans les zones non autorisees signalees par les panneaux orange.\n",
+      "expected_spans": [
+        {
+          "start": 721,
+          "end": 730,
+          "value": "AB-123-CD"
+        }
+      ]
+    },
+    {
+      "id": "VEHICLE_REGISTRATION_long_context_en_neg_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Building access codes — Lausanne campus — internal directory.\n\nThis page lists the building codes, room references and postal routes used internally to designate the various locations on the Lausanne campus. None of these codes are vehicle license plates — they are administrative identifiers managed by the facilities team.\n\nBuildings:\n- B-A — administrative HQ, 4 floors, 184 rooms.\n- B-B — research, 6 floors, 312 rooms, includes labs L1 to L24.\n- B-C — operations, 3 floors, 91 rooms, includes the security operations centre.\n- B-D — logistics, 2 floors, 47 rooms, includes the print shop.\n- B-E — events and conference centre, 2 floors, 12 meeting rooms.\n\nConference room codes (look like plates but are NOT):\n- AB-001-CD — main auditorium, 320 seats.\n- AB-002-CD — secondary auditorium, 184 seats.\n- AB-003-CD — board room, 24 seats.\n- AB12-XYZ — restricted committee room, 12 seats.\n- M-AB 1234 — training room, 30 seats.\n- AB123CD — small meeting room, 6 seats.\n\nPostal routes for internal mail delivery:\n- RP-184 (north sector), RP-312 (south sector), RP-091 (east sector), RP-047 (west sector), RP-012 (central sector).\n\nFloor plans and access maps are available on the intranet under Facilities > Maps. The facilities team can be reached at facilities@example.test or extension 4053 between 7am and 7pm on business days. Reference document: FAC-MAP-2024-018.\n",
+      "expected_spans": []
+    }
+  ]
+}

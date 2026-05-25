@@ -1,0 +1,235 @@
+{
+  "pii_type": "LITECOIN_ADDRESS",
+  "detector_label": "LITECOINADDRESS",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "LITECOIN_ADDRESS_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Adresse Litecoin pour reception : LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 68,
+          "value": "LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Litecoin (LTC) deposit address: MHpMM8gpBd83NPbgU2vRk2sJ8N1pToabBs",
+      "expected_spans": [
+        {
+          "start": 32,
+          "end": 66,
+          "value": "MHpMM8gpBd83NPbgU2vRk2sJ8N1pToabBs"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Litecoin-Adresse fuer Einzahlung: ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 77,
+          "value": "ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Indirizzo Litecoin di prova: LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL",
+      "expected_spans": [
+        {
+          "start": 29,
+          "end": 63,
+          "value": "LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 34,
+          "value": "LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Wallet: MHpMM8gpBd83NPbgU2vRk2sJ8N1pToabBs",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 42,
+          "value": "MHpMM8gpBd83NPbgU2vRk2sJ8N1pToabBs"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Empfaenger: ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk",
+      "expected_spans": [
+        {
+          "start": 12,
+          "end": 55,
+          "value": "ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Destinatario: LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 48,
+          "value": "LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "License key: LcHKQR-5T8AZ9P-MQRNF1B-2D4G7H9 (corporate desktop apps).",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Order code MHpMM8 dispatched on 2024-04-02 with batch number BN-7841.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Code de validation a 34 caracteres: LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL n'est qu'un identifiant interne, pas une adresse crypto.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "S3 bucket name: ltc-archive-prod-2024 (LTC stands for legacy transaction cache).",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Produkt-Charge LcZX9VPLM77AABFQRNF1B2D4G7H9J6L5W3VTQ (intern, kein Crypto).",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Codice articolo MQR5T8AZ9PMQRNF1B2D4G7H9J6L5W3V identifica il lotto Q1.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_look_alikes_en_04",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Hostname pattern: ltc1-prod-fr-zh1 (load test cluster, FR zone, host 1).",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Les transactions en Litecoin ne sont pas supportees. Aucune adresse n'est conservee en base de donnees.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Litecoin (LTC) payments are out of scope for this platform.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Litecoin wird derzeit nicht unterstuetzt. Keine LTC-Adresse erfasst.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Litecoin non e supportato. Nessun indirizzo LTC conservato in archivio.",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "LTC:\nLcHKHkLPzW\nFqe1uK4UvA\nd3z3vN8pBVNDct",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "LTC: MHPMM8GPBD83NPBGU2VRK2SJ8N1PTOABBS",
+      "expected_spans": []
+    },
+    {
+      "id": "LITECOIN_ADDRESS_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Litecoin:  ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk  ",
+      "expected_spans": [
+        {
+          "start": 11,
+          "end": 54,
+          "value": "ltc1qg9stkxrszkdqsuj92lm4c7akvk36zvhqw7p6tk"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Rapport trimestriel du programme de tresorerie crypto — T1 2024.\n\nCe document presente les positions de l'entite legale en actifs numeriques pour le premier trimestre de l'annee 2024. Les operations sont realisees via un prestataire de garde reglemente (FINMA categorie B) et reconciliees mensuellement avec la comptabilite generale par l'equipe finance.\n\nPositions au 31 mars 2024:\n\n| Actif    | Wallet de garde                                        | Solde         |\n|----------|--------------------------------------------------------|---------------|\n| BTC      | 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa                     | 0.0421        |\n| ETH      | 0x742d35Cc6634C0532925a3b844Bc454e4438f44e             | 12.83         |\n| LTC      | LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct                     | 184.20        |\n\nMouvements du trimestre: trois entrees LTC pour un total de 210 LTC, deux sorties pour 25.80 LTC vers le compte technique de stress test. Aucun mouvement frauduleux detecte par le moteur de surveillance Chainalysis.\n\nIdentifiants techniques cites dans ce rapport et qui ne sont PAS des adresses crypto (ne pas les flagger):\n- Reference du contrat de garde: CONTRAT-CUSTO-2024-018\n- Numero d'agrement FINMA: FINMA-LIC-77412\n- Reference Chainalysis du tableau de bord: CHN-DASH-9241\n- Hostname du service interne: ltc1-prod-fr-zh1\n- Code projet interne: LcHKQR-5T8AZ9P-MQRNF1B-2D4G7H9 (suivi RH)\n\nProcedure d'audit: revue trimestrielle par le CFO, audit externe annuel par PricewaterhouseCoopers. Le dernier audit (annee 2023) n'a souleve aucun ecart materiel. Reference du rapport d'audit: PWC-CRYPTO-2024-007.\n",
+      "expected_spans": [
+        {
+          "start": 741,
+          "end": 775,
+          "value": "LcHKHkLPzWFqe1uK4UvAd3z3vN8pBVNDct"
+        }
+      ]
+    },
+    {
+      "id": "LITECOIN_ADDRESS_long_context_en_neg_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Internal load testing campaign — March 2024 — Athena Litecoin-Compatible Transaction Cache (LTC) service.\n\nNote: in this codebase, the acronym LTC stands for 'Legacy Transaction Cache', NOT for Litecoin. The two are completely unrelated and the load test report below does not contain any cryptocurrency address.\n\nTest scope: validate that the LTC service can handle a sustained load of 8000 requests per second with a P99 latency under 50 ms and zero data loss over a 4-hour window.\n\nTest environment:\n- Cluster: ltc1-prod-eu-zh1 (Zurich), ltc1-prod-eu-zh2 (Zurich), ltc1-prod-eu-zh3 (Zurich).\n- Instance type: c5.4xlarge with 32 GB RAM and 1 Gbps network.\n- Storage: NVMe SSD with 8000 IOPS sustained.\n- Cache topology: Redis Cluster with 6 primaries and 6 replicas.\n\nTest results:\n- Sustained throughput: 8420 req/s (target 8000, exceeded by 5%).\n- P50 latency: 12 ms.\n- P95 latency: 28 ms.\n- P99 latency: 41 ms (target under 50, passed).\n- Error rate: 0.003%.\n- Data loss: 0 records.\n\nBuild identifiers tested (commit SHAs and Docker hashes — NOT Litecoin addresses):\n- Commit SHA: a3f9c1d2e4b5a6f7c8d9e0a1b2c3d4e5f6a7b8c9\n- Commit SHA: b1c2d3e4f5a6b7c8d9e0a1b2c3d4e5f6a7b8c9d0\n- Docker digest: sha256:c2d3e4f5a6b7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3\n- License token: LcHKQR-5T8AZ9P-MQRNF1B-2D4G7H9-J6L5W3V\n\nReference of the test plan: LTC-LOADTEST-2024-Q1.\n",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "pii_type": "CVV",
+  "detector_label": "CVV",
+  "threshold": 0.85,
+  "cases": [
+    {
+      "id": "CVV_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Numero de carte: 4111 1111 1111 1111, CVV: 737",
+      "expected_spans": [
+        {
+          "start": 43,
+          "end": 46,
+          "value": "737"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Card 4111111111111111, expiry 04/27, CVV: 519",
+      "expected_spans": [
+        {
+          "start": 42,
+          "end": 45,
+          "value": "519"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Kreditkarte 4111-1111-1111-1111, Pruefziffer CVV: 248",
+      "expected_spans": [
+        {
+          "start": 50,
+          "end": 53,
+          "value": "248"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Carta di credito 4111 1111 1111 1111, codice CVV: 902",
+      "expected_spans": [
+        {
+          "start": 50,
+          "end": 53,
+          "value": "902"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "Communication bancaire confidentielle 4111 1111 1111 1111 — 384",
+      "expected_spans": [
+        {
+          "start": 60,
+          "end": 63,
+          "value": "384"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "Order ref: 4242 4242 4242 4242 — 615",
+      "expected_spans": [
+        {
+          "start": 33,
+          "end": 36,
+          "value": "615"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Zahlung 5555 5555 5555 4444 — 471",
+      "expected_spans": [
+        {
+          "start": 30,
+          "end": 33,
+          "value": "471"
+        }
+      ]
+    },
+    {
+      "id": "CVV_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Pagamento 5105 1051 0510 5100 — 138",
+      "expected_spans": [
+        {
+          "start": 32,
+          "end": 35,
+          "value": "138"
+        }
+      ]
+    },
+    {
+      "id": "CVV_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The conference room 312 is booked from 9am to noon on floor 4.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Page 218 du manuel d'utilisation, paragraphe 7.4, ligne 12.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "HTTP status codes observed during the load test: 200, 302, 401, 503.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Ticket ID INC-447 was escalated; see also INC-589 and INC-126.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Zimmer 214 im zweiten Stock, Treffen am Montag um 14:30 Uhr.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Appartamento numero 305, terzo piano, citofono 12.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Code postal 1003 Lausanne — Avenue de la Gare 17, batiment B.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "La verification CVV est obligatoire pour les transactions e-commerce. Le code n'est jamais stocke en base.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "PCI-DSS forbids storing the CVV/CVC/CID after authorization completes.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Pruefziffer (CVV) wird nach der Autorisierung niemals gespeichert.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il codice CVV non viene mai conservato dopo l'autorizzazione del pagamento.",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "CVV : 7  3  7",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 13,
+          "value": "7  3  7"
+        }
+      ]
+    },
+    {
+      "id": "CVV_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "CVV:\n5\n1\n9",
+      "expected_spans": []
+    },
+    {
+      "id": "CVV_adversarial_formatting_fr_02",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "CVV: deux-quatre-huit (248)",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 26,
+          "value": "248"
+        }
+      ]
+    },
+    {
+      "id": "CVV_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Procedure de saisie d'une commande exceptionnelle dans le portail client.\n\nCe document decrit la marche a suivre pour un encaissement manuel lorsque le terminal de paiement principal est indisponible. La procedure est strictement reservee aux superviseurs et doit faire l'objet d'une trace ecrite dans le registre des incidents.\n\nEtapes:\n1. Ouvrir le portail client et localiser la commande (reference CMD-2024-04-78421).\n2. Verifier l'identite du porteur via piece d'identite officielle.\n3. Saisir manuellement les informations carte fournies par le client. Pour ce test, utiliser les valeurs suivantes (carte de test Stripe): 4242 4242 4242 4242, expiration 04/27, code de verification CVV: 421. Aucune donnee client reelle ne doit etre saisie dans cet ecran de demo.\n4. Valider la transaction et imprimer le recu.\n\nCodes d'erreur frequents: 200 OK, 302 Found, 401 Unauthorized, 402 Payment Required, 500 Internal Server Error. Ces codes ne sont PAS des CVV — ils correspondent a la specification HTTP.\n\nIdentifiants techniques mentionnes dans cette procedure: salle de reunion 312, batiment B, etage 4. Numero d'inventaire du terminal de secours: ASSET-748. Reference du formulaire papier: FORM-256.\n\nPour toute question, contacter le support niveau 2 au poste 410 ou via le canal Teams #ops-paiements.\n",
+      "expected_spans": [
+        {
+          "start": 416,
+          "end": 419,
+          "value": "421"
+        }
+      ]
+    },
+    {
+      "id": "CVV_long_context_en_neg_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Quarterly capacity report for the Athena platform, Q1 2024.\n\nThroughput observed during business hours: average 312 requests per second, peak at 487 rps on March 14 between 10:42 and 10:58. The 99th percentile latency stayed under 240 ms on the API tier and 615 ms on the batch tier.\n\nError budget consumption: 0.12% out of the 0.50% monthly budget, comfortably within target. The most frequent error codes were 200 OK (98.7%), 302 Found (0.9%), 401 Unauthorized (0.2%), 503 Service Unavailable (0.1%) and a small 0.1% tail of 504 Gateway Timeout linked to a downstream provider outage.\n\nInfrastructure breakdown: 24 application pods, 8 batch workers, 3 caching nodes, 2 database primaries with 4 replicas. Total cost for Q1: 187k CHF, down 4% from Q4 2023 thanks to right-sizing on the staging cluster.\n\nAction items for Q2:\n- Right-size the staging cluster (target 30% cost reduction).\n- Investigate the 504 tail on provider X.\n- Roll out the new caching tier (ticket INFRA-572).\n- Update the runbook RB-PERF-018.\n\nContact: capacity-planning@example.test — meeting room 410 at the HQ, every second Tuesday at 14:00.\n",
+      "expected_spans": []
+    }
+  ]
+}
