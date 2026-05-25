@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -10,11 +11,14 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.PersonallyIdentifiableInformationType;
 import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.config.PiiDetectorConfig;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource.*;
@@ -23,18 +27,34 @@ import static pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.Detecto
  * Armeria-based implementation of the PII detection client.
  * What: Uses an Armeria-provided gRPC blocking stub to call the Python gRPC service.
  * Why: Improves HTTP/2/gRPC client stability and observability while preserving domain API.
+ *
+ * <p><b>Observability (spec llm-judge-qwen §3.2 / §5.4)</b>:
+ * each gRPC call emits Micrometer metrics tagged {@code phase=grpc.client} and a
+ * structured {@code [THROUGHPUT]} log. The emission is performed via
+ * {@link Mono#subscribeOn(reactor.core.scheduler.Scheduler)} with
+ * {@link Schedulers#parallel()} so the Reactor pipeline never blocks on
+ * metric recording.
  */
 @Slf4j
 @Service
 @ConditionalOnProperty(name = "pii-detector.client", havingValue = "armeria")
 public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
 
+    public static final String METRIC_CHARS_TOTAL = "pii.scan.chars.total";
+    public static final String METRIC_DURATION = "pii.scan.duration";
+    public static final String TAG_PHASE = "phase";
+    public static final String TAG_PHASE_GRPC_CLIENT = "grpc.client";
+
     private final PiiDetectorConfig config;
     private final PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub blockingStub;
+    private final MeterRegistry meterRegistry;
 
-    public GrpcPiiDetectorArmeriaClientAdapter(PiiDetectorConfig config, PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub blockingStub) {
+    public GrpcPiiDetectorArmeriaClientAdapter(PiiDetectorConfig config,
+                                               PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub blockingStub,
+                                               MeterRegistry meterRegistry) {
         this.config = config;
         this.blockingStub = blockingStub;
+        this.meterRegistry = meterRegistry;
         log.info("PII Detection Service (Armeria) initialized - Host: {}, Port: {}", config.host(), config.port());
     }
 
@@ -56,6 +76,10 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
     @Override
     public ContentPiiDetection analyzePageContent(String pageId, String pageTitle, String spaceKey, String content, float threshold) {
         log.debug("[Armeria] Analyzing content for PII - PageId: {}, Threshold: {}", pageId, threshold);
+
+        int charCount = content != null ? content.length() : 0;
+        String requestId = UUID.randomUUID().toString();
+        long startNanos = System.nanoTime();
         try {
             PiiDetection.PIIDetectionRequest request = PiiDetection.PIIDetectionRequest.newBuilder()
                     .setContent(content)
@@ -67,6 +91,9 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                     .withDeadlineAfter(config.requestTimeoutMs(), TimeUnit.MILLISECONDS)
                     .detectPII(request);
 
+            long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
+            emitThroughputMetricsAsync(requestId, charCount, durationMs);
+
             log.debug("[Armeria] PII detection successful for PageId: {}", pageId);
             return convertToContentAnalysis(pageId, pageTitle, spaceKey, content, response);
         } catch (Exception e) {
@@ -74,6 +101,34 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
             final String errorMessage = String.format("Failed to analyze content for PII for pageId=%s: %s", pageId, e.getMessage());
             throw PiiDetectionException.serviceError(errorMessage, e);
         }
+    }
+
+    /**
+     * Emits Micrometer counter + timer plus a structured {@code [THROUGHPUT]}
+     * log line asynchronously to keep the Reactor pipeline non-blocking.
+     *
+     * <p>Spec llm-judge-qwen §3.2: the throughput recording must NEVER add
+     * latency to the scan itself. We schedule the emission on
+     * {@link Schedulers#parallel()} and never call {@code block()} on the
+     * resulting {@link Mono}.
+     */
+    private void emitThroughputMetricsAsync(String requestId, int charCount, long durationMs) {
+        Mono.fromRunnable(() -> recordThroughput(requestId, charCount, durationMs))
+                .subscribeOn(Schedulers.parallel())
+                .subscribe();
+    }
+
+    private void recordThroughput(String requestId, int charCount, long durationMs) {
+        meterRegistry.counter(METRIC_CHARS_TOTAL, TAG_PHASE, TAG_PHASE_GRPC_CLIENT)
+                .increment(charCount);
+        meterRegistry.timer(METRIC_DURATION, TAG_PHASE, TAG_PHASE_GRPC_CLIENT)
+                .record(durationMs, TimeUnit.MILLISECONDS);
+        double charsPerSecond = durationMs > 0 ? (charCount * 1000.0) / durationMs : 0.0;
+        log.info("[THROUGHPUT] phase=grpc.client request_id={} chars={} duration_ms={} chars_per_s={}",
+                requestId,
+                charCount,
+                durationMs,
+                String.format(Locale.ROOT, "%.2f", charsPerSecond));
     }
 
     // --- Mapping helpers (same behavior as the grpc-netty implementation) ---

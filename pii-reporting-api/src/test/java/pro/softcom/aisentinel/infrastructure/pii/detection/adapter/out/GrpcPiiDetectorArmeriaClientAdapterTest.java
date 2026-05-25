@@ -1,5 +1,14 @@
 package pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.assertj.core.api.SoftAssertions;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,12 +17,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import pii_detection.PIIDetectionServiceGrpc;
 import pii_detection.PiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.GrpcPiiDetectorArmeriaClientAdapter;
 import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.config.PiiDetectorConfig;
 
+import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,6 +37,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GrpcPiiDetectorArmeriaClientAdapterTest {
+
+    private static final String TARGET_LOGGER_NAME =
+        "pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.GrpcPiiDetectorArmeriaClientAdapter";
 
     @Mock
     private PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub stub;
@@ -39,11 +54,28 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
     private ArgumentCaptor<PiiDetection.PIIDetectionRequest> requestCaptor;
 
     private PiiDetectorConfig config;
+    private MeterRegistry meterRegistry;
+    private Logger adapterLogger;
+    private ListAppender<ILoggingEvent> logAppender;
 
     @BeforeEach
     void setUp() {
         // host/port mostly for logging; defaultThreshold and requestTimeoutMs are asserted in tests
         config = new PiiDetectorConfig("localhost", 50051, 0.42f, 1500L, 2000L);
+        meterRegistry = new SimpleMeterRegistry();
+
+        adapterLogger = (Logger) LoggerFactory.getLogger(TARGET_LOGGER_NAME);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        adapterLogger.addAppender(logAppender);
+        adapterLogger.setLevel(Level.INFO);
+    }
+
+    @AfterEach
+    void tearDown() {
+        adapterLogger.detachAppender(logAppender);
+        logAppender.stop();
+        meterRegistry.close();
     }
 
     @Test
@@ -58,7 +90,6 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
                 .setScore(0.95f)
                 .build();
 
-        // Unknown type to trigger UNKNOWN branch
         PiiDetection.PIIEntity unknownEntity = PiiDetection.PIIEntity.newBuilder()
                 .setType("mystery")
                 .setText("???")
@@ -76,7 +107,8 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any(PiiDetection.PIIDetectionRequest.class))).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         // When
         ContentPiiDetection result = service.analyzePageContent("123", "Title", "SPACE", "content to analyze");
@@ -86,12 +118,10 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         assertThat(timeoutCaptor.getValue()).isEqualTo(config.requestTimeoutMs());
         assertThat(unitCaptor.getValue()).isEqualTo(TimeUnit.MILLISECONDS);
 
-        // Verify request content and threshold
         verify(stub).detectPII(requestCaptor.capture());
         assertThat(requestCaptor.getValue().getContent()).isEqualTo("content to analyze");
         assertThat(requestCaptor.getValue().getThreshold()).isEqualTo(0.42f);
 
-        // Assert mapping
         assertThat(result.pageId()).isEqualTo("123");
         assertThat(result.pageTitle()).isEqualTo("Title");
         assertThat(result.spaceKey()).isEqualTo("SPACE");
@@ -117,12 +147,12 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
     @Test
     @DisplayName("analyzeContent(String): delegates to default threshold and null metadata")
     void analyzeContent_delegatesToDefaultThresholdAndNulls() {
-        // Minimal response
         PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder().build();
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         ContentPiiDetection result = service.analyzeContent("hello");
 
@@ -143,7 +173,8 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         service.analyzePageContent("p1", "t", "s", "abc");
 
@@ -158,7 +189,8 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         ContentPiiDetection result = service.analyzeContent("payload", 0.33f);
 
@@ -355,5 +387,116 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
             softly.assertThat(sd.end()).as("end position").isEqualTo(20);
             softly.assertThat(content.substring(sd.position(), sd.end())).as("extracted text").isEqualTo("email@test.com");
         });
+    }
+
+    @Test
+    @DisplayName("Should_IncrementCharsCounter_When_DetectPii")
+    void Should_IncrementCharsCounter_When_DetectPii() {
+        // Arrange
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder().build();
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
+        String payload = "abcdef"; // 6 chars
+
+        // Act
+        service.analyzeContent(payload);
+
+        // Assert — async emission, wait until counter has been incremented
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->
+                    assertThat(meterRegistry.counter(
+                            GrpcPiiDetectorArmeriaClientAdapter.METRIC_CHARS_TOTAL,
+                            GrpcPiiDetectorArmeriaClientAdapter.TAG_PHASE,
+                            GrpcPiiDetectorArmeriaClientAdapter.TAG_PHASE_GRPC_CLIENT)
+                        .count()).isEqualTo(payload.length()));
+    }
+
+    @Test
+    @DisplayName("Should_RecordDurationTimer_When_DetectPii")
+    void Should_RecordDurationTimer_When_DetectPii() {
+        // Arrange
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder().build();
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
+
+        // Act
+        service.analyzeContent("hello");
+
+        // Assert — timer must have recorded exactly one observation
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() ->
+                    assertThat(meterRegistry.timer(
+                            GrpcPiiDetectorArmeriaClientAdapter.METRIC_DURATION,
+                            GrpcPiiDetectorArmeriaClientAdapter.TAG_PHASE,
+                            GrpcPiiDetectorArmeriaClientAdapter.TAG_PHASE_GRPC_CLIENT)
+                        .count()).isEqualTo(1L));
+    }
+
+    @Test
+    @DisplayName("Should_EmitThroughputLog_When_DetectPii")
+    void Should_EmitThroughputLog_When_DetectPii() {
+        // Arrange
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder().build();
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
+
+        // Act
+        service.analyzeContent("abc");
+
+        // Assert — async emission, wait until log is captured
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> {
+                    List<ILoggingEvent> events = logAppender.list;
+                    assertThat(events)
+                            .as("[THROUGHPUT] log line should be emitted at INFO level")
+                            .anySatisfy(event -> {
+                                SoftAssertions softly = new SoftAssertions();
+                                softly.assertThat(event.getLevel()).isEqualTo(Level.INFO);
+                                softly.assertThat(event.getFormattedMessage())
+                                        .contains("[THROUGHPUT]")
+                                        .contains("phase=grpc.client")
+                                        .contains("chars=3")
+                                        .contains("duration_ms=")
+                                        .contains("chars_per_s=");
+                                softly.assertAll();
+                            });
+                });
+    }
+
+    @Test
+    @DisplayName("Should_NotBlockGrpcCall_When_MetricsEmission")
+    void Should_NotBlockGrpcCall_When_MetricsEmission() {
+        // Arrange — the gRPC call returns immediately; the metric emission is
+        // dispatched to a parallel scheduler. We assert that the synchronous
+        // adapter call returns well below 100ms even though the (async) metric
+        // emission may not have completed yet.
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder().build();
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service =
+            new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
+
+        // Act
+        long startNanos = System.nanoTime();
+        service.analyzeContent("payload");
+        long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+
+        // Assert — synchronous call returns fast; async metric emission does not gate it.
+        assertThat(elapsedMs)
+                .as("gRPC adapter must not block on metric emission")
+                .isLessThan(100L);
     }
 }

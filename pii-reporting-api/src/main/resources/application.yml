@@ -99,6 +99,14 @@ armeria:
     include: docs, health, metrics, actuator
     port: 8090
 
+# Actuator exposure — Prometheus endpoint required by spec llm-judge-qwen §3.2 / §5.4
+# to scrape pii.scan.chars.total and pii.scan.duration metrics tagged phase=grpc.client.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
 # Server Configuration
 server:
   port: ${SERVER_PORT:8080}
