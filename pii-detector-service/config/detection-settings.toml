@@ -106,3 +106,24 @@ parallel_execution = true
 
 # Timeout per model in seconds (increased to 180s to handle complex pages)
 model_timeout = 180
+
+# ============================================================================
+# LLM JUDGE SETTINGS (post-detection false-positive filter)
+# Runtime activation is controlled by the database flag `llm_judge_enabled`
+# in table `pii_detection_config` (spec section 2.6). All defaults below
+# can be overridden by the environment variables prefixed with
+# `LLM_JUDGE_` (env > TOML > code default).
+# ============================================================================
+[llm_judge]
+enabled_default = false                       # DB flag wins; TOML is a fallback
+base_url = "http://172.22.22.63:1234/v1"       # LM Studio endpoint
+preferred_model = "qwen/qwen3.6-35b-a3b"        # resolved via /v1/models
+max_batch_size = 1                             # 1 verdict per HTTP call (MVP)
+max_workers = 4                                # parallel HTTP calls
+timeout_seconds = 120                          # per call HTTP timeout
+max_tokens = 2048                              # absorbs Qwen 3.6 reasoning + JSON
+temperature = 0.2
+top_p = 1.0
+context_window_chars = 300                     # ctx_before / ctx_after window
+fail_open = true                               # timeout / error -> entity kept
+use_json_schema = true                         # response_format=json_schema strict

@@ -47,9 +47,15 @@ class DatabaseConfigAdapter:
 
         Returns:
             Dictionary with config keys: gliner_enabled, presidio_enabled,
-            regex_enabled, default_threshold. Returns None if fetch fails.
+            regex_enabled, default_threshold, llm_judge_enabled.
+            Returns None if fetch fails.
 
-        Business Rule: Single-row configuration table with id=1
+        Business Rule: Single-row configuration table with id=1.
+
+        Note on ``llm_judge_enabled``: the column is fetched defensively via
+        ``COALESCE`` so the adapter remains compatible with deployments that
+        have not yet applied the migration adding this column (see spec
+        section 2.6).
         """
         connection = None
         cursor = None
@@ -59,9 +65,10 @@ class DatabaseConfigAdapter:
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
             # Query the single-row configuration table.
-            # ``openmed_enabled`` is read defensively: ``COALESCE`` keeps existing
-            # rows readable even if the column has not been added yet by Hibernate
-            # DDL update on a freshly-pulled environment.
+            # ``openmed_enabled`` and ``llm_judge_enabled`` are read defensively:
+            # ``COALESCE`` / a UndefinedColumn fallback keep existing rows readable
+            # even if the columns have not been added yet by Hibernate DDL update
+            # on a freshly-pulled environment.
             query = """
                 SELECT
                     gliner_enabled,
@@ -69,7 +76,8 @@ class DatabaseConfigAdapter:
                     regex_enabled,
                     COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
                     default_threshold,
-                    nb_of_label_by_pass
+                    nb_of_label_by_pass,
+                    llm_judge_enabled
                 FROM pii_detection_config
                 WHERE id = 1
             """
@@ -77,9 +85,16 @@ class DatabaseConfigAdapter:
             try:
                 cursor.execute(query)
                 result = cursor.fetchone()
-            except psycopg2.Error:
-                # Fallback for environments where the column has not been
-                # provisioned yet (older Hibernate run, fresh checkout).
+            except psycopg2.errors.UndefinedColumn:
+                # Migration not yet applied for openmed_enabled or
+                # llm_judge_enabled -- retry without the new columns. Both
+                # default to FALSE downstream so the service stays usable on
+                # a freshly-pulled environment before Hibernate DDL update.
+                logger.warning(
+                    "openmed_enabled / llm_judge_enabled column missing in "
+                    "pii_detection_config; falling back on defaults (false). "
+                    "Apply migration to enable."
+                )
                 connection.rollback()
                 cursor.execute(
                     """
@@ -104,13 +119,19 @@ class DatabaseConfigAdapter:
                 return None
 
             config = dict(result)
+            # Normalise the flag so downstream code can assume it is always
+            # present (False when the migration is pending).
+            config.setdefault("llm_judge_enabled", False)
+            if config["llm_judge_enabled"] is None:
+                config["llm_judge_enabled"] = False
             logger.info(
                 "Successfully fetched config from database: "
                 f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
                 f"openmed={config['openmed_enabled']}, "
-                f"threshold={config['default_threshold']}"
+                f"threshold={config['default_threshold']}, "
+                f"llm_judge={config['llm_judge_enabled']}"
             )
             return config
 

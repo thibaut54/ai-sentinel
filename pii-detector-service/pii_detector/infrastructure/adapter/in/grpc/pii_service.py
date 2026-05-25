@@ -521,6 +521,12 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 entities_before_type_filter - len(entities),
             )
 
+            # LLM-as-Judge post-filter (spec section 2.1, 2.5).
+            # Only invoked when the DB flag is ON; otherwise no judge
+            # import / thread / metric is triggered (zero overhead path).
+            if self._is_llm_judge_enabled(detector_flags):
+                entities = self._apply_llm_judge(entities, content, request_id)
+
             response = self._build_detection_response(content, entities, request_id)
             logger.info(
                 "[FINDING_TRACKER] [%s] step=GRPC_FINAL_RESPONSE count=%d",
@@ -641,20 +647,25 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             if chunk_size:
                 chunk_size = int(chunk_size)
             
-            # Extract detector flags for dynamic activation
+            # Extract detector flags for dynamic activation.
+            # ``llm_judge_enabled`` is the toggle for the post-detection
+            # LLM judge (spec section 2.6). It is OFF by default so the
+            # service costs nothing when the feature is not in use.
             detector_flags = {
                 'gliner_enabled': db_config.get('gliner_enabled', True),
                 'presidio_enabled': db_config.get('presidio_enabled', True),
                 'regex_enabled': db_config.get('regex_enabled', False),
-                'openmed_enabled': db_config.get('openmed_enabled', False)
+                'openmed_enabled': db_config.get('openmed_enabled', False),
+                'llm_judge_enabled': db_config.get('llm_judge_enabled', False),
             }
 
-            logger.debug(
+            logger.info(
                 f"[{request_id}] Applied database config: threshold={threshold}, "
                 f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
                 f"openmed={detector_flags['openmed_enabled']}, "
+                f"llm_judge={detector_flags['llm_judge_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
             
@@ -896,6 +907,66 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"[{request_id}] Entity {i+1}: {entity['type_label']} - "
                 f"'{entity['text']}' (score: {entity['score']:.3f})"
             )
+
+    @staticmethod
+    def _is_llm_judge_enabled(detector_flags: Optional[dict]) -> bool:
+        """Return True iff the database flag activates the LLM judge.
+
+        Defaults to False so the validator stays disabled when the DB
+        config is unavailable or pre-migration (spec section 2.6).
+        """
+        if detector_flags is None:
+            return False
+        return bool(detector_flags.get("llm_judge_enabled", False))
+
+    def _apply_llm_judge(
+        self, entities: List, content: str, request_id: str
+    ) -> List:
+        """Run the LLM judge post-filter on the merged entity list.
+
+        The validator is built lazily via the singleton accessor so that
+        when ``llm_judge_enabled=false`` the module is never imported and
+        no thread / metric is allocated (zero overhead -- spec section
+        5.3). Only entities with ``source == DetectorSource.GLINER`` are
+        audited; the rest passes through untouched (spec section 2.5).
+        """
+        if not entities:
+            return entities
+        try:
+            # Lazy import so the no-judge path never pulls httpx / pydantic
+            # into hot code.
+            from pii_detector.infrastructure.validation.llm_validator import (
+                get_instance as get_llm_judge,
+            )
+
+            validator = get_llm_judge()
+            before_count = len(entities)
+            judge_start = time.monotonic()
+            filtered = validator.filter(content, entities)
+            elapsed = time.monotonic() - judge_start
+            rejected = before_count - len(filtered)
+            logger.info(
+                "[%s] [LLM-JUDGE] post-filter: %d->%d entities "
+                "(rejected=%d, elapsed=%.3fs)",
+                request_id,
+                before_count,
+                len(filtered),
+                rejected,
+                elapsed,
+            )
+            return filtered
+        except Exception as exc:
+            # Defense-in-depth: fail-open at the orchestrator level too. If
+            # the validator itself blows up (import error, configuration,
+            # ...) we keep the original entities and surface a WARN.
+            logger.warning(
+                "[%s] [LLM-JUDGE] post-filter failed (%s: %s); "
+                "keeping original entities",
+                request_id,
+                exc.__class__.__name__,
+                exc,
+            )
+            return entities
 
     def _filter_entities_by_type_config(
         self, entities: List, pii_type_configs: dict, request_id: str
