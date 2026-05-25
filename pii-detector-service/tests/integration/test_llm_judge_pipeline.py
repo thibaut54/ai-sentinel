@@ -357,25 +357,59 @@ def test_judge_handles_empty_entity_list(
     assert result == []
 
 
-@pytest.mark.skip(
-    reason=(
-        "fail-open live coverage requires temporarily blocking LM Studio "
-        "mid-flight; out of scope for the live IT (covered by unit tests "
-        "patching ``httpx``)."
-    )
-)
-def test_judge_fail_open_keeps_entity_on_timeout(
-    validator: LLMJudgeValidator,
-) -> None:
+def test_judge_fail_open_keeps_entity_on_unreachable_endpoint() -> None:
     """Spec §2.6 — fail_open=True keeps the entity when LM Studio is unreachable.
 
-    Live coverage of this path would require blocking LM Studio between
-    two calls, which conflicts with the rest of the suite running against
-    the same module-scoped validator. The fail-open behaviour is covered
-    extensively by the unit tests in
-    ``tests/unit/infrastructure/validation/test_llm_validator.py`` where
-    ``httpx`` is patched to raise.
+    The module-scoped fixture is intentionally not used: we need a standalone
+    :class:`LLMJudgeValidator` pointing at a deliberately invalid endpoint so
+    every HTTP call fails (connection refused / timeout). The contract under
+    test:
+
+    - The constructor must not raise (model resolution is lazy, see
+      :meth:`LLMJudgeValidator._resolve_model_id_lazy`).
+    - :meth:`filter` must not propagate the underlying ``httpx`` exception.
+    - With ``fail_open=True`` (default), every GLiNER entity must be kept
+      (recall preserved at all costs, spec §2.6 / §7 risks).
+
+    Port 1 (RFC 1340 reserved) is used because it reliably rejects TCP
+    connections on Linux, macOS and Windows, producing a fast
+    ``httpx.ConnectError`` without waiting for the configured timeout.
     """
+    # Build a standalone validator targeting a port that never accepts
+    # connections. Short timeout + a single worker keep the test fast even
+    # when ``connect`` fails immediately.
+    failing_validator = LLMJudgeValidator(
+        base_url="http://127.0.0.1:1/v1",
+        timeout_seconds=2.0,
+        max_workers=2,
+        fail_open=True,
+    )
+    try:
+        entities = [
+            _build_pii_entity(
+                TEXT_WITH_MIXED_DETECTIONS,
+                "CH6930000011100005458",
+                "IBAN",
+                DetectorSource.GLINER,
+            ),
+            _build_pii_entity(
+                TEXT_WITH_MIXED_DETECTIONS,
+                "DGAIC",
+                "PASSWORD",
+                DetectorSource.GLINER,
+            ),
+        ]
+
+        # Must not raise even though every backend call is going to fail.
+        kept = failing_validator.filter(TEXT_WITH_MIXED_DETECTIONS, entities)
+        kept_values = {entity.text for entity in kept}
+
+        assert kept_values == {"CH6930000011100005458", "DGAIC"}, (
+            "Spec §2.6 — fail_open=True must keep ALL GLiNER entities when "
+            f"LM Studio is unreachable. Got: {kept_values}"
+        )
+    finally:
+        failing_validator.shutdown()
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entry point
