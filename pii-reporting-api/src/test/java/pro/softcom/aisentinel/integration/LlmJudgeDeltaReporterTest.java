@@ -1,11 +1,14 @@
 package pro.softcom.aisentinel.integration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,10 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class LlmJudgeDeltaReporterTest {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     @TempDir
     Path tempDir;
 
-    // ========================== compareAndWrite happy path ==========================
+    // ========================== compareAndWrite happy path (existing 6 tests) ==========================
 
     @Test
     void Should_WriteMarkdownReport_When_GivenTwoFindingsJsonl() throws IOException {
@@ -45,7 +50,8 @@ class LlmJudgeDeltaReporterTest {
         Files.writeString(judgedFile, judgedContent);
 
         // Act
-        LlmJudgeDeltaReporter.compareAndWrite(baselineFile, judgedFile, reportFile);
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.compareAndWrite(baselineFile, judgedFile, reportFile);
 
         // Assert
         assertThat(reportFile).exists();
@@ -62,6 +68,9 @@ class LlmJudgeDeltaReporterTest {
         assertThat(report)
             .as("Report should show judged total of 1")
             .contains("| Judged findings | 1 |");
+        assertThat(summary).as("compareAndWrite must return a non-null DeltaSummary").isNotNull();
+        assertThat(summary.baselineFindings()).as("Baseline total").isEqualTo(3L);
+        assertThat(summary.judgedFindings()).as("Judged total").isEqualTo(1L);
     }
 
     @Test
@@ -231,5 +240,292 @@ class LlmJudgeDeltaReporterTest {
         assertThat(report)
             .as("NATIONAL_ID type should appear in breakdown")
             .contains("NATIONAL_ID");
+    }
+
+    // ========================== DeltaSummary unit tests (new — spec §5) ==========================
+
+    @Test
+    void Should_ComputeBaselineFpRate_When_FindingsContainsRejections() {
+        // Arrange — 3 GLiNER findings, 2 rejected by judge → proxy FP rate = 2/3 ≈ 0.667
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            finding("GLINER", false, true, false),   // judgedRejected=true
+            finding("GLINER", false, true, false),   // judgedRejected=true
+            finding("GLINER", false, false, false)   // judgedRejected=false
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            finding("GLINER", true, false, false)    // judgedKept=true
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.baselineFpRate())
+            .as("Spec §5.1 — baseline FP rate must be computed as glinerRejected / glinerTotal = 2/3")
+            .isCloseTo(2.0 / 3.0, org.assertj.core.data.Offset.offset(0.001));
+        assertThat(summary.glinerRejectedCount())
+            .as("Spec §5.1 — 2 GLiNER findings were rejected")
+            .isEqualTo(2L);
+        assertThat(summary.glinerKeptCount())
+            .as("Spec §5.1 — 1 GLiNER finding was kept")
+            .isEqualTo(1L);
+    }
+
+    @Test
+    void Should_ComputeJudgedFpRateAsZero_When_AllRetainedAreTruePositives() {
+        // Arrange — all judged findings have judgedKept=true → FP rate = 0 (best case)
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            finding("GLINER", false, false, false),
+            finding("GLINER", false, false, false)
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            finding("GLINER", true, false, false),
+            finding("GLINER", true, false, false)
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.judgedFpRate())
+            .as("Spec §5.1 — judged FP rate must be 0.0 when all retained findings are judgedKept=true")
+            .isEqualTo(0.0);
+    }
+
+    @Test
+    void Should_FlagRecallPreserved_When_RegexAndPresidioCountsUnchanged() {
+        // Arrange — REGEX and PRESIDIO counts identical in baseline and judged
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            findingWithDetector("REGEX"),
+            findingWithDetector("REGEX"),
+            findingWithDetector("PRESIDIO"),
+            findingWithDetector("GLINER")
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            findingWithDetector("REGEX"),
+            findingWithDetector("REGEX"),
+            findingWithDetector("PRESIDIO")
+            // GLINER removed by judge
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.recallPreservedRegex())
+            .as("Spec §5.1 — REGEX recall must be preserved (same count baseline↔judged)")
+            .isTrue();
+        assertThat(summary.recallPreservedPresidio())
+            .as("Spec §5.1 — PRESIDIO recall must be preserved (same count baseline↔judged)")
+            .isTrue();
+    }
+
+    @Test
+    void Should_FlagRecallNotPreserved_When_RegexCountDrops() {
+        // Arrange — REGEX count drops from 2 to 1 in judged (regression)
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            findingWithDetector("REGEX"),
+            findingWithDetector("REGEX"),
+            findingWithDetector("PRESIDIO")
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            findingWithDetector("REGEX"),   // only 1 left — regression
+            findingWithDetector("PRESIDIO")
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.recallPreservedRegex())
+            .as("Spec §5.1 — REGEX recall must NOT be preserved when count drops from 2 to 1")
+            .isFalse();
+        assertThat(summary.recallPreservedPresidio())
+            .as("Spec §5.1 — PRESIDIO recall must still be preserved")
+            .isTrue();
+    }
+
+    @Test
+    void Should_ComputeThroughputDelta_When_DurationsPresent() {
+        // Arrange — 2 findings with durationMs set; total chars estimated from context
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            findingWithDuration(500L, "contextBefore1234", "contextAfter5678"),
+            findingWithDuration(500L, "contextBefore1234", "contextAfter5678")
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            findingWithDuration(1500L, "contextBefore1234", "contextAfter5678")
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.baselineDurationS())
+            .as("Spec §5.2 — baseline duration must be sum of durationMs in seconds = 1.0s")
+            .isEqualTo(1.0);
+        assertThat(summary.judgedDurationS())
+            .as("Spec §5.2 — judged duration must be 1.5s")
+            .isEqualTo(1.5);
+        assertThat(summary.baselineThroughputCharsPerS())
+            .as("Spec §5.2 — baseline throughput must be positive when duration > 0")
+            .isGreaterThan(0.0);
+    }
+
+    @Test
+    void Should_ReturnSentinelFpRate_When_GroundTruthMissing() {
+        // Arrange — findings with no judgedRejected/judgedKept/isGroundTruthTruePositive fields
+        List<com.fasterxml.jackson.databind.JsonNode> baseline = List.of(
+            findingWithDetector("GLINER"),
+            findingWithDetector("GLINER")
+        );
+        List<com.fasterxml.jackson.databind.JsonNode> judged = List.of(
+            findingWithDetector("REGEX")
+        );
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.computeSummary(baseline, judged);
+
+        // Assert
+        assertThat(summary.baselineFpRate())
+            .as("Spec §5.1 — baselineFpRate must be NaN (sentinel) when ground truth is missing")
+            .isNaN();
+        assertThat(LlmJudgeDeltaReporter.FP_RATE_UNAVAILABLE)
+            .as("Sentinel constant must be Double.NaN")
+            .isNaN();
+    }
+
+    @Test
+    void Should_AppendAcceptanceSectionToMarkdown_When_SeuilsViolated() throws IOException {
+        // Arrange — judged FP rate > 15%, recall NOT preserved for REGEX
+        Path baselineFile = tempDir.resolve("fail/baseline.jsonl");
+        Path judgedFile = tempDir.resolve("fail/judged.jsonl");
+        Path reportFile = tempDir.resolve("fail/report.md");
+
+        Files.createDirectories(baselineFile.getParent());
+        Files.createDirectories(judgedFile.getParent());
+
+        // Baseline: 10 GLiNER, 0 rejected (no judgedRejected field) → FP rate = NaN
+        // Judged: REGEX count drops (1 vs 2 in baseline) → recall NOT preserved
+        String baselineContent = """
+            {"piiType":"PASSWORD","detector":"REGEX","score":0.9}
+            {"piiType":"NATIONAL_ID","detector":"REGEX","score":0.8}
+            {"piiType":"EMAIL","detector":"GLINER","score":0.85}
+            """;
+        String judgedContent = """
+            {"piiType":"PASSWORD","detector":"REGEX","score":0.9}
+            {"piiType":"EMAIL","detector":"GLINER","judgedKept":false}
+            """;
+
+        Files.writeString(baselineFile, baselineContent);
+        Files.writeString(judgedFile, judgedContent);
+
+        // Act
+        LlmJudgeDeltaReporter.compareAndWrite(baselineFile, judgedFile, reportFile);
+
+        // Assert
+        String report = Files.readString(reportFile);
+        assertThat(report)
+            .as("Spec §5 — report must contain the acceptance criteria section")
+            .contains("## Acceptance Criteria (spec §5)");
+        assertThat(report)
+            .as("Spec §5.1 — REGEX recall not preserved must produce FAIL verdict")
+            .contains("**FAIL**");
+    }
+
+    @Test
+    void Should_AppendAcceptanceSectionToMarkdown_When_SeuilsRespected() throws IOException {
+        // Arrange — all seuils met: judgedKept for all findings (FP=0), recall preserved, throughput good
+        Path baselineFile = tempDir.resolve("pass/baseline.jsonl");
+        Path judgedFile = tempDir.resolve("pass/judged.jsonl");
+        Path reportFile = tempDir.resolve("pass/report.md");
+
+        Files.createDirectories(baselineFile.getParent());
+        Files.createDirectories(judgedFile.getParent());
+
+        String baselineContent = """
+            {"piiType":"EMAIL","detector":"REGEX","durationMs":10}
+            {"piiType":"CREDIT_CARD","detector":"PRESIDIO","durationMs":10}
+            {"piiType":"PASSWORD","detector":"GLINER","judgedRejected":false,"durationMs":10}
+            """;
+        String judgedContent = """
+            {"piiType":"EMAIL","detector":"REGEX","judgedKept":true,"durationMs":10}
+            {"piiType":"CREDIT_CARD","detector":"PRESIDIO","judgedKept":true,"durationMs":10}
+            {"piiType":"PASSWORD","detector":"GLINER","judgedKept":true,"durationMs":10}
+            """;
+
+        Files.writeString(baselineFile, baselineContent);
+        Files.writeString(judgedFile, judgedContent);
+
+        // Act
+        LlmJudgeDeltaReporter.DeltaSummary summary =
+            LlmJudgeDeltaReporter.compareAndWrite(baselineFile, judgedFile, reportFile);
+
+        // Assert
+        String report = Files.readString(reportFile);
+        assertThat(report)
+            .as("Spec §5 — report must contain the acceptance criteria section")
+            .contains("## Acceptance Criteria (spec §5)");
+        assertThat(summary.judgedFpRate())
+            .as("Spec §5.1 — judged FP rate must be 0.0 when all kept")
+            .isEqualTo(0.0);
+        assertThat(summary.recallPreservedRegex())
+            .as("Spec §5.1 — REGEX recall must be preserved")
+            .isTrue();
+        assertThat(summary.recallPreservedPresidio())
+            .as("Spec §5.1 — PRESIDIO recall must be preserved")
+            .isTrue();
+    }
+
+    // ============================== Fixture helpers ==============================
+
+    /**
+     * Builds a finding node with optional judgedKept/judgedRejected fields.
+     *
+     * @param detector       e.g. "GLINER", "REGEX"
+     * @param judgedKept     value of the judgedKept field
+     * @param judgedRejected value of the judgedRejected field
+     * @param omitVerdicts   when true, neither judgedKept nor judgedRejected is added
+     */
+    private static com.fasterxml.jackson.databind.JsonNode finding(
+            String detector,
+            boolean judgedKept,
+            boolean judgedRejected,
+            boolean omitVerdicts) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("piiType", "PASSWORD");
+        node.put("detector", detector);
+        node.put("score", 0.85);
+        if (!omitVerdicts) {
+            node.put("judgedKept", judgedKept);
+            node.put("judgedRejected", judgedRejected);
+        }
+        return node;
+    }
+
+    private static com.fasterxml.jackson.databind.JsonNode findingWithDetector(String detector) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("piiType", "PASSWORD");
+        node.put("detector", detector);
+        node.put("score", 0.85);
+        return node;
+    }
+
+    private static com.fasterxml.jackson.databind.JsonNode findingWithDuration(
+            long durationMs,
+            String contextBefore,
+            String contextAfter) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("piiType", "NATIONAL_ID");
+        node.put("detector", "GLINER");
+        node.put("durationMs", durationMs);
+        node.put("contextBefore", contextBefore);
+        node.put("contextAfter", contextAfter);
+        return node;
     }
 }
