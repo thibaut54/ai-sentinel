@@ -38,6 +38,7 @@ from pii_detector.infrastructure.validation.llm_validator import (
     LLMJudgeValidator,
     _extract_json_payload,
     _log_inference_metrics,
+    _parse_audit_sources,
     _resolve_model_id,
     get_instance,
 )
@@ -83,6 +84,42 @@ def _regex_entity(
         end=end,
         score=1.0,
         source=DetectorSource.REGEX,
+    )
+
+
+def _openmed_entity(
+    text: str = "Tr0ub4dor!",
+    pii_type: str = "PASSWORD",
+    start: int = 0,
+    end: int = 10,
+    score: float = 0.95,
+) -> PIIEntity:
+    """Build a synthetic OpenMed-tagged entity (post-MVP audit scope)."""
+    return PIIEntity(
+        text=text,
+        pii_type=pii_type,
+        type_label=pii_type,
+        start=start,
+        end=end,
+        score=score,
+        source=DetectorSource.OPENMED,
+    )
+
+
+def _presidio_entity(
+    text: str = "DGAIC",
+    pii_type: str = "PASSWORD",
+    start: int = 0,
+    end: int = 5,
+) -> PIIEntity:
+    return PIIEntity(
+        text=text,
+        pii_type=pii_type,
+        type_label=pii_type,
+        start=start,
+        end=end,
+        score=0.9,
+        source=DetectorSource.PRESIDIO,
     )
 
 
@@ -361,6 +398,7 @@ def validator_factory(monkeypatch: pytest.MonkeyPatch):
             "LLM_JUDGE_MAX_WORKERS",
             "LLM_JUDGE_FAIL_OPEN",
             "LLM_JUDGE_BACKEND",
+            "LLM_JUDGE_AUDIT_SOURCES",
         ):
             monkeypatch.delenv(var, raising=False)
         defaults: Dict[str, Any] = dict(
@@ -766,6 +804,264 @@ class TestLLMJudgeValidatorShutdown:
         assert validator._executor is not None
         validator.shutdown()
         assert validator._executor is None
+
+
+# ---------------------------------------------------------------------------
+# audit_sources -- env / constructor / parsing precedence (spec §10)
+# ---------------------------------------------------------------------------
+
+
+class TestParseAuditSources:
+    """Unit tests for :func:`_parse_audit_sources` (pure parsing helper)."""
+
+    def test_should_return_default_when_raw_is_none(self) -> None:
+        assert _parse_audit_sources(None) == {DetectorSource.GLINER}
+
+    def test_should_return_default_when_raw_is_empty_string(self) -> None:
+        assert _parse_audit_sources("") == {DetectorSource.GLINER}
+        assert _parse_audit_sources("   ") == {DetectorSource.GLINER}
+
+    def test_should_parse_single_source_uppercase(self) -> None:
+        assert _parse_audit_sources("OPENMED") == {DetectorSource.OPENMED}
+
+    def test_should_parse_csv_into_set(self) -> None:
+        result = _parse_audit_sources("GLINER,OPENMED,REGEX")
+        assert result == {
+            DetectorSource.GLINER,
+            DetectorSource.OPENMED,
+            DetectorSource.REGEX,
+        }
+
+    def test_should_strip_whitespace_and_uppercase(self) -> None:
+        # The CSV ``" gliner , OpenMed "`` exercises three rules at once:
+        # leading/trailing whitespace, mixed casing, and inner padding.
+        result = _parse_audit_sources(" gliner , OpenMed ")
+        assert result == {DetectorSource.GLINER, DetectorSource.OPENMED}
+
+    def test_should_skip_unknown_tokens_and_keep_valid_ones(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level("WARNING", logger=lv.logger.name):
+            result = _parse_audit_sources("GLINER,NOPENOPE,OPENMED")
+        assert result == {DetectorSource.GLINER, DetectorSource.OPENMED}
+        # Operator-facing warning so a typo never silently drops a source.
+        assert any("NOPENOPE" in r.message for r in caplog.records)
+
+    def test_should_fallback_to_default_when_all_tokens_unknown(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level("WARNING", logger=lv.logger.name):
+            result = _parse_audit_sources("INVALID1,INVALID2")
+        assert result == {DetectorSource.GLINER}
+
+
+class TestAuditSourcesResolution:
+    """Constructor + env-var precedence around :attr:`audit_sources`."""
+
+    def test_audit_sources_default_to_gliner_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Rétro-compat strict: no env, no constructor arg -> {GLINER}."""
+        for var in (
+            "LLM_JUDGE_BASE_URL",
+            "LLM_JUDGE_AUDIT_SOURCES",
+            "LLM_JUDGE_BACKEND",
+        ):
+            monkeypatch.delenv(var, raising=False)
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1", max_workers=1
+        )
+        try:
+            assert validator.audit_sources == {DetectorSource.GLINER}
+        finally:
+            validator.shutdown()
+
+    def test_audit_sources_via_env_var_csv(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(
+            "LLM_JUDGE_AUDIT_SOURCES", "GLINER,OPENMED,REGEX"
+        )
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1", max_workers=1
+        )
+        try:
+            assert validator.audit_sources == {
+                DetectorSource.GLINER,
+                DetectorSource.OPENMED,
+                DetectorSource.REGEX,
+            }
+        finally:
+            validator.shutdown()
+
+    def test_audit_sources_via_constructor_overrides_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Env says GLINER+OPENMED but constructor wins with {PRESIDIO}.
+        monkeypatch.setenv("LLM_JUDGE_AUDIT_SOURCES", "GLINER,OPENMED")
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1",
+            max_workers=1,
+            audit_sources={DetectorSource.PRESIDIO},
+        )
+        try:
+            assert validator.audit_sources == {DetectorSource.PRESIDIO}
+        finally:
+            validator.shutdown()
+
+    def test_audit_sources_strips_whitespace_and_uppercases(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(
+            "LLM_JUDGE_AUDIT_SOURCES", " gliner , OpenMed "
+        )
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1", max_workers=1
+        )
+        try:
+            assert validator.audit_sources == {
+                DetectorSource.GLINER,
+                DetectorSource.OPENMED,
+            }
+        finally:
+            validator.shutdown()
+
+    def test_audit_sources_empty_iterable_in_constructor_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Defensive: a caller passing ``set()`` must not disable the judge."""
+        monkeypatch.delenv("LLM_JUDGE_AUDIT_SOURCES", raising=False)
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1",
+            max_workers=1,
+            audit_sources=set(),
+        )
+        try:
+            assert validator.audit_sources == {DetectorSource.GLINER}
+        finally:
+            validator.shutdown()
+
+
+class TestFilterMultiSourceAudit:
+    """``filter`` behaviour under the new :attr:`audit_sources` contract."""
+
+    def test_filter_audits_openmed_when_in_audit_sources(
+        self, validator_factory
+    ) -> None:
+        """When audit_sources contains OPENMED, the judge receives the entity."""
+        validator = validator_factory(
+            audit_sources={DetectorSource.OPENMED}
+        )
+        try:
+            verdict = PiiVerdict(
+                verdict="FALSE_POSITIVE", confidence=0.9, reason="fp"
+            )
+            calls = _wire_judge(validator, [verdict])
+            entities = [_openmed_entity()]
+            kept = validator.filter("contexte autour", entities)
+            # Judge was invoked exactly once and rejected the entity.
+            assert len(calls) == 1
+            assert kept == []
+        finally:
+            validator.shutdown()
+
+    def test_filter_passthroughs_openmed_when_not_in_audit_sources(
+        self, validator_factory
+    ) -> None:
+        """Rétro-compat: with default {GLINER}, OpenMed entities passthrough."""
+        validator = validator_factory(
+            audit_sources={DetectorSource.GLINER}
+        )
+        try:
+            # The judge is wired to ALWAYS return FALSE_POSITIVE; if the
+            # OpenMed entity were submitted, the test would fail because
+            # ``calls`` would be non-empty and ``kept`` would be ``[]``.
+            calls = _wire_judge(
+                validator,
+                [
+                    PiiVerdict(
+                        verdict="FALSE_POSITIVE", confidence=0.9, reason="fp"
+                    )
+                ],
+            )
+            entities = [_openmed_entity()]
+            kept = validator.filter("contexte autour", entities)
+            assert kept == entities  # full passthrough
+            assert calls == []  # judge never called
+
+        finally:
+            validator.shutdown()
+
+    def test_filter_audits_mixed_sources(self, validator_factory) -> None:
+        """audit_sources={GLINER, OPENMED}: 2 audits, 1 presidio passthrough."""
+        validator = validator_factory(
+            audit_sources={DetectorSource.GLINER, DetectorSource.OPENMED}
+        )
+        try:
+            # Judge will see GLiNER (FP) then OpenMed (TP); Presidio passes
+            # through without invocation.
+            verdicts: List[Optional[PiiVerdict]] = [
+                PiiVerdict(
+                    verdict="FALSE_POSITIVE", confidence=0.9, reason="fp"
+                ),
+                PiiVerdict(
+                    verdict="TRUE_POSITIVE", confidence=0.9, reason="ok"
+                ),
+            ]
+            calls = _wire_judge(validator, verdicts)
+            gliner_fp = _gliner_entity(text="Marc", start=0, end=4)
+            openmed_tp = _openmed_entity(text="Tr0ub4dor!", start=10, end=20)
+            presidio_pass = _presidio_entity(start=30, end=35)
+            kept = validator.filter(
+                "text", [gliner_fp, openmed_tp, presidio_pass]
+            )
+            # GLiNER discarded, OpenMed kept, Presidio passthrough.
+            assert kept == [openmed_tp, presidio_pass]
+            assert len(calls) == 2  # exactly the two audited entities
+
+            sources_called = {
+                call["entity"].source for call in calls
+            }
+            assert sources_called == {
+                DetectorSource.GLINER,
+                DetectorSource.OPENMED,
+            }
+            # Presidio was never touched by the judge.
+            assert all(
+                call["entity"].source != DetectorSource.PRESIDIO
+                for call in calls
+            )
+        finally:
+            validator.shutdown()
+
+    def test_filter_handles_string_source_in_audit_set(
+        self, validator_factory
+    ) -> None:
+        """Legacy paths attach ``source`` as a string; must still resolve."""
+        validator = validator_factory(
+            audit_sources={DetectorSource.OPENMED}
+        )
+        try:
+            verdict = PiiVerdict(
+                verdict="FALSE_POSITIVE", confidence=0.8, reason="fp"
+            )
+            calls = _wire_judge(validator, [verdict])
+            # Build an entity with the source as a raw string (legacy API).
+            entity = PIIEntity(
+                text="abc",
+                pii_type="PASSWORD",
+                type_label="PASSWORD",
+                start=0,
+                end=3,
+                score=0.7,
+                source=DetectorSource.UNKNOWN_SOURCE,
+            )
+            entity.source = "openmed"  # type: ignore[assignment]
+            kept = validator.filter("text", [entity])
+            assert len(calls) == 1
+            assert kept == []
+        finally:
+            validator.shutdown()
 
 
 # ---------------------------------------------------------------------------
