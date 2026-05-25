@@ -490,25 +490,34 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         request_id = self._generate_request_id(start_time)
         pii_type_configs = None
         detector_flags = None
-        
+
         try:
             self.request_counter += 1
             content, threshold = self._extract_and_validate_request(request, context, request_id)
-            
+
             if content is None:
                 return pii_detection_pb2.PIIDetectionResponse()
-            
+
             # Fetch dynamic configuration from database if requested
             chunk_size = None
             if request.fetch_config_from_db:
                 threshold, pii_type_configs, detector_flags, chunk_size = self._fetch_and_apply_config(threshold, request_id)
-            
+
+            # Phase 1: detection (composite detector).
+            detection_start = time.monotonic()
             entities = self._execute_detection(
                 content, threshold, request_id, detector_flags, pii_type_configs, chunk_size
             )
             logger.info(
                 "[FINDING_TRACKER] [%s] step=GRPC_AFTER_DETECTION count=%d",
                 request_id, len(entities),
+            )
+            self._log_throughput(
+                "detection",
+                request_id=request_id,
+                chars=len(content),
+                duration_s=time.monotonic() - detection_start,
+                entities_in=len(entities),
             )
 
             # Apply PII type-specific filtering if configs were fetched
@@ -521,11 +530,32 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 entities_before_type_filter - len(entities),
             )
 
-            # LLM-as-Judge post-filter (spec section 2.1, 2.5).
+            # Phase 2: LLM-as-Judge post-filter (spec section 2.1, 2.5).
             # Only invoked when the DB flag is ON; otherwise no judge
             # import / thread / metric is triggered (zero overhead path).
             if self._is_llm_judge_enabled(detector_flags):
+                entities_before_judge = len(entities)
+                judge_start = time.monotonic()
                 entities = self._apply_llm_judge(entities, content, request_id)
+                judge_elapsed = time.monotonic() - judge_start
+                self._log_throughput(
+                    "llm_judge",
+                    request_id=request_id,
+                    chars=len(content),
+                    duration_s=judge_elapsed,
+                    entities_in=entities_before_judge,
+                    entities_kept=len(entities),
+                    entities_rejected=entities_before_judge - len(entities),
+                )
+
+            # Phase 3: total elapsed time (chars/sec end-to-end).
+            self._log_throughput(
+                "total",
+                request_id=request_id,
+                chars=len(content),
+                duration_s=time.monotonic() - detection_start,
+                entities_final=len(entities),
+            )
 
             response = self._build_detection_response(content, entities, request_id)
             logger.info(
@@ -534,7 +564,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             )
             self._log_request_completion(request_id, start_time)
             self._perform_periodic_gc()
-            
+
             return response
             
         except Exception as e:
@@ -906,6 +936,39 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             logger.debug(
                 f"[{request_id}] Entity {i+1}: {entity['type_label']} - "
                 f"'{entity['text']}' (score: {entity['score']:.3f})"
+            )
+
+    @staticmethod
+    def _log_throughput(
+        phase: str,
+        request_id: str,
+        chars: int,
+        duration_s: float,
+        **kwargs,
+    ) -> None:
+        """Forward a throughput record to the async logger (non-blocking).
+
+        Errors during enqueueing must never fail the request; defensive
+        ``except`` keeps the scan resilient against an observability
+        outage (spec section 3.1).
+        """
+        try:
+            from pii_detector.infrastructure.observability.throughput_logger import (
+                get_logger as get_throughput_logger,
+            )
+
+            get_throughput_logger().log_phase(
+                phase,
+                request_id=request_id,
+                chars=chars,
+                duration_s=duration_s,
+                **kwargs,
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.debug(
+                "[THROUGHPUT] log_phase failed silently (phase=%s)",
+                phase,
+                exc_info=True,
             )
 
     @staticmethod
