@@ -42,6 +42,8 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+import uuid
 from typing import List, Tuple
 
 import httpx
@@ -49,6 +51,9 @@ import pytest
 
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
+from pii_detector.infrastructure.observability.throughput_logger import (
+    ThroughputLogger,
+)
 from pii_detector.infrastructure.validation.llm_validator import (
     LLMJudgeValidator,
 )
@@ -236,6 +241,23 @@ def validator() -> LLMJudgeValidator:
         instance.shutdown()
 
 
+@pytest.fixture()
+def throughput() -> ThroughputLogger:
+    """Local :class:`ThroughputLogger` (not the process singleton).
+
+    Built per-test so the ``shutdown()`` in the teardown drains the daemon
+    queue before pytest captures the live logs — without this, the
+    ``[THROUGHPUT]`` line is emitted asynchronously after the test returns
+    and never appears in the ``--log-cli-level`` output. Cf. spec section
+    3.1 (async queue + daemon consumer).
+    """
+    instance = ThroughputLogger()
+    try:
+        yield instance
+    finally:
+        instance.shutdown(timeout=2.0)
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -262,6 +284,7 @@ def test_lm_studio_models_endpoint_is_reachable() -> None:
 
 def test_judge_keeps_true_positives_and_rejects_false_positives(
     validator: LLMJudgeValidator,
+    throughput: ThroughputLogger,
 ) -> None:
     """End-to-end pipeline test: 5 TP must stay, 4 FP must be discarded.
 
@@ -269,15 +292,44 @@ def test_judge_keeps_true_positives_and_rejects_false_positives(
     verbatim in :data:`SYSTEM_PROMPT`. The judge MUST classify them
     correctly; any persistent failure indicates a regression in the prompt
     or the model weights.
+
+    Emits the canonical ``[THROUGHPUT] phase=llm_judge`` log line (spec
+    section 3.1 format) so the live performance characteristics (chars/sec,
+    duration, entities_in/kept/rejected) are visible in the pytest output
+    when run with ``-s --log-cli-level=INFO``.
     """
+    request_id = uuid.uuid4().hex[:12]
     entities = [
         _build_pii_entity(TEXT_WITH_MIXED_DETECTIONS, value, pii_type, source)
         for value, pii_type, source, _ in EXPECTED_ENTITIES
     ]
 
+    start = time.monotonic()
     kept = validator.filter(TEXT_WITH_MIXED_DETECTIONS, entities)
+    duration_s = time.monotonic() - start
+
     kept_values = {entity.text for entity in kept}
-    log.info("[LLM-JUDGE IT] kept_values=%s", sorted(kept_values))
+    rejected_count = len(entities) - len(kept)
+
+    throughput.log_phase(
+        "llm_judge",
+        request_id=request_id,
+        chars=len(TEXT_WITH_MIXED_DETECTIONS),
+        duration_s=duration_s,
+        entities_in=len(entities),
+        entities_kept=len(kept),
+        entities_rejected=rejected_count,
+        llm_total_calls=len(entities),
+    )
+    log.info(
+        "[LLM-JUDGE IT] request_id=%s entities_in=%d kept=%d rejected=%d "
+        "kept_values=%s",
+        request_id,
+        len(entities),
+        len(kept),
+        rejected_count,
+        sorted(kept_values),
+    )
 
     expected_kept = {
         value
@@ -307,6 +359,7 @@ def test_judge_keeps_true_positives_and_rejects_false_positives(
 
 def test_judge_preserves_non_gliner_entities(
     validator: LLMJudgeValidator,
+    throughput: ThroughputLogger,
 ) -> None:
     """Spec §2.5 — entities from Regex/Presidio MUST never be touched by the judge.
 
@@ -316,6 +369,7 @@ def test_judge_preserves_non_gliner_entities(
     (``PCV-1189``, ``DGAIC``) but tags them as Regex / Presidio so the
     judge MUST pass them through unchanged.
     """
+    request_id = uuid.uuid4().hex[:12]
     regex_entity = _build_pii_entity(
         TEXT_WITH_MIXED_DETECTIONS,
         "PCV-1189",
@@ -329,10 +383,23 @@ def test_judge_preserves_non_gliner_entities(
         DetectorSource.PRESIDIO,
     )
 
+    start = time.monotonic()
     kept = validator.filter(
         TEXT_WITH_MIXED_DETECTIONS, [regex_entity, presidio_entity]
     )
+    duration_s = time.monotonic() - start
     kept_values = {entity.text for entity in kept}
+
+    throughput.log_phase(
+        "llm_judge",
+        request_id=request_id,
+        chars=len(TEXT_WITH_MIXED_DETECTIONS),
+        duration_s=duration_s,
+        entities_in=2,
+        entities_kept=len(kept),
+        entities_rejected=2 - len(kept),
+        llm_total_calls=0,  # passthrough: no LLM call expected
+    )
 
     assert "PCV-1189" in kept_values, (
         "Spec §2.5 — REGEX entity was filtered by the judge; the post-filter "
@@ -357,7 +424,9 @@ def test_judge_handles_empty_entity_list(
     assert result == []
 
 
-def test_judge_fail_open_keeps_entity_on_unreachable_endpoint() -> None:
+def test_judge_fail_open_keeps_entity_on_unreachable_endpoint(
+    throughput: ThroughputLogger,
+) -> None:
     """Spec §2.6 — fail_open=True keeps the entity when LM Studio is unreachable.
 
     The module-scoped fixture is intentionally not used: we need a standalone
@@ -400,9 +469,24 @@ def test_judge_fail_open_keeps_entity_on_unreachable_endpoint() -> None:
             ),
         ]
 
+        request_id = uuid.uuid4().hex[:12]
+        start = time.monotonic()
         # Must not raise even though every backend call is going to fail.
         kept = failing_validator.filter(TEXT_WITH_MIXED_DETECTIONS, entities)
+        duration_s = time.monotonic() - start
         kept_values = {entity.text for entity in kept}
+
+        throughput.log_phase(
+            "llm_judge",
+            request_id=request_id,
+            chars=len(TEXT_WITH_MIXED_DETECTIONS),
+            duration_s=duration_s,
+            entities_in=len(entities),
+            entities_kept=len(kept),
+            entities_rejected=len(entities) - len(kept),
+            llm_total_calls=len(entities),
+            outcome="fail_open",
+        )
 
         assert kept_values == {"CH6930000011100005458", "DGAIC"}, (
             "Spec §2.6 — fail_open=True must keep ALL GLiNER entities when "
