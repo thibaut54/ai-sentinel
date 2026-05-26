@@ -30,9 +30,11 @@ Methodology
    the exact same matching logic as the baseline so the two reports can be
    compared apples-to-apples.
 
-5. **Hard assertion: FP_rate_after_judge <= 0.05 per type** (quasi-zero) AND
-   **recall_after_judge >= recall_baseline - 0.10** (the judge must not erode
-   recall by more than 10 percentage points).
+5. **Hard assertion: FP_rate_after_judge <= 0.10 per type** (operator-accepted
+   budget after empirical calibration) AND **recall_after_judge >=
+   recall_baseline - 0.10** (the judge must not erode recall by more than 10
+   percentage points). A WARNING is logged when 0.05 < FP_rate <= 0.10 so
+   regressions toward the upper bound surface in the CI output.
 
 Skips
 -----
@@ -107,8 +109,16 @@ log = logging.getLogger("openmed_fp_eval_with_judge")
 
 # Hard cap on the FP rate after the judge has post-processed OpenMed
 # detections. Tighter than the baseline 0.20 because the judge is supposed to
-# strip out almost every false positive (cf. spec §5.1).
-MAX_FP_RATE_WITH_JUDGE = 0.05
+# strip out most false positives (cf. spec §5.1).
+#
+# Empirical calibration (2026-05-26): on the first live run against Qwen 3.6
+# 35B A3B, a 0.05 cap was too strict — types like CVV legitimately keep a
+# single ambiguous survivor (e.g. a 3-digit value next to "CVV:") which the
+# judge cannot disambiguate from semantics alone. 0.10 is the operator-
+# accepted budget: "moins de 5%, voire 10%, c'est acceptable". Below 0.05 is
+# the goal, between 0.05 and 0.10 logs a WARNING but still passes.
+MAX_FP_RATE_WITH_JUDGE = 0.10
+WARN_FP_RATE_WITH_JUDGE = 0.05
 
 # Recall after the judge must stay close to the OpenMed baseline. The judge
 # is allowed to drop **at most** this many percentage points (e.g. baseline
@@ -565,8 +575,8 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
     dual_metrics_collector,
     pii_type,
 ):
-    """Per-type: OpenMed + judge must bring FP rate to <= 5% while
-    keeping recall within 10pp of the OpenMed-only baseline.
+    """Per-type: OpenMed + judge must bring FP rate to <= 10% (target < 5%)
+    while keeping recall within 10pp of the OpenMed-only baseline.
 
     Three failure modes diagnosed by the report:
       1. Judge too lenient on look_alikes (e.g. classifies SHA hashes as
@@ -618,6 +628,22 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
         metrics.judged_recall,
         elapsed_s,
     )
+
+    # Soft warning: judged FP rate above the ideal 5% target but still within
+    # the hard 10% cap. Surfaces drift in CI before it crosses the cap.
+    if WARN_FP_RATE_WITH_JUDGE < metrics.judged_fp_rate <= MAX_FP_RATE_WITH_JUDGE:
+        log.warning(
+            "[%s] judged FP_rate=%.3f exceeds ideal target %.2f (still under "
+            "the hard cap %.2f). Survivors: %s",
+            pii_type,
+            metrics.judged_fp_rate,
+            WARN_FP_RATE_WITH_JUDGE,
+            MAX_FP_RATE_WITH_JUDGE,
+            "; ".join(
+                f"{cid}: {val!r}"
+                for cid, val, _ in metrics.surviving_fp_samples[:3]
+            ),
+        )
 
     # Hard assertion #1: judged FP rate at most MAX_FP_RATE_WITH_JUDGE.
     assert metrics.judged_fp_rate <= MAX_FP_RATE_WITH_JUDGE, (
@@ -707,8 +733,10 @@ def _write_markdown_report(
     lines: List[str] = []
     lines.append("# OpenMed + LLM judge — FP/FN evaluation\n")
     lines.append(
-        f"- Pass criteria: judged `FP_rate <= {MAX_FP_RATE_WITH_JUDGE:.2f}`, "
-        f"recall degradation `<= {MAX_RECALL_DEGRADATION:.2f}pp` vs baseline, "
+        f"- Pass criteria: judged `FP_rate <= {MAX_FP_RATE_WITH_JUDGE:.2f}` "
+        f"(ideal `<= {WARN_FP_RATE_WITH_JUDGE:.2f}` — over that range emits a "
+        f"WARN but still passes), recall degradation "
+        f"`<= {MAX_RECALL_DEGRADATION:.2f}pp` vs baseline, "
         f"absolute recall `>= {MIN_RECALL:.2f}` per type.\n"
         f"- Baseline numbers come from raw OpenMed (same fixtures as "
         f"`{BASELINE_OUTPUT_DIR.name}/report.md`).\n"
@@ -744,9 +772,12 @@ def _write_markdown_report(
             )
         if m.judged_recall < MIN_RECALL:
             verdict_parts.append(f"recall<{MIN_RECALL:.2f}")
-        verdict = "PASS" if not verdict_parts else "FAIL (" + ", ".join(
-            verdict_parts
-        ) + ")"
+        if verdict_parts:
+            verdict = "FAIL (" + ", ".join(verdict_parts) + ")"
+        elif m.judged_fp_rate > WARN_FP_RATE_WITH_JUDGE:
+            verdict = "PASS (WARN)"
+        else:
+            verdict = "PASS"
         lines.append(
             f"| {pii_type} | {m.cases} "
             f"| {m.baseline_fp_rate:.3f} | {m.judged_fp_rate:.3f} | {delta_fp:+.3f} "
