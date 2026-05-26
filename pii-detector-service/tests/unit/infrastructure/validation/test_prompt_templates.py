@@ -16,8 +16,10 @@ from pydantic import ValidationError
 
 from pii_detector.infrastructure.validation.prompt_templates import (
     DEFAULT_CONTEXT_WINDOW,
+    PROMPT_VARIANTS,
     PiiVerdict,
     SYSTEM_PROMPT,
+    SYSTEM_PROMPT_CONTEXT_AWARE,
     VERDICT_SCHEMA,
     build_user_prompt,
     extract_context,
@@ -78,6 +80,105 @@ class TestSystemPrompt:
         assert "FALSE_POSITIVE" in SYSTEM_PROMPT
         assert "UNSURE" in SYSTEM_PROMPT
 
+    def test_system_prompt_documents_separator_normalization(self) -> None:
+        # The judge must be told that separators are stripped before format
+        # evaluation, otherwise it drops dash/space-formatted identifiers
+        # (regression: IMEI '356-938-035-643-809' wrongly rejected).
+        assert "FORMATAGE" in SYSTEM_PROMPT
+        assert "separateurs" in SYSTEM_PROMPT
+        assert "value_digits_only" in SYSTEM_PROMPT
+
+    def test_system_prompt_contains_separator_edge_case_few_shots(self) -> None:
+        # Edge-case few-shots placed last (recency-weighted attention).
+        edge_cases = [
+            "356-938-035-643-809",            # IMEI with dashes
+            "8 6 9 4 6 2 0 5 0 2 7 4 3 1 9",  # IMEI with spaces
+            "CH69 3000 0011 1000 0545 8",     # IBAN with spaces
+            "4242 4242 4242 4242",            # credit card with spaces
+        ]
+        for fragment in edge_cases:
+            assert fragment in SYSTEM_PROMPT, (
+                f"separator few-shot {fragment!r} missing from SYSTEM_PROMPT"
+            )
+
+    def test_system_prompt_imposes_reason_first_output_order(self) -> None:
+        # reason must be decoded before verdict (in-schema mini-CoT).
+        assert SYSTEM_PROMPT.index('"reason"') < SYSTEM_PROMPT.index('"verdict"')
+
+
+# ---------------------------------------------------------------------------
+# PROMPT_VARIANTS — offline A/B comparison registry
+# ---------------------------------------------------------------------------
+
+
+# Every registered variant must honour the same output contract so the
+# comparison harness measures the variable under test (the context clause)
+# rather than collateral prompt damage. Parametrising over the registry holds
+# any future variant to this contract automatically.
+_VARIANT_ITEMS = list(PROMPT_VARIANTS.items())
+_VARIANT_IDS = [name for name, _ in _VARIANT_ITEMS]
+
+
+class TestPromptVariants:
+    def test_registry_exposes_the_expected_variants(self) -> None:
+        assert set(PROMPT_VARIANTS) == {"v1_baseline", "v2_context_aware"}
+
+    def test_v1_baseline_is_the_production_system_prompt(self) -> None:
+        # The eval reports deltas against prod, so v1 must BE prod (identity).
+        assert PROMPT_VARIANTS["v1_baseline"] is SYSTEM_PROMPT
+
+    @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
+    def test_variant_preserves_strict_json_output_rules(self, prompt: str) -> None:
+        assert "Reponds UNIQUEMENT par un objet JSON valide" in prompt
+        assert "Pas de markdown" in prompt
+        assert "/no_think" in prompt
+
+    @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
+    def test_variant_imposes_reason_first_output_order(self, prompt: str) -> None:
+        assert prompt.index('"reason"') < prompt.index('"verdict"')
+
+    @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
+    def test_variant_documents_three_verdict_values(self, prompt: str) -> None:
+        assert "TRUE_POSITIVE" in prompt
+        assert "FALSE_POSITIVE" in prompt
+        assert "UNSURE" in prompt
+
+    @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
+    def test_variant_keeps_separator_normalization_contract(self, prompt: str) -> None:
+        # value_digits_only + FORMATAGE must survive in every variant, else the
+        # IMEI-with-dashes regression resurfaces under that variant.
+        assert "FORMATAGE" in prompt
+        assert "value_digits_only" in prompt
+
+    @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
+    def test_variant_keeps_canonical_and_edge_case_few_shots(self, prompt: str) -> None:
+        # Same few-shots across variants (canonical + separator edge cases).
+        for fragment in ("CH6930000011100005458", "356-938-035-643-809", "PCV-1189"):
+            assert fragment in prompt, f"few-shot {fragment!r} missing from a variant"
+
+
+class TestContextAwareVariant:
+    def test_context_aware_differs_from_baseline(self) -> None:
+        # Guards against a silent no-op if the .replace() anchor ever drifts:
+        # a failed substitution would leave the two prompts identical.
+        assert SYSTEM_PROMPT_CONTEXT_AWARE != SYSTEM_PROMPT
+        assert len(SYSTEM_PROMPT_CONTEXT_AWARE) > len(SYSTEM_PROMPT)
+
+    def test_context_aware_carries_the_asymmetric_clause(self) -> None:
+        assert "CONTEXTE" in SYSTEM_PROMPT_CONTEXT_AWARE
+        assert "ASYMETRIQUE" in SYSTEM_PROMPT_CONTEXT_AWARE
+        # "absence of cue is not a rejection" half — protects no_clue recall.
+        assert "ABSENCE" in SYSTEM_PROMPT_CONTEXT_AWARE
+        # "context names another type -> FP" half — drives look-alike rejection.
+        assert "sha256" in SYSTEM_PROMPT_CONTEXT_AWARE
+
+    def test_context_clause_sits_before_the_output_rules(self) -> None:
+        # The clause is inserted ahead of the output rules so the few-shots and
+        # the reason-first JSON tail stay byte-identical to the baseline.
+        assert SYSTEM_PROMPT_CONTEXT_AWARE.index("CONTEXTE (CRITIQUE") < (
+            SYSTEM_PROMPT_CONTEXT_AWARE.index("REGLES DE SORTIE (CRITIQUES)")
+        )
+
 
 # ---------------------------------------------------------------------------
 # build_user_prompt
@@ -103,8 +204,8 @@ class TestBuildUserPrompt:
         assert "y" * 300 in prompt
         # The value must appear delimited with markers in the rendered context.
         assert ">>>VALUE12345<<<" in prompt
-        assert "pii_type     = NATIONAL_ID" in prompt
-        assert "type_label   = numero national" in prompt
+        assert "= NATIONAL_ID" in prompt
+        assert "= numero national" in prompt
 
     def test_build_user_prompt_truncates_context_at_start_boundary(self) -> None:
         text = "PCV-1189 was decided last week."  # value at index 0
@@ -169,9 +270,29 @@ class TestBuildUserPrompt:
         prompt = build_user_prompt(entity, text, context_window=2)
 
         # type_label has been backfilled from pii_type (defence-in-depth).
-        assert "type_label   = API_KEY" in prompt
+        assert "= API_KEY" in prompt
 
-    def test_build_user_prompt_formats_score_with_three_decimals(self) -> None:
+    def test_build_user_prompt_exposes_value_digits_only(self) -> None:
+        # Separators (dashes/spaces/dots/slashes) stripped so the judge can
+        # count digits without reconstructing the value under Q4_K_M noise.
+        text = "IMEI: 356-938-035-643-809 enregistre."
+        entity = _FakeEntity(
+            text="356-938-035-643-809",
+            pii_type="IMEI",
+            type_label="IMEI",
+            start=6,
+            end=25,
+        )
+
+        prompt = build_user_prompt(entity, text)
+
+        assert '= "356-938-035-643-809"' in prompt          # raw value kept
+        assert '= "356938035643809"' in prompt               # normalized form
+        assert "value_digits_only" in prompt
+
+    def test_build_user_prompt_omits_noise_fields(self) -> None:
+        # detector / score / page_title / source_file were dropped: they don't
+        # inform a format/semantics verdict and only pollute the context.
         text = "abcXYZdef"
         entity = _FakeEntity(
             text="XYZ",
@@ -179,12 +300,14 @@ class TestBuildUserPrompt:
             type_label="email",
             start=3,
             end=6,
-            score=0.87654321,
         )
 
         prompt = build_user_prompt(entity, text)
 
-        assert "score        = 0.877" in prompt
+        assert "score" not in prompt
+        assert "detector" not in prompt
+        assert "page_title" not in prompt
+        assert "source_file" not in prompt
 
 
 # ---------------------------------------------------------------------------

@@ -44,6 +44,7 @@ from pii_detector.infrastructure.validation.llm_validator import (
 )
 from pii_detector.infrastructure.validation.prompt_templates import (
     PiiVerdict,
+    SYSTEM_PROMPT,
 )
 
 
@@ -540,6 +541,48 @@ class TestInvokeRemote:
             self._patched_client(validator, post)
             with pytest.raises(json.JSONDecodeError):
                 validator._invoke_remote("user prompt", "req-5")
+        finally:
+            validator.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# system_prompt injection (offline prompt-comparison harness contract)
+# ---------------------------------------------------------------------------
+
+
+class TestSystemPromptInjection:
+    """The injectable ``system_prompt`` is what the prompt-comparison eval
+    relies on to A/B-test variants without mutating the module constant. The
+    factory pre-resolves the model id, so ``_build_payload`` does no HTTP."""
+
+    def test_should_default_to_module_system_prompt(self, validator_factory) -> None:
+        validator = validator_factory()
+        try:
+            payload = validator._build_payload("user prompt")
+            assert payload["messages"][0]["role"] == "system"
+            assert payload["messages"][0]["content"] == SYSTEM_PROMPT
+        finally:
+            validator.shutdown()
+
+    def test_should_inject_custom_system_prompt(self, validator_factory) -> None:
+        custom = "TU ES UN JUGE DE TEST. Reponds en JSON."
+        validator = validator_factory(system_prompt=custom)
+        try:
+            payload = validator._build_payload("user prompt")
+            assert payload["messages"][0]["content"] == custom
+            # The user prompt still occupies the second message, untouched.
+            assert payload["messages"][1] == {
+                "role": "user",
+                "content": "user prompt",
+            }
+        finally:
+            validator.shutdown()
+
+    def test_should_expose_system_prompt_attribute(self, validator_factory) -> None:
+        custom = "VARIANTE X"
+        validator = validator_factory(system_prompt=custom)
+        try:
+            assert validator.system_prompt == custom
         finally:
             validator.shutdown()
 

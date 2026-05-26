@@ -43,6 +43,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import httpx
@@ -86,12 +87,79 @@ _FINETUNE_BLACKLIST: Tuple[str, ...] = (
     "finetune",
 )
 
-# Preferred model id (exact match priority) and fuzzy match tokens.
-_DEFAULT_PREFERRED_MODEL = "qwen/qwen3.6-35b-a3b"
+# Hardcoded final-safety fallbacks. The canonical source of truth for
+# operator-facing defaults is ``[llm_judge]`` in
+# ``config/detection-settings.toml`` (loaded via
+# :func:`_load_llm_judge_toml_defaults`). These constants are only consulted
+# when the TOML cannot be read (early-import, missing file, parse error) so
+# the validator keeps a sane default in degraded environments.
 _FUZZY_MATCH_TOKENS = ("qwen3.6", "a3b")
+_DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
+_DEFAULT_PREFERRED_MODEL = "qwen/qwen3.6-35b-a3b"
 
-# Default LM Studio endpoint (validated empirically on 2026-05-25).
-_DEFAULT_BASE_URL = "http://172.22.22.63:1234/v1"
+
+# ---------------------------------------------------------------------------
+# TOML defaults loader (single source of truth: [llm_judge] section)
+# ---------------------------------------------------------------------------
+
+_TOML_DEFAULTS_CACHE: Optional[Dict[str, Any]] = None
+_TOML_DEFAULTS_LOCK = threading.Lock()
+
+
+def _load_llm_judge_toml_defaults() -> Dict[str, Any]:
+    """Return the ``[llm_judge]`` section of ``detection-settings.toml``.
+
+    This is the **single source of truth** for operator-facing defaults
+    (base_url, preferred_model, timeouts, ...). The result is cached at
+    module level so the TOML is read at most once per process.
+
+    On any IO / parse error the function logs a WARNING and returns an
+    empty dict, so callers must combine the result with hardcoded
+    fallbacks (see :data:`_DEFAULT_BASE_URL` etc).
+
+    Returns:
+        Dict of ``[llm_judge]`` settings, or ``{}`` if unavailable.
+    """
+    global _TOML_DEFAULTS_CACHE
+    if _TOML_DEFAULTS_CACHE is not None:
+        return _TOML_DEFAULTS_CACHE
+    with _TOML_DEFAULTS_LOCK:
+        if _TOML_DEFAULTS_CACHE is not None:
+            return _TOML_DEFAULTS_CACHE
+        try:
+            try:
+                import tomllib  # type: ignore[import-not-found]  # Python 3.11+
+            except ImportError:  # pragma: no cover - py3.9/3.10 fallback
+                import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+
+            # llm_validator.py lives at
+            # pii_detector/infrastructure/validation/llm_validator.py
+            # Service root is 4 levels up, config/ sits at that root.
+            config_path = (
+                Path(__file__).resolve().parents[3]
+                / "config"
+                / "detection-settings.toml"
+            )
+            with open(config_path, "rb") as f:
+                config = tomllib.load(f)
+            _TOML_DEFAULTS_CACHE = dict(config.get("llm_judge", {}))
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            logger.warning(
+                "Could not load [llm_judge] defaults from "
+                "config/detection-settings.toml (%s: %s); falling back "
+                "on hardcoded constants",
+                exc.__class__.__name__,
+                exc,
+            )
+            _TOML_DEFAULTS_CACHE = {}
+    return _TOML_DEFAULTS_CACHE
+
+
+def _reset_toml_defaults_cache_for_tests() -> None:
+    """Reset the cached TOML defaults (test-only helper)."""
+    global _TOML_DEFAULTS_CACHE
+    with _TOML_DEFAULTS_LOCK:
+        _TOML_DEFAULTS_CACHE = None
 
 
 # ---------------------------------------------------------------------------
@@ -389,12 +457,16 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         top_p: float = 1.0,
         http_client: Optional[httpx.Client] = None,
         audit_sources: Optional[Iterable[DetectorSource]] = None,
+        system_prompt: Optional[str] = None,
     ) -> None:
         """Build the validator.
 
         Args:
             base_url: LM Studio base URL ending in ``/v1``. Defaults to
-                ``LLM_JUDGE_BASE_URL`` env var or :data:`_DEFAULT_BASE_URL`.
+                ``LLM_JUDGE_BASE_URL`` env var, then to
+                ``[llm_judge].base_url`` in
+                ``config/detection-settings.toml`` (single source of
+                truth), then to :data:`_DEFAULT_BASE_URL`.
             preferred_model: Canonical model id to resolve first against
                 ``GET /v1/models`` (env: ``LLM_JUDGE_PREFERRED_MODEL``).
             timeout_seconds: Per-call HTTP timeout in seconds (env:
@@ -416,36 +488,60 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
                 falls back on ``{GLINER}`` (MVP §2.5 backwards
                 compatibility). Entities whose source is **not** in this
                 set bypass the judge and are returned unchanged.
+            system_prompt: System prompt injected as the ``system`` message
+                of every ``/chat/completions`` call. When ``None`` (default),
+                the canonical :data:`prompt_templates.SYSTEM_PROMPT` is used,
+                so production behaviour is unchanged. Eval harnesses pass a
+                variant from :data:`prompt_templates.PROMPT_VARIANTS` here to
+                A/B-test prompt formulations without mutating the module
+                constant.
         """
+        # Precedence: explicit constructor arg > env var > TOML (single
+        # source of truth) > hardcoded final fallback.
+        toml_defaults = _load_llm_judge_toml_defaults()
         self.base_url = (
             base_url
             or os.getenv("LLM_JUDGE_BASE_URL")
+            or toml_defaults.get("base_url")
             or _DEFAULT_BASE_URL
         ).rstrip("/")
         self.preferred_model = (
             preferred_model
             or os.getenv("LLM_JUDGE_PREFERRED_MODEL")
+            or toml_defaults.get("preferred_model")
             or _DEFAULT_PREFERRED_MODEL
         )
         self.timeout_seconds = (
             timeout_seconds
             if timeout_seconds is not None
-            else _env_float("LLM_JUDGE_TIMEOUT_SECONDS", 120.0)
+            else _env_float(
+                "LLM_JUDGE_TIMEOUT_SECONDS",
+                float(toml_defaults.get("timeout_seconds", 120.0)),
+            )
         )
         self.max_batch_size = (
             max_batch_size
             if max_batch_size is not None
-            else _env_int("LLM_JUDGE_MAX_BATCH_SIZE", 1)
+            else _env_int(
+                "LLM_JUDGE_MAX_BATCH_SIZE",
+                int(toml_defaults.get("max_batch_size", 1)),
+            )
         )
         self.max_workers = (
             max_workers
             if max_workers is not None
-            else _env_int("LLM_JUDGE_MAX_WORKERS", 4)
+            else _env_int(
+                "LLM_JUDGE_MAX_WORKERS",
+                int(toml_defaults.get("max_workers", 4)),
+            )
         )
         self.fail_open = (
             fail_open
             if fail_open is not None
-            else _env_bool("LLM_JUDGE_FAIL_OPEN", True)
+            else _env_bool(
+                "LLM_JUDGE_FAIL_OPEN",
+                bool(toml_defaults.get("fail_open", True)),
+            )
         )
         self.backend = (
             backend or os.getenv("LLM_JUDGE_BACKEND") or BACKEND_REMOTE
@@ -462,6 +558,11 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             self.audit_sources = set(audit_sources) or set(
                 _DEFAULT_AUDIT_SOURCES
             )
+        # System prompt precedence: explicit constructor arg > module default.
+        # Defaulting to SYSTEM_PROMPT keeps prod identical; the override exists
+        # so the prompt-comparison eval can inject PROMPT_VARIANTS entries
+        # without ever mutating the canonical constant.
+        self.system_prompt = system_prompt or SYSTEM_PROMPT
         self.context_window = context_window
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -668,7 +769,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         return {
             "model": self._resolve_model_id_lazy(),
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             "temperature": self.temperature,

@@ -45,10 +45,13 @@ Run
 
 ::
 
-    LLM_JUDGE_BASE_URL=http://172.22.22.63:1234/v1 \\
-        rtk proxy pytest \\
+    rtk proxy pytest \\
         tests/integration/test_openmed_pii_text_document_with_judge.py \\
         -v -s --log-cli-level=INFO --no-cov
+
+The LM Studio endpoint defaults to the value of ``[llm_judge].base_url``
+in ``config/detection-settings.toml`` (single source of truth). Override
+ad hoc with ``LLM_JUDGE_BASE_URL=http://host:port/v1`` if needed.
 
 Skipped automatically when LM Studio is unreachable or ``transformers <
 5.0`` (OpenMed unsupported).
@@ -229,8 +232,18 @@ def _parse_document() -> Tuple[str, List[AnnotatedLine], List[LinePosition]]:
 # ---------------------------------------------------------------------------
 
 
-DEFAULT_BASE_URL = "http://172.22.22.63:1234/v1"
-BASE_URL = os.getenv("LLM_JUDGE_BASE_URL", DEFAULT_BASE_URL)
+# Single source of truth: [llm_judge].base_url in
+# config/detection-settings.toml. Env var overrides for ad-hoc runs.
+from pii_detector.infrastructure.validation.llm_validator import (  # noqa: E402
+    _DEFAULT_BASE_URL,
+    _load_llm_judge_toml_defaults,
+)
+
+BASE_URL = (
+    os.getenv("LLM_JUDGE_BASE_URL")
+    or _load_llm_judge_toml_defaults().get("base_url")
+    or _DEFAULT_BASE_URL
+)
 
 
 pytestmark = [

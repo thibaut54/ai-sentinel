@@ -24,8 +24,11 @@ Spec references:
 
 Run with::
 
-    LLM_JUDGE_BASE_URL=http://172.22.22.63:1234/v1 \\
-        rtk pytest tests/integration/test_llm_judge_pipeline.py -v
+    rtk pytest tests/integration/test_llm_judge_pipeline.py -v
+
+The LM Studio endpoint defaults to the value of ``[llm_judge].base_url``
+in ``config/detection-settings.toml`` (single source of truth). Override
+ad hoc with ``LLM_JUDGE_BASE_URL=http://host:port/v1`` if needed.
 
 If LM Studio is unreachable (the default in CI) the entire module is
 skipped via ``pytestmark``; the tests never hard-fail when the model is
@@ -55,6 +58,9 @@ from pii_detector.infrastructure.observability.throughput_logger import (
     ThroughputLogger,
 )
 from pii_detector.infrastructure.validation.llm_validator import (
+    _DEFAULT_BASE_URL,
+    _DEFAULT_PREFERRED_MODEL,
+    _load_llm_judge_toml_defaults,
     LLMJudgeValidator,
 )
 
@@ -66,8 +72,21 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-DEFAULT_BASE_URL = "http://172.22.22.63:1234/v1"
-BASE_URL = os.getenv("LLM_JUDGE_BASE_URL", DEFAULT_BASE_URL)
+# Single source of truth: [llm_judge].base_url in
+# config/detection-settings.toml. Env var overrides for ad-hoc runs.
+BASE_URL = (
+    os.getenv("LLM_JUDGE_BASE_URL")
+    or _load_llm_judge_toml_defaults().get("base_url")
+    or _DEFAULT_BASE_URL
+)
+
+# Model the validator will resolve at runtime (env > TOML > default), same
+# precedence as LLMJudgeValidator. The reachability probe warms THIS model.
+PREFERRED_MODEL = (
+    os.getenv("LLM_JUDGE_PREFERRED_MODEL")
+    or _load_llm_judge_toml_defaults().get("preferred_model")
+    or _DEFAULT_PREFERRED_MODEL
+)
 
 # Mirror the blacklist enforced by ``_resolve_model_id`` so the skip
 # condition never accepts a fine-tune the validator itself would reject.
@@ -80,8 +99,17 @@ _FINETUNE_BLACKLIST: Tuple[str, ...] = (
 )
 
 
-def _find_qwen_base_model(ids: List[str]) -> str | None:
-    """Return the first Qwen 3.6 A3B base model id (no fine-tune)."""
+def _find_qwen_base_model(
+    ids: List[str], preferred: str = PREFERRED_MODEL
+) -> str | None:
+    """Return the model the judge will use: exact ``preferred`` match first,
+    then the first Qwen 3.6 A3B base model id (no fine-tune).
+
+    Mirrors prod resolution (``llm_validator._resolve_model_id``) so the probe
+    warms the same checkpoint the validator resolves.
+    """
+    if preferred in ids:
+        return preferred
     for model_id in ids:
         lower = model_id.lower()
         if "qwen3.6" not in lower or "a3b" not in lower:

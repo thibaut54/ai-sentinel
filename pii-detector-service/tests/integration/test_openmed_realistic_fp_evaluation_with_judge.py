@@ -125,13 +125,44 @@ WARN_FP_RATE_WITH_JUDGE = 0.05
 # recall 0.80 → judged recall must be >= 0.70).
 MAX_RECALL_DEGRADATION = 0.10
 
+# Absolute TP-loss budget: the judge is allowed to drop at most this many
+# baseline TPs per type. Catches regressions on types where the baseline TP
+# count is small enough that a single TP-loss is < MAX_RECALL_DEGRADATION in
+# percentage-point terms but still concerning in absolute terms.
+MAX_ABS_TP_LOSS = 1
+
 # Absolute floor (mirrors the baseline) so a type with 0% recall doesn't
-# slip through just because the judge didn't erode it.
+# slip through just because the judge didn't erode it. Default applies to
+# every type; ``MIN_RECALL_BY_TYPE`` overrides per type when a detector is
+# known to under-perform (e.g. OpenMed on IMEI / adversarial formatting).
 MIN_RECALL = 0.50
+MIN_RECALL_BY_TYPE: Dict[str, float] = {
+    pii_type: MIN_RECALL for pii_type in PII_TYPE_TO_LABEL
+}
 
 # LM Studio config — same defaults as the rest of the live IT suite.
-DEFAULT_BASE_URL = "http://172.22.22.63:1234/v1"
-BASE_URL = os.getenv("LLM_JUDGE_BASE_URL", DEFAULT_BASE_URL)
+# Single source of truth: [llm_judge].base_url in
+# config/detection-settings.toml. Env var overrides for ad-hoc runs.
+from pii_detector.infrastructure.validation.llm_validator import (  # noqa: E402
+    _DEFAULT_BASE_URL,
+    _DEFAULT_PREFERRED_MODEL,
+    _load_llm_judge_toml_defaults,
+)
+
+BASE_URL = (
+    os.getenv("LLM_JUDGE_BASE_URL")
+    or _load_llm_judge_toml_defaults().get("base_url")
+    or _DEFAULT_BASE_URL
+)
+
+# The model the judge will actually resolve at runtime (env > TOML > default),
+# same precedence as LLMJudgeValidator. The reachability probe below warms
+# THIS model so the cold-start it absorbs is the one the suite then hits.
+PREFERRED_MODEL = (
+    os.getenv("LLM_JUDGE_PREFERRED_MODEL")
+    or _load_llm_judge_toml_defaults().get("preferred_model")
+    or _DEFAULT_PREFERRED_MODEL
+)
 
 _FINETUNE_BLACKLIST: Tuple[str, ...] = (
     "uncensored",
@@ -164,7 +195,21 @@ def _transformers_supports_openmed() -> bool:
         return False
 
 
-def _find_qwen_base_model(ids: Iterable[str]) -> str | None:
+def _find_qwen_base_model(
+    ids: Iterable[str], preferred: str = PREFERRED_MODEL
+) -> str | None:
+    """Pick the model the judge will actually use.
+
+    Mirrors prod resolution (``llm_validator._resolve_model_id``): exact match
+    on the configured ``preferred`` first, then a fuzzy ``qwen3.6`` + ``a3b``
+    fallback minus fine-tune markers. Honouring ``preferred`` keeps the probe
+    warming the SAME checkpoint the ``LLMJudgeValidator`` resolves (e.g.
+    ``qwen3.6-35b-a3b-instruct-pure``) instead of whatever lands first in
+    ``/v1/models``.
+    """
+    ids = list(ids)
+    if preferred in ids:
+        return preferred
     for model_id in ids:
         lower = model_id.lower()
         if "qwen3.6" not in lower or "a3b" not in lower:
@@ -666,27 +711,25 @@ _TYPE_PARAMS = [
 ]
 
 
-@pytest.mark.parametrize("pii_type", _TYPE_PARAMS)
-def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
+def _compute_dual_metrics(
+    pii_type: str,
     openmed_detector,
     judge_validator,
-    pii_type_configs,
-    dual_metrics_collector,
-    pii_type,
-):
-    """Per-type: OpenMed + judge must bring FP rate to <= 10% (target < 5%)
-    while keeping recall within 10pp of the OpenMed-only baseline.
+    pii_type_configs: Dict,
+    dual_metrics_collector: Dict[str, DualMetrics],
+) -> DualMetrics:
+    """Run OpenMed + judge over the type's cases and memoize the result.
 
-    Three failure modes diagnosed by the report:
-      1. Judge too lenient on look_alikes (e.g. classifies SHA hashes as
-         ``UNSURE`` → kept) → tune the system prompt.
-      2. Judge too aggressive on canonical_with_clue (drops real PII) →
-         recall degradation > 10pp → revisit the prompt's discrimination
-         hints for this type.
-      3. Judge latency / cold-start spike → fail_open=True keeps every
-         entity → looks like the judge did nothing. Inspect the
-         ``[LLM-JUDGE]`` logs.
+    The OpenMed scan and judge calls are expensive (~tens of seconds and
+    dozens of LLM round-trips per type), so we cache the computed
+    :class:`DualMetrics` on the session-scoped ``dual_metrics_collector``.
+    All three per-type tests below share the same metrics for a given type,
+    which keeps the runtime constant whether one or three assertions run.
     """
+    cached = dual_metrics_collector.get(pii_type)
+    if cached is not None:
+        return cached
+
     cases = _load_cases_for_type(pii_type)
     assert cases, f"No cases loaded for {pii_type}"
 
@@ -708,8 +751,6 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
         _append_findings_jsonl(case, baseline_detected, judged_detected)
     elapsed_s = time.time() - t0
 
-    dual_metrics_collector[pii_type] = metrics
-
     log.info(
         "[%s] cases=%d baseline: tp=%d fp=%d fn=%d FP_rate=%.3f recall=%.3f "
         "| judged: tp=%d fp=%d fn=%d FP_rate=%.3f recall=%.3f (%.1fs)",
@@ -728,9 +769,6 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
         elapsed_s,
     )
 
-    # Surface the two outcomes that the FP-rate / recall caps actually care
-    # about. Logged at the type-level granularity so the test report stays
-    # readable even with 12 types and ~250 cases.
     if metrics.surviving_fp_samples:
         log.warning(
             "[%s] FP-survivors (judge kept these false positives): %s",
@@ -750,6 +788,38 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
             ),
         )
 
+    dual_metrics_collector[pii_type] = metrics
+    return metrics
+
+
+@pytest.mark.parametrize("pii_type", _TYPE_PARAMS)
+def test_Should_KeepFpRateUnderCap_When_JudgeIsAppliedPostOpenMed(
+    openmed_detector,
+    judge_validator,
+    pii_type_configs,
+    dual_metrics_collector,
+    pii_type,
+):
+    """Per-type precision check: post-judge FP rate must stay <= 10%.
+
+    Failure here means the judge is too lenient — it kept false positives
+    that OpenMed surfaced. Typical root causes:
+      * System prompt accepts ``UNSURE`` verdicts (e.g. SHA hashes classed
+        as look-alikes the judge can't confidently reject).
+      * Structured Output schema lets the judge skip a verdict on edge
+        cases → fail_open keeps the entity.
+
+    Inspect the ``surviving_fp_samples`` listed in the assertion message and
+    tighten the system prompt for the offending axis.
+    """
+    metrics = _compute_dual_metrics(
+        pii_type,
+        openmed_detector,
+        judge_validator,
+        pii_type_configs,
+        dual_metrics_collector,
+    )
+
     # Soft warning: judged FP rate above the ideal 5% target but still within
     # the hard 10% cap. Surfaces drift in CI before it crosses the cap.
     if WARN_FP_RATE_WITH_JUDGE < metrics.judged_fp_rate <= MAX_FP_RATE_WITH_JUDGE:
@@ -766,7 +836,6 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
             ),
         )
 
-    # Hard assertion #1: judged FP rate at most MAX_FP_RATE_WITH_JUDGE.
     assert metrics.judged_fp_rate <= MAX_FP_RATE_WITH_JUDGE, (
         f"[{pii_type}] judged FP_rate={metrics.judged_fp_rate:.3f} exceeds cap "
         f"{MAX_FP_RATE_WITH_JUDGE:.2f}. Baseline was {metrics.baseline_fp_rate:.3f}; "
@@ -779,21 +848,96 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
         )
     )
 
-    # Hard assertion #2: recall degradation under MAX_RECALL_DEGRADATION (pp).
+
+@pytest.mark.parametrize("pii_type", _TYPE_PARAMS)
+def test_Should_PreserveBaselineTp_When_JudgeIsAppliedPostOpenMed(
+    openmed_detector,
+    judge_validator,
+    pii_type_configs,
+    dual_metrics_collector,
+    pii_type,
+):
+    """Per-type TP-preservation check: judge must not erode baseline TPs.
+
+    Two complementary guards:
+      * Percentage-point degradation: ``recall_degradation <= 10pp``.
+        Standard non-regression budget.
+      * Absolute TP-loss: ``baseline_tp - judged_tp <= MAX_ABS_TP_LOSS``.
+        Catches the edge case where baseline_tp is small (e.g. 3) — a
+        single TP-loss is only 33pp and would pass the relative check, but
+        is still a real precision-killer worth flagging.
+
+    Failure means the judge is too aggressive — it rejected a real PII
+    that OpenMed correctly found. Inspect ``dropped_tp_samples`` and revisit
+    the discrimination hints for this type.
+    """
+    metrics = _compute_dual_metrics(
+        pii_type,
+        openmed_detector,
+        judge_validator,
+        pii_type_configs,
+        dual_metrics_collector,
+    )
+
+    abs_tp_loss = metrics.baseline_tp - metrics.judged_tp
+
     assert metrics.recall_degradation <= MAX_RECALL_DEGRADATION, (
         f"[{pii_type}] judge eroded recall by "
         f"{metrics.recall_degradation:.3f}pp "
         f"({metrics.baseline_recall:.3f} -> {metrics.judged_recall:.3f}), "
-        f"exceeding the {MAX_RECALL_DEGRADATION:.2f}pp budget. The judge is "
-        f"rejecting too many true positives — tighten the system prompt for "
-        f"this type."
+        f"exceeding the {MAX_RECALL_DEGRADATION:.2f}pp budget. "
+        f"Dropped TPs: "
+        + "; ".join(
+            f"{cid}: {val!r} in '{ctx[:80]}...'"
+            for cid, val, ctx in metrics.dropped_tp_samples[:3]
+        )
     )
 
-    # Hard assertion #3: absolute recall floor (mirrors baseline test).
-    assert metrics.judged_recall >= MIN_RECALL, (
+    assert abs_tp_loss <= MAX_ABS_TP_LOSS, (
+        f"[{pii_type}] judge dropped {abs_tp_loss} true positives in absolute "
+        f"terms ({metrics.baseline_tp} -> {metrics.judged_tp}), exceeding the "
+        f"hard cap of {MAX_ABS_TP_LOSS}. Dropped TPs: "
+        + "; ".join(
+            f"{cid}: {val!r} in '{ctx[:80]}...'"
+            for cid, val, ctx in metrics.dropped_tp_samples[:3]
+        )
+    )
+
+
+@pytest.mark.parametrize("pii_type", _TYPE_PARAMS)
+def test_Should_MaintainAbsoluteRecallFloor_When_JudgeIsAppliedPostOpenMed(
+    openmed_detector,
+    judge_validator,
+    pii_type_configs,
+    dual_metrics_collector,
+    pii_type,
+):
+    """Per-type absolute-recall floor: judged recall must clear
+    ``MIN_RECALL_BY_TYPE[pii_type]`` (default :data:`MIN_RECALL`).
+
+    Distinct from the TP-preservation test: that one measures the **delta**
+    between OpenMed alone and OpenMed+judge. This one measures the
+    **absolute** recall of the full pipeline. A type can degrade by 0pp
+    (judge drops nothing) but still flunk this check if OpenMed itself
+    couldn't reach the floor — surfacing detector-level gaps rather than
+    judge-level ones.
+    """
+    metrics = _compute_dual_metrics(
+        pii_type,
+        openmed_detector,
+        judge_validator,
+        pii_type_configs,
+        dual_metrics_collector,
+    )
+
+    floor = MIN_RECALL_BY_TYPE.get(pii_type, MIN_RECALL)
+    assert metrics.judged_recall >= floor, (
         f"[{pii_type}] judged recall={metrics.judged_recall:.3f} below floor "
-        f"{MIN_RECALL:.2f}. baseline_recall={metrics.baseline_recall:.3f}, "
-        f"degradation={metrics.recall_degradation:.3f}."
+        f"{floor:.2f}. baseline_recall={metrics.baseline_recall:.3f}, "
+        f"degradation={metrics.recall_degradation:.3f}. "
+        f"If OpenMed itself can't clear the floor (baseline already low), "
+        f"lower MIN_RECALL_BY_TYPE[{pii_type!r}] or add a complementary "
+        f"detector upstream of the judge."
     )
 
 
