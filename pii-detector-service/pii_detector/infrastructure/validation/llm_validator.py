@@ -43,7 +43,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import httpx
 from pydantic import ValidationError
@@ -137,6 +137,54 @@ def _env_float(key: str, default: float) -> float:
             default,
         )
         return default
+
+
+# Default audit set kept narrow (MVP §2.5 compatibility): only GLiNER
+# entities are sent to the judge unless the caller opts in via env / TOML /
+# constructor (see :class:`LLMJudgeValidator`).
+_DEFAULT_AUDIT_SOURCES: Tuple[DetectorSource, ...] = (DetectorSource.GLINER,)
+
+
+def _parse_audit_sources(raw: Optional[str]) -> Set[DetectorSource]:
+    """Parse a CSV string into a set of :class:`DetectorSource`.
+
+    The grammar is intentionally lenient (env var + TOML are operator-facing
+    knobs): tokens are split on commas, whitespace is stripped, and casing
+    is normalised to upper-case. Unknown tokens are logged at WARNING and
+    skipped (so a typo does not silently disable the judge).
+
+    Args:
+        raw: Comma-separated string (e.g. ``"GLINER,OPENMED"``). ``None``
+            or empty falls back on :data:`_DEFAULT_AUDIT_SOURCES`.
+
+    Returns:
+        Non-empty set of audited :class:`DetectorSource`. Falls back on
+        ``{GLINER}`` whenever the parse yields nothing usable (so the
+        validator never silently degrades into a passthrough).
+    """
+    if raw is None or not raw.strip():
+        return set(_DEFAULT_AUDIT_SOURCES)
+
+    resolved: Set[DetectorSource] = set()
+    for token in raw.split(","):
+        cleaned = token.strip().upper()
+        if not cleaned:
+            continue
+        try:
+            resolved.add(DetectorSource(cleaned))
+        except ValueError:
+            logger.warning(
+                "Unknown DetectorSource %r in LLM_JUDGE_AUDIT_SOURCES; skipped",
+                cleaned,
+            )
+    if not resolved:
+        logger.warning(
+            "LLM_JUDGE_AUDIT_SOURCES=%r yielded no valid source; falling "
+            "back on default {GLINER}",
+            raw,
+        )
+        return set(_DEFAULT_AUDIT_SOURCES)
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -297,9 +345,14 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
 
     Behaviour summary:
 
-    - Only entities whose ``source == DetectorSource.GLINER`` are audited
-      (spec section 2.5). Deterministic detectors (Regex, Presidio,
-      OpenMed) are passed through untouched.
+    - The set of audited detectors is configurable via
+      :attr:`audit_sources` (post-MVP extension, see spec §10). The MVP
+      default is ``{DetectorSource.GLINER}`` so deployments that ship
+      without explicit configuration keep the original §2.5 scope. To
+      audit other detectors (OpenMed FPs, Regex over-matches, etc.), set
+      ``audit_sources`` either via the constructor, the
+      ``LLM_JUDGE_AUDIT_SOURCES`` env var, or the
+      ``[llm_judge].audit_sources`` TOML field.
     - Each finding is converted to a single ``/chat/completions`` call
       using the system + user prompts from
       :mod:`prompt_templates`. ``response_format`` is the OpenAI-compatible
@@ -335,7 +388,35 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         temperature: float = 0.2,
         top_p: float = 1.0,
         http_client: Optional[httpx.Client] = None,
+        audit_sources: Optional[Iterable[DetectorSource]] = None,
     ) -> None:
+        """Build the validator.
+
+        Args:
+            base_url: LM Studio base URL ending in ``/v1``. Defaults to
+                ``LLM_JUDGE_BASE_URL`` env var or :data:`_DEFAULT_BASE_URL`.
+            preferred_model: Canonical model id to resolve first against
+                ``GET /v1/models`` (env: ``LLM_JUDGE_PREFERRED_MODEL``).
+            timeout_seconds: Per-call HTTP timeout in seconds (env:
+                ``LLM_JUDGE_TIMEOUT_SECONDS``).
+            max_batch_size: Reserved for future batching; currently 1.
+            max_workers: Parallel HTTP calls (env: ``LLM_JUDGE_MAX_WORKERS``).
+            fail_open: When ``True`` (default), any error keeps the entity.
+            backend: ``remote`` (default) or ``local`` (no-op for MVP).
+            context_window: Chars before / after the entity sent in the
+                prompt.
+            max_tokens: Generation budget (absorbs Qwen 3.6 reasoning).
+            temperature: Sampling temperature.
+            top_p: Nucleus sampling threshold.
+            http_client: Optional pre-built :class:`httpx.Client` (useful
+                in tests).
+            audit_sources: Iterable of :class:`DetectorSource` to audit
+                with the LLM judge. When ``None`` (default), the env var
+                ``LLM_JUDGE_AUDIT_SOURCES`` is consulted, then the value
+                falls back on ``{GLINER}`` (MVP §2.5 backwards
+                compatibility). Entities whose source is **not** in this
+                set bypass the judge and are returned unchanged.
+        """
         self.base_url = (
             base_url
             or os.getenv("LLM_JUDGE_BASE_URL")
@@ -369,6 +450,18 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         self.backend = (
             backend or os.getenv("LLM_JUDGE_BACKEND") or BACKEND_REMOTE
         ).strip().lower()
+        # audit_sources precedence: constructor > env > {GLINER} default.
+        # Resolution lives in :func:`_parse_audit_sources` so the parsing
+        # rules (CSV, whitespace, casing, unknown tokens) stay testable in
+        # isolation from the constructor.
+        if audit_sources is None:
+            self.audit_sources: Set[DetectorSource] = _parse_audit_sources(
+                os.getenv("LLM_JUDGE_AUDIT_SOURCES")
+            )
+        else:
+            self.audit_sources = set(audit_sources) or set(
+                _DEFAULT_AUDIT_SOURCES
+            )
         self.context_window = context_window
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -402,11 +495,15 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
     def filter(
         self, text: str, entities: List[PIIEntity]
     ) -> List[PIIEntity]:
-        """Filter GLiNER entities through the LLM judge.
+        """Filter entities whose source is in :attr:`audit_sources`.
 
-        Non-GLiNER entities (Regex / Presidio / OpenMed / Unknown) bypass
-        the LLM and are kept as-is. GLiNER entities are submitted in
-        parallel via the thread-pool executor.
+        Detectors not listed in :attr:`audit_sources` bypass the LLM and
+        are kept as-is (recall-preserving passthrough). Audited entities
+        are submitted in parallel via the thread-pool executor.
+
+        Defaults to ``{GLINER}`` for MVP §2.5 backwards compatibility;
+        extend via :attr:`audit_sources` to also audit OpenMed / Regex /
+        Presidio outputs (spec §10).
         """
         if self.backend == BACKEND_LOCAL:
             # Local backend is intentionally a no-op for the MVP.
@@ -414,26 +511,26 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         if not entities:
             return []
 
-        gliner_entities: List[PIIEntity] = []
+        audited_entities: List[PIIEntity] = []
         for entity in entities:
-            if self._is_gliner(entity):
-                gliner_entities.append(entity)
+            if self._is_audited(entity):
+                audited_entities.append(entity)
 
-        if not gliner_entities:
+        if not audited_entities:
             return list(entities)
 
-        verdicts = self._judge_batch(text, gliner_entities)
+        verdicts = self._judge_batch(text, audited_entities)
         kept_ids = {
             id(entity)
-            for entity, verdict in zip(gliner_entities, verdicts)
+            for entity, verdict in zip(audited_entities, verdicts)
             if self._should_keep(verdict)
         }
 
         # Preserve the original ordering while filtering out the rejected
-        # GLiNER entities; non-GLiNER entities are passed through as-is.
+        # audited entities; non-audited entities are passed through as-is.
         result: List[PIIEntity] = []
         for entity in entities:
-            if self._is_gliner(entity):
+            if self._is_audited(entity):
                 if id(entity) in kept_ids:
                     result.append(entity)
             else:
@@ -442,13 +539,23 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
 
     # -- Internals -----------------------------------------------------------
 
-    @staticmethod
-    def _is_gliner(entity: PIIEntity) -> bool:
+    def _is_audited(self, entity: PIIEntity) -> bool:
+        """Return ``True`` if ``entity`` should be sent to the judge.
+
+        Accepts both :class:`DetectorSource` enum values and plain strings
+        (legacy paths attach the source as a string in some detectors).
+        Unknown or missing sources are treated as non-audited
+        (passthrough).
+        """
         source = getattr(entity, "source", None)
         if isinstance(source, DetectorSource):
-            return source == DetectorSource.GLINER
+            return source in self.audit_sources
         if isinstance(source, str):
-            return source.upper() == DetectorSource.GLINER.value
+            try:
+                normalised = DetectorSource(source.upper())
+            except ValueError:
+                return False
+            return normalised in self.audit_sources
         return False
 
     @staticmethod
@@ -623,6 +730,7 @@ __all__ = [
     "LLMJudgeValidator",
     "_extract_json_payload",
     "_log_inference_metrics",
+    "_parse_audit_sources",
     "_resolve_model_id",
     "get_instance",
 ]

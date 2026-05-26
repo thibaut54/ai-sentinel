@@ -127,3 +127,12 @@ top_p = 1.0
 context_window_chars = 300                     # ctx_before / ctx_after window
 fail_open = true                               # timeout / error -> entity kept
 use_json_schema = true                         # response_format=json_schema strict
+
+# Detector sources audited by the LLM judge (post-MVP extension, spec §10).
+# Comma-separated list. Empty / missing -> {GLINER} (MVP default).
+# Allowed values: GLINER, REGEX, PRESIDIO, OPENMED.
+# Override at runtime with the env var LLM_JUDGE_AUDIT_SOURCES (env > TOML).
+# Note: the validator currently reads the env var directly; the TOML line
+# exists as the single source of truth for documented operator-facing
+# defaults until the corresponding DB column ships.
+audit_sources = "GLINER"
