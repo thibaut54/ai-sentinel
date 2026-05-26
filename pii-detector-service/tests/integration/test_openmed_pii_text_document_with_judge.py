@@ -11,21 +11,22 @@ what the production scan actually sees.
 Reading the fixture
 -------------------
 
-The document is line-oriented. Every annotated line starts with one of
-two markers:
+The document is **plain text** — exactly what a Confluence page would
+look like. Test annotations live in a sibling file
+``openmed-pii-test-document.annotations.json`` keyed by 1-based line
+number::
 
-  * ``[TP value=X] ...rest of the line...``
-      A true positive: OpenMed MUST detect ``X`` somewhere on the line.
-      After the LLM judge runs, that detection MUST still be there
-      (recall preserved).
+    {
+      "line_number": 24,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",            // or "FP"
+      "value": "Tr0ub4dor!2024",  // null when verdict == "FP"
+      ...
+    }
 
-  * ``[FP] ...rest of the line...``
-      No PII detection is expected. If OpenMed flags anything on that
-      line, the LLM judge MUST reject it.
-
-All other lines (section headers, comments starting with ``#``, blanks)
-are ignored — they sit in the scanned document only to preserve a
-human-readable layout.
+This split (text vs ground-truth) keeps the scanned document
+indistinguishable from production input while preserving the per-line
+expected verdict the test needs to score the pipeline.
 
 Assertions (document-wide)
 --------------------------
@@ -55,16 +56,15 @@ Skipped automatically when LM Studio is unreachable or ``transformers <
 
 from __future__ import annotations
 
+import json
 import logging
 import os
-import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-import httpx
 import pytest
 
 # Reuse the live-IT probe pattern from the existing tests.
@@ -90,6 +90,11 @@ DOCUMENT_PATH = (
     / "resources"
     / "openmed-pii-test-document.txt"
 )
+ANNOTATIONS_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "resources"
+    / "openmed-pii-test-document.annotations.json"
+)
 
 # Threshold passed to OpenMed (matches what the other tests use).
 GLOBAL_THRESHOLD = 0.30
@@ -101,25 +106,20 @@ GLOBAL_THRESHOLD = 0.30
 IOU_MATCH_THRESHOLD = 0.5
 
 
-_MARKER_TP_RE = re.compile(r"^\[TP value=(?P<value>[^\]]+)\]\s+(?P<text>.*)$")
-_MARKER_FP_RE = re.compile(r"^\[FP\]\s+(?P<text>.*)$")
-_SECTION_HEADER_RE = re.compile(r"^SECTION (?P<idx>\d+) — (?P<pii_type>[A-Z_]+)$")
-
-
 @dataclass(frozen=True)
 class AnnotatedLine:
-    """Parsed line from the test document."""
+    """One sidecar annotation entry (resolved to its document line)."""
 
     line_number: int            # 1-based, matches editor line numbers
-    pii_type: str               # set by the most recent section header
+    pii_type: str               # set by the sidecar JSON
     verdict: str                # "TP" or "FP"
     expected_value: Optional[str]  # populated only for TP
-    text: str                   # text after the marker (the content scanned)
+    text: str                   # actual line content in the document
 
 
 @dataclass(frozen=True)
 class LinePosition:
-    """Offset of a line inside the assembled scan document."""
+    """Offset of an annotated line inside the assembled scan document."""
 
     start: int  # inclusive offset in the scan document
     end: int    # exclusive offset in the scan document
@@ -132,78 +132,95 @@ class LinePosition:
 
 
 def _parse_document() -> Tuple[str, List[AnnotatedLine], List[LinePosition]]:
-    """Return ``(scan_document, annotations, positions)``.
+    """Load the plain-text document + its sidecar annotations.
 
-    * ``scan_document`` is the concatenation of every annotated line's text
-      content (markers stripped, sections / headers / blank lines excluded).
-      Lines are joined with ``\\n`` so OpenMed sees them as natural
-      paragraphs.
-    * ``annotations`` is the list of ``AnnotatedLine`` in document order.
-    * ``positions`` mirrors ``annotations`` and gives the ``(start, end)``
-      offset of each line's text in ``scan_document`` so we can map
-      OpenMed detections back to the originating line.
+    Returns ``(scan_document, annotations, positions)``:
+
+    * ``scan_document`` is the raw plain-text document — what OpenMed
+      sees. Loaded verbatim from disk so the bytes the test feeds to
+      the pipeline are byte-identical to what a Confluence export would
+      look like.
+    * ``annotations`` is the list of ``AnnotatedLine`` in document order,
+      reconstructed by joining the sidecar JSON entries with the
+      corresponding lines from the document.
+    * ``positions`` mirrors ``annotations`` and gives the
+      ``(document_start_offset, document_end_offset)`` of each annotated
+      line so OpenMed detections (which carry global offsets) can be
+      mapped back to a line.
+
+    Lines NOT mentioned in the sidecar (section headers, blank lines,
+    free-form paragraphs in the header block) are still part of
+    ``scan_document`` so OpenMed sees the realistic surrounding context,
+    but they are simply not scored.
     """
     if not DOCUMENT_PATH.exists():
         raise AssertionError(
             f"Missing PII test document at {DOCUMENT_PATH}. Regenerate via "
             f"`python tests/resources/openmed-fp-eval/_generate_text_document.py`."
         )
+    if not ANNOTATIONS_PATH.exists():
+        raise AssertionError(
+            f"Missing annotations sidecar at {ANNOTATIONS_PATH}. The "
+            f"generator writes both files together — regenerate if you "
+            f"only have one."
+        )
+
+    scan_document = DOCUMENT_PATH.read_text(encoding="utf-8")
+    file_lines = scan_document.split("\n")
+
+    payload = json.loads(ANNOTATIONS_PATH.read_text(encoding="utf-8"))
+    raw_entries = payload.get("lines", [])
+    if not raw_entries:
+        raise AssertionError(
+            f"Annotations file {ANNOTATIONS_PATH} contains no entries."
+        )
+
+    # Precompute (start, end) of each physical line in the scan_document so
+    # the mapper from detection offset -> line is O(log N) via bisect.
+    line_offsets: List[Tuple[int, int]] = []
+    cursor = 0
+    for raw in file_lines:
+        line_offsets.append((cursor, cursor + len(raw)))
+        cursor += len(raw) + 1  # +1 for the "\n" separator
 
     annotations: List[AnnotatedLine] = []
     positions: List[LinePosition] = []
-    scan_chunks: List[str] = []
-    cursor = 0
-    current_type: Optional[str] = None
-
-    raw_text = DOCUMENT_PATH.read_text(encoding="utf-8")
-    for line_number, raw in enumerate(raw_text.splitlines(), start=1):
-        section_match = _SECTION_HEADER_RE.match(raw)
-        if section_match:
-            current_type = section_match.group("pii_type")
-            continue
-
-        tp = _MARKER_TP_RE.match(raw)
-        fp = _MARKER_FP_RE.match(raw)
-        if not tp and not fp:
-            continue
-
-        if current_type is None:
+    for entry in raw_entries:
+        line_number = int(entry["line_number"])
+        if not 1 <= line_number <= len(file_lines):
             raise AssertionError(
-                f"line {line_number}: annotated marker found before any "
-                f"`SECTION N — TYPE` header. Did the document get edited "
-                f"manually?"
+                f"Annotation line_number={line_number} is out of range "
+                f"[1, {len(file_lines)}]. Sidecar / document drift — "
+                f"regenerate with _generate_text_document.py."
             )
+        verdict = entry["verdict"]
+        value = entry.get("value")
+        line_text = file_lines[line_number - 1]
 
-        if tp:
-            verdict, value, text = "TP", tp.group("value"), tp.group("text")
-        else:
-            verdict, value, text = "FP", None, fp.group("text")  # type: ignore[union-attr]
+        if verdict == "TP":
+            if not value:
+                raise AssertionError(
+                    f"Annotation line {line_number} verdict=TP has no value."
+                )
+            if value not in line_text:
+                raise AssertionError(
+                    f"Annotation line {line_number} value={value!r} "
+                    f"is not present in the document line "
+                    f"{line_text[:80]!r}. Sidecar/document drift."
+                )
 
         annotations.append(
             AnnotatedLine(
                 line_number=line_number,
-                pii_type=current_type,
+                pii_type=entry["pii_type"],
                 verdict=verdict,
                 expected_value=value,
-                text=text,
+                text=line_text,
             )
         )
-        positions.append(
-            LinePosition(
-                start=cursor,
-                end=cursor + len(text),
-                line_number=line_number,
-            )
-        )
-        scan_chunks.append(text)
-        cursor += len(text) + 1  # +1 for the joining "\n"
+        start, end = line_offsets[line_number - 1]
+        positions.append(LinePosition(start=start, end=end, line_number=line_number))
 
-    if not annotations:
-        raise AssertionError(
-            "No annotated lines parsed from the document; check the marker "
-            "regexes and the file content."
-        )
-    scan_document = "\n".join(scan_chunks)
     return scan_document, annotations, positions
 
 
