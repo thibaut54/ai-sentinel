@@ -279,6 +279,9 @@ class DualMetrics:
     # Sample of FP that survived the judge — most useful debug aid.
     surviving_fp_samples: List[Tuple[str, str, str]] = field(default_factory=list)
 
+    # Sample of TP that the judge wrongly rejected — surfaces recall regressions.
+    dropped_tp_samples: List[Tuple[str, str, str]] = field(default_factory=list)
+
     def record(
         self,
         case_id: str,
@@ -314,6 +317,18 @@ class DualMetrics:
                     snippet = self._snippet(text, start, end)
                     self.surviving_fp_samples.append((case_id, value, snippet))
                     if len(self.surviving_fp_samples) >= 5:
+                        break
+
+        # Surface every TP dropped by the judge (recall-cap killer).
+        if b_tp > j_tp and len(self.dropped_tp_samples) < 5:
+            judged_set = {(s, e) for s, e, _, _ in judged_detected}
+            for start, end, _score, value in baseline_detected:
+                if (start, end) in judged_set:
+                    continue
+                if self._is_tp_span(expected_spans, start, end):
+                    snippet = self._snippet(text, start, end)
+                    self.dropped_tp_samples.append((case_id, value, snippet))
+                    if len(self.dropped_tp_samples) >= 5:
                         break
 
     @staticmethod
@@ -468,6 +483,12 @@ def _scan_and_judge_case(
     under test (OpenMed may surface other types if their labels are enabled,
     but those don't count for this case and we don't pay an LLM call for
     them).
+
+    Emits a per-case INFO log line for every span listing: action taken
+    (KEPT/DROP), ground-truth verdict (TP/FP), value, span, score. Makes the
+    diff between OpenMed output and the post-judge result inspectable from
+    the pytest log alone — no need to crack open ``findings.jsonl`` to
+    understand why a case failed.
     """
     raw_entities = openmed_detector.detect_pii(
         case.text,
@@ -488,7 +509,85 @@ def _scan_and_judge_case(
     judged_detected = _detected_spans_from_entities(
         case.text, judged_entities, case.pii_type
     )
+
+    _log_case_breakdown(case, baseline_detected, judged_detected)
+
     return baseline_detected, judged_detected
+
+
+def _log_case_breakdown(
+    case,
+    baseline_detected: List[Tuple[int, int, float, str]],
+    judged_detected: List[Tuple[int, int, float, str]],
+) -> None:
+    """Log every baseline span with KEPT/DROP + TP/FP + missed expected spans.
+
+    Format (one log line per span, prefixed with ``[<pii_type>/<case_id>]``)::
+
+        [CVV/CVV_long_context_fr_01] KEPT | FP | '421'      @1234:1237 score=0.91
+        [CVV/CVV_long_context_fr_01] DROP | FP | '4242 4242 4242' @100:115 score=0.95
+        [CVV/CVV_long_context_fr_01] KEPT | TP | '599'      @2000:2003 score=0.88
+        [CVV/CVV_long_context_fr_01] MISS | FN | '<expected>' @500:503
+
+    Reading rules:
+      - ``KEPT | TP`` -> good: real PII still flagged after the judge
+      - ``KEPT | FP`` -> bad: false positive that survived the judge (a
+        ``FP-survivor`` — the FP_rate-cap killer)
+      - ``DROP | FP`` -> good: false positive correctly removed by the judge
+      - ``DROP | TP`` -> bad: real PII the judge wrongly rejected (a
+        ``TP-loss`` — the recall-cap killer)
+      - ``MISS | FN`` -> OpenMed missed this expected span (judge has no
+        bearing on this — the model itself can't detect it)
+    """
+    judged_spans = {(s, e) for s, e, _, _ in judged_detected}
+    prefix = f"[{case.pii_type}/{case.case_id}]"
+
+    if not baseline_detected and not case.expected_spans:
+        log.info("%s no detection, no expected span — clean case", prefix)
+        return
+
+    for start, end, score, value in baseline_detected:
+        is_tp = any(
+            iou(start, end, ex.start, ex.end) >= IOU_MATCH_THRESHOLD
+            for ex in case.expected_spans
+        )
+        ground_truth = "TP" if is_tp else "FP"
+        action = "KEPT" if (start, end) in judged_spans else "DROP"
+
+        # Surface bad outcomes (FP-survivor, TP-loss) at WARNING so they
+        # jump out of a "everything green" log scroll.
+        is_bad = (action == "KEPT" and ground_truth == "FP") or (
+            action == "DROP" and ground_truth == "TP"
+        )
+        emit = log.warning if is_bad else log.info
+        flag = "  <-- FP-survivor" if (action == "KEPT" and ground_truth == "FP") else (
+            "  <-- TP-loss" if (action == "DROP" and ground_truth == "TP") else ""
+        )
+        emit(
+            "%s %s | %s | %r @%d:%d score=%.2f%s",
+            prefix,
+            action,
+            ground_truth,
+            value,
+            start,
+            end,
+            score,
+            flag,
+        )
+
+    for ex in case.expected_spans:
+        matched = any(
+            iou(ds, de, ex.start, ex.end) >= IOU_MATCH_THRESHOLD
+            for ds, de, _, _ in baseline_detected
+        )
+        if not matched:
+            log.info(
+                "%s MISS | FN | %r @%d:%d (OpenMed did not detect this expected span)",
+                prefix,
+                ex.value,
+                ex.start,
+                ex.end,
+            )
 
 
 def _append_findings_jsonl(
@@ -628,6 +727,28 @@ def test_Should_DropFpRateNearZero_When_JudgeIsAppliedPostOpenMed(
         metrics.judged_recall,
         elapsed_s,
     )
+
+    # Surface the two outcomes that the FP-rate / recall caps actually care
+    # about. Logged at the type-level granularity so the test report stays
+    # readable even with 12 types and ~250 cases.
+    if metrics.surviving_fp_samples:
+        log.warning(
+            "[%s] FP-survivors (judge kept these false positives): %s",
+            pii_type,
+            "; ".join(
+                f"{cid}: {val!r} in '{ctx[:80]}...'"
+                for cid, val, ctx in metrics.surviving_fp_samples
+            ),
+        )
+    if metrics.dropped_tp_samples:
+        log.warning(
+            "[%s] TP-loss (judge rejected these true positives): %s",
+            pii_type,
+            "; ".join(
+                f"{cid}: {val!r} in '{ctx[:80]}...'"
+                for cid, val, ctx in metrics.dropped_tp_samples
+            ),
+        )
 
     # Soft warning: judged FP rate above the ideal 5% target but still within
     # the hard 10% cap. Surfaces drift in CI before it crosses the cap.
