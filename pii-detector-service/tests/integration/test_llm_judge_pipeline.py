@@ -101,23 +101,39 @@ def _lm_studio_reachable() -> bool:
        least one model id containing ``qwen3.6`` and ``a3b`` that is not a
        fine-tune (see :data:`_FINETUNE_BLACKLIST`).
     2. ``POST /v1/chat/completions`` with ``max_tokens=1`` must answer HTTP
-       200 within 10 s. This guards against the failure mode where LM
+       200 within 45 s. This guards against the failure mode where LM
        Studio lists the model but the runtime cannot generate (e.g. GPU
        OOM, model not actually loaded), which would otherwise cause every
-       judge call to 500 and every test to fail with fail_open=True.
+       judge call to 500 and every test to fail with fail_open=True. The
+       45 s budget absorbs cold-starts on the 35B model (paging weights
+       into VRAM at first request can take 15-25 s).
 
-    Returns ``True`` only when both probes succeed.
+    Every failure mode logs a WARNING so an unexpected skip surfaces the
+    actionable cause (model not loaded, Structured Output disabled, etc.).
     """
     try:
-        response = httpx.get(f"{BASE_URL}/models", timeout=3.0)
-        if response.status_code != 200:
-            return False
+        response = httpx.get(f"{BASE_URL}/models", timeout=15.0)
+        response.raise_for_status()
         ids = [m["id"] for m in response.json().get("data", [])]
-    except (httpx.HTTPError, ValueError, KeyError):
+    except (httpx.HTTPError, ValueError, KeyError) as exc:
+        log.warning(
+            "[LM-STUDIO-PROBE] /v1/models failed on %s (%s: %s); suite skipped. "
+            "Check that LM Studio's HTTP server is running and reachable.",
+            BASE_URL,
+            exc.__class__.__name__,
+            exc,
+        )
         return False
 
     model_id = _find_qwen_base_model(ids)
     if model_id is None:
+        log.warning(
+            "[LM-STUDIO-PROBE] no Qwen 3.6 A3B base model on %s "
+            "(available=%s); load qwen/qwen3.6-35b-a3b in LM Studio. "
+            "Suite skipped.",
+            BASE_URL,
+            ids,
+        )
         return False
 
     # Cheap inference probe: 1 token, no JSON schema. Catches the "model
@@ -132,11 +148,28 @@ def _lm_studio_reachable() -> bool:
                 "temperature": 0.0,
                 "stream": False,
             },
-            timeout=10.0,
+            timeout=45.0,
         )
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        log.warning(
+            "[LM-STUDIO-PROBE] inference probe failed on %s (%s: %s); "
+            "the model is listed but not warm/usable. Click 'Load' on "
+            "qwen/qwen3.6-35b-a3b in LM Studio. Suite skipped.",
+            BASE_URL,
+            exc.__class__.__name__,
+            exc,
+        )
         return False
-    return probe.status_code == 200
+    if probe.status_code != 200:
+        log.warning(
+            "[LM-STUDIO-PROBE] inference probe returned HTTP %d on %s "
+            "(body=%s); suite skipped.",
+            probe.status_code,
+            BASE_URL,
+            probe.text[:200],
+        )
+        return False
+    return True
 
 
 # Skip the whole module if LM Studio is offline / not loaded with Qwen 3.6.

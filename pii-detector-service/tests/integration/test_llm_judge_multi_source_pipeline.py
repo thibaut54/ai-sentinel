@@ -97,17 +97,39 @@ def _find_qwen_base_model(ids: Iterable[str]) -> str | None:
 
 
 def _lm_studio_reachable() -> bool:
-    """Two-step probe matching the main IT: /v1/models + cheap inference."""
+    """Two-step probe matching the main IT: /v1/models + cheap inference.
+
+    The inference probe uses a 45 s timeout because a cold-started LM Studio
+    instance can take 15-25 s to page the 35B Qwen 3.6 weights into RAM /
+    VRAM on the first request after sleep. A previous 10 s budget caused
+    spurious skips on developer machines where the model was listed but not
+    yet "warm". Each failure mode is logged at WARNING so a skip never goes
+    silent — the operator can tell whether to reload the model, enable
+    Structured Output, or check connectivity.
+    """
     try:
-        response = httpx.get(f"{BASE_URL}/models", timeout=3.0)
-        if response.status_code != 200:
-            return False
+        response = httpx.get(f"{BASE_URL}/models", timeout=15.0)
+        response.raise_for_status()
         ids = [m["id"] for m in response.json().get("data", [])]
-    except (httpx.HTTPError, ValueError, KeyError):
+    except (httpx.HTTPError, ValueError, KeyError) as exc:
+        log.warning(
+            "[LM-STUDIO-PROBE] /v1/models failed on %s (%s: %s); suite skipped. "
+            "Check that LM Studio's HTTP server is running and reachable.",
+            BASE_URL,
+            exc.__class__.__name__,
+            exc,
+        )
         return False
 
     model_id = _find_qwen_base_model(ids)
     if model_id is None:
+        log.warning(
+            "[LM-STUDIO-PROBE] no Qwen 3.6 A3B base model on %s "
+            "(available=%s); load qwen/qwen3.6-35b-a3b in LM Studio. "
+            "Suite skipped.",
+            BASE_URL,
+            ids,
+        )
         return False
 
     try:
@@ -120,11 +142,28 @@ def _lm_studio_reachable() -> bool:
                 "temperature": 0.0,
                 "stream": False,
             },
-            timeout=10.0,
+            timeout=45.0,
         )
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        log.warning(
+            "[LM-STUDIO-PROBE] inference probe failed on %s "
+            "(%s: %s); the model is listed but not warm/usable. "
+            "Click 'Load' on qwen/qwen3.6-35b-a3b in LM Studio. Suite skipped.",
+            BASE_URL,
+            exc.__class__.__name__,
+            exc,
+        )
         return False
-    return probe.status_code == 200
+    if probe.status_code != 200:
+        log.warning(
+            "[LM-STUDIO-PROBE] inference probe returned HTTP %d on %s "
+            "(body=%s); suite skipped.",
+            probe.status_code,
+            BASE_URL,
+            probe.text[:200],
+        )
+        return False
+    return True
 
 
 pytestmark = pytest.mark.skipif(
