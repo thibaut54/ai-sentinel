@@ -15,6 +15,7 @@ import pytest
 from pydantic import ValidationError
 
 from pii_detector.infrastructure.validation.prompt_templates import (
+    ACTIVE_VARIANT,
     DEFAULT_CONTEXT_WINDOW,
     PROMPT_VARIANTS,
     PiiVerdict,
@@ -123,9 +124,11 @@ class TestPromptVariants:
     def test_registry_exposes_the_expected_variants(self) -> None:
         assert set(PROMPT_VARIANTS) == {"v1_baseline", "v2_context_aware"}
 
-    def test_v1_baseline_is_the_production_system_prompt(self) -> None:
-        # The eval reports deltas against prod, so v1 must BE prod (identity).
-        assert PROMPT_VARIANTS["v1_baseline"] is SYSTEM_PROMPT
+    def test_active_variant_is_v2_and_drives_system_prompt(self) -> None:
+        # v2_context_aware has been promoted to prod: it is the active variant
+        # (from config/llm-judge-prompts.toml) and SYSTEM_PROMPT resolves to it.
+        assert ACTIVE_VARIANT == "v2_context_aware"
+        assert SYSTEM_PROMPT == PROMPT_VARIANTS["v2_context_aware"]
 
     @pytest.mark.parametrize("prompt", [p for _, p in _VARIANT_ITEMS], ids=_VARIANT_IDS)
     def test_variant_preserves_strict_json_output_rules(self, prompt: str) -> None:
@@ -159,10 +162,11 @@ class TestPromptVariants:
 
 class TestContextAwareVariant:
     def test_context_aware_differs_from_baseline(self) -> None:
-        # Guards against a silent no-op if the .replace() anchor ever drifts:
-        # a failed substitution would leave the two prompts identical.
-        assert SYSTEM_PROMPT_CONTEXT_AWARE != SYSTEM_PROMPT
-        assert len(SYSTEM_PROMPT_CONTEXT_AWARE) > len(SYSTEM_PROMPT)
+        # The context-aware variant must carry strictly more than the baseline
+        # (the asymmetric context clause), else the comparison would be a no-op.
+        baseline = PROMPT_VARIANTS["v1_baseline"]
+        assert SYSTEM_PROMPT_CONTEXT_AWARE != baseline
+        assert len(SYSTEM_PROMPT_CONTEXT_AWARE) > len(baseline)
 
     def test_context_aware_carries_the_asymmetric_clause(self) -> None:
         assert "CONTEXTE" in SYSTEM_PROMPT_CONTEXT_AWARE

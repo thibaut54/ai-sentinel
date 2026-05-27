@@ -1,150 +1,128 @@
 """
 Prompt templates and verdict schema for the Qwen 3.6 LLM-as-Judge.
 
-This module is a direct port of the prompts validated by the external
-evaluation pipeline (``D:\\ai-sentinel-result-eval``) and tightened with
-the strict JSON output rules required by the LM Studio runtime
-(spec section 2.4).
+The prompt text is externalized to ``config/llm-judge-prompts.toml`` so it can
+be edited and A/B-compared without touching code (spec section 2.4). The strict
+JSON output rules required by the LM Studio runtime are part of that prompt.
 
-Three artefacts are exported:
+Artefacts exported:
 
-- :data:`SYSTEM_PROMPT`        French system prompt with ``/no_think``,
-  10 Swiss-context few-shots and the strict JSON output rules.
+- :data:`PROMPT_VARIANTS`      ``{name: system_prompt}`` for every variant
+  declared in the TOML (consumed by the prompt-comparison harness).
+- :data:`ACTIVE_VARIANT`       name of the variant selected as production
+  default via ``active_variant`` in the TOML.
+- :data:`SYSTEM_PROMPT`        the active variant -- French system prompt with
+  ``/no_think``, Swiss-context few-shots and the strict JSON output rules.
 - :func:`build_user_prompt`    Builds the per-finding user prompt with a
   300-char context window before/after the entity.
 - :class:`PiiVerdict`          Pydantic model used to validate the JSON
   payload returned by the model.
 - :data:`VERDICT_SCHEMA`       OpenAI-compatible JSON Schema for the
-  ``response_format: {type: "json_schema", strict: true}`` payload
-  (commit 3).
+  ``response_format: {type: "json_schema", strict: true}`` payload.
 
 Empirical references:
 - Spec section 1.6: ``response_format: json_schema strict`` is the only
   reliable strategy on Qwen 3.6 with LM Studio; without it the JSON can
   be truncated inside ``reasoning_content``.
-- Spec section 2.4: the prompts replicated below.
+- Spec section 2.4: the prompts, now externalized to
+  ``config/llm-judge-prompts.toml``.
 """
 
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any, Dict, Literal, Tuple
 
 from pydantic import BaseModel, Field, field_validator
 
+try:
+    import tomllib  # type: ignore[import-not-found]  # Python 3.11+
+except ImportError:  # pragma: no cover - py3.9/3.10 fallback
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+
 
 # ---------------------------------------------------------------------------
-# Prompts
+# Prompts (externalized to config/llm-judge-prompts.toml)
 # ---------------------------------------------------------------------------
 
 
-# Ported verbatim from spec section 2.4. The leading ``/no_think`` and the
-# REGLES DE SORTIE block are best-effort hints for the model: LM Studio
-# ignores both (verified empirically 2026-05-25), but they remain harmless
-# and act as defence-in-depth if the runtime ever starts honouring them.
-SYSTEM_PROMPT = (
-    "/no_think\n"
-    "Tu audites la PRECISION de classification d'un detecteur de PII.\n"
-    "\n"
-    "QUESTION UNIQUE : la `value` extraite a-t-elle le FORMAT et la SEMANTIQUE\n"
-    "du `pii_type` revendique ? Tu ne juges PAS si c'est sensible, ni\n"
-    "production/test, ni public/prive (RFC 1918 OK), ni connu/exemple.\n"
-    "\n"
-    "- TRUE_POSITIVE  : format et semantique du pii_type respectes.\n"
-    "- FALSE_POSITIVE : la value est d'un autre type (code projet en NATIONAL_ID,\n"
-    "  montant en BANK_ACCOUNT_NUMBER, acronyme en PASSWORD, nom de variable en\n"
-    "  SESSION_ID, chemin en API_KEY, etc.).\n"
-    "- UNSURE         : format ambigu (confidence < 0.6).\n"
-    "\n"
-    "FORMATAGE (CRITIQUE) :\n"
-    "- Les separateurs (espaces, tirets \"-\", points \".\", slashes \"/\") sont\n"
-    "  IGNORES pour evaluer le format. Reconstruis la sequence en supprimant\n"
-    "  les separateurs AVANT de juger.\n"
-    '- Ex : "356-938-035-643-809" -> "356938035643809" = 15 chiffres = IMEI\n'
-    "  valide = TP. Un identifiant correctement formate avec des separateurs\n"
-    "  reste un TRUE_POSITIVE.\n"
-    "- Le champ `value_digits_only` du finding te donne deja la sequence sans\n"
-    "  separateurs : utilise-le pour compter les chiffres.\n"
-    "- Idem pour IBAN avec espaces, carte de credit avec espaces/tirets,\n"
-    "  numero de telephone avec separateurs varies.\n"
-    "\n"
-    "Exemples (formats canoniques) :\n"
-    '- "10.217.4.11" / IP_ADDRESS              -> TP (IPv4, RFC 1918 OK).\n'
-    '- "374111111111111" / CREDIT_CARD         -> TP (AmEx 15 ch.).\n'
-    '- "CH6930000011100005458" / IBAN          -> TP.\n'
-    '- "1A1zP1eP5QGefi2DMPTfTL..." / CRYPTO_WALLET -> TP.\n'
-    '- "756.3407.8913.03" / AVS_NUMBER         -> TP.\n'
-    '- "021 316 01 57" / PHONE_NUMBER          -> TP.\n'
-    "Exemples (mauvais type -> FP) :\n"
-    '- "PCV-1189" / NATIONAL_ID                -> FP (code projet).\n'
-    '- "41780007878" / SOCIALNUM               -> FP (mobile, pas AVS).\n'
-    '- "92366499.59" / BANK_ACCOUNT_NUMBER     -> FP (montant).\n'
-    '- "DGAIC" / PASSWORD                      -> FP (acronyme).\n'
-    "Exemples (separateurs -> NE PAS rejeter a cause du formatage) :\n"
-    '- "356-938-035-643-809" / IMEI            -> TP (15 ch. apres normalisation).\n'
-    '- "8 6 9 4 6 2 0 5 0 2 7 4 3 1 9" / IMEI  -> TP (15 ch. apres normalisation).\n'
-    '- "CH69 3000 0011 1000 0545 8" / IBAN     -> TP (espaces -> normalise).\n'
-    '- "4242 4242 4242 4242" / CREDIT_CARD     -> TP (Visa 16 ch. avec espaces).\n'
-    "\n"
-    "REGLES DE SORTIE (CRITIQUES) :\n"
-    "- Reponds UNIQUEMENT par un objet JSON valide, rien d'autre.\n"
-    "- N'inclus AUCUN texte avant ou apres le JSON.\n"
-    "- N'inclus AUCUN bloc <think>...</think>, aucun raisonnement explicite.\n"
-    "- Pas de markdown, pas de ```json fences.\n"
-    "- Ordre des champs IMPOSE : `reason` d'abord (justifie en 1 phrase),\n"
-    "  puis `confidence`, puis `verdict` en dernier. Le verdict doit DECOULER\n"
-    "  du reason.\n"
-    "- Schema strict :\n"
-    '  {"reason": "<1 phrase francais, max 300 chars>",\n'
-    '   "confidence": <float 0..1>,\n'
-    '   "verdict": "TRUE_POSITIVE"|"FALSE_POSITIVE"|"UNSURE"}'
+# The prompt text lives in config/llm-judge-prompts.toml so it can be edited and
+# A/B-compared without touching code. This module loads it at import time and
+# exposes:
+#   - PROMPT_VARIANTS : {name: system_prompt} for every [variants.*] block
+#   - ACTIVE_VARIANT  : the name selected by `active_variant`
+#   - SYSTEM_PROMPT   : PROMPT_VARIANTS[ACTIVE_VARIANT] -- the production default
+# The prompt-comparison harness iterates PROMPT_VARIANTS; LLMJudgeValidator uses
+# SYSTEM_PROMPT as its default system_prompt.
+_PROMPTS_TOML_PATH = (
+    Path(__file__).resolve().parents[3] / "config" / "llm-judge-prompts.toml"
 )
 
 
-# ---------------------------------------------------------------------------
-# Prompt variants (offline A/B comparison harness — see
-# tests/integration/test_llm_judge_prompt_comparison.py)
-# ---------------------------------------------------------------------------
+def _load_prompt_variants() -> Tuple[Dict[str, str], str]:
+    """Load prompt variants and the active variant name from the TOML file.
 
-# Asymmetric context clause appended to the baseline. It probes whether telling
-# the judge to weigh the *intent* of the surrounding text lets it reject format
-# look-alikes (a 64-hex SHA256 tagged ETHEREUM_ADDRESS, a 15-digit order id
-# tagged IMEI) WITHOUT eroding recall on ``canonical_no_clue`` findings (valid
-# PII that simply has no contextual cue around it). The rule is deliberately
-# asymmetric: context can only ADD a rejection, never withdraw a positive.
-_CONTEXT_AWARE_RULE = (
-    "CONTEXTE (CRITIQUE, ASYMETRIQUE) :\n"
-    "- Le contexte LEVE l'ambiguite : s'il designe explicitement un AUTRE\n"
-    '  type (ex: "sha256(...)", "hash", "digest", "checksum", "commit",\n'
-    '  "exemple", "id technique", "numero de commande", "port"), c\'est\n'
-    "  FALSE_POSITIVE meme si le format ressemble au pii_type revendique.\n"
-    "- L'ABSENCE d'indice contextuel n'est PAS un motif de rejet : un format\n"
-    "  et une semantique corrects suffisent. Un IMEI a 15 chiffres valide\n"
-    '  sans le mot "IMEI" autour reste un TRUE_POSITIVE. Ne baisse JAMAIS le\n'
-    "  verdict au seul motif qu'aucun indice contextuel n'entoure la value.\n"
-    "\n"
-)
+    The prompt is essential to the judge, so a missing or malformed file is a
+    hard error rather than a silent fallback that could ship a wrong prompt.
 
-# v2 = v1 with the asymmetric context clause inserted right before the output
-# rules. Built by substitution (not re-authored) so the few-shots and the
-# strict reason-first JSON contract stay byte-identical to SYSTEM_PROMPT: the
-# only variable under test is the context clause, not prompt wording noise.
-SYSTEM_PROMPT_CONTEXT_AWARE = SYSTEM_PROMPT.replace(
-    "REGLES DE SORTIE (CRITIQUES) :",
-    _CONTEXT_AWARE_RULE + "REGLES DE SORTIE (CRITIQUES) :",
-    1,
-)
+    Returns:
+        ``(variants, active_variant)`` -- ``variants`` maps each variant name
+        to its ``system_prompt`` string.
+
+    Raises:
+        RuntimeError: if the file is missing, unparseable, declares no
+            variants, or names an ``active_variant`` that is not declared.
+    """
+    try:
+        with open(_PROMPTS_TOML_PATH, "rb") as f:
+            data = tomllib.load(f)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"LLM-judge prompts file not found: {_PROMPTS_TOML_PATH} "
+            "(it carries the judge system prompts)."
+        ) from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise RuntimeError(
+            f"Could not parse {_PROMPTS_TOML_PATH}: {exc}"
+        ) from exc
+
+    raw_variants = data.get("variants")
+    if not isinstance(raw_variants, dict) or not raw_variants:
+        raise RuntimeError(
+            f"{_PROMPTS_TOML_PATH} declares no [variants.*] block."
+        )
+
+    variants: Dict[str, str] = {}
+    for name, block in raw_variants.items():
+        prompt = block.get("system_prompt") if isinstance(block, dict) else None
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise RuntimeError(
+                f"{_PROMPTS_TOML_PATH}: variant {name!r} has no non-empty "
+                "'system_prompt'."
+            )
+        variants[name] = prompt
+
+    active = data.get("active_variant")
+    if active not in variants:
+        raise RuntimeError(
+            f"{_PROMPTS_TOML_PATH}: active_variant={active!r} is not one of "
+            f"the declared variants {sorted(variants)}."
+        )
+    return variants, active
 
 
-# Registry consumed by the prompt-comparison eval. Keys are stable ids used in
-# the report; values are injected into ``LLMJudgeValidator`` via its
-# ``system_prompt`` constructor arg. ``v1_baseline`` MUST stay identical to the
-# production ``SYSTEM_PROMPT`` so the eval measures deltas against prod, and the
-# winning variant can later be promoted by replacing ``SYSTEM_PROMPT`` itself.
-PROMPT_VARIANTS: Dict[str, str] = {
-    "v1_baseline": SYSTEM_PROMPT,
-    "v2_context_aware": SYSTEM_PROMPT_CONTEXT_AWARE,
-}
+# Registry consumed by the prompt-comparison eval (one entry per variant).
+PROMPT_VARIANTS, ACTIVE_VARIANT = _load_prompt_variants()
+
+# Production default: the active variant. LLMJudgeValidator falls back on this
+# when no explicit system_prompt is passed, so promoting a new winner is a
+# one-line `active_variant` change in the TOML.
+SYSTEM_PROMPT = PROMPT_VARIANTS[ACTIVE_VARIANT]
+
+# Back-compat alias kept for imports/tests; identical to SYSTEM_PROMPT whenever
+# v2_context_aware is the active variant.
+SYSTEM_PROMPT_CONTEXT_AWARE = PROMPT_VARIANTS.get("v2_context_aware", SYSTEM_PROMPT)
 
 
 # Default context window when neither the caller nor the TOML overrides it.
@@ -308,6 +286,7 @@ VERDICT_SCHEMA: Dict[str, Any] = {
 
 
 __all__ = [
+    "ACTIVE_VARIANT",
     "DEFAULT_CONTEXT_WINDOW",
     "PROMPT_VARIANTS",
     "PiiVerdict",
