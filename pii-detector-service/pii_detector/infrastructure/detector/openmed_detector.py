@@ -111,14 +111,16 @@ class OpenMedDetector:
         detection_id = f"openmed_{int(time.time() * 1000) % 10000}"
 
         try:
-            label_mapping, scoring_overrides = self._resolve_runtime_config(pii_type_configs)
+            label_mapping, scoring_overrides, type_labels = self._resolve_runtime_config(pii_type_configs)
             self.logger.debug(
                 "[%s] OpenMed runtime config: %d labels mapped, %d thresholds",
                 detection_id, len(label_mapping), len(scoring_overrides),
             )
 
             raw_entities = self._run_inference(text, effective_threshold)
-            entities = self._convert_to_pii_entities(raw_entities, text, label_mapping)
+            entities = self._convert_to_pii_entities(
+                raw_entities, text, label_mapping, type_labels
+            )
             entities = self._apply_per_type_thresholds(entities, scoring_overrides)
 
             self.logger.info(
@@ -419,20 +421,40 @@ class OpenMedDetector:
         entities: List[Any],
         text: str,
         label_mapping: Dict[str, str],
+        type_labels: Optional[Dict[str, str]] = None,
     ) -> List[PIIEntity]:
         """Convert pipeline dicts to ``PIIEntity``, filtering by label mapping.
 
         The pipeline emits HF-style dicts: ``entity_group`` (or ``entity``),
         ``score``, ``start``, ``end``, ``word``.
+
+        ``type_labels`` maps a canonical ``pii_type`` to the human-readable
+        label sent to the LLM judge (``PIIEntity.type_label``). It lets a type
+        carry a descriptive semantic signal (e.g. ACCOUNT_NAME -> "reference
+        client") instead of the raw enum name. Falls back to ``pii_type``.
         """
+        type_labels = type_labels or {}
         results: List[PIIEntity] = []
+        unmapped: Dict[str, List[str]] = {}
         for ent in entities:
             label = ent.get("entity_group") or ent.get("entity") or ""
             if not label or label == "O":
                 continue
             pii_type = label_mapping.get(label)
             if not pii_type:
-                # Label not in the DB mapping for OPENMED -> skip
+                # Label not in the DB mapping for OPENMED -> skip.
+                # Diagnostic: the model DID detect an entity, but under a label
+                # our OPENMED mapping doesn't know (case/format mismatch in
+                # data.sql detector_label, or a label outside our config).
+                # Collect here, log once per call below.
+                miss_start = int(ent.get("start", 0) or 0)
+                miss_end = int(ent.get("end", 0) or 0)
+                miss_slice = (
+                    text[miss_start:miss_end]
+                    if 0 <= miss_start < miss_end <= len(text)
+                    else str(ent.get("word", "") or "")
+                )
+                unmapped.setdefault(label, []).append(miss_slice)
                 continue
             start = int(ent.get("start", 0) or 0)
             end = int(ent.get("end", 0) or 0)
@@ -445,12 +467,21 @@ class OpenMedDetector:
                 PIIEntity(
                     text=entity_text,
                     pii_type=pii_type,
-                    type_label=pii_type,
+                    type_label=type_labels.get(pii_type, pii_type),
                     start=start,
                     end=end,
                     score=score,
                     source=DetectorSource.OPENMED,
                 )
+            )
+        if unmapped:
+            self.logger.warning(
+                "[label-miss] OpenMed emitted %d entit(ies) with label(s) NOT in "
+                "the OPENMED mapping (silently dropped). Mapping keys=%s | "
+                "Unmapped labels -> sample values: %s",
+                sum(len(v) for v in unmapped.values()),
+                sorted(label_mapping.keys()),
+                {lbl: vals[:3] for lbl, vals in unmapped.items()},
             )
         return results
 
@@ -473,16 +504,17 @@ class OpenMedDetector:
 
     def _resolve_runtime_config(
         self, pii_type_configs: Optional[Dict]
-    ) -> Tuple[Dict[str, str], Dict[str, float]]:
+    ) -> Tuple[Dict[str, str], Dict[str, float], Dict[str, str]]:
         configs = pii_type_configs or self._fetch_configs_from_db()
         if not configs:
             self.logger.warning(
                 "No OPENMED pii_type configs available — detector will emit nothing"
             )
-            return {}, {}
+            return {}, {}, {}
 
         label_mapping: Dict[str, str] = {}
         scoring_overrides: Dict[str, float] = {}
+        type_labels: Dict[str, str] = {}
 
         for key, cfg in configs.items():
             detector_value = cfg.get("detector") if isinstance(cfg, dict) else None
@@ -504,8 +536,13 @@ class OpenMedDetector:
             threshold = cfg.get("threshold")
             if threshold is not None:
                 scoring_overrides[pii_type] = float(threshold)
+            # Optional human-readable label forwarded to the LLM judge. When
+            # absent, _convert_to_pii_entities falls back to the pii_type.
+            type_label = cfg.get("type_label")
+            if type_label:
+                type_labels[pii_type] = str(type_label)
 
-        return label_mapping, scoring_overrides
+        return label_mapping, scoring_overrides, type_labels
 
     def _fetch_configs_from_db(self) -> Optional[Dict]:
         try:

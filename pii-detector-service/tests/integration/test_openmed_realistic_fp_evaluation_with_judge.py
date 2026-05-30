@@ -438,9 +438,35 @@ def openmed_detector():
     return detector
 
 
+# Descriptive judge-facing labels (PIIEntity.type_label) per type. The LLM
+# judge reads `type_label` alongside `pii_type` to assess semantics; when the
+# raw enum name is misleading we override it here. ACCOUNT_NAME is what OpenMed
+# tags ACCOUNTNAME on: customer-related references (order/invoice/case ids),
+# which are secrets we WANT to keep — so we spell that out for the judge.
+#
+# EMPIRICAL CEILING (documented, intentionally NOT worked around — 2026-05-27):
+#   OpenMed only emits ACCOUNTNAME on alphanumeric customer refs that carry a
+#   contextual clue (ORD-/INV-/CLI- with a keyword nearby). Bare REF-/CUST-
+#   forms and clue-less references are tagged USERNAME/ZIPCODE/etc. or missed
+#   entirely, capping baseline recall at ~0.36. That is a DETECTOR limitation:
+#   the judge cannot recover a span OpenMed never surfaced. The descriptive
+#   type_label below fixes the JUDGE side (FP_rate -> 0, recall preserved within
+#   budget); MaintainAbsoluteRecallFloor[ACCOUNT_NAME] stays red on purpose to
+#   flag that a complementary detector (regex/GLiNER) is needed upstream.
+JUDGE_TYPE_LABELS: Dict[str, str] = {
+    "ACCOUNT_NAME": (
+        "Identifiant ou reference alphanumerique propre a un client : numero "
+        "de commande, de facture, de dossier, de contrat ou de compte client. "
+        "Toute reference de cette nature est une donnee client sensible, quel "
+        "que soit son prefixe (ORD-, INV-, REF-, CUST-, ...)."
+    ),
+}
+
+
 @pytest.fixture(scope="session")
 def pii_type_configs() -> Dict[str, Dict[str, object]]:
-    """Same OpenMed runtime configs as the baseline test."""
+    """Same OpenMed runtime configs as the baseline test, plus the descriptive
+    judge-facing ``type_label`` overrides from :data:`JUDGE_TYPE_LABELS`."""
     configs: Dict[str, Dict[str, object]] = {}
     for pii_type, label, threshold in EVALUATED_TYPES:
         configs[f"OPENMED:{pii_type}"] = {
@@ -450,6 +476,7 @@ def pii_type_configs() -> Dict[str, Dict[str, object]]:
             "category": "EVAL",
             "country_code": None,
             "detector_label": label,
+            "type_label": JUDGE_TYPE_LABELS.get(pii_type),
         }
     return configs
 

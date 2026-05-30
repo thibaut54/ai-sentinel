@@ -7,12 +7,12 @@
       "id": "BANK_ACCOUNT_canonical_with_clue_fr_01",
       "language": "fr",
       "axis": "canonical_with_clue",
-      "text": "IBAN du compte de remboursement : CH9300762011623852957",
+      "text": "Numero de compte : 00012345678 (banque 30002, guichet 00550)",
       "expected_spans": [
         {
-          "start": 34,
-          "end": 55,
-          "value": "CH9300762011623852957"
+          "start": 19,
+          "end": 30,
+          "value": "00012345678"
         }
       ]
     },
@@ -20,12 +20,12 @@
       "id": "BANK_ACCOUNT_canonical_with_clue_en_01",
       "language": "en",
       "axis": "canonical_with_clue",
-      "text": "Bank account (IBAN) for the wire: FR1420041010050500013M02606",
+      "text": "Sort code 60-16-13, account number 31926819",
       "expected_spans": [
         {
-          "start": 34,
-          "end": 61,
-          "value": "FR1420041010050500013M02606"
+          "start": 35,
+          "end": 43,
+          "value": "31926819"
         }
       ]
     },
@@ -33,12 +33,12 @@
       "id": "BANK_ACCOUNT_canonical_with_clue_de_01",
       "language": "de",
       "axis": "canonical_with_clue",
-      "text": "Kontonummer (IBAN) fuer Ueberweisung: DE89370400440532013000",
+      "text": "Kontonummer: 0532013000 (BLZ 37040044)",
       "expected_spans": [
         {
-          "start": 38,
-          "end": 60,
-          "value": "DE89370400440532013000"
+          "start": 13,
+          "end": 23,
+          "value": "0532013000"
         }
       ]
     },
@@ -46,12 +46,12 @@
       "id": "BANK_ACCOUNT_canonical_with_clue_it_01",
       "language": "it",
       "axis": "canonical_with_clue",
-      "text": "Coordinate bancarie (IBAN) per il bonifico: IT60X0542811101000000123456",
+      "text": "Numero di conto: 000000123456 (ABI 05428, CAB 11101)",
       "expected_spans": [
         {
-          "start": 44,
-          "end": 71,
-          "value": "IT60X0542811101000000123456"
+          "start": 17,
+          "end": 29,
+          "value": "000000123456"
         }
       ]
     },
@@ -59,12 +59,12 @@
       "id": "BANK_ACCOUNT_canonical_no_clue_fr_01",
       "language": "fr",
       "axis": "canonical_no_clue",
-      "text": "CH9300762011623852957",
+      "text": "Virement vers 00012345678 effectue ce matin.",
       "expected_spans": [
         {
-          "start": 0,
-          "end": 21,
-          "value": "CH9300762011623852957"
+          "start": 14,
+          "end": 25,
+          "value": "00012345678"
         }
       ]
     },
@@ -72,12 +72,12 @@
       "id": "BANK_ACCOUNT_canonical_no_clue_en_01",
       "language": "en",
       "axis": "canonical_no_clue",
-      "text": "Wire to: FR1420041010050500013M02606",
+      "text": "Transfer to 31926819 completed yesterday.",
       "expected_spans": [
         {
-          "start": 9,
-          "end": 36,
-          "value": "FR1420041010050500013M02606"
+          "start": 12,
+          "end": 20,
+          "value": "31926819"
         }
       ]
     },
@@ -85,12 +85,12 @@
       "id": "BANK_ACCOUNT_canonical_no_clue_de_01",
       "language": "de",
       "axis": "canonical_no_clue",
-      "text": "Ziel: DE89370400440532013000",
+      "text": "Gutschrift auf 0532013000 erfolgt.",
       "expected_spans": [
         {
-          "start": 6,
-          "end": 28,
-          "value": "DE89370400440532013000"
+          "start": 15,
+          "end": 25,
+          "value": "0532013000"
         }
       ]
     },
@@ -98,12 +98,12 @@
       "id": "BANK_ACCOUNT_canonical_no_clue_it_01",
       "language": "it",
       "axis": "canonical_no_clue",
-      "text": "Destinazione: IT60X0542811101000000123456",
+      "text": "Accredito sul 000000123456 eseguito.",
       "expected_spans": [
         {
           "start": 14,
-          "end": 41,
-          "value": "IT60X0542811101000000123456"
+          "end": 26,
+          "value": "000000123456"
         }
       ]
     },
@@ -125,82 +125,82 @@
       "id": "BANK_ACCOUNT_look_alikes_fr_01",
       "language": "fr",
       "axis": "look_alikes",
-      "text": "Reference de la commande achat: PO-2024-Q1-FR1420041010050500013M02606 (reutilise par erreur d'un format IBAN dans le SCM).",
+      "text": "Numero de commande achat: PO-2024-00012345678 (reference SCM, pas un compte).",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_look_alikes_en_03",
       "language": "en",
       "axis": "look_alikes",
-      "text": "License key: LIC-CH-2024-Q1-XKQR-5T8A-Z9PM-3RNF-1B2D-4G7H-9J6L-5W3V.",
+      "text": "Internal ticket id 31926819 (Jira), not a bank account.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_look_alikes_de_01",
       "language": "de",
       "axis": "look_alikes",
-      "text": "Tracking-Nummer DHL: 749382017456290374821059463720 (zwei Sendungen).",
+      "text": "Sendungsnummer DHL: 7493820174562903 (Paketverfolgung).",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_look_alikes_it_01",
       "language": "it",
       "axis": "look_alikes",
-      "text": "Codice cliente CRM: IT60-CLT-0542811101-000000-123456 (NON e un IBAN).",
+      "text": "Codice cliente CRM: 000000123456-CLT (non e un conto).",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_look_alikes_en_04",
       "language": "en",
       "axis": "look_alikes",
-      "text": "Order reference: DE89-PROD-37040044-0532013000 (matches IBAN format coincidentally).",
+      "text": "Phone extension directory entry: ext. 0532013000 routed to support.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_explicit_negatives_fr_01",
       "language": "fr",
       "axis": "explicit_negatives",
-      "text": "Le compte bancaire de l'entreprise est confidentiel. Aucun IBAN n'est mentionne dans cette page publique.",
+      "text": "Le numero de compte bancaire de l'entreprise est confidentiel. Aucun numero n'est indique sur cette page publique.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_explicit_negatives_en_01",
       "language": "en",
       "axis": "explicit_negatives",
-      "text": "Bank account information is provided on request only via secure channel.",
+      "text": "Bank account number is provided on request only via secure channel.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_explicit_negatives_de_01",
       "language": "de",
       "axis": "explicit_negatives",
-      "text": "Bankverbindung wird auf Anfrage ueber den sicheren Kanal mitgeteilt.",
+      "text": "Die Kontonummer wird auf Anfrage ueber den sicheren Kanal mitgeteilt.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_explicit_negatives_it_01",
       "language": "it",
       "axis": "explicit_negatives",
-      "text": "Le coordinate bancarie verranno fornite su richiesta tramite canale sicuro.",
+      "text": "Il numero di conto verra fornito su richiesta tramite canale sicuro.",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_adversarial_formatting_fr_01",
       "language": "fr",
       "axis": "adversarial_formatting",
-      "text": "IBAN:\nCH93\n00762011\n623852957",
+      "text": "Compte :\n0001\n2345\n678",
       "expected_spans": []
     },
     {
       "id": "BANK_ACCOUNT_adversarial_formatting_en_01",
       "language": "en",
       "axis": "adversarial_formatting",
-      "text": "IBAN: FR14 2004 1010 0505 0001 3M02 606",
+      "text": "Account no: 3 1 9 2 6 8 1 9",
       "expected_spans": [
         {
-          "start": 6,
-          "end": 39,
-          "value": "FR14 2004 1010 0505 0001 3M02 606"
+          "start": 12,
+          "end": 27,
+          "value": "3 1 9 2 6 8 1 9"
         }
       ]
     },
@@ -208,12 +208,12 @@
       "id": "BANK_ACCOUNT_adversarial_formatting_de_01",
       "language": "de",
       "axis": "adversarial_formatting",
-      "text": "IBAN:  DE89370400440532013000  ",
+      "text": "Kontonummer:  0532013000  ",
       "expected_spans": [
         {
-          "start": 7,
-          "end": 29,
-          "value": "DE89370400440532013000"
+          "start": 14,
+          "end": 24,
+          "value": "0532013000"
         }
       ]
     },
@@ -221,12 +221,12 @@
       "id": "BANK_ACCOUNT_long_context_fr_01",
       "language": "fr",
       "axis": "long_context",
-      "text": "Procedure de paiement fournisseur — version 5.0 — mars 2024.\n\nCe document decrit le processus de paiement des factures fournisseurs en mode automatise via la plateforme financiere Athena-Finance. Il couvre la reception de la facture, sa validation, l'attribution du compte bancaire beneficiaire et l'execution du virement SEPA ou international.\n\nReception de la facture:\nLes factures arrivent par EDI, par mail (boite scan@example.test) ou via le portail fournisseur. L'OCR extrait automatiquement les champs cles (numero de facture, montant, IBAN, BIC, devise) et soumet la facture au workflow de validation.\n\nValidation:\nChaque facture est validee par le manager du centre de cout concerne. Pour les montants superieurs a 50 000 CHF, une double validation est requise (manager + directeur financier). Les ecarts entre le bon de commande et la facture sont signales et doivent etre justifies.\n\nCompte beneficiaire:\nL'IBAN du fournisseur est verifie automatiquement contre le master data SAP. Pour cet exemple, le fournisseur de demonstration est domicilie en Suisse, son IBAN etant CH9300762011623852957. Toute discordance entre l'IBAN extrait par OCR et celui enregistre dans SAP genere une alerte de niveau 2 et bloque le paiement jusqu'a verification manuelle.\n\nIdentifiants techniques cites dans cette procedure et qui NE SONT PAS des IBAN: reference Stripe acct_1J5KQ2EnAB12CDExample, ARN S3 arn:aws:s3:::corp-data-lake-prod-eu-west-1-2024-q1, code produit LIC-CH-2024-Q1-XKQR-5T8A-Z9PM-3RNF-1B2D-4G7H-9J6L-5W3V, tracking DHL 749382017456290.\n\nReference du processus: PROC-AP-2024-018.\n",
+      "text": "Procedure de paiement fournisseur — version 5.1 — mars 2024.\n\nCe document decrit le paiement des factures fournisseurs via la plateforme Athena-Finance, en mode virement domestique (hors SEPA international). Il couvre la reception de la facture, sa validation et l'attribution du compte bancaire beneficiaire.\n\nReception:\nLes factures arrivent par EDI ou via le portail. L'OCR extrait le numero de facture, le montant et les coordonnees bancaires domestiques (code banque, code guichet, numero de compte).\n\nValidation:\nChaque facture est validee par le manager du centre de cout. Au-dela de 50 000 CHF une double validation est requise.\n\nCompte beneficiaire:\nPour cet exemple de demonstration, le fournisseur est paye sur le numero de compte 00012345678 (code banque 30002, code guichet 00550). Toute discordance avec le master data SAP bloque le paiement.\n\nIdentifiants techniques cites qui NE SONT PAS des numeros de compte: reference Stripe acct_1J5KQ2EnAB12CDExample, ARN S3 arn:aws:s3:::corp-data-lake-prod-eu-west-1, numero de commande PO-2024-99812, tracking DHL 7493820174562903.\n\nReference du processus: PROC-AP-2024-021.\n",
       "expected_spans": [
         {
-          "start": 1083,
-          "end": 1104,
-          "value": "CH9300762011623852957"
+          "start": 742,
+          "end": 753,
+          "value": "00012345678"
         }
       ]
     },
@@ -234,7 +234,7 @@
       "id": "BANK_ACCOUNT_long_context_en_neg_01",
       "language": "en",
       "axis": "long_context",
-      "text": "Procurement reference catalogue — vendor master data conventions.\n\nThis page documents the format of various reference codes used across the procurement function. None of the codes listed below are IBAN bank account numbers — they are vendor identifiers, contract references, S3 ARNs, license keys and tracking numbers managed by the vendor data team.\n\nVendor reference codes (format: 2 letters + 12 digits + 10 alphanum):\n- IT60X0542811101000000123450 — vendor IT-VENDOR-001 (NOT IBAN).\n- FR1420041010050500013M02600 — vendor FR-VENDOR-007 (NOT IBAN).\n- DE89370400440532013005 — vendor DE-VENDOR-013 (NOT IBAN).\n- CH9300762011623852950 — vendor CH-VENDOR-018 (NOT IBAN).\n\nStripe account identifiers (these are platform-side identifiers, not bank accounts):\n- acct_1J5KQ2EnAB12CDExampleAccountId1\n- acct_1J5KQ2EnEF34GHExampleAccountId2\n- acct_1J5KQ2EnIJ56KLExampleAccountId3\n\nS3 bucket ARNs containing vendor exports:\n- arn:aws:s3:::corp-data-lake-prod-eu-west-1-2024-q1\n- arn:aws:s3:::corp-data-lake-prod-eu-west-1-2024-q2\n- arn:aws:s3:::corp-data-lake-stag-eu-west-1\n\nLicense keys delivered to internal teams (16 blocks of 4):\n- LIC-CH-2024-Q1-XKQR-5T8A-Z9PM-3RNF-1B2D-4G7H-9J6L-5W3V\n- LIC-FR-2024-Q1-XKQR-5T8A-Z9PM-3RNF-1B2D-4G7H-9J6L-5W3V\n- LIC-DE-2024-Q1-XKQR-5T8A-Z9PM-3RNF-1B2D-4G7H-9J6L-5W3V\n\nTracking numbers from logistics providers (15-30 digits):\n- DHL: 749382017456290, 928340172650183, 374821059463720.\n- UPS: 615028471293650, 482910374625183, 583927401628395.\n- FedEx: 729384105672834, 836204195283746, 947561038264915.\n\nNote: real vendor IBAN values are stored in SAP and never reproduced in Confluence pages — they are accessible only via the secure vendor master data screen with audit logging.\n\nReference document: VENDOR-MD-CONV-2024-007.\n",
+      "text": "Procurement reference catalogue — vendor master data conventions.\n\nThis page documents reference codes used across procurement. None of the values below are domestic bank account numbers — they are vendor identifiers, order references, S3 ARNs, license keys and tracking numbers managed by the vendor data team.\n\nOrder references: PO-2024-99812, PO-2024-99813, PO-2024-99814.\n\nStripe account identifiers (platform-side, not bank accounts):\n- acct_1J5KQ2EnAB12CDExampleAccountId1, acct_1J5KQ2EnEF34GHExample2.\n\nS3 bucket ARNs: arn:aws:s3:::corp-data-lake-prod-eu-west-1-2024-q1.\n\nLicense keys: LIC-CH-2024-Q1-XKQR-5T8A-Z9PM-3RNF.\n\nTracking numbers (logistics, 15-16 digits):\n- DHL: 7493820174562903, 9283401726501830.\n- UPS: 6150284712936500, 4829103746251830.\n\nNote: real vendor account numbers live in SAP and are never shown in Confluence — only via the secure master data screen with audit logs.\n\nReference document: VENDOR-MD-CONV-2024-008.\n",
       "expected_spans": []
     }
   ]

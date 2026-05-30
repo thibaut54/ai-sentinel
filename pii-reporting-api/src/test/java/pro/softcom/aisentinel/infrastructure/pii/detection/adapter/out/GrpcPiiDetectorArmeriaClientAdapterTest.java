@@ -240,7 +240,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         // When
         ContentPiiDetection result = service.analyzePageContent("p1", "title", "space", content);
@@ -289,7 +289,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         ContentPiiDetection result = service.analyzePageContent("p2", "title", "space", content);
 
@@ -328,7 +328,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         // When
         ContentPiiDetection result = service.analyzePageContent("p", "t", "s", "payload");
@@ -377,7 +377,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
         when(stub.detectPII(any())).thenReturn(response);
 
-        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub);
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
 
         ContentPiiDetection result = service.analyzePageContent("p3", "title", "space", content);
 

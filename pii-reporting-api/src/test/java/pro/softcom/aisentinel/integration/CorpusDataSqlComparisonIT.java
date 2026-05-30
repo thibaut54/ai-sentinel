@@ -21,6 +21,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.Network;
@@ -40,6 +41,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -57,8 +59,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -141,50 +141,6 @@ class CorpusDataSqlComparisonIT {
         ".kdbx", ".ipa", ".crt", ".mobileconfig"
     );
 
-    /**
-     * Fichiers qui ont failed dans le run "baseline" (gRPC piiDetectorClient throw).
-     * Liste extraite de la section "Files failed" du report.md baseline.
-     * Tous ces 11 paths apparaissent aussi dans les 24 failed d'improved : ils peuvent
-     * etre durablement cassés ou transitoires. Le retry tente 3 fois avec backoff.
-     * Cf. methode {@link #retryBaselineFailedFiles()}.
-     */
-    private static final List<String> BASELINE_FAILED_PATHS = List.of(
-        "AVS_NUMBER/04_UNIREG_1757151495/attachments/SCOPE - Schéma fonctionnel",
-        "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015/attachments/pssec-masters-scan-sla6181t.etat-de-vaud.ch-pod.html",
-        "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015/attachments/pssec-masters-scan-sla6182t.etat-de-vaud.ch-pod.html",
-        "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015/attachments/pssec-masters-scan-sla6183t.etat-de-vaud.ch-pod.html",
-        "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015/attachments/pssec-workers-scan-sla6190t.etat-de-vaud.ch-pod.html",
-        "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015/attachments/pssec-workers-scan-sla6191t.etat-de-vaud.ch-pod.html",
-        "MEDICAL_LICENSE/05_ECM_KBACI_Fiche_Sanity_check_ACS_7_2_1476461456/attachments/documents_associations_val_oracle.csv",
-        "MEDICAL_LICENSE/05_ECM_KBACI_Fiche_Sanity_check_ACS_7_2_1476461456/attachments/documents_associations_val_postgres.csv",
-        "MEDICAL_LICENSE/05_ECM_KBACI_Fiche_Sanity_check_ACS_7_2_1476461456/attachments/oracle.csv",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Subside RIE3 - vue globale",
-        "SOCIALNUM/04_BO_2_En_tant_que_collaborateur_DGS_j_aimerais_pouvoir_importer_le_fichier_Excel_SID_genere_depuis_une_interface_web_de_l_1077313875/attachments/SID_20201019_20201102.xlsx"
-    );
-
-    /**
-     * Fichiers qui ont failed dans le run "improved" mais qui sont passes dans "baseline".
-     * Liste extraite par diff des sections "Files failed" des 2 rapports.
-     * Ces echecs sont transitoires (timeout/OOM gRPC du pii-detector), pas Tika :
-     * un retry cible permet de les recuperer sans relancer les 6h du run complet.
-     * Cf. methode {@link #retryImprovedFailedFiles()}.
-     */
-    private static final List<String> IMPROVED_ONLY_FAILED_PATHS = List.of(
-        "MEDICAL_LICENSE/05_ECM_KBACI_Fiche_Sanity_check_ACS_7_2_1476461456/attachments/postgres.csv",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Calculateur 2023_v1.xlsx",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Calculateur 2025.xlsx",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Copie de Calculateur 2020_V3.xlsx",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Copie de Calculateur 2021_V5.xlsx",
-        "Plaque_d_immatriculation/02_Subside_RIE3_Specifications_558891070/attachments/Processus demande de subside RIE3",
-        "Plaque_d_immatriculation/03_e_Mesam_Scenarii_de_test_OLD_527663382/attachments/liste_demandes_traites.xls",
-        "SESSION_ID/05_FTX_Traces_InterSystem_534904966/attachments/ZVDF_07.Log__PROD__SIF__SAVI.txt",
-        "SESSION_ID/05_FTX_Traces_InterSystem_534904966/attachments/ZVDF_09.Log__PROD__SIF__SAVI.txt",
-        "SOCIALNUM/01_Informations_complementaires_SAGA_Mobiles_1468268633/attachments/Saga-Appareil à jour-07.12.2023.07.33.xlsx",
-        "SOCIALNUM/02_CAMT053_Procedure_et_traitements_des_erreurs_1743650892/attachments/Améliorations_EBS_v2.1.docx",
-        "SOCIALNUM/02_CAMT053_Procedure_et_traitements_des_erreurs_1743650892/attachments/Tableau des règles de comptabilisation des encaissements - V2.xlsx",
-        "TAX_ID/01_1_2_En_tant_que_contribuable_je_veux_avoir_acces_a_la_liste_des_themes_sous_themes_a_declarer_et_a_la_liste_des_outils_a_1685258840/page.html"
-    );
-
     private static final Path HF_CACHE_DIR = Paths.get(
         System.getProperty("corpus.bench.hf-cache",
             System.getProperty("user.home") + "/.ai-sentinel-it-hf-cache"));
@@ -215,6 +171,14 @@ class CorpusDataSqlComparisonIT {
         .withEnv("DB_NAME", DB_NAME)
         .withEnv("DB_USER", DB_USER)
         .withEnv("DB_PASSWORD", DB_PASSWORD)
+        // Portee du LLM-as-judge in-pipeline. Le defaut code est {GLINER}, et
+        // audit_sources n'est lu QUE depuis cette env var (pas depuis le TOML,
+        // cf. note config/detection-settings.toml et llm_validator.py:553-556).
+        // runImprovedV3WithOpenMed desactive GLiNER ; sans cet override le judge
+        // (active par llm_judge_enabled=true dans data-openmed-no-gliner.sql)
+        // tournerait en passthrough total. Inerte pour baseline/improved, qui
+        // ont llm_judge_enabled=false : le judge n'y est jamais instancie.
+        .withEnv("LLM_JUDGE_AUDIT_SOURCES", "OPENMED,PRESIDIO,REGEX")
         // Stream the Python container logs to a dedicated file so that when the
         // pii-detector process crashes mid-bench (OOM, segfault, unhandled
         // Python exception) we keep its stderr/stdout for post-mortem. Without
@@ -346,6 +310,14 @@ class CorpusDataSqlComparisonIT {
      * complet (Testcontainers + reseed + Tika/HtmlContentParser + gRPC pii-detector) fonctionne,
      * sans payer le coût des 760+ fichiers du benchmark complet.
      *
+     * <p>Le seed utilise {@code data-openmed-no-gliner.sql} (et non le baseline
+     * {@code data.sql}) pour que le smoke test exerce le pipeline complet INCLUANT
+     * le LLM-as-judge post-filtre : ce variant a {@code llm_judge_enabled=true} et
+     * active OPENMED/PRESIDIO/REGEX, ce qui correspond a l'env var
+     * {@code LLM_JUDGE_AUDIT_SOURCES=OPENMED,PRESIDIO,REGEX} posee sur le conteneur.
+     * Les findings remontes par ces detecteurs sont donc audites par le judge
+     * (cf. logs {@code [LLM-JUDGE] post-filter} du conteneur pii-detector).
+     *
      * <p>Run isolé :
      * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#smokeSinglePageAndAttachment ... test</pre>
      */
@@ -353,23 +325,23 @@ class CorpusDataSqlComparisonIT {
     @Order(0)
     void smokeSinglePageAndAttachment() throws Exception {
         log.info("[smoke] === START ===");
-        resetAndReseedDb("classpath:data.sql");
+        resetAndReseedDb("classpath:sql/data-openmed-no-gliner.sql");
 
         Path pageDir = Paths.get(CORPUS_ROOT, "AVS_NUMBER", "01_e_Mesam_Scenarii_de_test_OLD_527663382")
                             .toAbsolutePath();
         Path pageHtml = pageDir.resolve("page.html");
-        org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(pageHtml),
+        Assertions.assertTrue(Files.isRegularFile(pageHtml),
             "page.html introuvable: " + pageHtml);
 
         // 1. page.html
         log.info("[smoke] Scanning page.html: {}", pageHtml.getFileName());
         String pageText = extractText(pageHtml);
-        org.junit.jupiter.api.Assertions.assertNotNull(pageText, "extractText returned null on page.html");
-        org.junit.jupiter.api.Assertions.assertFalse(pageText.isBlank(), "page.html extracted to blank text");
+        Assertions.assertNotNull(pageText, "extractText returned null on page.html");
+        Assertions.assertFalse(pageText.isBlank(), "page.html extracted to blank text");
         log.info("[smoke] page.html extracted: {} chars", pageText.length());
 
         ContentPiiDetection pageDetection = piiDetectorClient.analyzeContent(pageText);
-        org.junit.jupiter.api.Assertions.assertNotNull(pageDetection.sensitiveDataFound(),
+        Assertions.assertNotNull(pageDetection.sensitiveDataFound(),
             "sensitiveDataFound is null");
         log.info("[smoke] page.html -> {} findings", pageDetection.sensitiveDataFound().size());
         pageDetection.sensitiveDataFound().stream().limit(10).forEach(sd ->
@@ -378,7 +350,7 @@ class CorpusDataSqlComparisonIT {
 
         // 2. premier attachment scannable
         Path attachmentsDir = pageDir.resolve("attachments");
-        org.junit.jupiter.api.Assertions.assertTrue(Files.isDirectory(attachmentsDir),
+        Assertions.assertTrue(Files.isDirectory(attachmentsDir),
             "attachments/ introuvable: " + attachmentsDir);
 
         Path attachment;
@@ -393,14 +365,14 @@ class CorpusDataSqlComparisonIT {
         log.info("[smoke] Scanning attachment: {}", attachment.getFileName());
 
         String attText = extractText(attachment);
-        org.junit.jupiter.api.Assertions.assertNotNull(attText,
+        Assertions.assertNotNull(attText,
             "extractText returned null on attachment " + attachment.getFileName());
-        org.junit.jupiter.api.Assertions.assertFalse(attText.isBlank(),
+        Assertions.assertFalse(attText.isBlank(),
             "attachment extracted to blank text: " + attachment.getFileName());
         log.info("[smoke] attachment extracted: {} chars", attText.length());
 
         ContentPiiDetection attDetection = piiDetectorClient.analyzeContent(attText);
-        org.junit.jupiter.api.Assertions.assertNotNull(attDetection.sensitiveDataFound(),
+        Assertions.assertNotNull(attDetection.sensitiveDataFound(),
             "attachment sensitiveDataFound is null");
         log.info("[smoke] attachment -> {} findings", attDetection.sensitiveDataFound().size());
         attDetection.sensitiveDataFound().stream().limit(10).forEach(sd ->
@@ -425,47 +397,6 @@ class CorpusDataSqlComparisonIT {
     @Order(2)
     void runImproved() throws Exception {
         runVariant("improved", "classpath:sql/data-improved.sql");
-    }
-
-    /**
-     * Re-essaie uniquement les 13 fichiers qui ont failed dans improved mais pas dans baseline.
-     * Append les nouveaux findings au findings.jsonl existant et regenere report.md.
-     *
-     * <p>Run isole :
-     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#retryImprovedFailedFiles ... test</pre>
-     */
-    @Test
-    @Order(3)
-    void retryImprovedFailedFiles() throws Exception {
-        retryFailedFiles("improved", "classpath:sql/data-improved.sql", IMPROVED_ONLY_FAILED_PATHS);
-    }
-
-    /**
-     * Re-essaie les 11 fichiers qui ont failed dans baseline. Append au findings.jsonl
-     * existant et regenere report.md.
-     *
-     * <p>Run isole :
-     * <pre>mvn -Dtest=CorpusDataSqlComparisonIT#retryBaselineFailedFiles ... test</pre>
-     */
-    @Test
-    @Order(4)
-    void retryBaselineFailedFiles() throws Exception {
-        retryFailedFiles("baseline", "classpath:data.sql", BASELINE_FAILED_PATHS);
-    }
-
-    /**
-     * Re-essaie cote improved les 11 paths originellement failed dans baseline.
-     * Necessaire pour aligner les 2 variantes : apres retryBaselineFailedFiles, 6 fichiers
-     * ont passe cote baseline mais sont toujours failed cote improved (car retryImprovedFailedFiles
-     * ne couvre que les 13 improved-only-failed, pas les 11 communs).
-     *
-     * <p>Les 5 pssec-*.html seront fail-fast (Content too large &gt; 1M), les 6 autres
-     * devraient reussir comme cote baseline grace au timeout 900s.
-     */
-    @Test
-    @Order(5)
-    void retryBaselineFailedInImproved() throws Exception {
-        retryFailedFiles("improved", "classpath:sql/data-improved.sql", BASELINE_FAILED_PATHS);
     }
 
     /**
@@ -607,7 +538,7 @@ class CorpusDataSqlComparisonIT {
         String relPath = "Identifiant_systeme_ou_compte_de_connexion/01_Securite_675152015"
             + "/attachments/pssec-masters-scan-sla6182t.etat-de-vaud.ch-pod.html";
         Path file = corpusRoot.resolve(relPath.replace('/', java.io.File.separatorChar));
-        org.junit.jupiter.api.Assertions.assertTrue(Files.isRegularFile(file),
+        Assertions.assertTrue(Files.isRegularFile(file),
             "file not found: " + file);
 
         log.info("[single-biggest] file size: {} bytes", Files.size(file));
@@ -615,8 +546,8 @@ class CorpusDataSqlComparisonIT {
         Instant tExtract = Instant.now();
         String text = extractText(file);
         long extractSec = Duration.between(tExtract, Instant.now()).toSeconds();
-        org.junit.jupiter.api.Assertions.assertNotNull(text, "extractText returned null");
-        org.junit.jupiter.api.Assertions.assertFalse(text.isBlank(), "extractText returned blank");
+        Assertions.assertNotNull(text, "extractText returned null");
+        Assertions.assertFalse(text.isBlank(), "extractText returned blank");
         log.info("[single-biggest] extracted text: {} chars in {}s", text.length(), extractSec);
 
         Instant tAnalyze = Instant.now();
@@ -724,11 +655,11 @@ class CorpusDataSqlComparisonIT {
 
         Set<String> expectedDetectors = queryExpectedActiveDetectors();
         log.info("[smoke-detectors] detecteurs attendus selon config : {}", expectedDetectors);
-        org.junit.jupiter.api.Assertions.assertFalse(expectedDetectors.isEmpty(),
+        Assertions.assertFalse(expectedDetectors.isEmpty(),
             "Aucun detecteur actif dans la config — impossible de smoker.");
 
         ContentPiiDetection detection = piiDetectorClient.analyzeContent(SMOKE_TEXT_FOR_ALL_DETECTORS);
-        org.junit.jupiter.api.Assertions.assertNotNull(detection.sensitiveDataFound(),
+        Assertions.assertNotNull(detection.sensitiveDataFound(),
             "sensitiveDataFound is null");
 
         Map<String, Long> countByDetector = detection.sensitiveDataFound().stream()
@@ -786,152 +717,6 @@ class CorpusDataSqlComparisonIT {
             }
         }
         return result;
-    }
-
-    /**
-     * Re-essaie chaque path cible (3 tentatives avec backoff), append les findings
-     * au {@code findings.jsonl} existant, puis regenere {@code report.md} depuis le
-     * fichier mis a jour (en preservant Files skipped et Duration de l'ancien rapport).
-     */
-    private void retryFailedFiles(String variantName, String sqlClasspath, List<String> targetPaths)
-            throws Exception {
-        log.info("[retry-{}] === START retry on {} targets ===", variantName, targetPaths.size());
-        Instant start = Instant.now();
-
-        resetAndReseedDb(sqlClasspath);
-        log.info("[retry-{}] DB reset+reseed done", variantName);
-
-        Path corpusRoot = Paths.get(CORPUS_ROOT).toAbsolutePath();
-        Path outDir = Paths.get(OUTPUT_ROOT, variantName).toAbsolutePath();
-        Path findingsPath = outDir.resolve("findings.jsonl");
-        Path reportPath = outDir.resolve("report.md");
-        if (!Files.isRegularFile(findingsPath)) {
-            throw new IllegalStateException("findings.jsonl introuvable : " + findingsPath
-                + ". Lance d'abord runImproved (ou runBaseline pour la variante baseline).");
-        }
-
-        ReportSections oldSections = parseReportSections(reportPath);
-        long oldDurationSeconds = parseDurationSeconds(reportPath);
-        int oldFilesScanned = parseFilesScanned(reportPath);
-        log.info("[retry-{}] old report: failed={} skipped={} filesScanned={}",
-            variantName, oldSections.failed().size(), oldSections.skipped().size(), oldFilesScanned);
-
-        // Idempotence : si un path retry-target a deja des findings dans le JSONL, c'est qu'un
-        // retry precedent a deja reussi -> on le skip pour eviter le double-append.
-        Set<String> pathsAlreadyWithFindings = relativePathsWithFindings(findingsPath);
-        List<String> alreadyRetried = new ArrayList<>();
-        List<String> toRetry = new ArrayList<>();
-        for (String p : targetPaths) {
-            if (pathsAlreadyWithFindings.contains(p)) {
-                alreadyRetried.add(p);
-            } else {
-                toRetry.add(p);
-            }
-        }
-        if (!alreadyRetried.isEmpty()) {
-            log.info("[retry-{}] skipping {} paths already retried successfully : {}",
-                variantName, alreadyRetried.size(), alreadyRetried);
-        }
-        log.info("[retry-{}] {} paths to (re)try", variantName, toRetry.size());
-
-        List<String> successfullyRetried = new ArrayList<>();
-        List<String> permanentFailures = new ArrayList<>();
-        int newFindings = 0;
-
-        try (BufferedWriter findingsWriter = Files.newBufferedWriter(findingsPath,
-                StandardCharsets.UTF_8, StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
-            for (String relPath : toRetry) {
-                int findingsAdded = retryOneFile(variantName, corpusRoot, relPath,
-                                                  findingsWriter, successfullyRetried, permanentFailures);
-                newFindings += findingsAdded;
-            }
-        }
-
-        log.info("[retry-{}] === DONE === success={} perm.fail={} newFindings={} duration={}s",
-            variantName, successfullyRetried.size(), permanentFailures.size(), newFindings,
-            Duration.between(start, Instant.now()).toSeconds());
-
-        // Regenerer report.md depuis findings.jsonl mis a jour
-        Stats stats = rebuildStatsFromJsonl(findingsPath);
-        stats.skippedFiles.addAll(oldSections.skipped());
-        // updated failedFiles : ancien failed - successfullyRetried + nouveaux permanent
-        for (String p : oldSections.failed()) {
-            if (!successfullyRetried.contains(p)) {
-                stats.failedFiles.add(p);
-            }
-        }
-        for (String p : permanentFailures) {
-            if (!stats.failedFiles.contains(p)) {
-                stats.failedFiles.add(p);
-            }
-        }
-        stats.filesScanned = oldFilesScanned + successfullyRetried.size();
-
-        writeReport(reportPath, variantName, sqlClasspath, stats, Duration.ofSeconds(oldDurationSeconds));
-        log.info("[retry-{}] report regenere : {}", variantName, reportPath);
-    }
-
-    /** Retry sur 1 fichier, 3 tentatives gRPC avec backoff. Retourne le nb de findings ajoutes. */
-    private int retryOneFile(String variantName, Path corpusRoot, String relPath,
-                             BufferedWriter findingsWriter,
-                             List<String> successfullyRetried, List<String> permanentFailures)
-            throws Exception {
-        Path file = corpusRoot.resolve(relPath.replace('/', java.io.File.separatorChar));
-        if (!Files.isRegularFile(file)) {
-            log.warn("[retry-{}] file not found in corpus: {}", variantName, relPath);
-            permanentFailures.add(relPath);
-            return 0;
-        }
-
-        String[] parts = relPath.split("/");
-        String piiTypeFolder = parts[0];
-        String pageFolder = parts[1];
-        Set<String> expectedTypes = EXPECTED_PII_TYPES.getOrDefault(piiTypeFolder, Set.of());
-        boolean isAttachment = relPath.contains("/attachments/");
-        Path pageDir = corpusRoot.resolve(piiTypeFolder).resolve(pageFolder);
-        PageMeta meta = readMeta(pageDir.resolve("meta.json"));
-
-        String text = extractText(file);
-        if (text == null || text.isBlank()) {
-            log.warn("[retry-{}] empty text from {}", variantName, relPath);
-            permanentFailures.add(relPath);
-            return 0;
-        }
-
-        ContentPiiDetection detection = null;
-        for (int attempt = 1; attempt <= 3; attempt++) {
-            try {
-                detection = piiDetectorClient.analyzeContent(text);
-                break;
-            } catch (Throwable t) {
-                String msg = t.toString();
-                log.warn("[retry-{}] attempt {}/3 failed for {}: {}",
-                    variantName, attempt, relPath, msg);
-                // Fail-fast sur les erreurs non transitoires (cap de taille cote pii-detector).
-                if (msg.contains("INVALID_ARGUMENT") || msg.contains("Content too large")) {
-                    log.warn("[retry-{}] non-retryable error, marking permanent failure: {}",
-                        variantName, relPath);
-                    permanentFailures.add(relPath);
-                    return 0;
-                }
-                if (attempt == 3) {
-                    permanentFailures.add(relPath);
-                    return 0;
-                }
-                Thread.sleep(2000L * attempt);
-            }
-        }
-
-        successfullyRetried.add(relPath);
-        int added = 0;
-        for (SensitiveData sd : detection.sensitiveDataFound()) {
-            boolean expectedHit = expectedTypes.contains(sd.type());
-            writeFindingLine(findingsWriter, piiTypeFolder, pageFolder, meta, relPath,
-                             isAttachment, text, sd, expectedHit);
-            added++;
-        }
-        log.info("[retry-{}] OK {}: {} findings", variantName, relPath, added);
-        return added;
     }
 
     /**
@@ -1060,6 +845,22 @@ class CorpusDataSqlComparisonIT {
 
         Stats stats = new Stats();
         Path findingsPath = outDir.resolve("findings.jsonl");
+        Path processedPath = outDir.resolve("processed.txt");
+
+        // Resume support: a run can be cut short by the pii-detector container
+        // dying under load (the "UNAVAILABLE cascade" — a single monster file
+        // saturates the in-pipeline LLM judge, the worker crashes, and every
+        // subsequent file fails). On the next launch we DON'T redo the work that
+        // already succeeded: {@code findings.jsonl} (every file that produced >=1
+        // finding) and the {@code processed.txt} sidecar (every file fully
+        // handled, including 0-finding and blank ones) define the skip-set, and
+        // the prior findings are pre-loaded into {@code stats} so the regenerated
+        // report stays correct after a resume. See loadPriorRun / ResumeState.
+        Set<String> doneFiles = new HashSet<>();
+        Map<String, int[]> priorPageCounts = new HashMap<>();
+        boolean resuming = Files.exists(processedPath)
+            || (Files.exists(findingsPath) && Files.size(findingsPath) > 0);
+        loadPriorRun(variantName, findingsPath, processedPath, stats, doneFiles, priorPageCounts);
 
         // Pre-extract total char count to drive a meaningful progress bar.
         // We do this in parallel and only sum lengths (no caching of bodies)
@@ -1068,7 +869,19 @@ class CorpusDataSqlComparisonIT {
         ProgressTracker progress = precomputeProgressTracker(variantName, corpusRoot);
         this.progressTracker = progress;
 
-        try (BufferedWriter findingsWriter = Files.newBufferedWriter(findingsPath, StandardCharsets.UTF_8)) {
+        // Append (not truncate) when resuming so prior findings are preserved.
+        OpenOption[] findingsOpts = resuming
+            ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE}
+            : new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE};
+
+        try (BufferedWriter findingsWriter = Files.newBufferedWriter(findingsPath, StandardCharsets.UTF_8, findingsOpts);
+             BufferedWriter processedWriter = Files.newBufferedWriter(processedPath, StandardCharsets.UTF_8,
+                 StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE)) {
+
+            ResumeState resume = new ResumeState(doneFiles, priorPageCounts, processedWriter);
+            log.info("[{}] RESUME mode={}: {} files already done (skipped), {} prior findings pre-loaded",
+                variantName, resuming, doneFiles.size(), stats.totalFindings);
+
             List<Path> piiTypeDirs = listDirectories(corpusRoot);
             log.info("[{}] {} PII type folders to scan", variantName, piiTypeDirs.size());
 
@@ -1080,7 +893,8 @@ class CorpusDataSqlComparisonIT {
                 log.info("[{}] [{}] {} pages", variantName, piiTypeFolder, pageDirs.size());
 
                 for (Path pageDir : pageDirs) {
-                    scanPage(variantName, corpusRoot, piiTypeFolder, expectedTypes, pageDir, stats, findingsWriter);
+                    scanPage(variantName, corpusRoot, piiTypeFolder, expectedTypes, pageDir, stats,
+                             findingsWriter, resume);
                 }
             }
         } finally {
@@ -1095,15 +909,116 @@ class CorpusDataSqlComparisonIT {
             Duration.between(start, Instant.now()).toSeconds(), outDir);
     }
 
+    /**
+     * State carried through a resumable run.
+     *
+     * @param doneFiles       corpus-relative paths already handled in a previous
+     *                        run (success OR blank) — skipped on this pass.
+     * @param priorPageCounts {@code "piiTypeFolder/pageFolder" -> [expectedFindings, otherFindings]}
+     *                        pre-loaded from the existing findings.jsonl so the
+     *                        per-page / recall stats stay correct after resume.
+     * @param processedWriter append-only sidecar; each handled file is flushed
+     *                        immediately so a hard kill mid-run still checkpoints.
+     */
+    private record ResumeState(Set<String> doneFiles, Map<String, int[]> priorPageCounts,
+                               BufferedWriter processedWriter) {
+
+        void markProcessed(String relPath) throws IOException {
+            if (doneFiles.add(relPath)) {
+                processedWriter.write(relPath);
+                processedWriter.newLine();
+                processedWriter.flush();
+            }
+        }
+    }
+
+    /**
+     * Pre-loads the skip-set and aggregate stats from a previous run's outputs so
+     * a resumed run continues "where the first errors were" without re-scanning
+     * what already succeeded nor duplicating findings.
+     *
+     * <p>Skip-set sources:
+     * <ul>
+     *   <li>{@code findings.jsonl} — any file with >=1 finding is done; its
+     *       findings are folded back into {@code stats} (totals, by-type,
+     *       by-detector, by-file, per-page expected/other) so the final report
+     *       reflects the full corpus, not just the resumed slice.</li>
+     *   <li>{@code processed.txt} — files fully handled with 0 findings or blank
+     *       extraction (not recoverable from findings.jsonl alone).</li>
+     * </ul>
+     *
+     * <p>Files that previously FAILED appear in neither source, so they are
+     * naturally retried on resume.
+     */
+    private void loadPriorRun(String variantName, Path findingsPath, Path processedPath, Stats stats,
+                              Set<String> doneFiles, Map<String, int[]> priorPageCounts) throws IOException {
+        if (Files.exists(processedPath)) {
+            for (String line : Files.readAllLines(processedPath, StandardCharsets.UTF_8)) {
+                String p = line.strip();
+                if (!p.isEmpty()) {
+                    doneFiles.add(p);
+                }
+            }
+        }
+        if (!Files.exists(findingsPath)) {
+            return;
+        }
+        Set<String> filesWithFindings = new HashSet<>();
+        for (String line : Files.readAllLines(findingsPath, StandardCharsets.UTF_8)) {
+            if (line.isBlank()) {
+                continue;
+            }
+            JsonNode n = MAPPER.readTree(line);
+            String relPath = textOrNull(n, "relativePath");
+            String type = textOrNull(n, "piiTypeDetected");
+            String detector = textOrNull(n, "detector");
+            String folder = textOrNull(n, "piiTypeFolder");
+            String page = textOrNull(n, "pageFolder");
+            boolean expectedHit = n.path("expectedHit").asBoolean(false);
+
+            if (relPath != null) {
+                doneFiles.add(relPath);
+                filesWithFindings.add(relPath);
+                stats.countByFile.merge(relPath, 1, Integer::sum);
+            }
+            stats.totalFindings++;
+            if (type != null) {
+                stats.countByPiiType.merge(type, 1, Integer::sum);
+            }
+            if (detector != null) {
+                stats.countByDetector.merge(detector, 1, Integer::sum);
+            }
+            if (folder != null && page != null) {
+                int[] counts = priorPageCounts.computeIfAbsent(folder + "/" + page, k -> new int[2]);
+                counts[expectedHit ? 0 : 1]++;
+            }
+        }
+        stats.filesScanned += filesWithFindings.size();
+        log.info("[{}] loadPriorRun: {} prior findings across {} files, {} files in skip-set",
+            variantName, stats.totalFindings, filesWithFindings.size(), doneFiles.size());
+    }
+
     private void scanPage(String variantName, Path corpusRoot, String piiTypeFolder, Set<String> expectedTypes,
-                          Path pageDir, Stats stats, BufferedWriter findingsWriter) throws IOException {
+                          Path pageDir, Stats stats, BufferedWriter findingsWriter, ResumeState resume)
+            throws IOException {
         PageMeta meta = readMeta(pageDir.resolve("meta.json"));
         PageStats pageStats = new PageStats(piiTypeFolder, pageDir.getFileName().toString(), meta);
+        // Fold this page's prior-run findings back in so recall / per-page stats
+        // stay correct when resuming (those files are skipped below, so they
+        // won't be re-counted from the live scan).
+        int[] prior = resume.priorPageCounts().get(piiTypeFolder + "/" + pageDir.getFileName());
+        if (prior != null) {
+            pageStats.expectedFindings += prior[0];
+            pageStats.otherFindings += prior[1];
+        }
 
         List<Path> filesToScan = collectScannableFiles(pageDir);
 
         for (Path file : filesToScan) {
             String relPath = corpusRoot.relativize(file).toString().replace('\\', '/');
+            if (resume.doneFiles().contains(relPath)) {
+                continue; // already handled in a previous run — resume skip
+            }
             boolean isAttachment = file.getParent().getFileName().toString().equals("attachments")
                 || (file.getParent().getParent() != null
                     && "attachments".equals(file.getParent().getParent().getFileName().toString()));
@@ -1111,6 +1026,7 @@ class CorpusDataSqlComparisonIT {
             String text = extractText(file);
             if (text == null || text.isBlank()) {
                 stats.skippedFiles.add(relPath);
+                resume.markProcessed(relPath); // blank is deterministic — don't retry on resume
                 continue;
             }
 
@@ -1123,6 +1039,12 @@ class CorpusDataSqlComparisonIT {
                     progressTracker.recordFile(text.length(), analyzeMillis, false);
                     progressTracker.logProgress(variantName, relPath);
                 }
+                // A failure may mean the pii-detector container died (the
+                // "UNAVAILABLE cascade"). Probe it and restart in place if it is
+                // unreachable, so the NEXT file does not fail for the same
+                // reason. The failed file is intentionally NOT checkpointed, so a
+                // later resume retries it. See ensureDetectorHealthy.
+                ensureDetectorHealthy(variantName);
                 continue;
             }
 
@@ -1142,6 +1064,8 @@ class CorpusDataSqlComparisonIT {
                 stats.countByFile.merge(relPath, 1, Integer::sum);
                 pageStats.recordFinding(sd, expectedHit);
             }
+            findingsWriter.flush(); // durable per-file so a kill mid-run keeps results
+            resume.markProcessed(relPath);
         }
 
         stats.pages.add(pageStats);
@@ -1150,6 +1074,91 @@ class CorpusDataSqlComparisonIT {
         if (pageStats.expectedFindings > 0) {
             rc.hitPages++;
         }
+    }
+
+    /**
+     * Verifies the pii-detector container still answers; if it does not,
+     * restarts it in place. Called after a failed analyze so a dead container
+     * (OOM / crashed gRPC worker after a finding-dense "monster" file) cannot
+     * cascade into every remaining file being marked as failed.
+     *
+     * <p>A cheap warmup-sized probe distinguishes the two failure modes:
+     * <ul>
+     *   <li>probe succeeds → the container is alive; the file itself was the
+     *       problem (too large / DEADLINE_EXCEEDED). Nothing to do.</li>
+     *   <li>probe fails → the container is unreachable; restart it.</li>
+     * </ul>
+     */
+    private void ensureDetectorHealthy(String variantName) {
+        try {
+            piiDetectorClient.analyzeContent("health-probe IBAN CH9300762011623852957");
+            return;
+        } catch (Throwable probeErr) {
+            log.warn("[{}][recovery] health probe failed ({}); restarting pii-detector to avoid cascade",
+                variantName, probeErr.toString());
+        }
+        restartPiiDetector(variantName);
+    }
+
+    /**
+     * Restarts the pii-detector container in place via {@code docker restart}.
+     *
+     * <p>We use restart (not stop+start) on purpose: Docker preserves the
+     * published host port across a restart, so the mapped gRPC port — captured
+     * once by Spring at context init via {@link #registerProps} — stays valid and
+     * the autowired {@link PiiDetectorClient} reconnects transparently. A
+     * stop+start would allocate a NEW host port and strand the client.
+     */
+    private void restartPiiDetector(String variantName) {
+        String containerId = piiDetector.getContainerId();
+        int portBefore = piiDetector.getMappedPort(GRPC_PORT);
+        Instant t0 = Instant.now();
+        log.warn("[{}][recovery] restarting pii-detector container {}", variantName, containerId);
+        try {
+            DockerClientFactory.instance().client()
+                .restartContainerCmd(containerId)
+                .withTimeout(30) // seconds for graceful stop before kill
+                .exec();
+        } catch (Throwable t) {
+            log.error("[{}][recovery] docker restart command failed: {} — will still wait for readiness",
+                variantName, t.toString(), t);
+        }
+        waitForDetectorReady(variantName);
+        int portAfter = piiDetector.getMappedPort(GRPC_PORT);
+        if (portBefore != portAfter) {
+            log.error("[{}][recovery] mapped gRPC port changed after restart ({} -> {}); "
+                + "the autowired client is now stale", variantName, portBefore, portAfter);
+        }
+        log.warn("[{}][recovery] pii-detector restarted in {}s (port {})",
+            variantName, Duration.between(t0, Instant.now()).toSeconds(), portAfter);
+    }
+
+    /**
+     * Polls the restarted container with a tiny warmup analyze until it serves
+     * again (models reload on boot) or a 15-minute deadline elapses. Each probe
+     * also re-establishes the gRPC channel and forces model load, so the next
+     * real file is served by a fully-ready detector.
+     */
+    private void waitForDetectorReady(String variantName) {
+        Instant deadline = Instant.now().plus(Duration.ofMinutes(15));
+        int attempt = 0;
+        while (Instant.now().isBefore(deadline)) {
+            attempt++;
+            try {
+                piiDetectorClient.analyzeContent("warmup IBAN CH9300762011623852957");
+                log.info("[{}][recovery] pii-detector ready after {} probe(s)", variantName, attempt);
+                return;
+            } catch (Throwable t) {
+                log.info("[{}][recovery] not ready yet (probe {}): {}", variantName, attempt, t.toString());
+                try {
+                    Thread.sleep(5_000L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+        log.error("[{}][recovery] pii-detector NOT ready within 15min after restart", variantName);
     }
 
     /**
@@ -1473,161 +1482,6 @@ class CorpusDataSqlComparisonIT {
     private static final class RecallCounter {
         int totalPages = 0;
         int hitPages = 0;
-    }
-
-    /**
-     * Lit findings.jsonl et retourne l'ensemble des {@code relativePath} qui ont
-     * au moins 1 finding. Sert a l'idempotence du retry : un path ayant deja des
-     * findings ne doit pas etre re-soumis (sinon double-append).
-     */
-    private static Set<String> relativePathsWithFindings(Path findingsPath) throws IOException {
-        Set<String> paths = new HashSet<>();
-        if (!Files.isRegularFile(findingsPath)) {
-            return paths;
-        }
-        try (Stream<String> lines = Files.lines(findingsPath, StandardCharsets.UTF_8)) {
-            lines.forEach(line -> {
-                if (line.isBlank()) {
-                    return;
-                }
-                try {
-                    com.fasterxml.jackson.databind.JsonNode n = MAPPER.readTree(line);
-                    if (n.has("relativePath")) {
-                        paths.add(n.get("relativePath").asText());
-                    }
-                } catch (IOException ignored) {
-                    // ligne malformee, on l'ignore
-                }
-            });
-        }
-        return paths;
-    }
-
-    /** Sections extraites d'un report.md existant (pour le mode retry). */
-    private record ReportSections(List<String> failed, List<String> skipped) {}
-
-    /** Parse les sections "Files failed" et "Files skipped" d'un report.md existant. */
-    private static ReportSections parseReportSections(Path reportPath) throws IOException {
-        List<String> failed = new ArrayList<>();
-        List<String> skipped = new ArrayList<>();
-        if (!Files.isRegularFile(reportPath)) {
-            return new ReportSections(failed, skipped);
-        }
-        String current = null;
-        for (String line : Files.readAllLines(reportPath, StandardCharsets.UTF_8)) {
-            if (line.startsWith("## Files failed")) {
-                current = "failed";
-            } else if (line.startsWith("## Files skipped")) {
-                current = "skipped";
-            } else if (line.startsWith("## ")) {
-                current = null;
-            } else if (line.startsWith("- ") && current != null) {
-                String p = line.substring(2).trim();
-                if ("failed".equals(current)) {
-                    failed.add(p);
-                } else {
-                    skipped.add(p);
-                }
-            }
-        }
-        return new ReportSections(failed, skipped);
-    }
-
-    private static final Pattern DURATION_PATTERN = Pattern.compile("Duration:\\s*(\\d+)s");
-    private static final Pattern FILES_SCANNED_PATTERN = Pattern.compile("Files scanned:\\s*(\\d+)");
-
-    private static long parseDurationSeconds(Path reportPath) throws IOException {
-        if (!Files.isRegularFile(reportPath)) {
-            return 0L;
-        }
-        for (String line : Files.readAllLines(reportPath, StandardCharsets.UTF_8)) {
-            Matcher m = DURATION_PATTERN.matcher(line);
-            if (m.find()) {
-                return Long.parseLong(m.group(1));
-            }
-        }
-        return 0L;
-    }
-
-    private static int parseFilesScanned(Path reportPath) throws IOException {
-        if (!Files.isRegularFile(reportPath)) {
-            return 0;
-        }
-        for (String line : Files.readAllLines(reportPath, StandardCharsets.UTF_8)) {
-            Matcher m = FILES_SCANNED_PATTERN.matcher(line);
-            if (m.find()) {
-                return Integer.parseInt(m.group(1));
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Reconstruit l'objet Stats en relisant l'integralite du findings.jsonl.
-     * Note : {@code filesScanned} n'est PAS recalcule ici (sous-estime car le JSONL n'a
-     * que les fichiers avec ≥ 1 finding) — l'appelant doit le definir explicitement.
-     */
-    private static Stats rebuildStatsFromJsonl(Path findingsPath) throws IOException {
-        Stats s = new Stats();
-        Map<String, PageStats> pageByKey = new LinkedHashMap<>();
-        try (Stream<String> lines = Files.lines(findingsPath, StandardCharsets.UTF_8)) {
-            lines.forEach(line -> {
-                if (line.isBlank()) {
-                    return;
-                }
-                try {
-                    com.fasterxml.jackson.databind.JsonNode n = MAPPER.readTree(line);
-                    String piiTypeFolder = n.get("piiTypeFolder").asText();
-                    String pageFolder = n.get("pageFolder").asText();
-                    String piiType = n.get("piiTypeDetected").asText();
-                    String detector = n.has("detector") ? n.get("detector").asText() : "UNKNOWN";
-                    String relPath = n.get("relativePath").asText();
-                    boolean expectedHit = n.has("expectedHit") && n.get("expectedHit").asBoolean();
-
-                    s.totalFindings++;
-                    s.countByPiiType.merge(piiType, 1, Integer::sum);
-                    s.countByDetector.merge(detector, 1, Integer::sum);
-                    s.countByFile.merge(relPath, 1, Integer::sum);
-
-                    String pageKey = piiTypeFolder + "|" + pageFolder;
-                    PageStats ps = pageByKey.get(pageKey);
-                    if (ps == null) {
-                        PageMeta meta = new PageMeta(
-                            jsonTextOrNull(n, "pageTitle"),
-                            jsonTextOrNull(n, "pageUrl"),
-                            jsonTextOrNull(n, "pageId"));
-                        ps = new PageStats(piiTypeFolder, pageFolder, meta);
-                        pageByKey.put(pageKey, ps);
-                    }
-                    if (expectedHit) {
-                        ps.expectedFindings++;
-                    } else {
-                        ps.otherFindings++;
-                    }
-                    ps.types.add(piiType);
-                } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
-                }
-            });
-        }
-        s.pages.addAll(pageByKey.values());
-
-        // Recall : count distinct pages par piiTypeFolder + hits
-        Map<String, RecallCounter> recall = new TreeMap<>();
-        for (PageStats ps : s.pages) {
-            RecallCounter rc = recall.computeIfAbsent(ps.piiTypeFolder, k -> new RecallCounter());
-            rc.totalPages++;
-            if (ps.expectedFindings > 0) {
-                rc.hitPages++;
-            }
-        }
-        s.recallByPiiType.putAll(recall);
-        return s;
-    }
-
-    private static String jsonTextOrNull(com.fasterxml.jackson.databind.JsonNode node, String field) {
-        com.fasterxml.jackson.databind.JsonNode v = node.get(field);
-        return (v == null || v.isNull()) ? null : v.asText();
     }
 
     /** Aggregated counters built during a variant run. */

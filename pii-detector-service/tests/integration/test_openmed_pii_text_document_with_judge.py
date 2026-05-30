@@ -423,11 +423,31 @@ def judge_validator():
         "[setup] building LLMJudgeValidator(audit_sources={OPENMED}) on %s",
         BASE_URL,
     )
+    # max_workers=1 (vs 4 in the sibling test) is mandatory here, not a
+    # tuning choice. This test scans ONE big document, so a single
+    # ``filter()`` call submits *all* of the document's OpenMed detections to
+    # ``_judge_batch`` at once — sustaining N concurrent requests for the
+    # whole run. The sibling test instead calls ``filter()`` once per short
+    # case with 1-2 entities, so it never sustains real concurrency.
+    #
+    # LM Studio splits the model's context window across its parallel
+    # prediction slots (total_context / n_slots). The judge's system prompt
+    # alone is ~1.3k tokens and ``max_tokens`` reserves 2048 more, so once 3+
+    # requests run in parallel each slot is too small to hold a single
+    # request and LM Studio rejects it with HTTP 400
+    # ``{"error":"Context size has been exceeded."}``. Empirically (Qwen 3.6
+    # 35B A3B on this endpoint): 1-2 concurrent = OK, 3+ = systematic 400.
+    # Under ``fail_open=True`` those 400s are swallowed and every entity is
+    # kept, which silently defeats the FP-rate assertions below.
+    #
+    # Serialising the judge (max_workers=1) gives every call the full context
+    # window — the proven-200 single-request path — at the cost of runtime
+    # (already gated behind @pytest.mark.slow).
     validator = LLMJudgeValidator(
         base_url=BASE_URL,
         audit_sources={DetectorSource.OPENMED},
         fail_open=True,
-        max_workers=4,
+        max_workers=1,
     )
     try:
         yield validator

@@ -147,7 +147,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             true,
             true,
             true,
-            new BigDecimal("0.75"),
+            false, new BigDecimal("0.75"),
             30,
             true,
             LocalDateTime.now(),

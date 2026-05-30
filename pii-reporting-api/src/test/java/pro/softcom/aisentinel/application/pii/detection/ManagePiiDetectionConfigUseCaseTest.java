@@ -58,13 +58,8 @@ class ManagePiiDetectionConfigUseCaseTest {
     @Test
     void Should_PersistAndRetrieveConfig_When_UpdatingConfiguration() {
         // Arrange
-<<<<<<< HEAD
-        UpdatePiiDetectionConfigCommand command =   new UpdatePiiDetectionConfigCommand(
-            true, false, true, false, new BigDecimal("0.85"), 30,"integrationtest"
-=======
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, true, new BigDecimal("0.85"), 30, false, "integrationtest"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, true, false, new BigDecimal("0.85"), 30, false, "integrationtest"
         );
 
         // Act
@@ -73,7 +68,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Assert
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(updated.id()).isEqualTo(1);
+        softly.assertThat(updated.id()).isOne();
         softly.assertThat(updated.glinerEnabled()).isTrue();
         softly.assertThat(updated.presidioEnabled()).isFalse();
         softly.assertThat(updated.regexEnabled()).isTrue();
@@ -89,7 +84,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistAndRetrieveLlmJudgeEnabledFlag_When_FlagIsToggled() {
         // Arrange — enable the flag first
         UpdatePiiDetectionConfigCommand enableCommand = new UpdatePiiDetectionConfigCommand(
-            true, true, true, new BigDecimal("0.75"), 30, true, "enabler"
+            true, true, true, false, new BigDecimal("0.75"), 30, true, "enabler"
         );
 
         // Act
@@ -103,7 +98,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Arrange — toggle back to disabled
         UpdatePiiDetectionConfigCommand disableCommand = new UpdatePiiDetectionConfigCommand(
-            true, true, true, new BigDecimal("0.75"), 30, false, "disabler"
+            true, true, true, false, new BigDecimal("0.75"), 30, false, "disabler"
         );
 
         // Act
@@ -120,21 +115,13 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateExistingConfig_When_ConfigAlreadyExists() {
         // Arrange - Create initial config
         UpdatePiiDetectionConfigCommand initialCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, true, false, false, new BigDecimal("0.60"),30, "user1"
-=======
-            true, true, false, new BigDecimal("0.60"), 30, false, "user1"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, true, false, false, new BigDecimal("0.60"), 30, false, "user1"
         );
         managePiiDetectionConfigPort.updateConfig(initialCommand);
 
         // Act - Update config
         UpdatePiiDetectionConfigCommand updateCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, true, true, false, new BigDecimal("0.90"), 30,"user2"
-=======
-            false, true, true, new BigDecimal("0.90"), 30, false, "user2"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, true, true, false, new BigDecimal("0.90"), 30, false, "user2"
         );
         PiiDetectionConfig updated = managePiiDetectionConfigPort.updateConfig(updateCommand);
 
@@ -157,13 +144,8 @@ class ManagePiiDetectionConfigUseCaseTest {
         // Arrange & Act - Multiple updates
         for (int i = 0; i < 5; i++) {
             UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
                 i % 2 == 0, i % 2 != 0, true, false,
-                new BigDecimal("0." + (70 + i)), 30,"user" + i
-=======
-                i % 2 == 0, i % 2 != 0, true,
                 new BigDecimal("0." + (70 + i)), 30, false, "user" + i
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
             );
             managePiiDetectionConfigPort.updateConfig(command);
         }
@@ -181,11 +163,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistBoundaryThresholds_When_ThresholdIsZeroOrOne() {
         // Act - Update with threshold 0.0
         UpdatePiiDetectionConfigCommand zeroCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, BigDecimal.ZERO, 30,"testuser"
-=======
-            true, false, false, BigDecimal.ZERO, 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, BigDecimal.ZERO, 30, false, "testuser"
         );
         PiiDetectionConfig zeroConfig = managePiiDetectionConfigPort.updateConfig(zeroCommand);
 
@@ -194,11 +172,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Act - Update with threshold 1.0
         UpdatePiiDetectionConfigCommand oneCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, BigDecimal.ONE, 30,"testuser"
-=======
-            true, false, false, BigDecimal.ONE, 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, BigDecimal.ONE, 30, false, "testuser"
         );
         PiiDetectionConfig oneConfig = managePiiDetectionConfigPort.updateConfig(oneCommand);
 
@@ -210,11 +184,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PersistDetectorStates_When_OnlyOneDetectorEnabled() {
         // Test with only GLiNER enabled
         UpdatePiiDetectionConfigCommand glinerCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, new BigDecimal("0.75"),30, "testuser"
-=======
-            true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
         PiiDetectionConfig glinerConfig = managePiiDetectionConfigPort.updateConfig(glinerCommand);
 
@@ -226,11 +196,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Test with only Presidio enabled
         UpdatePiiDetectionConfigCommand presidioCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, true, false, false, new BigDecimal("0.75"),30, "testuser"
-=======
-            false, true, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
         PiiDetectionConfig presidioConfig = managePiiDetectionConfigPort.updateConfig(presidioCommand);
 
@@ -241,11 +207,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Test with only Regex enabled
         UpdatePiiDetectionConfigCommand regexCommand = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, false, true, false, new BigDecimal("0.75"),30, "testuser"
-=======
-            false, false, true, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, false, true, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
         PiiDetectionConfig regexConfig = managePiiDetectionConfigPort.updateConfig(regexCommand);
 

@@ -37,11 +37,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ReturnConfig_When_GetConfigCalled() {
         // Arrange
         PiiDetectionConfig expectedConfig = new PiiDetectionConfig(
-<<<<<<< HEAD
-            1, true, true, false, false, new BigDecimal("0.75"),30, LocalDateTime.now(), "system"
-=======
-            1, true, true, false, new BigDecimal("0.75"), 30, false, LocalDateTime.now(), "system"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            1, true, true, false, false, new BigDecimal("0.75"), 30, false, LocalDateTime.now(), "system"
         );
         when(repository.findConfig()).thenReturn(expectedConfig);
 
@@ -57,11 +53,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateAndReturnConfig_When_ValidCommand() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, true, false, new BigDecimal("0.80"),30, "testuser"
-=======
-            true, false, true, new BigDecimal("0.80"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, true, false, new BigDecimal("0.80"), 30, false, "testuser"
         );
 
         // Act
@@ -91,7 +83,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PassLlmJudgeEnabledFlagThroughUseCase_When_CommandEnablesIt() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, true, new BigDecimal("0.80"), 30, true, "testuser"
+            true, false, true, false, new BigDecimal("0.80"), 30, true, "testuser"
         );
 
         // Act
@@ -110,11 +102,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ThrowException_When_CommandHasInvalidThreshold() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, true, false, false, new BigDecimal("1.5"),30, "testuser"
-=======
-            true, true, false, new BigDecimal("1.5"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, true, false, false, new BigDecimal("1.5"), 30, false, "testuser"
         );
 
         // Act & Assert
@@ -127,11 +115,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ThrowException_When_CommandHasNegativeThreshold() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, true, false, false, new BigDecimal("-0.1"), 30,"testuser"
-=======
-            true, true, false, new BigDecimal("-0.1"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, true, false, false, new BigDecimal("-0.1"), 30, false, "testuser"
         );
 
         // Act & Assert
@@ -144,11 +128,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ThrowException_When_NoDetectorsEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, false, false, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            false, false, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, false, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act & Assert
@@ -161,11 +141,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateConfig_When_OnlyGlinerEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act
@@ -184,11 +160,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateConfig_When_OnlyPresidioEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, true, false, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            false, true, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act
@@ -207,11 +179,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateConfig_When_OnlyRegexEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            false, false, true, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            false, false, true, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            false, false, true, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act
@@ -230,7 +198,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateConfig_When_OnlyOpenmedEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            false, false, false, true, new BigDecimal("0.75"), 30,"testuser"
+            false, false, false, true, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act
@@ -249,11 +217,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_AcceptBoundaryThreshold_When_ThresholdIsZero() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, BigDecimal.ZERO, 30,"testuser"
-=======
-            true, false, false, BigDecimal.ZERO, 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, BigDecimal.ZERO, 30, false, "testuser"
         );
 
         // Act
@@ -267,11 +231,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_AcceptBoundaryThreshold_When_ThresholdIsOne() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, false, false, false, BigDecimal.ONE, 30,"testuser"
-=======
-            true, false, false, BigDecimal.ONE, 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, false, false, false, BigDecimal.ONE, 30, false, "testuser"
         );
 
         // Act
@@ -285,11 +245,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_SetConfigIdToOne_When_UpdatingConfig() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, true, false, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            true, true, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
 
         // Act
@@ -305,11 +261,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_PropagateException_When_RepositoryThrowsException() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-<<<<<<< HEAD
-            true, true, false, false, new BigDecimal("0.75"), 30,"testuser"
-=======
-            true, true, false, new BigDecimal("0.75"), 30, false, "testuser"
->>>>>>> 40e0015 (feat(api): persist llm_judge_enabled flag in pii_detection_config)
+            true, true, false, false, new BigDecimal("0.75"), 30, false, "testuser"
         );
         doThrow(new RuntimeException("Database error"))
             .when(repository).updateConfig(any());

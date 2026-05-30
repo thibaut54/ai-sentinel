@@ -44,7 +44,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_ReturnLlmJudgeEnabledInResponse_When_GetConfig() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, new BigDecimal("0.75"), 30, true,
+            1, true, true, true, false, new BigDecimal("0.75"), 30, true,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -58,7 +58,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultLlmJudgeEnabledToFalse_When_NotProvidedInResponse() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, new BigDecimal("0.75"), 30, false,
+            1, true, true, true, false, new BigDecimal("0.75"), 30, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -71,7 +71,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_UpdateLlmJudgeEnabled_When_PatchRequestEnablesFlag() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, new BigDecimal("0.75"), 30, true,
+            1, true, true, true, false, new BigDecimal("0.75"), 30, true,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -107,7 +107,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultLlmJudgeEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, new BigDecimal("0.75"), 30, false,
+            1, true, true, true, false, new BigDecimal("0.75"), 30, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
