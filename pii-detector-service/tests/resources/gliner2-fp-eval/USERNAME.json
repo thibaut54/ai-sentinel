@@ -1,0 +1,234 @@
+{
+  "pii_type": "USERNAME",
+  "detector_label": "username",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "USERNAME_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Identifiant de connexion : jdupont",
+      "expected_spans": [
+        {
+          "start": 27,
+          "end": 34,
+          "value": "jdupont"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Login username for the admin console: admin_svc",
+      "expected_spans": [
+        {
+          "start": 38,
+          "end": 47,
+          "value": "admin_svc"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Anmeldename des Technikers: m.mueller",
+      "expected_spans": [
+        {
+          "start": 28,
+          "end": 37,
+          "value": "m.mueller"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Nome utente per l'accesso al portale: athena_svc",
+      "expected_spans": [
+        {
+          "start": 38,
+          "end": 48,
+          "value": "athena_svc"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "jdupont",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 7,
+          "value": "jdupont"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "@alice_m",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "value": "@alice_m"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "m.mueller",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 9,
+          "value": "m.mueller"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "athena_svc",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 10,
+          "value": "athena_svc"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "La variable db_user contient la chaine de connexion a la base.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The function signature is def authenticate(username: str) -> bool.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Die Klasse UserSessionManager verwaltet alle offenen Sitzungen.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Segui la campagna con l'hashtag #DigitalFirst su tutti i canali.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Rename the local variable currentUser to activeUser before merging.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le parametre nomUtilisateur est passe par reference dans cette methode.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Veuillez saisir votre identifiant de connexion dans le champ prevu.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Your username could not be verified, please try again later.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Der Anmeldename wird beim ersten Start automatisch generiert.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il nome utente e obbligatorio per completare la registrazione.",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "user:jdupont;role:admin;active:true",
+      "expected_spans": [
+        {
+          "start": 5,
+          "end": 12,
+          "value": "jdupont"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "<login>admin_svc</login>",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 16,
+          "value": "admin_svc"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_adversarial_formatting_de_02",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "u s e r n a m e : m . m u e l l e r",
+      "expected_spans": []
+    },
+    {
+      "id": "USERNAME_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Lors de la migration du cluster de production, l'equipe a constate que le compte de service utilise par le pipeline CI/CD etait toujours actif. Apres verification dans l'annuaire LDAP, l'identifiant de connexion concerne etait athena_svc, et il disposait encore de droits eleves sur les noeuds.",
+      "expected_spans": [
+        {
+          "start": 227,
+          "end": 237,
+          "value": "athena_svc"
+        }
+      ]
+    },
+    {
+      "id": "USERNAME_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "During the post-incident review the on-call engineer explained that the deployment script reads the connection string from an environment variable called DB_USER, which is injected by the orchestrator at boot time, so no human account credentials are ever stored in the repository itself.",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,4976 @@
+{
+  "document": "resources\\gliner2-pii-test-document.txt",
+  "total_lines": 666,
+  "total_tp": 264,
+  "total_fp": 288,
+  "lines": [
+    {
+      "line_number": 22,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-884512",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 23,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "AB123456C",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 24,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-771209",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "GOVERNMENT_ID_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 25,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-552108",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "GOVERNMENT_ID_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 26,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-884512",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 27,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "AB123456C",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 28,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-771209",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "GOVERNMENT_ID_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 29,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-552108",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "GOVERNMENT_ID_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 30,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_look_alikes_fr_01"
+    },
+    {
+      "line_number": 31,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_look_alikes_en_01"
+    },
+    {
+      "line_number": 32,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "GOVERNMENT_ID_look_alikes_de_01"
+    },
+    {
+      "line_number": 33,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "GOVERNMENT_ID_look_alikes_it_01"
+    },
+    {
+      "line_number": 34,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_look_alikes_en_02"
+    },
+    {
+      "line_number": 35,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_look_alikes_fr_02"
+    },
+    {
+      "line_number": 36,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 37,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 38,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "GOVERNMENT_ID_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 39,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "GOVERNMENT_ID_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 40,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-884512",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 41,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "AB123456C",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 42,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "GOVERNMENT_ID_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 43,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "TP",
+      "value": "CHE-ID-884512",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "GOVERNMENT_ID_long_context_fr_01"
+    },
+    {
+      "line_number": 44,
+      "pii_type": "GOVERNMENT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "GOVERNMENT_ID_long_context_en_01"
+    },
+    {
+      "line_number": 49,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "1 84 12 75 116 001 42",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 50,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "ID-CH-7782341",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "NATIONAL_ID_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 51,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "ID-CH-4410982",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "NATIONAL_ID_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 52,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "RSSMRA85T10A562S",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "NATIONAL_ID_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 53,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "1 84 12 75 116 001 42",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 54,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "ID-CH-7782341",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "NATIONAL_ID_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 55,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "ID-CH-4410982",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "NATIONAL_ID_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 56,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "RSSMRA85T10A562S",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "NATIONAL_ID_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 57,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "NATIONAL_ID_look_alikes_en_01"
+    },
+    {
+      "line_number": 58,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_look_alikes_fr_01"
+    },
+    {
+      "line_number": 59,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "NATIONAL_ID_look_alikes_de_01"
+    },
+    {
+      "line_number": 60,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "NATIONAL_ID_look_alikes_it_01"
+    },
+    {
+      "line_number": 61,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "NATIONAL_ID_look_alikes_en_02"
+    },
+    {
+      "line_number": 62,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_look_alikes_fr_02"
+    },
+    {
+      "line_number": 63,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 64,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "NATIONAL_ID_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 65,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "NATIONAL_ID_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 66,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "NATIONAL_ID_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 67,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "RSSMRA85T10A562S",
+      "axis": "adversarial_formatting",
+      "language": "it",
+      "case_id": "NATIONAL_ID_adversarial_formatting_it_01"
+    },
+    {
+      "line_number": 68,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "ID-CH-7782341",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "NATIONAL_ID_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 69,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "NATIONAL_ID_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 70,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "TP",
+      "value": "RSSMRA85T10A562S",
+      "axis": "long_context",
+      "language": "it",
+      "case_id": "NATIONAL_ID_long_context_it_01"
+    },
+    {
+      "line_number": 71,
+      "pii_type": "NATIONAL_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "NATIONAL_ID_long_context_en_01"
+    },
+    {
+      "line_number": 76,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "X1234567",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "PASSPORT_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 77,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "490123456",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "PASSPORT_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 78,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "C01X00T47",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "PASSPORT_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 79,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "C03005988",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "PASSPORT_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 80,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "X1234567",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "PASSPORT_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 81,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "490123456",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "PASSPORT_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 82,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "C01X00T47",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "PASSPORT_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 83,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "C03005988",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "PASSPORT_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 84,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PASSPORT_look_alikes_en_01"
+    },
+    {
+      "line_number": 85,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "PASSPORT_look_alikes_fr_01"
+    },
+    {
+      "line_number": 86,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "PASSPORT_look_alikes_de_01"
+    },
+    {
+      "line_number": 87,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "PASSPORT_look_alikes_it_01"
+    },
+    {
+      "line_number": 88,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PASSPORT_look_alikes_en_02"
+    },
+    {
+      "line_number": 89,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "PASSPORT_look_alikes_fr_02"
+    },
+    {
+      "line_number": 90,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "PASSPORT_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 91,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "PASSPORT_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 92,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "PASSPORT_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 93,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "PASSPORT_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 94,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "X1234567",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "PASSPORT_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 95,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "C03005988",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "PASSPORT_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 96,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "PASSPORT_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 97,
+      "pii_type": "PASSPORT",
+      "verdict": "TP",
+      "value": "X1234567",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "PASSPORT_long_context_fr_01"
+    },
+    {
+      "line_number": 98,
+      "pii_type": "PASSPORT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "PASSPORT_long_context_en_01"
+    },
+    {
+      "line_number": 103,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "12AB34567",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 104,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "D1234567",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 105,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "B072RRE2I55",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "DRIVER_LICENSE_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 106,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "D1234567",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "DRIVER_LICENSE_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 107,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "12AB34567",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 108,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "D1234567",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 109,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "B072RRE2I55",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "DRIVER_LICENSE_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 110,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "D7654321",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "DRIVER_LICENSE_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 111,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_look_alikes_en_01"
+    },
+    {
+      "line_number": 112,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_look_alikes_fr_01"
+    },
+    {
+      "line_number": 113,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "DRIVER_LICENSE_look_alikes_de_01"
+    },
+    {
+      "line_number": 114,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "DRIVER_LICENSE_look_alikes_it_01"
+    },
+    {
+      "line_number": 115,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_look_alikes_en_02"
+    },
+    {
+      "line_number": 116,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_look_alikes_fr_02"
+    },
+    {
+      "line_number": 117,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 118,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 119,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "DRIVER_LICENSE_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 120,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "DRIVER_LICENSE_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 121,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "D1234567",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 122,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "12AB34567",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 123,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "DRIVER_LICENSE_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 124,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "TP",
+      "value": "12AB34567",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "DRIVER_LICENSE_long_context_fr_01"
+    },
+    {
+      "line_number": 125,
+      "pii_type": "DRIVER_LICENSE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "DRIVER_LICENSE_long_context_en_01"
+    },
+    {
+      "line_number": 130,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2023-4471",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 131,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "XKQR-5T8A-Z9PM-3RNF",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 132,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2023-4471",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "LICENSE_NUMBER_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 133,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2024-8820",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "LICENSE_NUMBER_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 134,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2023-4471",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 135,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "XKQR-5T8A-Z9PM-3RNF",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 136,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2022-1093",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "LICENSE_NUMBER_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 137,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2024-8820",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "LICENSE_NUMBER_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 138,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_look_alikes_fr_01"
+    },
+    {
+      "line_number": 139,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_look_alikes_en_01"
+    },
+    {
+      "line_number": 140,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "LICENSE_NUMBER_look_alikes_de_01"
+    },
+    {
+      "line_number": 141,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "LICENSE_NUMBER_look_alikes_it_01"
+    },
+    {
+      "line_number": 142,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_look_alikes_en_02"
+    },
+    {
+      "line_number": 143,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_look_alikes_fr_02"
+    },
+    {
+      "line_number": 144,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 145,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 146,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "LICENSE_NUMBER_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 147,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "LICENSE_NUMBER_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 148,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2023-4471",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 149,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "XKQR-5T8A-Z9PM-3RNF",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 150,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "LICENSE_NUMBER_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 151,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "TP",
+      "value": "LIC-2023-4471",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "LICENSE_NUMBER_long_context_fr_01"
+    },
+    {
+      "line_number": 152,
+      "pii_type": "LICENSE_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "LICENSE_NUMBER_long_context_en_01"
+    },
+    {
+      "line_number": 157,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "TAX_ID_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 158,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "TAX_ID_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 159,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "61 952 3741 82",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "TAX_ID_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 160,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "TAX_ID_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 161,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "TAX_ID_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 162,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "98-7654321",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "TAX_ID_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 163,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "61 952 3741 82",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "TAX_ID_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 164,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "44 123 9988 01",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "TAX_ID_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 165,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "TAX_ID_look_alikes_fr_01"
+    },
+    {
+      "line_number": 166,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "TAX_ID_look_alikes_en_01"
+    },
+    {
+      "line_number": 167,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "TAX_ID_look_alikes_de_01"
+    },
+    {
+      "line_number": 168,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "TAX_ID_look_alikes_it_01"
+    },
+    {
+      "line_number": 169,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "TAX_ID_look_alikes_en_02"
+    },
+    {
+      "line_number": 170,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "TAX_ID_look_alikes_fr_02"
+    },
+    {
+      "line_number": 171,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "TAX_ID_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 172,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "TAX_ID_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 173,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "TAX_ID_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 174,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "TAX_ID_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 175,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "TAX_ID_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 176,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "61 952 3741 82",
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "TAX_ID_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 177,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "TAX_ID_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 178,
+      "pii_type": "TAX_ID",
+      "verdict": "TP",
+      "value": "12-3456789",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "TAX_ID_long_context_fr_01"
+    },
+    {
+      "line_number": 179,
+      "pii_type": "TAX_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "TAX_ID_long_context_en_01"
+    },
+    {
+      "line_number": 184,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-123.456.789 TVA",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 185,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "FR12345678901",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "TAX_NUMBER_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 186,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-123.456.789 MWST",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "TAX_NUMBER_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 187,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "FR12345678901",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "TAX_NUMBER_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 188,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-123.456.789 TVA",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 189,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "FR12345678901",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "TAX_NUMBER_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 190,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "1234567890",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "TAX_NUMBER_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 191,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-987.654.321 IVA",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "TAX_NUMBER_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 192,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_look_alikes_fr_01"
+    },
+    {
+      "line_number": 193,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "TAX_NUMBER_look_alikes_en_01"
+    },
+    {
+      "line_number": 194,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "TAX_NUMBER_look_alikes_de_01"
+    },
+    {
+      "line_number": 195,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "TAX_NUMBER_look_alikes_it_01"
+    },
+    {
+      "line_number": 196,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "TAX_NUMBER_look_alikes_en_02"
+    },
+    {
+      "line_number": 197,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_look_alikes_fr_02"
+    },
+    {
+      "line_number": 198,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 199,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "TAX_NUMBER_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 200,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "TAX_NUMBER_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 201,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "TAX_NUMBER_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 202,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-123.456.789 TVA",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 203,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "FR12345678901",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "TAX_NUMBER_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 204,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "TAX_NUMBER_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 205,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "TP",
+      "value": "CHE-123.456.789 TVA",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "TAX_NUMBER_long_context_fr_01"
+    },
+    {
+      "line_number": 206,
+      "pii_type": "TAX_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "TAX_NUMBER_long_context_en_01"
+    },
+    {
+      "line_number": 211,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023 6589 12",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 212,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "12-34567-8",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 213,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "532013000",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "BANK_ACCOUNT_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 214,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023 6589 12",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "BANK_ACCOUNT_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 215,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023 6589 12",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 216,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "12-34567-8",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 217,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "532013000",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "BANK_ACCOUNT_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 218,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023 6589 12",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "BANK_ACCOUNT_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 219,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_look_alikes_fr_01"
+    },
+    {
+      "line_number": 220,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_look_alikes_en_01"
+    },
+    {
+      "line_number": 221,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "BANK_ACCOUNT_look_alikes_de_01"
+    },
+    {
+      "line_number": 222,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "BANK_ACCOUNT_look_alikes_it_01"
+    },
+    {
+      "line_number": 223,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_look_alikes_en_02"
+    },
+    {
+      "line_number": 224,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_look_alikes_fr_02"
+    },
+    {
+      "line_number": 225,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 226,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 227,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "BANK_ACCOUNT_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 228,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "BANK_ACCOUNT_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 229,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 230,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023-6589-12",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 231,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "532 013 000",
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "BANK_ACCOUNT_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 232,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "TP",
+      "value": "0023 6589 12",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "BANK_ACCOUNT_long_context_fr_01"
+    },
+    {
+      "line_number": 233,
+      "pii_type": "BANK_ACCOUNT",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "BANK_ACCOUNT_long_context_en_01"
+    },
+    {
+      "line_number": 238,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT-00231-7789",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 239,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "0001234567",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 240,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT-00231-7789",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "ACCOUNT_NUMBER_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 241,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "0001234567",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "ACCOUNT_NUMBER_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 242,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT-00231-7789",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 243,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "0001234567",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 244,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT-00231-7789",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "ACCOUNT_NUMBER_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 245,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "0001234567",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "ACCOUNT_NUMBER_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 246,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_en_01"
+    },
+    {
+      "line_number": 247,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_fr_01"
+    },
+    {
+      "line_number": 248,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_de_01"
+    },
+    {
+      "line_number": 249,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_it_01"
+    },
+    {
+      "line_number": 250,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_en_02"
+    },
+    {
+      "line_number": 251,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_look_alikes_fr_02"
+    },
+    {
+      "line_number": 252,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 253,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 254,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "ACCOUNT_NUMBER_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 255,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "ACCOUNT_NUMBER_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 256,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT - 00231 - 7789",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 257,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "000 123 4567",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 258,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "ACCOUNT_NUMBER_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 259,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "TP",
+      "value": "ACCT-00231-7789",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "ACCOUNT_NUMBER_long_context_fr_01"
+    },
+    {
+      "line_number": 260,
+      "pii_type": "ACCOUNT_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "ACCOUNT_NUMBER_long_context_en_01"
+    },
+    {
+      "line_number": 265,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021000021",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 266,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "011401533",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 267,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021000021",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "ROUTING_NUMBER_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 268,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "011401533",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "ROUTING_NUMBER_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 269,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021000021",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 270,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "011401533",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 271,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021000021",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "ROUTING_NUMBER_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 272,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "011401533",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "ROUTING_NUMBER_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 273,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_look_alikes_fr_01"
+    },
+    {
+      "line_number": 274,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_look_alikes_en_01"
+    },
+    {
+      "line_number": 275,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "ROUTING_NUMBER_look_alikes_de_01"
+    },
+    {
+      "line_number": 276,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "ROUTING_NUMBER_look_alikes_it_01"
+    },
+    {
+      "line_number": 277,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_look_alikes_en_02"
+    },
+    {
+      "line_number": 278,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_look_alikes_fr_02"
+    },
+    {
+      "line_number": 279,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 280,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 281,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "ROUTING_NUMBER_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 282,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "ROUTING_NUMBER_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 283,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021-000-021",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 284,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "0214 0153 3",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 285,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "ROUTING_NUMBER_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 286,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "TP",
+      "value": "021000021",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "ROUTING_NUMBER_long_context_fr_01"
+    },
+    {
+      "line_number": 287,
+      "pii_type": "ROUTING_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "ROUTING_NUMBER_long_context_en_01"
+    },
+    {
+      "line_number": 292,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "CH9300762011623852957",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "IBAN_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 293,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "FR1420041010050500013M02606",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "IBAN_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 294,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "DE89370400440532013000",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "IBAN_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 295,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "IT60X0542811101000000123456",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "IBAN_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 296,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "CH9300762011623852957",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "IBAN_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 297,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "FR1420041010050500013M02606",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "IBAN_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 298,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "DE89370400440532013000",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "IBAN_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 299,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "IT60X0542811101000000123456",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "IBAN_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 300,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "IBAN_look_alikes_en_01"
+    },
+    {
+      "line_number": 301,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "IBAN_look_alikes_fr_01"
+    },
+    {
+      "line_number": 302,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "IBAN_look_alikes_de_01"
+    },
+    {
+      "line_number": 303,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "IBAN_look_alikes_it_01"
+    },
+    {
+      "line_number": 304,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "IBAN_look_alikes_en_02"
+    },
+    {
+      "line_number": 305,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "IBAN_look_alikes_fr_02"
+    },
+    {
+      "line_number": 306,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "IBAN_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 307,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "IBAN_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 308,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "IBAN_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 309,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "IBAN_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 310,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "CH93 0076 2011 6238 5295 7",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "IBAN_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 311,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "DE89 3704 0044 0532 0130 00",
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "IBAN_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 312,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "IBAN_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 313,
+      "pii_type": "IBAN",
+      "verdict": "TP",
+      "value": "CH9300762011623852957",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "IBAN_long_context_fr_01"
+    },
+    {
+      "line_number": 314,
+      "pii_type": "IBAN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "IBAN_long_context_en_01"
+    },
+    {
+      "line_number": 319,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111 1111 1111 1111",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 320,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "5555 5555 5555 4444",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 321,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111 1111 1111 1111",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "PAYMENT_CARD_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 322,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "3782 822463 10005",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "PAYMENT_CARD_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 323,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111 1111 1111 1111",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 324,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "5555 5555 5555 4444",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 325,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "3782 822463 10005",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "PAYMENT_CARD_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 326,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111 1111 1111 1111",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "PAYMENT_CARD_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 327,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_look_alikes_en_01"
+    },
+    {
+      "line_number": 328,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_look_alikes_fr_01"
+    },
+    {
+      "line_number": 329,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "PAYMENT_CARD_look_alikes_de_01"
+    },
+    {
+      "line_number": 330,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "PAYMENT_CARD_look_alikes_it_01"
+    },
+    {
+      "line_number": 331,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_look_alikes_en_02"
+    },
+    {
+      "line_number": 332,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_look_alikes_fr_02"
+    },
+    {
+      "line_number": 333,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 334,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 335,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "PAYMENT_CARD_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 336,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "PAYMENT_CARD_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 337,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111-1111-1111-1111",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 338,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111111111111111",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 339,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "PAYMENT_CARD_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 340,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "TP",
+      "value": "4111 1111 1111 1111",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "PAYMENT_CARD_long_context_fr_01"
+    },
+    {
+      "line_number": 341,
+      "pii_type": "PAYMENT_CARD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "PAYMENT_CARD_long_context_en_01"
+    },
+    {
+      "line_number": 346,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 347,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "CARD_NUMBER_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 348,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "CARD_NUMBER_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 349,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "CARD_NUMBER_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 350,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 351,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "CARD_NUMBER_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 352,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "CARD_NUMBER_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 353,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "CARD_NUMBER_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 354,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_NUMBER_look_alikes_en_01"
+    },
+    {
+      "line_number": 355,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_look_alikes_fr_01"
+    },
+    {
+      "line_number": 356,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "CARD_NUMBER_look_alikes_de_01"
+    },
+    {
+      "line_number": 357,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "CARD_NUMBER_look_alikes_it_01"
+    },
+    {
+      "line_number": 358,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_NUMBER_look_alikes_en_02"
+    },
+    {
+      "line_number": 359,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_look_alikes_fr_02"
+    },
+    {
+      "line_number": 360,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 361,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "CARD_NUMBER_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 362,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "CARD_NUMBER_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 363,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "CARD_NUMBER_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 364,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242-4242-4242-4242",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 365,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242424242424242",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "CARD_NUMBER_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 366,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "CARD_NUMBER_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 367,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "TP",
+      "value": "4242 4242 4242 4242",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "CARD_NUMBER_long_context_fr_01"
+    },
+    {
+      "line_number": 368,
+      "pii_type": "CARD_NUMBER",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "CARD_NUMBER_long_context_en_01"
+    },
+    {
+      "line_number": 373,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04/27",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 374,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "12/2026",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 375,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "03/28",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "CARD_EXPIRY_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 376,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04/27",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "CARD_EXPIRY_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 377,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04/27",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 378,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "12/2026",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 379,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "03/28",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "CARD_EXPIRY_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 380,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "12/2026",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "CARD_EXPIRY_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 381,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_look_alikes_fr_01"
+    },
+    {
+      "line_number": 382,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_look_alikes_en_01"
+    },
+    {
+      "line_number": 383,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "CARD_EXPIRY_look_alikes_de_01"
+    },
+    {
+      "line_number": 384,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "CARD_EXPIRY_look_alikes_it_01"
+    },
+    {
+      "line_number": 385,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_look_alikes_en_02"
+    },
+    {
+      "line_number": 386,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_look_alikes_fr_02"
+    },
+    {
+      "line_number": 387,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 388,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 389,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "CARD_EXPIRY_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 390,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "CARD_EXPIRY_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 391,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04 / 27",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 392,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04-27",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 393,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "CARD_EXPIRY_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 394,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "TP",
+      "value": "04/27",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "CARD_EXPIRY_long_context_fr_01"
+    },
+    {
+      "line_number": 395,
+      "pii_type": "CARD_EXPIRY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "CARD_EXPIRY_long_context_en_01"
+    },
+    {
+      "line_number": 400,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "737",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "CARD_CVV_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 401,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "519",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "CARD_CVV_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 402,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "248",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "CARD_CVV_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 403,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "1234",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "CARD_CVV_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 404,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "737",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "CARD_CVV_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 405,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "519",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "CARD_CVV_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 406,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "248",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "CARD_CVV_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 407,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "1234",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "CARD_CVV_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 408,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_CVV_look_alikes_en_01"
+    },
+    {
+      "line_number": 409,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_CVV_look_alikes_fr_01"
+    },
+    {
+      "line_number": 410,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "CARD_CVV_look_alikes_de_01"
+    },
+    {
+      "line_number": 411,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "CARD_CVV_look_alikes_it_01"
+    },
+    {
+      "line_number": 412,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "CARD_CVV_look_alikes_en_02"
+    },
+    {
+      "line_number": 413,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "CARD_CVV_look_alikes_fr_02"
+    },
+    {
+      "line_number": 414,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "CARD_CVV_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 415,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "CARD_CVV_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 416,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "CARD_CVV_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 417,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "CARD_CVV_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 418,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "CARD_CVV_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 419,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "519",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "CARD_CVV_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 420,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "248",
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "CARD_CVV_adversarial_formatting_de_01"
+    },
+    {
+      "line_number": 421,
+      "pii_type": "CARD_CVV",
+      "verdict": "TP",
+      "value": "737",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "CARD_CVV_long_context_fr_01"
+    },
+    {
+      "line_number": 422,
+      "pii_type": "CARD_CVV",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "CARD_CVV_long_context_en_01"
+    },
+    {
+      "line_number": 427,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "jdupont",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "USERNAME_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 428,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "admin_svc",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "USERNAME_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 429,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "m.mueller",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "USERNAME_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 430,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "athena_svc",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "USERNAME_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 431,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "jdupont",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "USERNAME_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 432,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "@alice_m",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "USERNAME_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 433,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "m.mueller",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "USERNAME_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 434,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "athena_svc",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "USERNAME_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 435,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "USERNAME_look_alikes_fr_01"
+    },
+    {
+      "line_number": 436,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "USERNAME_look_alikes_en_01"
+    },
+    {
+      "line_number": 437,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "USERNAME_look_alikes_de_01"
+    },
+    {
+      "line_number": 438,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "USERNAME_look_alikes_it_01"
+    },
+    {
+      "line_number": 439,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "USERNAME_look_alikes_en_02"
+    },
+    {
+      "line_number": 440,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "USERNAME_look_alikes_fr_02"
+    },
+    {
+      "line_number": 441,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "USERNAME_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 442,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "USERNAME_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 443,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "USERNAME_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 444,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "USERNAME_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 445,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "jdupont",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "USERNAME_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 446,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "admin_svc",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "USERNAME_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 447,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "USERNAME_adversarial_formatting_de_02"
+    },
+    {
+      "line_number": 448,
+      "pii_type": "USERNAME",
+      "verdict": "TP",
+      "value": "athena_svc",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "USERNAME_long_context_fr_01"
+    },
+    {
+      "line_number": 449,
+      "pii_type": "USERNAME",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "USERNAME_long_context_en_01"
+    },
+    {
+      "line_number": 454,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "10.0.4.27",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 455,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "192.168.1.1",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "IP_ADDRESS_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 456,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "172.22.0.5",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "IP_ADDRESS_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 457,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "2001:db8::1",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "IP_ADDRESS_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 458,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "10.0.4.27",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 459,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "192.168.1.1",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "IP_ADDRESS_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 460,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "fe80::1ff:fe23:4567:890a",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "IP_ADDRESS_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 461,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "2001:db8::1",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "IP_ADDRESS_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 462,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "IP_ADDRESS_look_alikes_en_01"
+    },
+    {
+      "line_number": 463,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_look_alikes_fr_01"
+    },
+    {
+      "line_number": 464,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "IP_ADDRESS_look_alikes_de_01"
+    },
+    {
+      "line_number": 465,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "IP_ADDRESS_look_alikes_it_01"
+    },
+    {
+      "line_number": 466,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "IP_ADDRESS_look_alikes_en_02"
+    },
+    {
+      "line_number": 467,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_look_alikes_fr_02"
+    },
+    {
+      "line_number": 468,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 469,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "IP_ADDRESS_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 470,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "IP_ADDRESS_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 471,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "IP_ADDRESS_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 472,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "10.0.4.27",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "IP_ADDRESS_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 473,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "192.168.1.1",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 474,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "IP_ADDRESS_adversarial_formatting_de_02"
+    },
+    {
+      "line_number": 475,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "TP",
+      "value": "10.0.4.27",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "IP_ADDRESS_long_context_fr_01"
+    },
+    {
+      "line_number": 476,
+      "pii_type": "IP_ADDRESS",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "IP_ADDRESS_long_context_en_01"
+    },
+    {
+      "line_number": 481,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "acct_1J5KQ2EnExampleId",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 482,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CUST-00231",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 483,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "uid-7782341",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "ACCOUNT_ID_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 484,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CUST-00231",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "ACCOUNT_ID_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 485,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "acct_1J5KQ2EnExampleId",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 486,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CUST-00231",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 487,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "uid-7782341",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "ACCOUNT_ID_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 488,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "acct_1J5KQ2EnExampleId",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "ACCOUNT_ID_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 489,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_look_alikes_en_01"
+    },
+    {
+      "line_number": 490,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_look_alikes_fr_01"
+    },
+    {
+      "line_number": 491,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "ACCOUNT_ID_look_alikes_de_01"
+    },
+    {
+      "line_number": 492,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "ACCOUNT_ID_look_alikes_it_01"
+    },
+    {
+      "line_number": 493,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_look_alikes_en_02"
+    },
+    {
+      "line_number": 494,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_look_alikes_fr_02"
+    },
+    {
+      "line_number": 495,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 496,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 497,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "ACCOUNT_ID_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 498,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "ACCOUNT_ID_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 499,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "acct_1J5KQ2EnExampleId",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 500,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CUST-00231",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 501,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "ACCOUNT_ID_adversarial_formatting_de_02"
+    },
+    {
+      "line_number": 502,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "acct_1J5KQ2EnExampleId",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "ACCOUNT_ID_long_context_fr_01"
+    },
+    {
+      "line_number": 503,
+      "pii_type": "ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "ACCOUNT_ID_long_context_en_01"
+    },
+    {
+      "line_number": 508,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "ORD-2024-78421",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 509,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "INV-99231",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 510,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "DOSSIER-CH-44812",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 511,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CONTRAT-7789",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 512,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "ORD-2024-78421",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 513,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "INV-99231",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 514,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "DOSSIER-CH-44812",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 515,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "CONTRAT-7789",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "SENSITIVE_ACCOUNT_ID_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 516,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_en_01"
+    },
+    {
+      "line_number": 517,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_fr_01"
+    },
+    {
+      "line_number": 518,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_de_01"
+    },
+    {
+      "line_number": 519,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_it_01"
+    },
+    {
+      "line_number": 520,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_en_02"
+    },
+    {
+      "line_number": 521,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_look_alikes_fr_02"
+    },
+    {
+      "line_number": 522,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 523,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 524,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "SENSITIVE_ACCOUNT_ID_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 525,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "SENSITIVE_ACCOUNT_ID_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 526,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "ORD-2024-78421",
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 527,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "INV-99231",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 528,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "de",
+      "case_id": "SENSITIVE_ACCOUNT_ID_adversarial_formatting_de_02"
+    },
+    {
+      "line_number": 529,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "TP",
+      "value": "ORD-2024-78421",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "SENSITIVE_ACCOUNT_ID_long_context_fr_01"
+    },
+    {
+      "line_number": 530,
+      "pii_type": "SENSITIVE_ACCOUNT_ID",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "SENSITIVE_ACCOUNT_ID_long_context_en_01"
+    },
+    {
+      "line_number": 535,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Tr0ub4dor!2024",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "PASSWORD_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 536,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "P@ssw0rd-Spring#2024",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "PASSWORD_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 537,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Sommer$Regen-19!",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "PASSWORD_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 538,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Estate&Sole#2024",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "PASSWORD_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 539,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Tr0ub4dor!2024",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "PASSWORD_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 540,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "P@ssw0rd-Spring#2024",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "PASSWORD_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 541,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Sommer$Regen-19!",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "PASSWORD_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 542,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Estate&Sole#2024",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "PASSWORD_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 543,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PASSWORD_look_alikes_en_01"
+    },
+    {
+      "line_number": 544,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PASSWORD_look_alikes_en_02"
+    },
+    {
+      "line_number": 545,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "PASSWORD_look_alikes_fr_01"
+    },
+    {
+      "line_number": 546,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "PASSWORD_look_alikes_de_01"
+    },
+    {
+      "line_number": 547,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "PASSWORD_look_alikes_it_01"
+    },
+    {
+      "line_number": 548,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "PASSWORD_look_alikes_en_03"
+    },
+    {
+      "line_number": 549,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "PASSWORD_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 550,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "PASSWORD_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 551,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "PASSWORD_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 552,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "PASSWORD_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 553,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Tr0ub4dor!2024",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "PASSWORD_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 554,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "P@ssw0rd-Spring#2024",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "PASSWORD_adversarial_formatting_en_02"
+    },
+    {
+      "line_number": 555,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "PASSWORD_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 556,
+      "pii_type": "PASSWORD",
+      "verdict": "TP",
+      "value": "Sommer$Regen-19!",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "PASSWORD_long_context_fr_01"
+    },
+    {
+      "line_number": 557,
+      "pii_type": "PASSWORD",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "PASSWORD_long_context_en_01"
+    },
+    {
+      "line_number": 562,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "s3cr3t_v4lue_9xQ",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "SECRET_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 563,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "8a9f2c1d4b6e7081",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "SECRET_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 564,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "vault://prod/db#Hk7-Zq91",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "SECRET_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 565,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "s3cr3t_v4lue_9xQ",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "SECRET_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 566,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "s3cr3t_v4lue_9xQ",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "SECRET_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 567,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "8a9f2c1d4b6e7081",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "SECRET_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 568,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "Hk7-Zq91-Wm33",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "SECRET_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 569,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "s3cr3t_v4lue_9xQ",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "SECRET_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 570,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "SECRET_look_alikes_en_01"
+    },
+    {
+      "line_number": 571,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "SECRET_look_alikes_en_02"
+    },
+    {
+      "line_number": 572,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "SECRET_look_alikes_fr_01"
+    },
+    {
+      "line_number": 573,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "SECRET_look_alikes_de_01"
+    },
+    {
+      "line_number": 574,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "SECRET_look_alikes_it_01"
+    },
+    {
+      "line_number": 575,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "SECRET_look_alikes_en_03"
+    },
+    {
+      "line_number": 576,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "SECRET_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 577,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "SECRET_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 578,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "SECRET_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 579,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "SECRET_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 580,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "8a9f2c1d4b6e7081",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "SECRET_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 581,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "s3cr3t_v4lue_9xQ",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "SECRET_adversarial_formatting_en_02"
+    },
+    {
+      "line_number": 582,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "SECRET_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 583,
+      "pii_type": "SECRET",
+      "verdict": "TP",
+      "value": "8a9f2c1d4b6e7081",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "SECRET_long_context_fr_01"
+    },
+    {
+      "line_number": 584,
+      "pii_type": "SECRET",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "SECRET_long_context_en_01"
+    },
+    {
+      "line_number": 589,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "API_KEY_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 590,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "AKIAIOSFODNN7EXAMPLE",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "API_KEY_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 591,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "AIzaSyD-EXAMPLE-key",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "API_KEY_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 592,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "API_KEY_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 593,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "API_KEY_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 594,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "AKIAIOSFODNN7EXAMPLE",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "API_KEY_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 595,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "AIzaSyD-EXAMPLE-key",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "API_KEY_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 596,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "API_KEY_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 597,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "API_KEY_look_alikes_en_01"
+    },
+    {
+      "line_number": 598,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "API_KEY_look_alikes_en_02"
+    },
+    {
+      "line_number": 599,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "API_KEY_look_alikes_fr_01"
+    },
+    {
+      "line_number": 600,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "API_KEY_look_alikes_de_01"
+    },
+    {
+      "line_number": 601,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "API_KEY_look_alikes_it_01"
+    },
+    {
+      "line_number": 602,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "API_KEY_look_alikes_en_03"
+    },
+    {
+      "line_number": 603,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "API_KEY_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 604,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "API_KEY_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 605,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "API_KEY_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 606,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "API_KEY_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 607,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "API_KEY_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 608,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "AIzaSyD-EXAMPLE-key",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "API_KEY_adversarial_formatting_en_02"
+    },
+    {
+      "line_number": 609,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "API_KEY_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 610,
+      "pii_type": "API_KEY",
+      "verdict": "TP",
+      "value": "sk_live_4eC39HqLyjWDarjtT1zdp7dc",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "API_KEY_long_context_fr_01"
+    },
+    {
+      "line_number": 611,
+      "pii_type": "API_KEY",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "API_KEY_long_context_en_01"
+    },
+    {
+      "line_number": 616,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 617,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ya29.a0AfH-EXAMPLE-token",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 618,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "ACCESS_TOKEN_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 619,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "ACCESS_TOKEN_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 620,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 621,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 622,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ya29.a0AfH-EXAMPLE-token",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "ACCESS_TOKEN_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 623,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "ACCESS_TOKEN_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 624,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_look_alikes_en_01"
+    },
+    {
+      "line_number": 625,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_look_alikes_en_02"
+    },
+    {
+      "line_number": 626,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_look_alikes_fr_01"
+    },
+    {
+      "line_number": 627,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "ACCESS_TOKEN_look_alikes_de_01"
+    },
+    {
+      "line_number": 628,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "ACCESS_TOKEN_look_alikes_it_01"
+    },
+    {
+      "line_number": 629,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_look_alikes_en_03"
+    },
+    {
+      "line_number": 630,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 631,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 632,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "ACCESS_TOKEN_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 633,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "ACCESS_TOKEN_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 634,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 635,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_adversarial_formatting_en_02"
+    },
+    {
+      "line_number": 636,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 637,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "TP",
+      "value": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "ACCESS_TOKEN_long_context_fr_01"
+    },
+    {
+      "line_number": 638,
+      "pii_type": "ACCESS_TOKEN",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "ACCESS_TOKEN_long_context_en_01"
+    },
+    {
+      "line_number": 643,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "ABCD-EFGH-1234",
+      "axis": "canonical_with_clue",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_canonical_with_clue_fr_01"
+    },
+    {
+      "line_number": 644,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "8f3k-29dz-71qm",
+      "axis": "canonical_with_clue",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_canonical_with_clue_en_01"
+    },
+    {
+      "line_number": 645,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "RECOV-7782-3341",
+      "axis": "canonical_with_clue",
+      "language": "de",
+      "case_id": "RECOVERY_CODE_canonical_with_clue_de_01"
+    },
+    {
+      "line_number": 646,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "ABCD-EFGH-1234",
+      "axis": "canonical_with_clue",
+      "language": "it",
+      "case_id": "RECOVERY_CODE_canonical_with_clue_it_01"
+    },
+    {
+      "line_number": 647,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "ABCD-EFGH-1234",
+      "axis": "canonical_no_clue",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_canonical_no_clue_en_01"
+    },
+    {
+      "line_number": 648,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "8f3k-29dz-71qm",
+      "axis": "canonical_no_clue",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_canonical_no_clue_fr_01"
+    },
+    {
+      "line_number": 649,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "RECOV-7782-3341",
+      "axis": "canonical_no_clue",
+      "language": "de",
+      "case_id": "RECOVERY_CODE_canonical_no_clue_de_01"
+    },
+    {
+      "line_number": 650,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "8f3k-29dz-71qm",
+      "axis": "canonical_no_clue",
+      "language": "it",
+      "case_id": "RECOVERY_CODE_canonical_no_clue_it_01"
+    },
+    {
+      "line_number": 651,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_look_alikes_en_01"
+    },
+    {
+      "line_number": 652,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_look_alikes_fr_01"
+    },
+    {
+      "line_number": 653,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_look_alikes_en_02"
+    },
+    {
+      "line_number": 654,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "de",
+      "case_id": "RECOVERY_CODE_look_alikes_de_01"
+    },
+    {
+      "line_number": 655,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "it",
+      "case_id": "RECOVERY_CODE_look_alikes_it_01"
+    },
+    {
+      "line_number": 656,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "look_alikes",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_look_alikes_en_03"
+    },
+    {
+      "line_number": 657,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_explicit_negatives_fr_01"
+    },
+    {
+      "line_number": 658,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_explicit_negatives_en_01"
+    },
+    {
+      "line_number": 659,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "de",
+      "case_id": "RECOVERY_CODE_explicit_negatives_de_01"
+    },
+    {
+      "line_number": 660,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "explicit_negatives",
+      "language": "it",
+      "case_id": "RECOVERY_CODE_explicit_negatives_it_01"
+    },
+    {
+      "line_number": 661,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "ABCD-EFGH-1234",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_adversarial_formatting_en_01"
+    },
+    {
+      "line_number": 662,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "8f3k-29dz-71qm",
+      "axis": "adversarial_formatting",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_adversarial_formatting_en_02"
+    },
+    {
+      "line_number": 663,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "adversarial_formatting",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_adversarial_formatting_fr_01"
+    },
+    {
+      "line_number": 664,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "TP",
+      "value": "RECOV-7782-3341",
+      "axis": "long_context",
+      "language": "fr",
+      "case_id": "RECOVERY_CODE_long_context_fr_01"
+    },
+    {
+      "line_number": 665,
+      "pii_type": "RECOVERY_CODE",
+      "verdict": "FP",
+      "value": null,
+      "axis": "long_context",
+      "language": "en",
+      "case_id": "RECOVERY_CODE_long_context_en_01"
+    }
+  ]
+}

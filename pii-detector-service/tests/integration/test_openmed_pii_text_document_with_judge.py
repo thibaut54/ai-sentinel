@@ -134,8 +134,15 @@ class LinePosition:
 # ---------------------------------------------------------------------------
 
 
-def _parse_document() -> Tuple[str, List[AnnotatedLine], List[LinePosition]]:
+def _parse_document(
+    document_path: Path = DOCUMENT_PATH,
+    annotations_path: Path = ANNOTATIONS_PATH,
+) -> Tuple[str, List[AnnotatedLine], List[LinePosition]]:
     """Load the plain-text document + its sidecar annotations.
+
+    ``document_path`` / ``annotations_path`` default to the OpenMed document
+    pair but can be overridden so sibling tests (e.g. the GLiNER2 document-wide
+    test) reuse this exact parser on their own document + sidecar.
 
     Returns ``(scan_document, annotations, positions)``:
 
@@ -156,26 +163,26 @@ def _parse_document() -> Tuple[str, List[AnnotatedLine], List[LinePosition]]:
     ``scan_document`` so OpenMed sees the realistic surrounding context,
     but they are simply not scored.
     """
-    if not DOCUMENT_PATH.exists():
+    if not document_path.exists():
         raise AssertionError(
-            f"Missing PII test document at {DOCUMENT_PATH}. Regenerate via "
-            f"`python tests/resources/openmed-fp-eval/_generate_text_document.py`."
+            f"Missing PII test document at {document_path}. Regenerate via the "
+            f"matching `_generate_text_document.py`."
         )
-    if not ANNOTATIONS_PATH.exists():
+    if not annotations_path.exists():
         raise AssertionError(
-            f"Missing annotations sidecar at {ANNOTATIONS_PATH}. The "
+            f"Missing annotations sidecar at {annotations_path}. The "
             f"generator writes both files together — regenerate if you "
             f"only have one."
         )
 
-    scan_document = DOCUMENT_PATH.read_text(encoding="utf-8")
+    scan_document = document_path.read_text(encoding="utf-8")
     file_lines = scan_document.split("\n")
 
-    payload = json.loads(ANNOTATIONS_PATH.read_text(encoding="utf-8"))
+    payload = json.loads(annotations_path.read_text(encoding="utf-8"))
     raw_entries = payload.get("lines", [])
     if not raw_entries:
         raise AssertionError(
-            f"Annotations file {ANNOTATIONS_PATH} contains no entries."
+            f"Annotations file {annotations_path} contains no entries."
         )
 
     # Precompute (start, end) of each physical line in the scan_document so

@@ -1,0 +1,234 @@
+{
+  "pii_type": "GOVERNMENT_ID",
+  "detector_label": "government_id",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "GOVERNMENT_ID_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Pièce d'identité étatique : CHE-ID-884512 délivrée au guichet.",
+      "expected_spans": [
+        {
+          "start": 28,
+          "end": 41,
+          "value": "CHE-ID-884512"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Government ID on file: AB123456C for the applicant.",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 32,
+          "value": "AB123456C"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Staatlicher Ausweis (Government ID): CHE-ID-771209 hinterlegt.",
+      "expected_spans": [
+        {
+          "start": 37,
+          "end": 50,
+          "value": "CHE-ID-771209"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Documento d'identità statale: CHE-ID-552108 registrato a sistema.",
+      "expected_spans": [
+        {
+          "start": 30,
+          "end": 43,
+          "value": "CHE-ID-552108"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "CHE-ID-884512",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 13,
+          "value": "CHE-ID-884512"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "AB123456C",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 9,
+          "value": "AB123456C"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "CHE-ID-771209",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 13,
+          "value": "CHE-ID-771209"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "CHE-ID-552108",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 13,
+          "value": "CHE-ID-552108"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Badge employé : EMP-884512 à présenter à l'accueil.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Customer number CUST-AB123456 was migrated to the new CRM.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Mitarbeiterausweis-Nr. BADGE-771209 für den Zutritt.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Codice cliente CLI-552108 nel gestionale interno.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Asset tag SRV-AB123456C mounted in rack B12.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Référence dossier RH-CHE-884512 archivée.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "La pièce d'identité étatique doit être présentée lors du dépôt du dossier.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "A valid government ID is required to open an account; no number is stored here.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Ein gültiger staatlicher Ausweis ist erforderlich, jedoch keine Nummer hinterlegt.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "È richiesto un documento d'identità statale valido, ma nessun numero è memorizzato.",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "ID étatique :\nCHE-ID-884512",
+      "expected_spans": [
+        {
+          "start": 14,
+          "end": 27,
+          "value": "CHE-ID-884512"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Government ID > AB123456C <",
+      "expected_spans": [
+        {
+          "start": 16,
+          "end": 25,
+          "value": "AB123456C"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Ausweis: C H E - I D - 7 7 1 2 0 9",
+      "expected_spans": []
+    },
+    {
+      "id": "GOVERNMENT_ID_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Page Confluence — Procédure d'onboarding RH (révision 12)\n\nCette page décrit les étapes d'intégration d'un nouveau collaborateur. Le pipeline CI/CD (Jenkins job onboarding-prod) provisionne les comptes LDAP via le rôle ansible 'hr-bootstrap'. Les secrets sont stockés dans Vault sous le mount kv/hr. Étape 4 — vérification documentaire : scanner la pièce d'identité étatique du collaborateur. Exemple de dossier validé : pièce d'identité étatique CHE-ID-884512 enregistrée dans GED Alfresco. Étape 5 — activation du badge physique (système Kaba), provisioning du poste (image Windows 11 standard), et inscription à la mailing-list interne. Les logs d'audit sont expédiés vers Splunk index=hr-audit. Pour toute anomalie, ouvrir un ticket Jira projet HR avec le label 'onboarding-blocker' et mentionner le responsable de service.",
+      "expected_spans": [
+        {
+          "start": 447,
+          "end": 460,
+          "value": "CHE-ID-884512"
+        }
+      ]
+    },
+    {
+      "id": "GOVERNMENT_ID_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Confluence page — Infrastructure runbook (Government services platform)\n\nThis runbook documents the deployment topology of the citizen portal. The Kubernetes namespace 'gov-portal' hosts 14 microservices behind an NGINX ingress. Database is PostgreSQL 15 (RDS instance gov-portal-db-1), connection pooling via PgBouncer. The identity verification service calls an external KYC provider over mTLS; no government ID number is persisted in our datastore, only a hashed reference token like REF-AB123456 used for idempotency. Asset tags such as SRV-77120900 track rack hardware. Monitoring uses Prometheus + Grafana (dashboard 'gov-portal-overview'), alerts route to PagerDuty schedule 'gov-oncall'. Backups run nightly to S3 bucket gov-portal-backups with 30-day retention.",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "pii_type": "ACCOUNT_ID",
+  "detector_label": "account_id",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "ACCOUNT_ID_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Identifiant de compte technique : acct_1J5KQ2EnExampleId",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 56,
+          "value": "acct_1J5KQ2EnExampleId"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "The customer account id on file is CUST-00231 for this tenant.",
+      "expected_spans": [
+        {
+          "start": 35,
+          "end": 45,
+          "value": "CUST-00231"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Die Konto-ID des Benutzers lautet uid-7782341 im System.",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 45,
+          "value": "uid-7782341"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Identificativo account del cliente: CUST-00231 nel registro.",
+      "expected_spans": [
+        {
+          "start": 36,
+          "end": 46,
+          "value": "CUST-00231"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "acct_1J5KQ2EnExampleId",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 22,
+          "value": "acct_1J5KQ2EnExampleId"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "CUST-00231",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 10,
+          "value": "CUST-00231"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "uid-7782341",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 11,
+          "value": "uid-7782341"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "acct_1J5KQ2EnExampleId",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 22,
+          "value": "acct_1J5KQ2EnExampleId"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The Mongo document _id is 507f1f77bcf86cd799439011 in the orders collection.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le correlationId de la requete est 9f1c2e7a-4b6d-4e2a-9c1f-3d8a7b6e5f40.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Das Support-Ticket INC-447 wurde gestern Abend automatisch geschlossen.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "L'identificativo della sessione e a3f9-bb12-77ce generato dal gateway.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The trace id 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01 was logged.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le hash du commit deploye est e28e530 sur la branche principale.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "L'identifiant de compte sera communique par courrier separe au titulaire.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "The account id is not available until the onboarding step is completed.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Konto-ID wird erst nach der Freischaltung des Kontos vergeben.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "L'identificativo account verra mostrato dopo la verifica dell'indirizzo email.",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "account_id=acct_1J5KQ2EnExampleId&status=active",
+      "expected_spans": [
+        {
+          "start": 11,
+          "end": 33,
+          "value": "acct_1J5KQ2EnExampleId"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "[compte:CUST-00231]",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 18,
+          "value": "CUST-00231"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_adversarial_formatting_de_02",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "C U S T - 0 0 2 3 1",
+      "expected_spans": []
+    },
+    {
+      "id": "ACCOUNT_ID_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Au cours de l'audit trimestriel des acces, l'equipe conformite a recoupe les exports de facturation avec l'annuaire interne. Plusieurs anomalies ont ete relevees, mais la plus critique concernait un compte technique orphelin dont l'identifiant acct_1J5KQ2EnExampleId restait rattache a un prestataire ayant quitte l'organisation depuis plusieurs mois.",
+      "expected_spans": [
+        {
+          "start": 244,
+          "end": 266,
+          "value": "acct_1J5KQ2EnExampleId"
+        }
+      ]
+    },
+    {
+      "id": "ACCOUNT_ID_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "While triaging the backlog the team noticed that several support tickets such as INC-447 and the related Mongo document with _id 507f1f77bcf86cd799439011 had been duplicated by a faulty integration, so the cleanup script targets those technical references only and never touches any customer account fields.",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "pii_type": "DRIVER_LICENSE",
+  "detector_label": "drivers_license_number",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "DRIVER_LICENSE_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Numéro de permis de conduire : 12AB34567 (catégorie B).",
+      "expected_spans": [
+        {
+          "start": 31,
+          "end": 40,
+          "value": "12AB34567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Driver's license number: D1234567 valid until 2029.",
+      "expected_spans": [
+        {
+          "start": 25,
+          "end": 33,
+          "value": "D1234567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Führerscheinnummer: B072RRE2I55 eingetragen.",
+      "expected_spans": [
+        {
+          "start": 20,
+          "end": 31,
+          "value": "B072RRE2I55"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Numero della patente di guida: D1234567 della titolare.",
+      "expected_spans": [
+        {
+          "start": 31,
+          "end": 39,
+          "value": "D1234567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "12AB34567",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 9,
+          "value": "12AB34567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "D1234567",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "value": "D1234567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "B072RRE2I55",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 11,
+          "value": "B072RRE2I55"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "D7654321",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "value": "D7654321"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Software license key D1234567 activated on three seats.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Étiquette d'inventaire ASSET-12AB34567 collée sur le portable.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Lizenzschlüssel B072RRE2I55 für die Buchhaltungssoftware.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Tag asset SRV-D1234567 nel rack del datacenter.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Fishing permit number 12AB34567 issued by the county office.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Numéro de série moteur B072RRE2I55 gravé sur le bloc.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Le numéro de permis de conduire sera vérifié lors de la location du véhicule.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "A driver's license number is mandatory to rent a car; bring the physical card.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Führerscheinnummer wird bei der Anmietung geprüft, aber nicht gespeichert.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il numero della patente di guida è richiesto al noleggio, ma non viene conservato.",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Permis de conduire :\nD1234567",
+      "expected_spans": [
+        {
+          "start": 21,
+          "end": 29,
+          "value": "D1234567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "DL no. = 12AB34567",
+      "expected_spans": [
+        {
+          "start": 9,
+          "end": 18,
+          "value": "12AB34567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Führerschein: B 0 7 2 R R E 2 I 5 5",
+      "expected_spans": []
+    },
+    {
+      "id": "DRIVER_LICENSE_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Confluence — Module de location de véhicules (fleet-rental)\n\nLe module gère le cycle de vie d'une réservation, du devis à la restitution. Stack : Spring Boot 3, base MySQL 8, files RabbitMQ pour les notifications. À l'étape de remise des clés, l'agent scanne le permis du client via l'app mobile (React Native). Cas de recette validé : permis de conduire 12AB34567 contrôlé et photographié, état des lieux signé électroniquement. Les contrats PDF sont générés via le service éditique et archivés dans la GED. Les KPIs (taux de restitution à l'heure, dommages déclarés) remontent dans un dashboard Metabase. Les sauvegardes de la base sont quotidiennes avec rétention de 35 jours. Un job de purge RGPD anonymise les dossiers clos depuis plus de 3 ans.",
+      "expected_spans": [
+        {
+          "start": 355,
+          "end": 364,
+          "value": "12AB34567"
+        }
+      ]
+    },
+    {
+      "id": "DRIVER_LICENSE_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Confluence — Telematics ingestion service design\n\nThis service ingests telematics events from the rental fleet over MQTT. Each vehicle publishes GPS, odometer and fault codes every 30 seconds. Events land in a Kafka topic ('telematics-raw') and are aggregated by a Flink job into hourly rollups. No driver's license number is stored in this pipeline — only vehicle asset tags such as ASSET-12AB34567 and software license keys like B072RRE2I55 for the embedded firmware. Data is retained 90 days in ClickHouse for analytics, then downsampled. The service exposes Prometheus metrics and is deployed via Helm to the 'fleet' namespace. On-call alerts route to the 'fleet-oncall' PagerDuty schedule when event lag exceeds five minutes.",
+      "expected_spans": []
+    }
+  ]
+}

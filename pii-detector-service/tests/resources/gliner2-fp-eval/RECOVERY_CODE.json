@@ -1,0 +1,239 @@
+{
+  "pii_type": "RECOVERY_CODE",
+  "detector_label": "recovery_code",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "RECOVERY_CODE_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Code de recuperation : ABCD-EFGH-1234",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 37,
+          "value": "ABCD-EFGH-1234"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Backup code: 8f3k-29dz-71qm",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 27,
+          "value": "8f3k-29dz-71qm"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Ihr Wiederherstellungscode lautet RECOV-7782-3341",
+      "expected_spans": [
+        {
+          "start": 34,
+          "end": 49,
+          "value": "RECOV-7782-3341"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Il codice di recupero e ABCD-EFGH-1234",
+      "expected_spans": [
+        {
+          "start": 24,
+          "end": 38,
+          "value": "ABCD-EFGH-1234"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "ABCD-EFGH-1234",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 14,
+          "value": "ABCD-EFGH-1234"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "Conserve 8f3k-29dz-71qm en lieu sur hors ligne.",
+      "expected_spans": [
+        {
+          "start": 9,
+          "end": 23,
+          "value": "8f3k-29dz-71qm"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "Bewahre RECOV-7782-3341 an einem sicheren Ort auf.",
+      "expected_spans": [
+        {
+          "start": 8,
+          "end": 23,
+          "value": "RECOV-7782-3341"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "Annota 8f3k-29dz-71qm prima di chiudere questa pagina.",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 21,
+          "value": "8f3k-29dz-71qm"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Your software license number is XPRO-2024-EDIT-9981.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le tag d'inventaire de l'ordinateur portable est ASSET-IT-04417.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Use promo code SUMMER-2024 at checkout for 20% off.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Die Bestellnummer lautet ORD-2024-77821 im Shop-System.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Il numero di tracking del pacco e TRK-9981-4471-IT.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_look_alikes_en_03",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The product SKU is SKU-AB12-CD34 in the catalog export.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Vos codes de recuperation ont ete regeneres avec succes.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Download your backup codes and store them in a safe place.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Bitte bewahren Sie Ihre Wiederherstellungscodes sicher auf.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Hai gia utilizzato tutti i tuoi codici di recupero.",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "code=ABCD-EFGH-1234;used=false",
+      "expected_spans": [
+        {
+          "start": 5,
+          "end": 19,
+          "value": "ABCD-EFGH-1234"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_adversarial_formatting_en_02",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "[\"8f3k-29dz-71qm\",\"RECOV-7782-3341\"]",
+      "expected_spans": [
+        {
+          "start": 2,
+          "end": 16,
+          "value": "8f3k-29dz-71qm"
+        },
+        {
+          "start": 19,
+          "end": 34,
+          "value": "RECOV-7782-3341"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "C O D E : (codes masques pour ce ticket)",
+      "expected_spans": []
+    },
+    {
+      "id": "RECOVERY_CODE_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Lors de l'activation de la double authentification, le systeme vous a fourni une liste de codes de secours a usage unique. En cas de perte de votre telephone, utilisez l'un d'eux pour vous reconnecter, par exemple RECOV-7782-3341. Chaque code ne fonctionne qu'une seule fois.",
+      "expected_spans": [
+        {
+          "start": 214,
+          "end": 229,
+          "value": "RECOV-7782-3341"
+        }
+      ]
+    },
+    {
+      "id": "RECOVERY_CODE_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "When you enable two-factor authentication we generate a set of one-time recovery codes. Print them, keep them offline, and never store them next to your password. Each recovery code can be used only once to regain access.",
+      "expected_spans": []
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "pii_type": "CARD_NUMBER",
+  "detector_label": "card_number",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "CARD_NUMBER_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Le numero de carte est 4242 4242 4242 4242 pour le test de paiement.",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 42,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "The card number used was 4242 4242 4242 4242 in the sandbox.",
+      "expected_spans": [
+        {
+          "start": 25,
+          "end": 44,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Die Kartennummer im Test ist 4242 4242 4242 4242 hinterlegt.",
+      "expected_spans": [
+        {
+          "start": 29,
+          "end": 48,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Il numero della carta usato e 4242 4242 4242 4242 in collaudo.",
+      "expected_spans": [
+        {
+          "start": 30,
+          "end": 49,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "4242 4242 4242 4242",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The phone IMEI is 35 680605 521234 7 on the back label.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le numero de conteneur MSKU 424242 4 est arrive au port.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Die IMEI des Testgeraets lautet 49 015420 323751 8 hier.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Il container TGHU 424242 7 e in attesa di sdoganamento.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Router serial SN 4242 4242 GH is mounted in rack B.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "La reference du chassis CH-4242-4242 est gravee sous le capot.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Merci de renseigner le numero de carte dans le champ prevu.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "The card number was not captured during this test run.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Kartennummer wurde im Formular nicht eingegeben.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il numero della carta non e stato inserito in fase di test.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Carte: 4242-4242-4242-4242 (separateurs tirets).",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 26,
+          "value": "4242-4242-4242-4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Card: 4242424242424242 with no spaces at all.",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 22,
+          "value": "4242424242424242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "4-2-4-2 4-2-4-2 4-2-4-2 4-2-4-2 ueber Spalten verteilt.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_NUMBER_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Pendant la recette de notre nouvelle passerelle de paiement, l'equipe QA a rejoue une douzaine de scenarios de bout en bout; pour le scenario nominal, la carte de test portant le numero de carte 4242 4242 4242 4242 a ete utilisee afin de valider l'autorisation puis la capture du montant.",
+      "expected_spans": [
+        {
+          "start": 195,
+          "end": 214,
+          "value": "4242 4242 4242 4242"
+        }
+      ]
+    },
+    {
+      "id": "CARD_NUMBER_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "The QA report lists the environments under test, the browser matrix and the known flaky scenarios, but no actual card number is included in this summary paragraph.",
+      "expected_spans": []
+    }
+  ]
+}

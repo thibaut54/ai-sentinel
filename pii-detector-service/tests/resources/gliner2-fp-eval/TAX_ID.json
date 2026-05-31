@@ -1,0 +1,234 @@
+{
+  "pii_type": "TAX_ID",
+  "detector_label": "tax_id",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "TAX_ID_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Identifiant fiscal (TIN) du contribuable : 12-3456789.",
+      "expected_spans": [
+        {
+          "start": 43,
+          "end": 53,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "Employer tax ID (EIN): 12-3456789 on the W-9 form.",
+      "expected_spans": [
+        {
+          "start": 23,
+          "end": 33,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Steuer-ID des Steuerpflichtigen: 61 952 3741 82.",
+      "expected_spans": [
+        {
+          "start": 33,
+          "end": 47,
+          "value": "61 952 3741 82"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Codice identificativo fiscale (TIN): 12-3456789 del soggetto.",
+      "expected_spans": [
+        {
+          "start": 37,
+          "end": 47,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "12-3456789",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 10,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "98-7654321",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 10,
+          "value": "98-7654321"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "61 952 3741 82",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 14,
+          "value": "61 952 3741 82"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "44 123 9988 01",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 14,
+          "value": "44 123 9988 01"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "SIRET de l'entreprise : 123 456 789 00012 au registre du commerce.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Call the support line at +1 12-3456789 during business hours.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Telefonnummer der Hotline: 061 952 37 41 von 8 bis 18 Uhr.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Partita IVA SIRET 123 456 789 00012 nel registro imprese.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Internal ticket 12-3456789 was closed as a duplicate.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Numéro de téléphone direct : 06 19 52 37 41 (ne pas diffuser).",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "L'identifiant fiscal doit figurer sur la déclaration annuelle de revenus.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "Provide your tax ID when prompted; we never log the EIN value itself.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Die Steuer-ID ist auf dem Steuerbescheid angegeben, hier jedoch nicht hinterlegt.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il codice fiscale identificativo va riportato nella dichiarazione dei redditi.",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "EIN :\n12-3456789",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 16,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "Steuer-ID => 61 952 3741 82",
+      "expected_spans": [
+        {
+          "start": 13,
+          "end": 27,
+          "value": "61 952 3741 82"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "TIN : 1 2 - 3 4 5 6 7 8 9",
+      "expected_spans": []
+    },
+    {
+      "id": "TAX_ID_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Confluence — Onboarding fournisseur US (vendor-tax-validation)\n\nCe service valide les informations fiscales des fournisseurs américains avant tout paiement. Il appelle l'API de validation EIN de l'IRS via un proxy sortant, met en cache les réponses 24h dans Redis et persiste le statut dans une base PostgreSQL chiffrée. Cas de recette validé : fournisseur dont l'identifiant fiscal EIN 12-3456789 a été confirmé comme actif, déclenchant la création du compte créditeur dans l'ERP. Les appels sont tracés (OpenTelemetry vers Jaeger) et les erreurs de validation génèrent un ticket Jira automatique. Le service tourne en trois réplicas derrière un Service mesh Istio, avec mTLS strict. Les données fiscales sont purgées 7 ans après la fin de la relation commerciale, conformément à la politique de rétention.",
+      "expected_spans": [
+        {
+          "start": 387,
+          "end": 397,
+          "value": "12-3456789"
+        }
+      ]
+    },
+    {
+      "id": "TAX_ID_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "Confluence — Payments reconciliation runbook\n\nThe reconciliation job matches outgoing payments against vendor invoices nightly. It runs as a Kubernetes CronJob ('recon-nightly') and writes a report to S3. No tax ID appears in this runbook — only internal ticket numbers like 12-3456789 (a Jira-style id, not an EIN) and phone numbers such as +1 12-3456789 for the finance hotline. Discrepancies above a configurable threshold are flagged for manual review in the 'recon-review' queue. The job uses idempotency keys to avoid double-posting. Metrics are scraped by Prometheus and visualized in the 'payments-recon' Grafana dashboard, with alerts routed to the finance-ops channel on Slack.",
+      "expected_spans": []
+    }
+  ]
+}

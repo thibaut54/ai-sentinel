@@ -1,0 +1,234 @@
+{
+  "pii_type": "CARD_CVV",
+  "detector_label": "card_cvv",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "CARD_CVV_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Numero de carte: 4111 1111 1111 1111, CVV: 737",
+      "expected_spans": [
+        {
+          "start": 43,
+          "end": 46,
+          "value": "737"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "The CVV on the back of the card is 519, do not share it.",
+      "expected_spans": [
+        {
+          "start": 35,
+          "end": 38,
+          "value": "519"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Der Sicherheitscode CVV lautet 248 auf der Rueckseite.",
+      "expected_spans": [
+        {
+          "start": 31,
+          "end": 34,
+          "value": "248"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "Il codice di sicurezza CVV della Amex e 1234 sul fronte.",
+      "expected_spans": [
+        {
+          "start": 40,
+          "end": 44,
+          "value": "1234"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "737",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 3,
+          "value": "737"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "519",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 3,
+          "value": "519"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "248",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 3,
+          "value": "248"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "1234",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "value": "1234"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The conference room 312 is booked from 9am to noon.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le serveur a renvoye une erreur 503 pendant la maintenance.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Die Anfrage scheiterte mit dem HTTP-Status 401 ohne Token.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "La citazione si trova a pagina 248 del manuale tecnico.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "The API returned 200 OK for every request in the smoke test.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Rendez-vous en salle 737 au septieme etage du batiment.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Ne communiquez jamais le code CVV de votre carte par email.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "The CVV is never stored on our servers for security reasons.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Der CVV-Code wird aus Sicherheitsgruenden nicht gespeichert.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Il codice CVV non viene mai memorizzato dai nostri sistemi.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "CVV : 7 3 7 dicte lettre par lettre au telephone.",
+      "expected_spans": []
+    },
+    {
+      "id": "CARD_CVV_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Security code (CVV)519 stuck to the label with no space.",
+      "expected_spans": [
+        {
+          "start": 19,
+          "end": 22,
+          "value": "519"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "CVV=248 inline mit Gleichheitszeichen geschrieben.",
+      "expected_spans": [
+        {
+          "start": 4,
+          "end": 7,
+          "value": "248"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Au telephone, pour confirmer son identite avant le remboursement, le client a lu lentement les informations de sa carte; apres le numero et la date, il a fini par communiquer le code CVV 737 que le conseiller a saisi dans l'outil securise sans jamais le noter sur papier.",
+      "expected_spans": [
+        {
+          "start": 187,
+          "end": 190,
+          "value": "737"
+        }
+      ]
+    },
+    {
+      "id": "CARD_CVV_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "The security awareness module reminds employees never to read out card details over chat, to lock their screens and to report phishing, without quoting any actual security code here.",
+      "expected_spans": []
+    }
+  ]
+}

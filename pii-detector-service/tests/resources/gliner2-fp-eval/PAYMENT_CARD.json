@@ -1,0 +1,234 @@
+{
+  "pii_type": "PAYMENT_CARD",
+  "detector_label": "payment_card",
+  "threshold": 0.5,
+  "cases": [
+    {
+      "id": "PAYMENT_CARD_canonical_with_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_with_clue",
+      "text": "Le numero de carte de paiement est 4111 1111 1111 1111 pour la commande.",
+      "expected_spans": [
+        {
+          "start": 35,
+          "end": 54,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_with_clue_en_01",
+      "language": "en",
+      "axis": "canonical_with_clue",
+      "text": "The payment card on file is 5555 5555 5555 4444, please verify.",
+      "expected_spans": [
+        {
+          "start": 28,
+          "end": 47,
+          "value": "5555 5555 5555 4444"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_with_clue_de_01",
+      "language": "de",
+      "axis": "canonical_with_clue",
+      "text": "Die Kreditkarte fuer die Zahlung lautet 4111 1111 1111 1111 hier.",
+      "expected_spans": [
+        {
+          "start": 40,
+          "end": 59,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_with_clue_it_01",
+      "language": "it",
+      "axis": "canonical_with_clue",
+      "text": "La carta di pagamento Amex e 3782 822463 10005 sul profilo.",
+      "expected_spans": [
+        {
+          "start": 29,
+          "end": 46,
+          "value": "3782 822463 10005"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_no_clue_fr_01",
+      "language": "fr",
+      "axis": "canonical_no_clue",
+      "text": "4111 1111 1111 1111",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_no_clue_en_01",
+      "language": "en",
+      "axis": "canonical_no_clue",
+      "text": "5555 5555 5555 4444",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "5555 5555 5555 4444"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_no_clue_de_01",
+      "language": "de",
+      "axis": "canonical_no_clue",
+      "text": "3782 822463 10005",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 17,
+          "value": "3782 822463 10005"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_canonical_no_clue_it_01",
+      "language": "it",
+      "axis": "canonical_no_clue",
+      "text": "4111 1111 1111 1111",
+      "expected_spans": [
+        {
+          "start": 0,
+          "end": 19,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_en_01",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Your parcel tracking number 7421 9983 0145 6677 is out for delivery.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_fr_01",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "Le numero de suivi du colis 3300 1234 5678 9012 est en transit.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_de_01",
+      "language": "de",
+      "axis": "look_alikes",
+      "text": "Die Seriennummer des Geraets 8801 2233 4455 6677 steht hinten.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_it_01",
+      "language": "it",
+      "axis": "look_alikes",
+      "text": "Il codice di spedizione 1020 3040 5060 7080 risulta consegnato.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_en_02",
+      "language": "en",
+      "axis": "look_alikes",
+      "text": "Asset tag 1234 5678 9012 3456 is assigned to the meeting room TV.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_look_alikes_fr_02",
+      "language": "fr",
+      "axis": "look_alikes",
+      "text": "La reference logistique 9000 1111 2222 3333 figure sur le bon.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_explicit_negatives_fr_01",
+      "language": "fr",
+      "axis": "explicit_negatives",
+      "text": "Veuillez saisir votre numero de carte de paiement ci-dessous.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_explicit_negatives_en_01",
+      "language": "en",
+      "axis": "explicit_negatives",
+      "text": "No payment card is currently stored for this account.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_explicit_negatives_de_01",
+      "language": "de",
+      "axis": "explicit_negatives",
+      "text": "Es ist keine Kreditkarte fuer dieses Konto hinterlegt.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_explicit_negatives_it_01",
+      "language": "it",
+      "axis": "explicit_negatives",
+      "text": "Nessuna carta di pagamento risulta salvata per questo cliente.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_adversarial_formatting_fr_01",
+      "language": "fr",
+      "axis": "adversarial_formatting",
+      "text": "Carte: 4111-1111-1111-1111 (tirets a la place des espaces).",
+      "expected_spans": [
+        {
+          "start": 7,
+          "end": 26,
+          "value": "4111-1111-1111-1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_adversarial_formatting_en_01",
+      "language": "en",
+      "axis": "adversarial_formatting",
+      "text": "Card: 4111111111111111 written without any separator.",
+      "expected_spans": [
+        {
+          "start": 6,
+          "end": 22,
+          "value": "4111111111111111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_adversarial_formatting_de_01",
+      "language": "de",
+      "axis": "adversarial_formatting",
+      "text": "4 1 1 1 / 1 1 1 1 / 1 1 1 1 / 1 1 1 1 quer ueber die Zeile verteilt.",
+      "expected_spans": []
+    },
+    {
+      "id": "PAYMENT_CARD_long_context_fr_01",
+      "language": "fr",
+      "axis": "long_context",
+      "text": "Lors du paiement en ligne d'hier soir, le systeme antifraude a temporairement bloque la transaction; pour la debloquer, l'operateur a du confirmer que la carte de paiement 4111 1111 1111 1111 appartenait bien au titulaire, avant de relancer la commande sans nouvelle erreur de validation.",
+      "expected_spans": [
+        {
+          "start": 172,
+          "end": 191,
+          "value": "4111 1111 1111 1111"
+        }
+      ]
+    },
+    {
+      "id": "PAYMENT_CARD_long_context_en_01",
+      "language": "en",
+      "axis": "long_context",
+      "text": "The checkout tutorial walks new users through adding items to the cart, applying a discount code and choosing a delivery slot, without ever showing a real card number on screen.",
+      "expected_spans": []
+    }
+  ]
+}
