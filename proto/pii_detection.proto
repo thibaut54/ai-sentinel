@@ -93,4 +93,5 @@ enum DetectorSource {
   PRESIDIO = 2;
   REGEX = 3;
   OPENMED = 4;
+  GLINER2 = 5;
 }

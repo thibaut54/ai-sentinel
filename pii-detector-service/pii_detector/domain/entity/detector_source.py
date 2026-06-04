@@ -7,3 +7,4 @@ class DetectorSource(Enum):
     PRESIDIO = "PRESIDIO"
     REGEX = "REGEX"
     OPENMED = "OPENMED"
+    GLINER2 = "GLINER2"

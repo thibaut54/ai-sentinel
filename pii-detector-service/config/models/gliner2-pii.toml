@@ -1,0 +1,53 @@
+# GLiNER2 PII Model Configuration
+# Multi-task evolution of GLiNER ({label: description} schema) integrated as an
+# additional ENSEMBLE detection source (never a substitution of GLiNER).
+# DISABLED by default at the DB level (gliner2_enabled = FALSE, spec D4):
+# young library, thresholds not yet calibrated, CPU latency to validate.
+
+# Enable or disable this model (startup hint; runtime control via DB flag).
+enabled = false
+
+# Hugging Face model identifier.
+# PII fine-tune `fastino/gliner2-privacy-filter-PII-multi` (42 native types,
+# 7 languages incl. FR) — same {label: description} schema and reliable
+# character offsets as the generalist large-v1, but specialised for PII so it
+# recovers the niche secret/credential/ID types the generalist gives up.
+#model_id = "fastino/gliner2-privacy-filter-PII-multi"
+model_id = "fastino/gliner2-large-v1"
+
+# Human-readable description
+description = "GLiNER2 - multi-task zero-shot PII detection with per-label descriptions ({label: description} schema)"
+
+# Priority (4 = above GLiNER's 3, used as a merge tie-breaker — spec §4.6)
+priority = 4
+
+# Device allocation: "cpu", "cuda", or "mps"
+device = "cpu"
+
+# Maximum subword tokens per chunk (margin under the ~2048 context; attention is
+# quadratic so 1024 balances cost and coverage — spec §4.4)
+max_length = 1024
+
+# Model-specific confidence threshold. GLiNER2 scores are NOT comparable to
+# GLiNER; start at 0.50 and recalibrate via the offline FR harness (spec §4.6).
+threshold = 0.5
+
+# Download settings for this model.
+# NOTE: no [download.custom_filenames] — that override is specific to the
+# nvidia/gliner-PII artifact (gliner_config.json). GLiNER2 uses standard files.
+[download]
+force_download = false
+resume_download = true
+
+# ============================================================================
+# PII Type Configuration lives in the database (pii_type_config, detector='GLINER2')
+# ============================================================================
+# - detector_label        : entity label sent to GLiNER2 (key of the schema)
+# - detector_description   : natural-language inference description (the VALUE
+#                            of the {label: description} schema) — editable in UI
+# - threshold              : per-type confidence threshold (recalibrated GLiNER2)
+# - enabled                : whether this PII type is active for GLiNER2
+#
+# Seeded by src/main/resources/data.sql (detector='GLINER2'). Changes take
+# effect at runtime without a service restart.
+# ============================================================================

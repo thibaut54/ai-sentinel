@@ -45,6 +45,10 @@ dependencies = [
     "huggingface-hub>=0.19.0",
     "accelerate>=0.20.0",
     "gliner>=0.2.0",
+    # GLiNER2 multi-task detector (spec detector-gliner2). Like gliner, it may
+    # carry a transitive transformers upper pin; the same post-install bump to
+    # transformers >= 5.0 applies (its extract() API is stable on 5.x).
+    "gliner2>=1.0.0",
     "semchunk>=2.2.0",
     # OpenMed wrapper that exposes PrivacyFilterTorchPipeline (cached pipeline
     # over the OpenMed/privacy-filter-multilingual model). The [hf] extra pulls

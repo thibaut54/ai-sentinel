@@ -124,6 +124,9 @@ class DetectorFactory:
 
         Business rules:
         - "multipass" in model_id → MultiPassGlinerDetector
+        - "gliner2" in model_id → Gliner2Detector  (tested BEFORE "gliner":
+          "gliner2" is a superstring of "gliner", so the order is mandatory —
+          spec §4.5 / risk R3)
         - "gliner" in model_id → GLiNERDetector
         - Otherwise → default PII detector
         """
@@ -131,6 +134,8 @@ class DetectorFactory:
 
         if "multipass" in model_id_lower:
             return "multipass-gliner"
+        elif "gliner2" in model_id_lower:
+            return "gliner2"
         elif "gliner" in model_id_lower:
             return "gliner"
         else:
@@ -180,6 +185,7 @@ def create_default_factory() -> DetectorFactory:
 
     Registers built-in detector types:
     - "gliner": GLiNERDetector for GLiNER models
+    - "gliner2": Gliner2Detector for GLiNER2 multi-task models
     - "multipass-gliner": MultiPassGlinerDetector for multi-category parallel detection
     - "regex": RegexDetector for regex-based pattern matching
     - "default": PIIDetector for standard HuggingFace models
@@ -188,6 +194,7 @@ def create_default_factory() -> DetectorFactory:
         Configured DetectorFactory instance
     """
     from pii_detector.infrastructure.detector.gliner_detector import GLiNERDetector
+    from pii_detector.infrastructure.detector.gliner2_detector import Gliner2Detector
     from pii_detector.infrastructure.detector.multi_pass_gliner_detector import MultiPassGlinerDetector
     from pii_detector.infrastructure.detector.pii_detector import PIIDetector
     from pii_detector.infrastructure.detector.regex_detector import RegexDetector
@@ -198,6 +205,12 @@ def create_default_factory() -> DetectorFactory:
     factory.register(
         "gliner",
         lambda config: GLiNERDetector(config=config)
+    )
+
+    # Register GLiNER2 detector (multi-task evolution, ensemble source — spec §4.5)
+    factory.register(
+        "gliner2",
+        lambda config: Gliner2Detector(config=config)
     )
 
     # Register Multi-Pass GLiNER detector
@@ -220,5 +233,5 @@ def create_default_factory() -> DetectorFactory:
         lambda config: PIIDetector(config=config)
     )
 
-    logger.info("Created default factory with 'gliner', 'multipass-gliner', 'regex', and 'default' detector types")
+    logger.info("Created default factory with 'gliner', 'gliner2', 'multipass-gliner', 'regex', and 'default' detector types")
     return factory

@@ -58,10 +58,12 @@ class CompositePIIDetector:
         regex_detector: Optional[RegexDetector] = None,
         presidio_detector: Optional[PresidioDetector] = None,
         openmed_detector: Optional[PIIDetectorProtocol] = None,
+        gliner2_detector: Optional[PIIDetectorProtocol] = None,
         merger: Optional[DetectionMerger] = None,
         enable_regex: bool = True,
         enable_presidio: bool = True,
-        enable_openmed: bool = False
+        enable_openmed: bool = False,
+        enable_gliner2: bool = False
     ):
         """
         Initialize composite detector.
@@ -71,10 +73,12 @@ class CompositePIIDetector:
             regex_detector: Regex-based detector
             presidio_detector: Presidio-based detector
             openmed_detector: OpenMed Privacy Filter Multilingual detector (optional, opt-in)
+            gliner2_detector: GLiNER2 detector (optional, opt-in ensemble source)
             merger: Detection merger for result fusion
             enable_regex: Enable regex detection (default: True)
             enable_presidio: Enable Presidio detection (default: True)
             enable_openmed: Enable OpenMed detection (default: False, opt-in per DB flag)
+            enable_gliner2: Enable GLiNER2 detection (default: False, opt-in per DB flag)
         """
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         
@@ -110,6 +114,11 @@ class CompositePIIDetector:
         self.openmed_detector = openmed_detector
         self.enable_openmed = enable_openmed and self.openmed_detector is not None
 
+        # Initialize GLiNER2 detector slot (opt-in, ensemble source — never a
+        # substitution of GLiNER; disabled by default per spec D4)
+        self.gliner2_detector = gliner2_detector
+        self.enable_gliner2 = enable_gliner2 and self.gliner2_detector is not None
+
         # Initialize merger
         self._merger = merger or DetectionMerger(log_provenance=True)
 
@@ -118,7 +127,8 @@ class CompositePIIDetector:
             f"ML={'enabled' if ml_detector else 'disabled'}, "
             f"Regex={'enabled' if self.enable_regex else 'disabled'}, "
             f"Presidio={'enabled' if self.enable_presidio else 'disabled'}, "
-            f"OpenMed={'enabled' if self.enable_openmed else 'disabled'}"
+            f"OpenMed={'enabled' if self.enable_openmed else 'disabled'}, "
+            f"GLiNER2={'enabled' if self.enable_gliner2 else 'disabled'}"
         )
     
     @property
@@ -149,6 +159,12 @@ class CompositePIIDetector:
             except Exception as e:
                 self.logger.warning(f"OpenMed detector download failed: {e}")
 
+        if self.gliner2_detector and self.enable_gliner2:
+            try:
+                self.gliner2_detector.download_model()
+            except Exception as e:
+                self.logger.warning(f"GLiNER2 detector download failed: {e}")
+
     def load_model(self) -> None:
         """Load models for all underlying detectors."""
         if self.ml_detector:
@@ -173,6 +189,15 @@ class CompositePIIDetector:
                 # (e.g. transformers < 5 installed). It will be skipped at request time.
                 self.logger.error(f"OpenMed detector load failed: {e}")
                 self.enable_openmed = False
+
+        if self.gliner2_detector and self.enable_gliner2:
+            try:
+                self.gliner2_detector.load_model()
+            except Exception as e:
+                # Do not block other detectors if GLiNER2 fails to load
+                # (e.g. gliner2 lib absent). It will be skipped at request time.
+                self.logger.error(f"GLiNER2 detector load failed: {e}")
+                self.enable_gliner2 = False
     
     def detect_pii(
         self,
@@ -182,6 +207,7 @@ class CompositePIIDetector:
         enable_regex: Optional[bool] = None,
         enable_presidio: Optional[bool] = None,
         enable_openmed: Optional[bool] = None,
+        enable_gliner2: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None
     ) -> List[PIIEntity]:
@@ -213,13 +239,13 @@ class CompositePIIDetector:
         if not text:
             return []
 
-        use_ml, use_regex, use_presidio, use_openmed = self._resolve_detector_flags(
-            enable_ml, enable_regex, enable_presidio, enable_openmed
+        use_ml, use_regex, use_presidio, use_openmed, use_gliner2 = self._resolve_detector_flags(
+            enable_ml, enable_regex, enable_presidio, enable_openmed, enable_gliner2
         )
-        self._log_active_detectors(use_ml, use_regex, use_presidio, use_openmed)
+        self._log_active_detectors(use_ml, use_regex, use_presidio, use_openmed, use_gliner2)
 
         results_per_detector = self._collect_detection_results(
-            text, threshold, use_ml, use_regex, use_presidio, use_openmed,
+            text, threshold, use_ml, use_regex, use_presidio, use_openmed, use_gliner2,
             pii_type_configs, chunk_size
         )
 
@@ -237,16 +263,19 @@ class CompositePIIDetector:
         enable_regex: Optional[bool],
         enable_presidio: Optional[bool],
         enable_openmed: Optional[bool] = None,
-    ) -> Tuple[bool, bool, bool, bool]:
+        enable_gliner2: Optional[bool] = None,
+    ) -> Tuple[bool, bool, bool, bool, bool]:
         """Resolve runtime overrides into concrete detector activation flags."""
         use_ml = enable_ml if enable_ml is not None else (self.ml_detector is not None)
         use_regex = enable_regex if enable_regex is not None else self.enable_regex
         use_presidio = enable_presidio if enable_presidio is not None else self.enable_presidio
         use_openmed = enable_openmed if enable_openmed is not None else self.enable_openmed
-        return use_ml, use_regex, use_presidio, use_openmed
+        use_gliner2 = enable_gliner2 if enable_gliner2 is not None else self.enable_gliner2
+        return use_ml, use_regex, use_presidio, use_openmed, use_gliner2
 
     def _log_active_detectors(
-        self, use_ml: bool, use_regex: bool, use_presidio: bool, use_openmed: bool = False
+        self, use_ml: bool, use_regex: bool, use_presidio: bool,
+        use_openmed: bool = False, use_gliner2: bool = False
     ) -> None:
         """Log which detectors are active for debugging."""
         if not self.logger.isEnabledFor(logging.DEBUG):
@@ -257,6 +286,7 @@ class CompositePIIDetector:
                 (use_regex, "Regex"),
                 (use_presidio, "Presidio"),
                 (use_openmed, "OpenMed"),
+                (use_gliner2, "GLiNER2"),
             ] if flag
         ]
         self.logger.debug("Detecting PII with active detectors: %s", ', '.join(names) or 'NONE')
@@ -269,6 +299,7 @@ class CompositePIIDetector:
         use_regex: bool,
         use_presidio: bool,
         use_openmed: bool,
+        use_gliner2: bool,
         pii_type_configs: Optional[dict],
         chunk_size: Optional[int],
     ) -> List[Tuple[PIIDetectorProtocol, List[PIIEntity]]]:
@@ -282,6 +313,8 @@ class CompositePIIDetector:
             results.append((self.presidio_detector, self._run_presidio_detection(text, threshold)))
         if use_openmed and self.openmed_detector:
             results.append((self.openmed_detector, self._run_openmed_detection(text, threshold, pii_type_configs)))
+        if use_gliner2 and self.gliner2_detector:
+            results.append((self.gliner2_detector, self._run_gliner2_detection(text, threshold, pii_type_configs)))
         return results
 
     def _log_detection_summary(
@@ -304,6 +337,8 @@ class CompositePIIDetector:
             return "Presidio"
         if detector is self.openmed_detector:
             return "OpenMed"
+        if detector is self.gliner2_detector:
+            return "GLiNER2"
         return "Unknown"
 
     def _log_per_detector_counts(
@@ -316,6 +351,7 @@ class CompositePIIDetector:
             self.regex_detector: 0,
             self.presidio_detector: 0,
             self.openmed_detector: 0,
+            self.gliner2_detector: 0,
         }
         for detector, entities in results_per_detector:
             if detector in counts:
@@ -324,7 +360,8 @@ class CompositePIIDetector:
             f"Composite detection complete: {len(merged_entities)} entities "
             f"(ML: {counts[self.ml_detector]}, Regex: {counts[self.regex_detector]}, "
             f"Presidio: {counts[self.presidio_detector]}, "
-            f"OpenMed: {counts[self.openmed_detector]})"
+            f"OpenMed: {counts[self.openmed_detector]}, "
+            f"GLiNER2: {counts[self.gliner2_detector]})"
         )
 
     def _log_parity_debug(
@@ -496,6 +533,50 @@ class CompositePIIDetector:
                 exc_info=True,
             )
             return []
+
+    def _run_gliner2_detection(
+        self,
+        text: str,
+        threshold: Optional[float],
+        pii_type_configs: Optional[dict] = None,
+    ) -> List[PIIEntity]:
+        """Run GLiNER2 detection with graceful degradation.
+
+        Returns an empty list (never raises) so a GLiNER2 failure (e.g. the
+        gliner2 lib being absent on a partial environment) does not bring down
+        the whole request — spec RG5 / R7.
+        """
+        try:
+            self._ensure_gliner2_loaded()
+            import inspect
+            sig = inspect.signature(self.gliner2_detector.detect_pii)
+            kwargs: dict = {}
+            if 'pii_type_configs' in sig.parameters:
+                kwargs['pii_type_configs'] = pii_type_configs
+            return self.gliner2_detector.detect_pii(text, threshold, **kwargs)
+        except Exception as e:
+            self.logger.error(
+                "GLINER2_DETECTION_FAILED text_len=%d threshold=%s: %s",
+                len(text) if text else 0, threshold, e,
+                exc_info=True,
+            )
+            return []
+
+    def _ensure_gliner2_loaded(self) -> None:
+        """Lazily load the GLiNER2 model the first time it is actually needed.
+
+        The model is only eagerly loaded at startup when ``gliner2_enabled`` was
+        already TRUE. Because the flag is hot-toggleable without a redeploy (spec
+        RG6/O3), an operator can enable GLiNER2 after startup; in that case the
+        model was never loaded. Load it on first use so detection works without a
+        restart. A persistent failure (e.g. gliner2 lib absent) propagates to the
+        caller's ``except`` and degrades gracefully to an empty result (RG5)."""
+        if getattr(self.gliner2_detector, "model", None) is not None:
+            return
+        self.logger.info(
+            "GLiNER2 enabled at runtime but model not loaded — loading on first use"
+        )
+        self.gliner2_detector.load_model()
 
     def _run_presidio_detection(
         self, text: str, threshold: Optional[float]
@@ -682,6 +763,43 @@ def _create_openmed_detector_if_available() -> Optional[PIIDetectorProtocol]:
         return None
 
 
+def _create_gliner2_detector_if_available() -> Optional[PIIDetectorProtocol]:
+    """
+    Create a ``Gliner2Detector`` instance. Always instantiated so it can be
+    toggled on at runtime via the ``gliner2_enabled`` DB flag, but the model is
+    downloaded/loaded lazily — only when the composite actually activates it via
+    ``enable_gliner2``. Returns ``None`` if instantiation fails (e.g. gliner2
+    library absent), keeping startup resilient.
+    """
+    try:
+        from pii_detector.infrastructure.detector.gliner2_detector import Gliner2Detector
+
+        # No config -> detector falls back to its own GLINER2 default model_id.
+        detector = Gliner2Detector()
+        logger.debug("Created Gliner2Detector instance (lazy model load)")
+        return detector
+    except Exception as exc:
+        logger.warning(f"Failed to create Gliner2Detector: {exc}")
+        return None
+
+
+def _load_gliner2_enabled_from_db() -> bool:
+    """Read the ``gliner2_enabled`` kill-switch from the DB at startup.
+
+    Returns ``False`` defensively on any error (DB down, column missing on a
+    not-yet-migrated deployment) so a hiccup never blocks startup — the runtime
+    per-request flag plus lazy model load still activate GLiNER2 later (RG6)."""
+    try:
+        from pii_detector.infrastructure.adapter.out.database_config_adapter import (
+            get_database_config_adapter,
+        )
+
+        cfg = get_database_config_adapter().fetch_config()
+        return bool(cfg.get("gliner2_enabled", False)) if cfg else False
+    except Exception:  # pragma: no cover - defensive
+        return False
+
+
 def create_composite_detector(
     ml_detector: Optional[PIIDetectorProtocol] = None
 ) -> CompositePIIDetector:
@@ -701,6 +819,15 @@ def create_composite_detector(
     regex_detector = _create_regex_detector_if_enabled(regex_enabled)
     presidio_detector = _create_presidio_detector_if_enabled(presidio_enabled)
     openmed_detector = _create_openmed_detector_if_available()
+    gliner2_detector = _create_gliner2_detector_if_available()
+
+    # GLiNER2: load the model eagerly at startup when the DB kill-switch is
+    # already ON, so the first request isn't penalised by a cold model load.
+    # When OFF, it stays disabled (D4) and is loaded lazily on first use if an
+    # operator toggles it on at runtime (RG6) — see _ensure_gliner2_loaded.
+    gliner2_enabled_at_startup = (
+        gliner2_detector is not None and _load_gliner2_enabled_from_db()
+    )
 
     # Create merger with provenance logging
     merger = DetectionMerger(log_provenance=True)
@@ -711,11 +838,15 @@ def create_composite_detector(
         regex_detector=regex_detector,
         presidio_detector=presidio_detector,
         openmed_detector=openmed_detector,
+        gliner2_detector=gliner2_detector,
         merger=merger,
         enable_regex=regex_enabled and regex_detector is not None,
         enable_presidio=presidio_enabled and presidio_detector is not None,
         # OpenMed default: disabled at startup, activated at request time via DB flag
         enable_openmed=False,
+        # GLiNER2: enabled at startup only when the DB flag is already ON (eager
+        # load); otherwise lazy on first use after a runtime toggle (D4 / RG6).
+        enable_gliner2=gliner2_enabled_at_startup,
     )
 
     return composite

@@ -686,6 +686,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'presidio_enabled': db_config.get('presidio_enabled', True),
                 'regex_enabled': db_config.get('regex_enabled', False),
                 'openmed_enabled': db_config.get('openmed_enabled', False),
+                'gliner2_enabled': db_config.get('gliner2_enabled', False),
                 'llm_judge_enabled': db_config.get('llm_judge_enabled', False),
             }
 
@@ -695,6 +696,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
                 f"openmed={detector_flags['openmed_enabled']}, "
+                f"gliner2={detector_flags['gliner2_enabled']}, "
                 f"llm_judge={detector_flags['llm_judge_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
@@ -822,6 +824,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             kwargs['enable_regex'] = detector_flags.get('regex_enabled')
             if 'enable_openmed' in sig.parameters:
                 kwargs['enable_openmed'] = detector_flags.get('openmed_enabled')
+            if 'enable_gliner2' in sig.parameters:
+                kwargs['enable_gliner2'] = detector_flags.get('gliner2_enabled')
 
         return kwargs
     

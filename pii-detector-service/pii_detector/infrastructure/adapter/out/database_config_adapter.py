@@ -75,6 +75,7 @@ class DatabaseConfigAdapter:
                     presidio_enabled,
                     regex_enabled,
                     COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
+                    COALESCE(gliner2_enabled, FALSE) AS gliner2_enabled,
                     default_threshold,
                     nb_of_label_by_pass,
                     llm_judge_enabled
@@ -86,14 +87,14 @@ class DatabaseConfigAdapter:
                 cursor.execute(query)
                 result = cursor.fetchone()
             except psycopg2.errors.UndefinedColumn:
-                # Migration not yet applied for openmed_enabled or
-                # llm_judge_enabled -- retry without the new columns. Both
+                # Migration not yet applied for openmed_enabled, gliner2_enabled
+                # or llm_judge_enabled -- retry without the new columns. They all
                 # default to FALSE downstream so the service stays usable on
                 # a freshly-pulled environment before Hibernate DDL update.
                 logger.warning(
-                    "openmed_enabled / llm_judge_enabled column missing in "
-                    "pii_detection_config; falling back on defaults (false). "
-                    "Apply migration to enable."
+                    "openmed_enabled / gliner2_enabled / llm_judge_enabled column "
+                    "missing in pii_detection_config; falling back on defaults "
+                    "(false). Apply migration to enable."
                 )
                 connection.rollback()
                 cursor.execute(
@@ -103,6 +104,7 @@ class DatabaseConfigAdapter:
                         presidio_enabled,
                         regex_enabled,
                         FALSE AS openmed_enabled,
+                        FALSE AS gliner2_enabled,
                         default_threshold,
                         nb_of_label_by_pass
                     FROM pii_detection_config
@@ -119,17 +121,21 @@ class DatabaseConfigAdapter:
                 return None
 
             config = dict(result)
-            # Normalise the flag so downstream code can assume it is always
+            # Normalise the flags so downstream code can assume they are always
             # present (False when the migration is pending).
             config.setdefault("llm_judge_enabled", False)
             if config["llm_judge_enabled"] is None:
                 config["llm_judge_enabled"] = False
+            config.setdefault("gliner2_enabled", False)
+            if config["gliner2_enabled"] is None:
+                config["gliner2_enabled"] = False
             logger.info(
                 "Successfully fetched config from database: "
                 f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
                 f"openmed={config['openmed_enabled']}, "
+                f"gliner2={config['gliner2_enabled']}, "
                 f"threshold={config['default_threshold']}, "
                 f"llm_judge={config['llm_judge_enabled']}"
             )
@@ -198,40 +204,11 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # Build query with optional detector filter
-            if detector:
-                self.logger.info(f"Detector filter: {detector}")
-                query = """
-                    SELECT 
-                        pii_type,
-                        detector,
-                        enabled,
-                        threshold,
-                        category,
-                        country_code,
-                        detector_label
-                    FROM pii_type_config
-                    WHERE detector = %s
-                    ORDER BY category, pii_type
-                """
-                cursor.execute(query, (detector,))
-            else:
-                self.logger.info("No Detector")
-                query = """
-                    SELECT 
-                        pii_type,
-                        detector,
-                        enabled,
-                        threshold,
-                        category,
-                        country_code,
-                        detector_label
-                    FROM pii_type_config
-                    ORDER BY category, pii_type
-                """
-                cursor.execute(query)
-
-            results = cursor.fetchall()
+            # ``detector_description`` is read defensively: a freshly-pulled
+            # environment where Hibernate DDL update has not yet added the
+            # column must not crash. We COALESCE to NULL and, on UndefinedColumn,
+            # retry without the column (description defaults to None downstream).
+            results = self._execute_pii_type_query(cursor, connection, detector)
 
             if not results:
                 logger.warning(
@@ -251,7 +228,10 @@ class DatabaseConfigAdapter:
                     'detector': row['detector'],
                     'category': row['category'],
                     'country_code': row['country_code'],
-                    'detector_label': row['detector_label']
+                    'detector_label': row['detector_label'],
+                    # GLiNER2 inference description ({label: description}). None
+                    # when the column is absent (pre-migration) or unset.
+                    'detector_description': row.get('detector_description'),
                 }
                 # Primary key (may overwrite for duplicates across detectors)
                 configs[pii_type] = entry
@@ -302,6 +282,43 @@ class DatabaseConfigAdapter:
                 cursor.close()
             if connection:
                 connection.close()
+
+    def _execute_pii_type_query(self, cursor, connection, detector: Optional[str]):
+        """Run the pii_type_config SELECT with a defensive detector_description fallback.
+
+        ``detector_description`` (used by GLiNER2 for {label: description}
+        inference) is fetched defensively: on a freshly-pulled environment where
+        Hibernate DDL update has not yet created the column, ``psycopg2``
+        raises ``UndefinedColumn``. We then retry without the column so the
+        service stays usable (the description defaults to ``None`` downstream).
+        """
+        base_columns = (
+            "pii_type, detector, enabled, threshold, "
+            "category, country_code, detector_label"
+        )
+        where_clause = "WHERE detector = %s\n" if detector else ""
+        params = (detector,) if detector else None
+
+        query_with_desc = (
+            f"SELECT {base_columns}, detector_description\n"
+            f"FROM pii_type_config\n{where_clause}ORDER BY category, pii_type"
+        )
+        try:
+            cursor.execute(query_with_desc, params)
+            return cursor.fetchall()
+        except psycopg2.errors.UndefinedColumn:
+            self.logger.warning(
+                "detector_description column missing in pii_type_config; "
+                "falling back without it (GLiNER2 descriptions default to "
+                "label). Apply migration to enable."
+            )
+            connection.rollback()
+            query_without_desc = (
+                f"SELECT {base_columns}\n"
+                f"FROM pii_type_config\n{where_clause}ORDER BY category, pii_type"
+            )
+            cursor.execute(query_without_desc, params)
+            return cursor.fetchall()
 
 
 # Global singleton instance for reuse
