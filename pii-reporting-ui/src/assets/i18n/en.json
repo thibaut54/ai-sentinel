@@ -279,6 +279,10 @@
       "openmed": {
         "label": "OpenMed (multilingual)",
         "description": "Multilingual ML detector (FR/EN/DE/IT/ES) covering financial, crypto, vehicle and IT credential patterns."
+      },
+      "gliner2": {
+        "label": "GLiNER2",
+        "help": "Multi-task zero-shot detector with per-type descriptions for disambiguation. Complements GLiNER as an additional source (disabled by default)."
       }
     },
     "threshold": {
@@ -307,12 +311,23 @@
       "types": "types",
       "threshold": "Confidence Threshold",
       "toggle": "Toggle {{type}}",
+      "descriptionLabel": "Inference description",
+      "descriptionHelp": "Natural-language sentence GLiNER2 uses to recognise this type. Edit it to fine-tune detection without redeployment.",
       "detectors": {
         "gliner": "GLiNER Detector",
         "presidio": "Presidio Detector",
-        "openmed": "OpenMed"
+        "openmed": "OpenMed",
+        "gliner2": "GLiNER2 Detector"
+      },
+      "detectorNames": {
+        "GLINER": "GLiNER",
+        "PRESIDIO": "Presidio",
+        "REGEX": "Regex",
+        "OPENMED": "OpenMed",
+        "GLINER2": "GLiNER2"
       },
       "categoryNames": {
+        "TEMPORAL": "Sensitive dates",
         "CONTACT": "Contact Information",
         "IDENTITY": "Identity & Names",
         "FINANCIAL": "Financial Data",
@@ -338,6 +353,30 @@
         "CUSTOM": "Custom Labels"
       },
       "typeNames": {
+        "FULL_NAME": "Full name",
+        "FIRST_NAME": "First name",
+        "LAST_NAME": "Last name",
+        "COUNTRY": "Country",
+        "GOVERNMENT_ID": "Government ID",
+        "MIDDLE_NAME": "Middle name",
+        "STREET_ADDRESS": "Street address",
+        "STATE_OR_REGION": "State / region",
+        "NATIONAL_ID_NUMBER": "National ID number",
+        "DRIVERS_LICENSE_NUMBER": "Driver's license number",
+        "TAX_NUMBER": "Tax number",
+        "ACCOUNT_NUMBER": "Account number",
+        "ROUTING_NUMBER": "Routing number",
+        "PAYMENT_CARD": "Payment card",
+        "CARD_NUMBER": "Card number",
+        "CARD_EXPIRY": "Card expiry date",
+        "CARD_CVV": "Card security code (CVV)",
+        "SENSITIVE_ACCOUNT_ID": "Sensitive account ID",
+        "SECRET": "Secret",
+        "RECOVERY_CODE": "Recovery code",
+        "SENSITIVE_DATE": "Sensitive date",
+        "DOCUMENT_DATE": "Document date",
+        "EXPIRATION_DATE": "Expiration date",
+        "TRANSACTION_DATE": "Transaction date",
         "EMAIL": "Email Address",
         "PHONE": "Phone Number",
         "TELEPHONENUM": "Telephone Number",
@@ -504,6 +543,31 @@
         "EYE_COLOR": "Eye color"
       },
       "typeDescriptions": {
+        "FULL_NAME": "A person's full name (first + last)",
+        "FIRST_NAME": "A person's first name",
+        "LAST_NAME": "A person's last name",
+        "COUNTRY": "Country name",
+        "GOVERNMENT_ID": "Identification number issued by a public authority",
+        "BANK_ACCOUNT": "Bank account",
+        "MIDDLE_NAME": "A person's middle name",
+        "STREET_ADDRESS": "Street and number of a postal address",
+        "STATE_OR_REGION": "State, canton or region",
+        "NATIONAL_ID_NUMBER": "National identity card number",
+        "DRIVERS_LICENSE_NUMBER": "Driver's license number",
+        "TAX_NUMBER": "Tax number (e.g. Swiss UID/VAT)",
+        "ACCOUNT_NUMBER": "Bank account number",
+        "ROUTING_NUMBER": "Bank routing number (clearing/ABA)",
+        "PAYMENT_CARD": "Payment card (credit or debit)",
+        "CARD_NUMBER": "Payment card number (PAN)",
+        "CARD_EXPIRY": "Payment card expiry date (MM/YY)",
+        "CARD_CVV": "Card security code (CVV/CVC, 3-4 digits)",
+        "SENSITIVE_ACCOUNT_ID": "Sensitive account identifier (banking, health, etc.)",
+        "SECRET": "Secret or confidential value",
+        "RECOVERY_CODE": "Account recovery or backup code",
+        "SENSITIVE_DATE": "Sensitive date linked to a person or record",
+        "DOCUMENT_DATE": "Document issue or drafting date",
+        "EXPIRATION_DATE": "Expiration date of a document or right",
+        "TRANSACTION_DATE": "Transaction date",
         "EMAIL": "Email addresses in standard format (e.g., user@domain.com)",
         "PHONE": "Phone numbers in various international formats",
         "TELEPHONENUM": "Telephone numbers with country codes and extensions",

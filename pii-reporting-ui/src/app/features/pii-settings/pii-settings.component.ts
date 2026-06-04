@@ -29,7 +29,8 @@ import {
     CreatePiiTypeConfigRequest,
     GroupedPiiTypes,
     PiiDetectionConfig,
-    PiiTypeConfig
+    PiiTypeConfig,
+    UpdatePiiTypeConfigRequest
 } from '../../core/models/pii-detection-config.model';
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
@@ -202,6 +203,7 @@ export class PiiSettingsComponent implements OnInit {
       presidioEnabled: [true],
       regexEnabled: [true],
       openmedEnabled: [false],
+      gliner2Enabled: [false],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {
@@ -348,8 +350,9 @@ export class PiiSettingsComponent implements OnInit {
     const presidio = group.get('presidioEnabled')?.value;
     const regex = group.get('regexEnabled')?.value;
     const openmed = group.get('openmedEnabled')?.value;
+    const gliner2 = group.get('gliner2Enabled')?.value;
 
-    if (!gliner && !presidio && !regex && !openmed) {
+    if (!gliner && !presidio && !regex && !openmed && !gliner2) {
       return {atLeastOneDetector: true};
     }
     return null;
@@ -373,6 +376,7 @@ export class PiiSettingsComponent implements OnInit {
           presidioEnabled: detectorConfig.presidioEnabled,
           regexEnabled: detectorConfig.regexEnabled,
           openmedEnabled: detectorConfig.openmedEnabled,
+          gliner2Enabled: detectorConfig.gliner2Enabled,
           defaultThreshold: detectorConfig.defaultThreshold,
           nbOfLabelByPass: detectorConfig.nbOfLabelByPass
         });
@@ -438,15 +442,7 @@ export class PiiSettingsComponent implements OnInit {
       enabled
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
-      this.modifiedPiiTypes().set(key, modified);
-    } else {
-      this.modifiedPiiTypes().delete(key);
-    }
-
-    // Trigger change detection
-    this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+    this.trackPiiTypeModification(key, original, modified);
 
     // Update the grouped data to reflect changes
     this.updateGroupedPiiTypes(type.detector, type.piiType, {enabled});
@@ -467,18 +463,72 @@ export class PiiSettingsComponent implements OnInit {
       threshold
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
+    this.trackPiiTypeModification(key, original, modified);
+
+    // Update the grouped data to reflect changes
+    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  }
+
+  /**
+   * Handle inference-description change for a GLINER2 PII type.
+   * Reuses the same modification key as toggle/threshold so all edits of a row
+   * merge into a SINGLE bulk update entry.
+   */
+  onPiiTypeDescriptionChange(type: PiiTypeConfig, detectorDescription: string): void {
+    const key = this.getPiiTypeKey(type.detector, type.piiType);
+    const original = this.originalPiiTypes().get(key);
+
+    if (!original) return;
+
+    const modified: PiiTypeConfig = {
+      ...type,
+      detectorDescription
+    };
+
+    this.trackPiiTypeModification(key, original, modified);
+
+    this.updateGroupedPiiTypes(type.detector, type.piiType, {detectorDescription});
+  }
+
+  /**
+   * Track a PII-type row modification: record it when it differs from the
+   * original (enabled, threshold or description), drop it when it matches again.
+   * Always emits a new Map reference so the signal recomputes.
+   */
+  private trackPiiTypeModification(
+    key: string,
+    original: PiiTypeConfig,
+    modified: PiiTypeConfig
+  ): void {
+    const changed =
+      modified.enabled !== original.enabled ||
+      modified.threshold !== original.threshold ||
+      (modified.detectorDescription ?? '') !== (original.detectorDescription ?? '');
+
+    if (changed) {
       this.modifiedPiiTypes().set(key, modified);
     } else {
       this.modifiedPiiTypes().delete(key);
     }
 
-    // Trigger change detection
     this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+  }
 
-    // Update the grouped data to reflect changes
-    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  /**
+   * Build a bulk-update payload entry, adding detectorDescription ONLY for
+   * GLINER2 rows (extension of the bulk contract, sent conditionally).
+   */
+  private toUpdateRequest(type: PiiTypeConfig): UpdatePiiTypeConfigRequest {
+    const update: UpdatePiiTypeConfigRequest = {
+      piiType: type.piiType,
+      detector: type.detector,
+      enabled: type.enabled,
+      threshold: type.threshold
+    };
+    if (type.detector === 'GLINER2') {
+      update.detectorDescription = type.detectorDescription ?? '';
+    }
+    return update;
   }
 
   /**
@@ -553,12 +603,7 @@ export class PiiSettingsComponent implements OnInit {
 
     this.saving.set(true);
 
-    const updates = modifications.map(type => ({
-      piiType: type.piiType,
-      detector: type.detector,
-      enabled: type.enabled,
-      threshold: type.threshold
-    }));
+    const updates = modifications.map(type => this.toUpdateRequest(type));
 
     this.configService.bulkUpdatePiiTypeConfigs(updates).subscribe({
       next: (updatedConfigs) => {
@@ -628,12 +673,7 @@ export class PiiSettingsComponent implements OnInit {
 
     if (hasTypeChanges) {
       const modifications = Array.from(this.modifiedPiiTypes().values());
-      const updates = modifications.map(type => ({
-        piiType: type.piiType,
-        detector: type.detector,
-        enabled: type.enabled,
-        threshold: type.threshold
-      }));
+      const updates = modifications.map(type => this.toUpdateRequest(type));
       typesRequestIndex = requests.length;
       requests.push(this.configService.bulkUpdatePiiTypeConfigs(updates));
     }
@@ -703,6 +743,7 @@ export class PiiSettingsComponent implements OnInit {
         presidioEnabled: this.currentConfig()!.presidioEnabled,
         regexEnabled: this.currentConfig()!.regexEnabled,
         openmedEnabled: this.currentConfig()!.openmedEnabled,
+        gliner2Enabled: this.currentConfig()!.gliner2Enabled,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
       });

@@ -139,6 +139,27 @@
                                 [ariaLabel]="'settings.detectors.openmed.label' | transloco">
                             </p-toggleswitch>
                         </div>
+
+                        <!-- GLiNER2 -->
+                        <div class="detector-card gliner2"
+                             [class.enabled]="configForm.get('gliner2Enabled')?.value"
+                             [class.disabled]="!configForm.get('gliner2Enabled')?.value">
+                            <div class="detector-avatar gliner2"
+                                 [class.disabled-avatar]="!configForm.get('gliner2Enabled')?.value">G2</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('gliner2Enabled')?.value">
+                                    {{ 'settings.detectors.gliner2.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.gliner2.help' | transloco }}</div>
+                            </div>
+                            <p-toggleswitch
+                                formControlName="gliner2Enabled"
+                                inputId="toggleGliner2Enabled"
+                                data-testid="toggleGliner2Enabled"
+                                [ariaLabel]="'settings.detectors.gliner2.label' | transloco">
+                            </p-toggleswitch>
+                        </div>
                     </div>
 
                     <!-- Validation error: at least one detector -->
@@ -286,6 +307,7 @@
                                 </button>
                                 <span class="detector-badge"
                                       [class.gliner]="detectorGroup.detector === 'GLINER'"
+                                      [class.gliner2]="detectorGroup.detector === 'GLINER2'"
                                       [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
                                       [class.regex]="detectorGroup.detector === 'REGEX'"
                                       [class.openmed]="detectorGroup.detector === 'OPENMED'">
@@ -374,6 +396,30 @@
                                                 </p-button>
                                             }
                                         </div>
+
+                                        @if (detectorGroup.detector === 'GLINER2') {
+                                            <div class="pii-type-description">
+                                                <label class="sr-only"
+                                                       [attr.for]="'piiTypeDescriptionInput-' + type.piiType">
+                                                    {{ 'settings.piiTypes.descriptionLabel' | transloco }}
+                                                    ({{ ('settings.piiTypes.typeNames.' + type.piiType) | transloco }})
+                                                </label>
+                                                <input pInputText
+                                                       #descInput
+                                                       type="text"
+                                                       class="description-input"
+                                                       [id]="'piiTypeDescriptionInput-' + type.piiType"
+                                                       [attr.data-testid]="'piiTypeDescriptionInput-' + type.piiType"
+                                                       [value]="type.detectorDescription || ''"
+                                                       [attr.aria-describedby]="'piiTypeDescriptionHelp-' + type.piiType"
+                                                       [placeholder]="'settings.piiTypes.descriptionLabel' | transloco"
+                                                       (change)="onPiiTypeDescriptionChange(type, descInput.value)"/>
+                                                <small class="description-help"
+                                                       [id]="'piiTypeDescriptionHelp-' + type.piiType">
+                                                    {{ 'settings.piiTypes.descriptionHelp' | transloco }}
+                                                </small>
+                                            </div>
+                                        }
                                     </div>
                                 }
                             }

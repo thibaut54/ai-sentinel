@@ -12,6 +12,7 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   presidioEnabled: true,
   regexEnabled: true,
   openmedEnabled: false,
+  gliner2Enabled: false,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
@@ -168,15 +169,59 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_FailAtLeastOneDetectorValidation_When_AllDetectorsDisabled', () => {
-    // Given - All detectors disabled (including openmed)
+    // Given - All detectors disabled (including openmed and gliner2)
     component.configForm.patchValue({
       glinerEnabled: false,
       presidioEnabled: false,
       regexEnabled: false,
       openmedEnabled: false,
+      gliner2Enabled: false,
     });
 
     // Then - Form must carry atLeastOneDetector error
     expect(component.configForm.hasError('atLeastOneDetector')).toBe(true);
+  });
+
+  it('Should_CreateGliner2EnabledControl_When_FormInitialized', () => {
+    const gliner2Control = component.configForm.get('gliner2Enabled');
+    expect(gliner2Control).toBeTruthy();
+    expect(gliner2Control?.value).toBe(false);
+  });
+
+  it('Should_PassAtLeastOneDetectorValidation_When_OnlyGliner2Enabled', () => {
+    component.configForm.patchValue({
+      glinerEnabled: false,
+      presidioEnabled: false,
+      regexEnabled: false,
+      openmedEnabled: false,
+      gliner2Enabled: true,
+    });
+
+    expect(component.configForm.hasError('atLeastOneDetector')).toBe(false);
+  });
+
+  it('Should_TrackDescriptionChange_When_Gliner2RowEdited', () => {
+    // Given a GLINER2 row registered as original
+    const type = {
+      id: 1,
+      piiType: 'EMAIL',
+      detector: 'GLINER2' as const,
+      enabled: true,
+      threshold: 0.5,
+      category: 'CONTACT',
+      detectorDescription: 'adresse e-mail',
+    };
+    component.groupedPiiTypes.set([
+      { detector: 'GLINER2', categories: [{ category: 'CONTACT', types: [type] }] },
+    ]);
+    // Seed originals via the private initializer through loadAllConfigs path:
+    (component as unknown as { originalPiiTypes: { set: (m: Map<string, unknown>) => void } })
+      .originalPiiTypes.set(new Map([['GLINER2:EMAIL', { ...type }]]));
+
+    // When the description changes
+    component.onPiiTypeDescriptionChange(type, 'nouvelle description');
+
+    // Then the row is tracked as modified (drives the bulk save + unsaved indicator)
+    expect(component.hasUnsavedTypeChanges()).toBe(true);
   });
 });

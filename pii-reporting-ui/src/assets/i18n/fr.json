@@ -279,6 +279,10 @@
       "openmed": {
         "label": "OpenMed (multilingue)",
         "description": "Détecteur ML multilingue (FR/EN/DE/IT/ES) couvrant les patterns financiers, crypto, véhicules et IT credentials."
+      },
+      "gliner2": {
+        "label": "GLiNER2",
+        "help": "Détecteur zéro-shot multi-tâches avec descriptions par type pour désambiguïser. Source complémentaire de GLiNER (désactivé par défaut)."
       }
     },
     "threshold": {
@@ -307,12 +311,23 @@
       "types": "types",
       "threshold": "Seuil de confiance",
       "toggle": "Activer/désactiver {{type}}",
+      "descriptionLabel": "Description d'inférence",
+      "descriptionHelp": "Phrase en langage naturel que GLiNER2 utilise pour reconnaître ce type. Modifiable pour affiner la détection sans redéploiement.",
       "detectors": {
         "gliner": "Détecteur GLiNER",
         "presidio": "Détecteur Presidio",
-        "openmed": "OpenMed"
+        "openmed": "OpenMed",
+        "gliner2": "Détecteur GLiNER2"
+      },
+      "detectorNames": {
+        "GLINER": "GLiNER",
+        "PRESIDIO": "Presidio",
+        "REGEX": "Regex",
+        "OPENMED": "OpenMed",
+        "GLINER2": "GLiNER2"
       },
       "categoryNames": {
+        "TEMPORAL": "Dates sensibles",
         "CONTACT": "Informations de contact",
         "IDENTITY": "Identité et noms",
         "FINANCIAL": "Données financières",
@@ -338,6 +353,30 @@
         "CUSTOM": "Labels personnalisés"
       },
       "typeNames": {
+        "FULL_NAME": "Nom complet",
+        "FIRST_NAME": "Prénom",
+        "LAST_NAME": "Nom de famille",
+        "COUNTRY": "Pays",
+        "GOVERNMENT_ID": "Identifiant gouvernemental",
+        "MIDDLE_NAME": "Deuxième prénom",
+        "STREET_ADDRESS": "Rue et numéro",
+        "STATE_OR_REGION": "Canton / région",
+        "NATIONAL_ID_NUMBER": "Numéro de carte d'identité",
+        "DRIVERS_LICENSE_NUMBER": "Numéro de permis de conduire",
+        "TAX_NUMBER": "Numéro fiscal",
+        "ACCOUNT_NUMBER": "Numéro de compte",
+        "ROUTING_NUMBER": "Numéro d'acheminement bancaire",
+        "PAYMENT_CARD": "Carte de paiement",
+        "CARD_NUMBER": "Numéro de carte",
+        "CARD_EXPIRY": "Date d'expiration de carte",
+        "CARD_CVV": "Code de sécurité de carte (CVV)",
+        "SENSITIVE_ACCOUNT_ID": "Identifiant de compte sensible",
+        "SECRET": "Secret",
+        "RECOVERY_CODE": "Code de récupération",
+        "SENSITIVE_DATE": "Date sensible",
+        "DOCUMENT_DATE": "Date du document",
+        "EXPIRATION_DATE": "Date d'expiration",
+        "TRANSACTION_DATE": "Date de transaction",
         "EMAIL": "Adresse email",
         "PHONE": "Numéro de téléphone",
         "TELEPHONENUM": "Numéro de téléphone",
@@ -504,6 +543,31 @@
         "EYE_COLOR": "Couleur des yeux"
       },
       "typeDescriptions": {
+        "FULL_NAME": "Nom complet d'une personne (prénom + nom)",
+        "FIRST_NAME": "Prénom d'une personne",
+        "LAST_NAME": "Nom de famille d'une personne",
+        "COUNTRY": "Nom de pays",
+        "GOVERNMENT_ID": "Numéro d'identification délivré par une autorité publique",
+        "BANK_ACCOUNT": "Compte bancaire",
+        "MIDDLE_NAME": "Deuxième prénom d'une personne",
+        "STREET_ADDRESS": "Rue et numéro d'une adresse postale",
+        "STATE_OR_REGION": "Canton, état ou région",
+        "NATIONAL_ID_NUMBER": "Numéro de carte d'identité nationale",
+        "DRIVERS_LICENSE_NUMBER": "Numéro de permis de conduire",
+        "TAX_NUMBER": "Numéro fiscal (ex. IDE/TVA suisse)",
+        "ACCOUNT_NUMBER": "Numéro de compte bancaire",
+        "ROUTING_NUMBER": "Numéro d'acheminement bancaire (clearing/ABA)",
+        "PAYMENT_CARD": "Carte de paiement (crédit ou débit)",
+        "CARD_NUMBER": "Numéro de carte de paiement (PAN)",
+        "CARD_EXPIRY": "Date d'expiration d'une carte de paiement (MM/AA)",
+        "CARD_CVV": "Code de sécurité d'une carte (CVV/CVC, 3-4 chiffres)",
+        "SENSITIVE_ACCOUNT_ID": "Identifiant de compte sensible (bancaire, santé, etc.)",
+        "SECRET": "Valeur secrète ou confidentielle",
+        "RECOVERY_CODE": "Code de récupération ou de secours d'un compte",
+        "SENSITIVE_DATE": "Date sensible liée à une personne ou un dossier",
+        "DOCUMENT_DATE": "Date d'émission ou de rédaction d'un document",
+        "EXPIRATION_DATE": "Date d'expiration d'un document ou d'un droit",
+        "TRANSACTION_DATE": "Date d'une transaction",
         "EMAIL": "Adresses email au format standard (ex: utilisateur@domaine.com)",
         "PHONE": "Numéros de téléphone dans divers formats internationaux",
         "TELEPHONENUM": "Numéros de téléphone avec indicatifs pays et extensions",

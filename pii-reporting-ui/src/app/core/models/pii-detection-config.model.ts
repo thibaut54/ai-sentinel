@@ -1,4 +1,4 @@
-export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX' | 'OPENMED';
+export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX' | 'OPENMED' | 'GLINER2';
 
 /**
  * PII Detection Configuration model matching backend DTO.
@@ -8,6 +8,7 @@ export interface PiiDetectionConfig {
   presidioEnabled: boolean;
   regexEnabled: boolean;
   openmedEnabled: boolean;
+  gliner2Enabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
   updatedAt?: string;
@@ -22,6 +23,7 @@ export interface UpdatePiiDetectionConfigRequest {
   presidioEnabled: boolean;
   regexEnabled: boolean;
   openmedEnabled: boolean;
+  gliner2Enabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
 }
@@ -39,6 +41,12 @@ export interface PiiTypeConfig {
   countryCode?: string;
   isCustom?: boolean;
   detectorLabel?: string;
+  /**
+   * Raw natural-language inference description for this GLiNER2 type (editable in the UI).
+   * The backend pairs it with `detectorLabel` to build the GLiNER2 schema entry
+   * `{detectorLabel: detectorDescription}`; this field carries only the description string.
+   */
+  detectorDescription?: string;
   severity?: string;
   updatedAt?: string;
   updatedBy?: string;
@@ -66,6 +74,11 @@ export interface UpdatePiiTypeConfigRequest {
   detector: DetectorType;
   enabled: boolean;
   threshold: number;
+  /**
+   * GLiNER2 inference description. Sent ONLY for GLINER2 rows; when omitted the
+   * backend leaves the stored description unchanged ("absent = unchanged").
+   */
+  detectorDescription?: string;
 }
 
 /**
@@ -79,7 +92,7 @@ export interface BulkUpdatePiiTypeConfigRequest {
  * Grouped PII types by detector and category for UI display.
  */
 export interface GroupedPiiTypes {
-  detector: 'GLINER' | 'PRESIDIO' | 'OPENMED';
+  detector: 'GLINER' | 'PRESIDIO' | 'OPENMED' | 'GLINER2';
   categories: CategoryGroup[];
 }
 
