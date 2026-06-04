@@ -5,9 +5,13 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for creating a new PII type configuration (custom label).
+ *
+ * @param detectorDescription Optional GLiNER2 inference description (only
+ *        relevant for {@code GLINER2} rows).
  */
 public record CreatePiiTypeConfigRequestDto(
         @NotBlank(message = "PII type cannot be blank")
@@ -30,6 +34,9 @@ public record CreatePiiTypeConfigRequestDto(
         String category,
 
         String detectorLabel,
+
+        @Size(max = 2000, message = "Detector description must be at most 2000 characters")
+        String detectorDescription,
 
         String countryCode,
 

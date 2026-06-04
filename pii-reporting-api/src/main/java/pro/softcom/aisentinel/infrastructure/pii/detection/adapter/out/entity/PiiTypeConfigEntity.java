@@ -58,6 +58,9 @@ public class PiiTypeConfigEntity {
     @Column(name = "detector_label", length = 100)
     private String detectorLabel;
 
+    @Column(name = "detector_description", columnDefinition = "text")
+    private String detectorDescription;
+
     @Column(name = "is_custom", nullable = false, columnDefinition = "boolean not null default false")
     private boolean custom;
 
@@ -98,6 +101,7 @@ public class PiiTypeConfigEntity {
         entity.category = domain.getCategory();
         entity.countryCode = domain.getCountryCode();
         entity.detectorLabel = domain.getDetectorLabel();
+        entity.detectorDescription = domain.getDetectorDescription();
         entity.custom = domain.isCustom();
         entity.severity = domain.getSeverity();
         entity.updatedAt = domain.getUpdatedAt();
@@ -116,6 +120,7 @@ public class PiiTypeConfigEntity {
                 .category(category)
                 .countryCode(countryCode)
                 .detectorLabel(detectorLabel)
+                .detectorDescription(detectorDescription)
                 .custom(custom)
                 .severity(severity)
                 .updatedAt(updatedAt)

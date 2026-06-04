@@ -19,6 +19,7 @@ import java.math.BigDecimal;
  * @param presidioEnabled  Whether Presidio detector should be enabled
  * @param regexEnabled     Whether custom regex detector should be enabled
  * @param openmedEnabled   Whether OpenMed detector should be enabled
+ * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param nbOfLabelByPass  Maximum labels per detector batch
  * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled.
@@ -40,6 +41,10 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("openmedEnabled")
     @NotNull(message = "openmedEnabled is required")
     Boolean openmedEnabled,
+
+    @JsonProperty("gliner2Enabled")
+    @NotNull(message = "gliner2Enabled is required")
+    Boolean gliner2Enabled,
 
     @JsonProperty("defaultThreshold")
     @NotNull(message = "defaultThreshold is required")
@@ -82,9 +87,11 @@ public record UpdatePiiDetectionConfigRequestDto(
             && presidioEnabled != null
             && regexEnabled != null
             && openmedEnabled != null
+            && gliner2Enabled != null
             && !glinerEnabled
             && !presidioEnabled
             && !regexEnabled
-            && !openmedEnabled;
+            && !openmedEnabled
+            && !gliner2Enabled;
     }
 }

@@ -26,12 +26,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Tests for the PiiDetectionConfigController class.
- * Verifies REST mapping for the {@code llm_judge_enabled} flag (spec §1.4).
+ * REST mapping tests for the {@code gliner2Enabled} flag on the singleton
+ * detection config (spec §5.2). Verifies GET exposes the flag and PUT persists
+ * it through to the use-case command.
  */
 @WebMvcTest(PiiDetectionConfigController.class)
 @Import(SecurityConfig.class)
-class PiiDetectionConfigControllerTest {
+class PiiDetectionConfigControllerGliner2Test {
 
     private static final String CONFIG_URL = "/api/v1/pii-detection/config";
 
@@ -42,36 +43,35 @@ class PiiDetectionConfigControllerTest {
     private ManagePiiDetectionConfigPort managePiiDetectionConfigPort;
 
     @Test
-    void Should_ReturnLlmJudgeEnabledInResponse_When_GetConfig() throws Exception {
-        PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, true,
+    void Should_ExposeGliner2Enabled_When_GetConfig() throws Exception {
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false,
             LocalDateTime.now(), "admin"
         );
-        when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
+        when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.glinerEnabled").value(true))
-            .andExpect(jsonPath("$.llmJudgeEnabled").value(true));
+            .andExpect(jsonPath("$.gliner2Enabled").value(true));
     }
 
     @Test
-    void Should_DefaultLlmJudgeEnabledToFalse_When_NotProvidedInResponse() throws Exception {
-        PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false,
+    void Should_DefaultGliner2EnabledFalse_When_GetConfig() throws Exception {
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            1, true, true, true, false, false, new BigDecimal("0.75"), 35, false,
             LocalDateTime.now(), "admin"
         );
-        when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
+        when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.llmJudgeEnabled").value(false));
+            .andExpect(jsonPath("$.gliner2Enabled").value(false));
     }
 
     @Test
-    void Should_UpdateLlmJudgeEnabled_When_PatchRequestEnablesFlag() throws Exception {
+    void Should_PersistGliner2Enabled_When_PutConfig() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, true,
+            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -83,10 +83,10 @@ class PiiDetectionConfigControllerTest {
                   "presidioEnabled": true,
                   "regexEnabled": true,
                   "openmedEnabled": false,
-                  "gliner2Enabled": false,
+                  "gliner2Enabled": true,
                   "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 30,
-                  "llmJudgeEnabled": true
+                  "nbOfLabelByPass": 35,
+                  "llmJudgeEnabled": false
                 }
                 """;
 
@@ -94,49 +94,33 @@ class PiiDetectionConfigControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.llmJudgeEnabled").value(true));
+            .andExpect(jsonPath("$.gliner2Enabled").value(true));
 
         ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
             ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
         verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(captor.getValue().llmJudgeEnabled()).isTrue();
-        softly.assertThat(captor.getValue().updatedBy())
-            .isEqualTo(PiiDetectionConfigController.ADMIN_USERNAME);
+        softly.assertThat(captor.getValue().gliner2Enabled()).isTrue();
         softly.assertAll();
     }
 
     @Test
-    void Should_DefaultLlmJudgeEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
-        PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false,
-            LocalDateTime.now(), "admin"
-        );
-        when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
-            .thenReturn(persisted);
-
-        // No llmJudgeEnabled field in payload → must default to false at command-build time.
+    void Should_RejectUpdate_When_Gliner2EnabledMissing() throws Exception {
+        // gliner2Enabled is @NotNull on the request DTO.
         String body = """
                 {
                   "glinerEnabled": true,
                   "presidioEnabled": true,
                   "regexEnabled": true,
                   "openmedEnabled": false,
-                  "gliner2Enabled": false,
                   "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 30
+                  "nbOfLabelByPass": 35
                 }
                 """;
 
         mockMvc.perform(put(CONFIG_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.llmJudgeEnabled").value(false));
-
-        ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
-            ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
-        verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().llmJudgeEnabled()).isFalse();
+            .andExpect(status().isBadRequest());
     }
 }

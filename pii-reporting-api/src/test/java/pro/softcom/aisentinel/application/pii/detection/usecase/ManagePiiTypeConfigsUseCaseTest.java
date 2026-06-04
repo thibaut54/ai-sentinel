@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort.CreatePiiTypeConfigCommand;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
@@ -51,7 +52,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "custom label", null, "HIGH", "admin"
+                "Custom", "custom label", null, null, "HIGH", "admin"
         ));
 
         // Assert
@@ -78,7 +79,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act & Assert
         var command = new CreatePiiTypeConfigCommand(
                 "EXISTING_TYPE", "GLINER", true, 0.5,
-                "Custom", "existing type", null, null, "admin"
+                "Custom", "existing type", null, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -92,7 +93,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidPiiTypeFormat() {
         var command = new CreatePiiTypeConfigCommand(
                 "invalid-type", "GLINER", true, 0.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -106,7 +107,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidDetector() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "INVALID", true, 0.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -120,7 +121,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_GlinerDetectorLabelBlank() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "", null, null, "admin"
+                "Custom", "", null, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -134,7 +135,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_ThresholdOutOfRange() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 1.5,
-                "Custom", "label", null, null, "admin"
+                "Custom", "label", null, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -163,7 +164,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act - no detectorLabel for PRESIDIO should be fine
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "PRESIDIO", true, 0.7,
-                "Custom", null, null, null, "admin"
+                "Custom", null, null, null, null, "admin"
         ));
 
         // Assert
@@ -222,5 +223,48 @@ class ManagePiiTypeConfigsUseCaseTest {
                 .hasMessageContaining("not found");
 
         verify(repository, never()).deleteByPiiTypeAndDetector(any(), any());
+    }
+
+    // ====== GLINER2 detector_description tests (spec §5.1 / §9) ======
+
+    @Test
+    @DisplayName("Should_AcceptGliner2Detector_When_Validating")
+    void Should_AcceptGliner2Detector_When_Validating() {
+        when(repository.updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", "admin"))
+                .thenReturn(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5)
+                        .detectorDescription("desc").build());
+
+        PiiTypeConfig result = useCase.updateConfig("EMAIL", "GLINER2", true, 0.5, "desc", "admin");
+
+        assertThat(result.getDetectorDescription()).isEqualTo("desc");
+        verify(repository).updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", "admin");
+    }
+
+    @Test
+    @DisplayName("Should_ForwardDescription_When_BulkUpdate")
+    void Should_ForwardDescription_When_BulkUpdate() {
+        var update = new ManagePiiTypeConfigsPort.PiiTypeConfigUpdate(
+                "EMAIL", "GLINER2", true, 0.5, "adresse e-mail");
+        when(repository.bulkUpdateAtomically(java.util.List.of(update), "admin"))
+                .thenReturn(java.util.List.of(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5)
+                        .detectorDescription("adresse e-mail").build()));
+
+        var result = useCase.bulkUpdate(java.util.List.of(update), "admin");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getDetectorDescription()).isEqualTo("adresse e-mail");
+        // The update (with its description) is forwarded verbatim to the repository,
+        // which applies "absent = unchanged" semantics when description is null.
+        verify(repository).bulkUpdateAtomically(java.util.List.of(update), "admin");
+    }
+
+    @Test
+    @DisplayName("Should_RejectUnknownDetector_When_Validating")
+    void Should_RejectUnknownDetector_When_Validating() {
+        assertThatThrownBy(() -> useCase.updateConfig("EMAIL", "UNKNOWN", true, 0.5, null, "admin"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("GLINER2");
     }
 }

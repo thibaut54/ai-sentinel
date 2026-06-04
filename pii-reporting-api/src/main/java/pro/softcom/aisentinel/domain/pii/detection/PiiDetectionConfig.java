@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
  * Domain model for PII detection configuration.
  * Represents the configuration settings for PII detection detectors and thresholds.
  * This is the single source of truth for detection configuration in the system.
- * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED.
+ * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2.
  *
  * <p>The {@code llmJudgeEnabled} flag activates the LLM-as-Judge post-filtering
  * stage that audits GLiNER findings to reduce false positives (cf. spec §1.4).
@@ -18,6 +18,7 @@ public record PiiDetectionConfig(
         boolean presidioEnabled,
         boolean regexEnabled,
         boolean openmedEnabled,
+        boolean gliner2Enabled,
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
         boolean llmJudgeEnabled,
@@ -47,7 +48,7 @@ public record PiiDetectionConfig(
                     "Default threshold must be less than or equal to " + MAX_THRESHOLD);
         }
 
-        if (!glinerEnabled && !presidioEnabled && !regexEnabled && !openmedEnabled) {
+        if (!glinerEnabled && !presidioEnabled && !regexEnabled && !openmedEnabled && !gliner2Enabled) {
             throw new IllegalArgumentException(
                     "At least one detector must be enabled");
         }

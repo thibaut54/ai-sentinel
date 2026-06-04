@@ -172,7 +172,8 @@ public record ContentPiiDetection(
         GLINER,
         PRESIDIO,
         REGEX,
-        OPENMED
+        OPENMED,
+        GLINER2
     }
     
     /**

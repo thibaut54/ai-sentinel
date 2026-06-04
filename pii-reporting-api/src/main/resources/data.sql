@@ -9,9 +9,10 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- ============================================================================
 -- PII Detection Global Config (Singleton with id=1)
 -- llm_judge_enabled defaults to false (zero-effect MVP rollout, spec §1.4).
+-- gliner2_enabled defaults to false (explicit operator opt-in, spec D4).
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, updated_at, updated_by)
-VALUES (1, true, true, true, false, 0.30, 35, false, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, updated_at, updated_by)
+VALUES (1, true, true, true, false, false, 0.30, 35, false, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -351,5 +352,112 @@ VALUES
     ('ZIP_CODE',           'OPENMED', false, 0.80, 'CONTACT',        'ZIPCODE',          'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('EYE_COLOR',          'OPENMED', false, 0.85, 'IDENTITY',       'EYECOLOR',         'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
 ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- ============================================================================
+-- GLINER2 PII TYPES
+-- ============================================================================
+-- Multi-task zero-shot detector (lib gliner2, model fastino/gliner2-large-v1).
+-- Global kill-switch pii_detection_config.gliner2_enabled = FALSE (spec D4 —
+-- the detector does not run until an operator enables it globally).
+-- Per-type defaults: GOVERNMENT_ID / FINANCIAL / DIGITAL / SECURITY enabled;
+-- IDENTITY / CONTACT / TEMPORAL disabled (per product taxonomy).
+-- threshold = 0.50 (recalibrated for GLiNER2; scores NOT comparable to GLiNER's
+-- 0.30/0.80 — spec §4.6, to be tuned via the offline FR harness).
+--
+-- detector_label        : the entity label sent to GLiNER2 (schema key).
+--                         snake_case validated on the POC (person_name, email...).
+-- detector_description   : the natural-language inference description (schema
+--                         value), rendered in FR/Swiss context (spec §2.4).
+--                         Editable in the UI; NULL/empty falls back to the label.
+-- ============================================================================
+
+-- Taxonomie GLiNER2-PII complete (42 labels natifs du modele).
+-- Active par defaut UNIQUEMENT : GOVERNMENT_ID, FINANCIAL, DIGITAL, SECURITY.
+-- Desactive par defaut : IDENTITY (person/names), CONTACT (contact/address),
+-- TEMPORAL (sensitive dates).
+
+-- Category: IDENTITY (person / names) -- desactive par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('PERSON',        'GLINER2', false, 0.50, 'IDENTITY', 'person',        'nom d''une personne (prenom et/ou nom)',  'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('FULL_NAME',     'GLINER2', false, 0.50, 'IDENTITY', 'full_name',     'nom complet d''une personne (prenom + nom)', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('FIRST_NAME',    'GLINER2', false, 0.50, 'IDENTITY', 'first_name',    'prenom d''une personne',                  'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MIDDLE_NAME',   'GLINER2', false, 0.50, 'IDENTITY', 'middle_name',   'deuxieme prenom d''une personne',         'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LAST_NAME',     'GLINER2', false, 0.50, 'IDENTITY', 'last_name',     'nom de famille d''une personne',          'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_OF_BIRTH', 'GLINER2', false, 0.50, 'IDENTITY', 'date_of_birth', 'date de naissance d''une personne',       'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: CONTACT (contact / address) -- desactive par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('EMAIL',           'GLINER2', false, 0.50, 'CONTACT', 'email',           'adresse e-mail',                                       'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PHONE_NUMBER',    'GLINER2', false, 0.50, 'CONTACT', 'phone_number',    'numero de telephone (format suisse ou international)', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ADDRESS',         'GLINER2', false, 0.50, 'CONTACT', 'address',         'adresse postale complete',                             'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STREET_ADDRESS',  'GLINER2', false, 0.50, 'CONTACT', 'street_address',  'rue et numero d''une adresse postale',                 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CITY',            'GLINER2', false, 0.50, 'CONTACT', 'city',            'nom de ville ou commune',                              'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STATE_OR_REGION', 'GLINER2', false, 0.50, 'CONTACT', 'state_or_region', 'canton, etat ou region',                               'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('POSTAL_CODE',     'GLINER2', false, 0.50, 'CONTACT', 'postal_code',     'code postal (NPA suisse a 4 chiffres ou international)', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COUNTRY',         'GLINER2', false, 0.50, 'CONTACT', 'country',         'nom de pays',                                          'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: GOVERNMENT_ID (government / tax IDs) -- ACTIVE par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('GOVERNMENT_ID',          'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'government_id',          'numero d''identification delivre par une autorite publique', 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONAL_ID_NUMBER',     'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'national_id_number',     'numero de carte d''identite nationale',                      'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSPORT_NUMBER',        'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'passport_number',        'numero de passeport',                                        'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DRIVERS_LICENSE_NUMBER', 'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'drivers_license_number', 'numero de permis de conduire',                               'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LICENSE_NUMBER',         'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'license_number',         'numero de licence ou d''autorisation professionnelle',       'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TAX_ID',                 'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'tax_id',                 'identifiant fiscal d''une personne ou entreprise',           'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TAX_NUMBER',             'GLINER2', true, 0.50, 'GOVERNMENT_ID', 'tax_number',             'numero fiscal (ex. numero IDE/TVA suisse)',                  'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: FINANCIAL (banking / payment) -- ACTIVE par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('BANK_ACCOUNT',   'GLINER2', true, 0.50, 'FINANCIAL', 'bank_account',   'compte bancaire',                                            'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_NUMBER', 'GLINER2', true, 0.50, 'FINANCIAL', 'account_number', 'numero de compte bancaire',                                  'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ROUTING_NUMBER', 'GLINER2', true, 0.50, 'FINANCIAL', 'routing_number', 'numero d''acheminement bancaire (clearing/ABA)',             'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IBAN',           'GLINER2', true, 0.50, 'FINANCIAL', 'iban',           'numero de compte bancaire international IBAN (commence par CH pour la Suisse)', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PAYMENT_CARD',   'GLINER2', true, 0.50, 'FINANCIAL', 'payment_card',   'carte de paiement (credit ou debit)',                        'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CARD_NUMBER',    'GLINER2', true, 0.50, 'FINANCIAL', 'card_number',    'numero de carte de paiement (PAN a 13-19 chiffres)',         'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CARD_EXPIRY',    'GLINER2', true, 0.50, 'FINANCIAL', 'card_expiry',    'date d''expiration d''une carte de paiement (MM/AA)',         'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CARD_CVV',       'GLINER2', true, 0.50, 'FINANCIAL', 'card_cvv',       'code de securite d''une carte de paiement (CVV/CVC 3-4 chiffres)', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: DIGITAL (digital identity) -- ACTIVE par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('USERNAME',             'GLINER2', true, 0.50, 'DIGITAL', 'username',             'identifiant de connexion ou nom d''utilisateur',          'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IP_ADDRESS',           'GLINER2', true, 0.50, 'DIGITAL', 'ip_address',           'adresse IP (IPv4 ou IPv6)',                               'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_ID',           'GLINER2', true, 0.50, 'DIGITAL', 'account_id',           'identifiant de compte utilisateur',                       'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SENSITIVE_ACCOUNT_ID', 'GLINER2', true, 0.50, 'DIGITAL', 'sensitive_account_id', 'identifiant de compte sensible (bancaire, sante, etc.)',  'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: SECURITY (secrets / credentials) -- ACTIVE par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('PASSWORD',      'GLINER2', true, 0.50, 'SECURITY', 'password',      'mot de passe ou code secret',                  'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SECRET',        'GLINER2', true, 0.50, 'SECURITY', 'secret',        'valeur secrete ou confidentielle',             'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('API_KEY',       'GLINER2', true, 0.50, 'SECURITY', 'api_key',       'cle d''API ou jeton de service',               'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCESS_TOKEN',  'GLINER2', true, 0.50, 'SECURITY', 'access_token',  'jeton d''acces d''authentification',           'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RECOVERY_CODE', 'GLINER2', true, 0.50, 'SECURITY', 'recovery_code', 'code de recuperation ou de secours d''un compte', 'HIGH', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: TEMPORAL (sensitive dates) -- desactive par defaut
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, severity, is_custom, created_at, updated_at, updated_by)
+VALUES
+    ('SENSITIVE_DATE',   'GLINER2', false, 0.50, 'TEMPORAL', 'sensitive_date',   'date sensible liee a une personne ou un dossier',  'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DOCUMENT_DATE',    'GLINER2', false, 0.50, 'TEMPORAL', 'document_date',    'date d''emission ou de redaction d''un document',  'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EXPIRATION_DATE',  'GLINER2', false, 0.50, 'TEMPORAL', 'expiration_date',  'date d''expiration d''un document ou d''un droit', 'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TRANSACTION_DATE', 'GLINER2', false, 0.50, 'TEMPORAL', 'transaction_date', 'date d''une transaction',                          'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
 
 COMMIT;

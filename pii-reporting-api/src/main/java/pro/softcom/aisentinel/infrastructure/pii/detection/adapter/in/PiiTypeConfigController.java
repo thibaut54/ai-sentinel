@@ -75,6 +75,7 @@ public class PiiTypeConfigController {
                 request.threshold(),
                 request.category(),
                 request.detectorLabel(),
+                request.detectorDescription(),
                 request.countryCode(),
                 request.severity(),
                 PLACEHOLDER_USER
@@ -173,6 +174,7 @@ public class PiiTypeConfigController {
                 request.detector(),
                 request.enabled(),
                 request.threshold(),
+                request.detectorDescription(),
                 PLACEHOLDER_USER
         );
 
@@ -196,7 +198,8 @@ public class PiiTypeConfigController {
                         req.piiType(),
                         req.detector(),
                         req.enabled(),
-                        req.threshold()
+                        req.threshold(),
+                        req.detectorDescription()
                 ))
                 .toList();
 

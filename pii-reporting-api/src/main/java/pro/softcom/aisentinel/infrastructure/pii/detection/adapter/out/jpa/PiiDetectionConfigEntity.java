@@ -50,6 +50,14 @@ public class PiiDetectionConfigEntity {
     @Column(name = "openmed_enabled", nullable = false)
     private Boolean openmedEnabled;
 
+    /**
+     * Activates the GLiNER2 detector (ensemble source). Defaults to
+     * {@code false} for an explicit operator opt-in (spec D4).
+     */
+    @NotNull
+    @Column(name = "gliner2_enabled", nullable = false)
+    private Boolean gliner2Enabled;
+
     @NotNull
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")

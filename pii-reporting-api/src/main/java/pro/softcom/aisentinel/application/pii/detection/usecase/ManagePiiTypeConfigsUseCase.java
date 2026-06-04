@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * Business rules:
  * - Each PII type + detector combination is unique
  * - Threshold must be between 0.0 and 1.0
- * - Detector must be GLINER, PRESIDIO, or REGEX
+ * - Detector must be GLINER, PRESIDIO, REGEX, OPENMED, or GLINER2
  * - Updates are transactional
  */
 public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
@@ -51,6 +51,7 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
                 .threshold(command.threshold())
                 .category(command.category())
                 .detectorLabel(command.detectorLabel())
+                .detectorDescription(command.detectorDescription())
                 .countryCode(command.countryCode())
                 .custom(true)
                 .severity(command.severity() != null ? command.severity() : "LOW")
@@ -88,10 +89,23 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
             double threshold,
             String updatedBy
     ) {
+        return updateConfig(piiType, detector, enabled, threshold, null, updatedBy);
+    }
+
+    @Override
+    public PiiTypeConfig updateConfig(
+            String piiType,
+            String detector,
+            boolean enabled,
+            double threshold,
+            String detectorDescription,
+            String updatedBy
+    ) {
         validateDetector(detector);
         validateThreshold(threshold);
 
-        return repository.updateAtomically(piiType, detector, enabled, threshold, updatedBy);
+        return repository.updateAtomically(
+                piiType, detector, enabled, threshold, detectorDescription, updatedBy);
     }
 
     @Override
@@ -137,9 +151,11 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         if (detector == null) {
             throw new IllegalArgumentException("Detector cannot be null");
         }
-        if (!detector.equals("GLINER") && !detector.equals("PRESIDIO") && !detector.equals("REGEX")) {
+        if (!detector.equals("GLINER") && !detector.equals("PRESIDIO")
+                && !detector.equals("REGEX") && !detector.equals("OPENMED")
+                && !detector.equals("GLINER2")) {
             throw new IllegalArgumentException(
-                    "Detector must be one of: GLINER, PRESIDIO, REGEX. Got: " + detector
+                    "Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2. Got: " + detector
             );
         }
     }

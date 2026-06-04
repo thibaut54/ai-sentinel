@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
  * @param presidioEnabled  Whether Presidio detector is enabled
  * @param regexEnabled     Whether custom regex detector is enabled
  * @param openmedEnabled   Whether OpenMed detector is enabled
+ * @param gliner2Enabled   Whether GLiNER2 detector is enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param nbOfLabelByPass  Maximum labels per detector batch
  * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled
@@ -24,6 +25,7 @@ public record PiiDetectionConfigResponseDto(
     boolean presidioEnabled,
     boolean regexEnabled,
     boolean openmedEnabled,
+    boolean gliner2Enabled,
     BigDecimal defaultThreshold,
     Integer nbOfLabelByPass,
     boolean llmJudgeEnabled,

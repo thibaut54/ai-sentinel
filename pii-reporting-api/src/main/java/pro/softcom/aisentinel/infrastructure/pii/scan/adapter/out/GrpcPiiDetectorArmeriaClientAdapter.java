@@ -214,6 +214,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
         // the new enum value (see openmed-api-contract.md §2).
         return switch (protoSource.name()) {
             case "GLINER" -> GLINER;
+            case "GLINER2" -> GLINER2;
             case "PRESIDIO" -> PRESIDIO;
             case "REGEX" -> REGEX;
             case "OPENMED" -> OPENMED;

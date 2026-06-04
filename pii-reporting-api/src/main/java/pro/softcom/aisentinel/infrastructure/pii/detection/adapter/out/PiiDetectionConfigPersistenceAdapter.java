@@ -53,10 +53,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, openmedEnabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, updatedBy={}",
+                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
-                config.regexEnabled(), config.openmedEnabled(), config.defaultThreshold(),
-                config.nbOfLabelByPass(), config.llmJudgeEnabled(), config.updatedBy());
+                config.regexEnabled(), config.openmedEnabled(), config.gliner2Enabled(),
+                config.defaultThreshold(), config.nbOfLabelByPass(), config.llmJudgeEnabled(),
+                config.updatedBy());
 
 
         PiiDetectionConfigEntity entity = toEntity(config);
@@ -78,6 +79,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 true,  // presidioEnabled
                 true,  // regexEnabled
                 false, // openmedEnabled
+                false, // gliner2Enabled (cf. spec D4 — explicit operator opt-in)
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
                 false, // llmJudgeEnabled (cf. spec §1.4 — zero-effect MVP default)
@@ -99,6 +101,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getPresidioEnabled(),
                 entity.getRegexEnabled(),
                 entity.getOpenmedEnabled() != null && entity.getOpenmedEnabled(),
+                entity.getGliner2Enabled() != null && entity.getGliner2Enabled(),
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
                 entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
@@ -117,6 +120,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .presidioEnabled(config.presidioEnabled())
                 .regexEnabled(config.regexEnabled())
                 .openmedEnabled(config.openmedEnabled())
+                .gliner2Enabled(config.gliner2Enabled())
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
                 .llmJudgeEnabled(config.llmJudgeEnabled())

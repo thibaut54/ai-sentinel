@@ -39,6 +39,16 @@ public class PiiTypeConfig {
      * - "person name" for PERSONNAME type
      */
     private final String detectorLabel;
+    /**
+     * Natural-language inference description passed to GLiNER2
+     * ({@code {detectorLabel: detectorDescription}}).
+     * <p>
+     * Business purpose: GLiNER2 needs BOTH a label (entity key) and a
+     * description (zero-shot disambiguation prompt). This field is distinct from
+     * {@link #detectorLabel} and is only meaningful for {@code GLINER2} rows;
+     * {@code null} for the other detectors. Editable at runtime via the UI.
+     */
+    private final String detectorDescription;
     private final boolean custom;
     private final String severity;
     private final LocalDateTime updatedAt;
@@ -68,6 +78,7 @@ public class PiiTypeConfig {
                 ", threshold=" + threshold +
                 ", category='" + category + '\'' +
                 ", countryCode='" + countryCode + '\'' +
+                ", detectorDescription='" + detectorDescription + '\'' +
                 ", custom=" + custom +
                 ", severity='" + severity + '\'' +
                 ", updatedAt=" + updatedAt +

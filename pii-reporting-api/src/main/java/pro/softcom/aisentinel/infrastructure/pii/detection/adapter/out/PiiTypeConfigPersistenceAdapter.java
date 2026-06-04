@@ -83,14 +83,25 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             double threshold,
             String updatedBy
     ) {
+        return updateAtomically(piiType, detector, enabled, threshold, null, updatedBy);
+    }
+
+    @Override
+    @Transactional
+    public PiiTypeConfig updateAtomically(
+            String piiType,
+            String detector,
+            boolean enabled,
+            double threshold,
+            String detectorDescription,
+            String updatedBy
+    ) {
         PiiTypeConfigEntity entity = jpaRepository.findByPiiTypeAndDetector(piiType, detector)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Configuration not found for PII type: " + piiType + " and detector: " + detector
                 ));
 
-        entity.setEnabled(enabled);
-        entity.setThreshold(threshold);
-        entity.setUpdatedBy(updatedBy);
+        applyUpdate(entity, enabled, threshold, detectorDescription, updatedBy);
 
         PiiTypeConfigEntity saved = jpaRepository.save(entity);
         return saved.toDomain();
@@ -112,9 +123,8 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                                     " and detector: " + update.detector()
                     ));
 
-                    entity.setEnabled(update.enabled());
-                    entity.setThreshold(update.threshold());
-                    entity.setUpdatedBy(updatedBy);
+                    applyUpdate(entity, update.enabled(), update.threshold(),
+                            update.detectorDescription(), updatedBy);
 
                     return entity;
                 })
@@ -124,5 +134,27 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
         return saved.stream()
                 .map(PiiTypeConfigEntity::toDomain)
                 .toList();
+    }
+
+    /**
+     * Applies an update to an entity in place.
+     * <p>
+     * "Absent = unchanged" semantics (spec §5.1): a {@code null}
+     * {@code detectorDescription} leaves the stored description untouched, so a
+     * client omitting the field never erases an existing description.
+     */
+    private void applyUpdate(
+            PiiTypeConfigEntity entity,
+            boolean enabled,
+            double threshold,
+            String detectorDescription,
+            String updatedBy
+    ) {
+        entity.setEnabled(enabled);
+        entity.setThreshold(threshold);
+        if (detectorDescription != null) {
+            entity.setDetectorDescription(detectorDescription);
+        }
+        entity.setUpdatedBy(updatedBy);
     }
 }
