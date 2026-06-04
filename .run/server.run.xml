@@ -4,16 +4,24 @@
     <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
-    <envs>
-      <env name="PYTHONUNBUFFERED" value="1" />
-    </envs>
+      <envs>
+          <env name="PYTHONUNBUFFERED" value="1" />
+          <env name="DB_PORT" value="5433" />
+          <env name="DB_NAME" value="ai-sentinel" />
+          <env name="DB_HOST" value="localhost" />
+          <env name="PII_DATABASE_ENCRYPTION_KEY" value="0VbKF4QQonigye2zwYnk4suDB4CV9YqM9w53EM/kKqY=" />
+          <env name="DB_USER" value="postgres" />
+          <env name="DB_PASSWORD" value="postgres" />
+      </envs>
     <option name="SDK_HOME" value="" />
-    <option name="SDK_NAME" value="Python 3.13" />
+    <option name="SDK_NAME" value="Python 3.13 (pii-detector-service)" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/pii-detector-service/pii_detector" />
     <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
+    <option name="DEBUG_JUST_MY_CODE" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="RUN_TOOL" value="" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pii-detector-service/pii_detector/server.py" />
     <option name="PARAMETERS" value="" />
     <option name="SHOW_COMMAND_LINE" value="false" />
