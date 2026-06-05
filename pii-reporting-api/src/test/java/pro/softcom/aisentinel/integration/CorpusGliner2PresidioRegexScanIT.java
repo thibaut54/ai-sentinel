@@ -63,6 +63,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
@@ -138,13 +144,49 @@ class CorpusGliner2PresidioRegexScanIT {
     private static final int VELOCITY_SAMPLE_TARGET_CHARS = 100_000;
 
     /**
-     * Threads PyTorch du serveur pii-detector. Par défaut le serveur bride à 4
-     * ({@code TORCH_NUM_THREADS}, pii_service.py) alors que Docker Desktop alloue 8 CPU ici —
-     * on aligne sur les CPU disponibles pour ne pas laisser la moitié du CPU inactive. Sans
-     * impact sur les détections (pure parallélisation des forward passes CPU). ⚠ Doit
-     * correspondre à l'allocation CPU de Docker Desktop ; ne pas dépasser (oversubscription).
+     * Nombre d'appels gRPC {@code DetectPII} simultanés côté client.
+     *
+     * <p>Le pipeline est dominé à ~99.7% par le forward pass GLiNER2 ; K requêtes en vol
+     * alimentent les {@link #DETECTOR_WORKER_PROCESSES} processus d'inférence du serveur
+     * (stratégie gagnante du bench, benchmarks/SCALING-CONCLUSIONS.md §7bis : ×4-5 vs
+     * séquentiel avec le modèle privacy-filter). K légèrement supérieur au pool garde les
+     * workers saturés (les requêtes excédentaires patientent dans la file gRPC).
+     * Override : {@code -Dcorpus.scan.concurrency=N}. ⚠ Aligner sur l'allocation CPU de WSL2.
      */
-    private static final String DETECTOR_TORCH_THREADS = "8";
+    private static final int CLIENT_CONCURRENCY =
+        Integer.getInteger("corpus.scan.concurrency", 12);
+
+    /**
+     * Threads PyTorch PAR requête. Avec K requêtes concurrentes sur le modèle partagé, le bon
+     * réglage est {@code K x torch_threads <= CPU container} → 1 : chaque forward mono-thread,
+     * K en parallèle. L'intra-op >1 thread scale très mal sur DeBERTa-large CPU (memory-bound :
+     * t16 fait PIRE que t8) et oversouscrirait le CPU face à K flux.
+     * Override : {@code -Dcorpus.scan.detector-torch-threads=N}.
+     */
+    private static final String DETECTOR_TORCH_THREADS =
+        System.getProperty("corpus.scan.detector-torch-threads", "1");
+
+    /**
+     * Worker threads gRPC du serveur Python : pool de threads partageant le détecteur singleton.
+     * Doit couvrir {@link #CLIENT_CONCURRENCY} avec une marge pour que chaque appel en vol ait
+     * son thread (sinon les requêtes se sérialisent côté serveur).
+     */
+    private static final int DETECTOR_GRPC_WORKERS = Math.max(16, CLIENT_CONCURRENCY + 2);
+
+    /**
+     * Pool de PROCESSUS d'inférence du serveur ({@code PII_WORKER_PROCESSES}).
+     *
+     * <p>Défaut 8 = la stratégie gagnante du bench AVEC le modèle privacy-filter (1.23 Go) :
+     * les N copies battent le modèle partagé multi-thread (587-732 vs ~580 c/s, le GIL
+     * plafonnant les threads), et tiennent en RAM — en container Linux le pool est forké
+     * APRÈS le chargement (copy-on-write : ~1 copie de poids pour N workers). 8 est le choix
+     * sûr pour 14 CPU / 32 Go WSL ; monter à 12 si la RAM du container le permet. ⚠ Avec un
+     * modèle LOURD (ex. gliner2-large-v1 1.86 Go, memory-bound), repasser à 0 : les copies
+     * y sont PERDANTES (cf. SCALING-CONCLUSIONS.md §5.4 vs §7bis). Override :
+     * {@code -Dcorpus.scan.detector-workers=N}.
+     */
+    private static final String DETECTOR_WORKER_PROCESSES =
+        System.getProperty("corpus.scan.detector-workers", "8");
 
     private static final String POSTGRES_ALIAS = "postgres-it";
     private static final String DB_NAME = "ai-sentinel";
@@ -192,7 +234,8 @@ class CorpusGliner2PresidioRegexScanIT {
     @Container
     static final GenericContainer<?> piiDetector = new GenericContainer<>(buildPiiDetectorImage())
         .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint(""))
-        .withCommand("python", "-m", "pii_detector.server", "--port", String.valueOf(GRPC_PORT))
+        .withCommand("python", "-m", "pii_detector.server", "--port", String.valueOf(GRPC_PORT),
+            "--workers", String.valueOf(DETECTOR_GRPC_WORKERS))
         .withExposedPorts(GRPC_PORT)
         .withNetwork(NETWORK)
         .withNetworkAliases("pii-detector")
@@ -204,8 +247,10 @@ class CorpusGliner2PresidioRegexScanIT {
         .withEnv("DB_NAME", DB_NAME)
         .withEnv("DB_USER", DB_USER)
         .withEnv("DB_PASSWORD", DB_PASSWORD)
-        // Aligne les threads torch sur les CPU Docker (défaut serveur = 4, sous-utilise le CPU).
+        // Data-parallélisme : N processus d'inférence × torch_threads chacun.
+        // N x torch_threads doit rester <= CPU allouées au container.
         .withEnv("TORCH_NUM_THREADS", DETECTOR_TORCH_THREADS)
+        .withEnv("PII_WORKER_PROCESSES", DETECTOR_WORKER_PROCESSES)
         // Python écrit tout (y compris INFO) sur stderr ; on parse le niveau réel pour ne
         // pas inonder le log de faux ERROR (cf. routeContainerLog).
         .withLogConsumer(CorpusGliner2PresidioRegexScanIT::routeContainerLog)
@@ -336,14 +381,16 @@ class CorpusGliner2PresidioRegexScanIT {
             log.info("[scan] RESUME={} : {} fichiers déjà faits (sautés), {} findings antérieurs rechargés",
                 resuming, doneFiles.size(), stats.totalFindings);
 
-            for (Path piiTypeDir : listDirectories(corpusRoot)) {
-                String piiTypeFolder = piiTypeDir.getFileName().toString();
-                Set<String> expectedTypes = EXPECTED_PII_TYPES.getOrDefault(piiTypeFolder, Set.of());
-                for (Path pageDir : listDirectories(piiTypeDir)) {
-                    scanPage(corpusRoot, piiTypeFolder, expectedTypes, pageDir, stats, findingsWriter,
-                        progress, resume);
-                }
-            }
+            List<ScanTask> tasks = buildScanTasks(corpusRoot, resume);
+            log.info("[scan] {} fichiers à traiter, {} appels gRPC concurrents (torch_threads/worker={})",
+                tasks.size(), CLIENT_CONCURRENCY, DETECTOR_TORCH_THREADS);
+
+            // Comptes "expected/other" par page alimentés au fil des complétions (thread main
+            // uniquement) ; fusionnés avec les comptes du run précédent dans finalizeRecall.
+            Map<String, int[]> livePageCounts = new HashMap<>();
+            executeTasksConcurrently(tasks, stats, findingsWriter, progress, resume, livePageCounts);
+
+            finalizeRecall(corpusRoot, stats, priorPageCounts, livePageCounts);
         }
 
         writeReport(reportPath, stats, Duration.between(start, Instant.now()));
@@ -363,6 +410,32 @@ class CorpusGliner2PresidioRegexScanIT {
             "Warmup: IBAN CH9300762011623852957 (force detectors to load).");
         log.info("{} warmup OK in {}s : {} findings", tag,
             Duration.between(t0, Instant.now()).toSeconds(), warm.sensitiveDataFound().size());
+
+        // Échauffe ensuite les K flux concurrents (état BLAS/threads par worker serveur),
+        // pour que la mesure de vitesse et le scan partent d'un serveur stabilisé.
+        if (CLIENT_CONCURRENCY > 1) {
+            Instant t1 = Instant.now();
+            ExecutorService warmupPool = Executors.newFixedThreadPool(CLIENT_CONCURRENCY);
+            try {
+                List<Future<?>> futures = new ArrayList<>();
+                for (int i = 0; i < CLIENT_CONCURRENCY; i++) {
+                    futures.add(warmupPool.submit(() -> piiDetectorClient.analyzeContent(
+                        "Warmup parallèle: IBAN CH9300762011623852957, tel +41 21 555 12 34.")));
+                }
+                for (Future<?> f : futures) {
+                    f.get();
+                }
+                log.info("{} warmup concurrent x{} OK in {}s", tag, CLIENT_CONCURRENCY,
+                    Duration.between(t1, Instant.now()).toSeconds());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Warmup interrompu", ie);
+            } catch (ExecutionException ee) {
+                throw new IllegalStateException("Warmup concurrent en échec", ee.getCause());
+            } finally {
+                warmupPool.shutdownNow();
+            }
+        }
     }
 
     private record Velocity(double pageCharsPerSec, double attachmentCharsPerSec) {}
@@ -458,9 +531,12 @@ class CorpusGliner2PresidioRegexScanIT {
         log.info("[scan] [ESTIMATE] vitesse : {} chars/s (pages) / {} chars/s (pièces jointes)",
             String.format(Locale.ROOT, "%.0f", velocity.pageCharsPerSec()),
             String.format(Locale.ROOT, "%.0f", velocity.attachmentCharsPerSec()));
-        log.info("[scan] [ESTIMATE] temps estimé {} : pages {} + pièces jointes {} = TOTAL {}",
+        log.info("[scan] [ESTIMATE] temps estimé {} : pages {} + pièces jointes {} = TOTAL {} "
+                + "(vitesse mesurée MONO-flux ; avec {} appels concurrents l'ETA réelle est "
+                + "~/{} — la barre [PROGRESS] recale en continu sur la vitesse wall-clock réelle)",
             resuming ? "restant" : "",
-            formatDuration(pageEtaSec), formatDuration(attEtaSec), formatDuration(totalEtaSec));
+            formatDuration(pageEtaSec), formatDuration(attEtaSec), formatDuration(totalEtaSec),
+            CLIENT_CONCURRENCY, CLIENT_CONCURRENCY);
     }
 
 
@@ -569,75 +645,172 @@ class CorpusGliner2PresidioRegexScanIT {
     }
 
     // ========================================================================
-    // Scan d'une page
+    // Scan concurrent du corpus
     // ========================================================================
 
-    private void scanPage(Path corpusRoot, String piiTypeFolder, Set<String> expectedTypes,
-                          Path pageDir, Stats stats, BufferedWriter findingsWriter, ProgressTracker progress,
-                          ResumeState resume) throws IOException {
-        PageMeta meta = readMeta(pageDir.resolve("meta.json"));
-        // Replie les findings "expected" d'un run précédent sur cette page pour que le recall
-        // reste correct (ces fichiers sont sautés ci-dessous, donc non recomptés depuis le live).
-        int[] prior = resume.priorPageCounts().get(piiTypeFolder + "/" + pageDir.getFileName());
-        int expectedFindingsOnPage = prior != null ? prior[0] : 0;
+    /** Unité de travail : un fichier à scanner, avec son contexte page/dossier. */
+    private record ScanTask(String piiTypeFolder, String pageFolder, Set<String> expectedTypes,
+                            PageMeta meta, Path file, String relPath, boolean attachment) {
+        String pageKey() {
+            return piiTypeFolder + "/" + pageFolder;
+        }
+    }
 
-        for (Path file : collectScannableFiles(pageDir)) {
-            String relPath = corpusRoot.relativize(file).toString().replace('\\', '/');
-            if (resume.doneFiles().contains(relPath)) {
-                continue; // déjà traité lors d'un run précédent — reprise
-            }
-            boolean attachment = isAttachment(file);
+    private enum OutcomeStatus { SCANNED, SKIPPED_EMPTY, OVERSIZED, FAILED }
 
-            String text = extractText(file);
-            if (text == null || text.isBlank()) {
-                stats.skippedFiles.add(relPath);
-                resume.markProcessed(relPath); // vide = déterministe, ne pas réessayer en reprise
-                continue;
-            }
-            if (text.length() > MAX_TEXT_SIZE) {
-                // Rejeté d'office par le détecteur ("Content too large") — on évite le transfert.
-                stats.oversizedFiles.add(relPath + " (" + text.length() + " chars)");
-                resume.markProcessed(relPath); // déterministe — ne pas réessayer
-                continue;
-            }
+    /** Résultat d'un worker — consommé exclusivement par le thread principal. */
+    private record ScanOutcome(ScanTask task, OutcomeStatus status, String text,
+                               ContentPiiDetection detection, long analyzeMs) {}
 
-            Instant t0 = Instant.now();
-            ContentPiiDetection detection = analyzeWithRetry(relPath, text);
-            long analyzeMs = Duration.between(t0, Instant.now()).toMillis();
-            if (detection == null) {
-                // Échec d'analyse : NON marqué processed -> sera réessayé à la reprise.
-                stats.failedFiles.add(relPath);
-                progress.recordFile(text.length(), analyzeMs, false);
-                progress.logProgress(relPath);
-                continue;
-            }
-
-            stats.filesScanned++;
-            progress.recordFile(text.length(), analyzeMs, true);
-            progress.logProgress(relPath);
-
-            for (SensitiveData sd : detection.sensitiveDataFound()) {
-                boolean expectedHit = expectedTypes.contains(sd.type());
-                writeFindingLine(findingsWriter, piiTypeFolder, pageDir.getFileName().toString(),
-                    meta, relPath, attachment, text, sd, expectedHit);
-                stats.totalFindings++;
-                stats.countByPiiType.merge(sd.type(), 1, Integer::sum);
-                stats.countByDetector.merge(detectorName(sd), 1, Integer::sum);
-                stats.countByFile.merge(relPath, 1, Integer::sum);
-                if (expectedHit) {
-                    expectedFindingsOnPage++;
+    /** Construit la liste plate des fichiers restant à scanner (ordre hiérarchique stable). */
+    private List<ScanTask> buildScanTasks(Path corpusRoot, ResumeState resume) throws IOException {
+        List<ScanTask> tasks = new ArrayList<>();
+        for (Path piiTypeDir : listDirectories(corpusRoot)) {
+            String piiTypeFolder = piiTypeDir.getFileName().toString();
+            Set<String> expectedTypes = EXPECTED_PII_TYPES.getOrDefault(piiTypeFolder, Set.of());
+            for (Path pageDir : listDirectories(piiTypeDir)) {
+                PageMeta meta = readMeta(pageDir.resolve("meta.json"));
+                String pageFolder = pageDir.getFileName().toString();
+                for (Path file : collectScannableFiles(pageDir)) {
+                    String relPath = corpusRoot.relativize(file).toString().replace('\\', '/');
+                    if (resume.doneFiles().contains(relPath)) {
+                        continue; // déjà traité lors d'un run précédent — reprise
+                    }
+                    tasks.add(new ScanTask(piiTypeFolder, pageFolder, expectedTypes, meta,
+                        file, relPath, isAttachment(file)));
                 }
             }
-            findingsWriter.flush(); // durable par fichier pour que la reprise garde les résultats
-            resume.markProcessed(relPath);
         }
+        return tasks;
+    }
 
-        stats.pagesScanned++;
-        RecallCounter rc = stats.recallByPiiType.computeIfAbsent(piiTypeFolder, key -> new RecallCounter());
-        rc.totalPages++;
-        if (expectedFindingsOnPage > 0) {
-            rc.hitPages++;
+    /**
+     * Exécute les tâches avec {@link #CLIENT_CONCURRENCY} appels gRPC en vol.
+     *
+     * <p>Concurrence maîtrisée :
+     * <ul>
+     *   <li>workers : extraction Tika + appel gRPC uniquement (aucun état partagé) ;</li>
+     *   <li>thread principal : seul à toucher writers/stats/progress/resume (séquentiel) ;</li>
+     *   <li>fenêtre glissante {@code K+2} pour borner la mémoire (textes en vol).</li>
+     * </ul>
+     */
+    private void executeTasksConcurrently(List<ScanTask> tasks, Stats stats, BufferedWriter findingsWriter,
+                                          ProgressTracker progress, ResumeState resume,
+                                          Map<String, int[]> livePageCounts) throws IOException {
+        ExecutorService executor = Executors.newFixedThreadPool(CLIENT_CONCURRENCY);
+        CompletionService<ScanOutcome> completion = new ExecutorCompletionService<>(executor);
+        try {
+            int submitted = 0;
+            int completed = 0;
+            int inFlightCap = CLIENT_CONCURRENCY + 2;
+            while (completed < tasks.size()) {
+                while (submitted < tasks.size() && submitted - completed < inFlightCap) {
+                    ScanTask task = tasks.get(submitted++);
+                    completion.submit(() -> scanFile(task));
+                }
+                ScanOutcome outcome;
+                try {
+                    outcome = completion.take().get();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Scan interrompu", ie);
+                } catch (ExecutionException ee) {
+                    throw new IllegalStateException("Worker de scan en échec inattendu", ee.getCause());
+                }
+                completed++;
+                processOutcome(outcome, stats, findingsWriter, progress, resume, livePageCounts);
+            }
+        } finally {
+            executor.shutdownNow();
         }
+    }
+
+    /** Côté worker : extraction + analyse, sans toucher au moindre état partagé. */
+    private ScanOutcome scanFile(ScanTask task) {
+        String text = extractText(task.file());
+        if (text == null || text.isBlank()) {
+            return new ScanOutcome(task, OutcomeStatus.SKIPPED_EMPTY, null, null, 0L);
+        }
+        if (text.length() > MAX_TEXT_SIZE) {
+            // Rejeté d'office par le détecteur ("Content too large") — on évite le transfert.
+            return new ScanOutcome(task, OutcomeStatus.OVERSIZED, text, null, 0L);
+        }
+        Instant t0 = Instant.now();
+        ContentPiiDetection detection = analyzeWithRetry(task.relPath(), text);
+        long analyzeMs = Duration.between(t0, Instant.now()).toMillis();
+        if (detection == null) {
+            return new ScanOutcome(task, OutcomeStatus.FAILED, text, null, analyzeMs);
+        }
+        return new ScanOutcome(task, OutcomeStatus.SCANNED, text, detection, analyzeMs);
+    }
+
+    /** Côté thread principal : écritures findings/processed/stats/progress (sérialisées). */
+    private void processOutcome(ScanOutcome outcome, Stats stats, BufferedWriter findingsWriter,
+                                ProgressTracker progress, ResumeState resume,
+                                Map<String, int[]> livePageCounts) throws IOException {
+        ScanTask task = outcome.task();
+        String relPath = task.relPath();
+        switch (outcome.status()) {
+            case SKIPPED_EMPTY -> {
+                stats.skippedFiles.add(relPath);
+                resume.markProcessed(relPath); // vide = déterministe, ne pas réessayer en reprise
+            }
+            case OVERSIZED -> {
+                stats.oversizedFiles.add(relPath + " (" + outcome.text().length() + " chars)");
+                resume.markProcessed(relPath); // déterministe — ne pas réessayer
+            }
+            case FAILED -> {
+                // Échec d'analyse : NON marqué processed -> sera réessayé à la reprise.
+                stats.failedFiles.add(relPath);
+                progress.recordFile(outcome.text().length());
+                progress.logProgress(relPath);
+            }
+            case SCANNED -> {
+                stats.filesScanned++;
+                progress.recordFile(outcome.text().length());
+                progress.logProgress(relPath);
+
+                int[] pageCounts = livePageCounts.computeIfAbsent(task.pageKey(), key -> new int[2]);
+                for (SensitiveData sd : outcome.detection().sensitiveDataFound()) {
+                    boolean expectedHit = task.expectedTypes().contains(sd.type());
+                    writeFindingLine(findingsWriter, task.piiTypeFolder(), task.pageFolder(),
+                        task.meta(), relPath, task.attachment(), outcome.text(), sd, expectedHit);
+                    stats.totalFindings++;
+                    stats.countByPiiType.merge(sd.type(), 1, Integer::sum);
+                    stats.countByDetector.merge(detectorName(sd), 1, Integer::sum);
+                    stats.countByFile.merge(relPath, 1, Integer::sum);
+                    pageCounts[expectedHit ? 0 : 1]++;
+                }
+                findingsWriter.flush(); // durable par fichier pour que la reprise garde les résultats
+                resume.markProcessed(relPath);
+            }
+        }
+    }
+
+    /**
+     * Recalcule le recall par page en fin de scan : une page est "hit" si elle a au moins un
+     * finding attendu, qu'il vienne du run précédent ({@code priorPageCounts}) ou du live.
+     * Équivalent au comptage incrémental de l'ancienne boucle séquentielle.
+     */
+    private void finalizeRecall(Path corpusRoot, Stats stats, Map<String, int[]> priorPageCounts,
+                                Map<String, int[]> livePageCounts) throws IOException {
+        for (Path piiTypeDir : listDirectories(corpusRoot)) {
+            String piiTypeFolder = piiTypeDir.getFileName().toString();
+            RecallCounter rc = stats.recallByPiiType.computeIfAbsent(piiTypeFolder, key -> new RecallCounter());
+            for (Path pageDir : listDirectories(piiTypeDir)) {
+                String pageKey = piiTypeFolder + "/" + pageDir.getFileName();
+                rc.totalPages++;
+                stats.pagesScanned++;
+                if (expectedCountAt(priorPageCounts, pageKey) + expectedCountAt(livePageCounts, pageKey) > 0) {
+                    rc.hitPages++;
+                }
+            }
+        }
+    }
+
+    private static int expectedCountAt(Map<String, int[]> counts, String pageKey) {
+        int[] c = counts.get(pageKey);
+        return c != null ? c[0] : 0;
     }
 
     /**
@@ -761,13 +934,18 @@ class CorpusGliner2PresidioRegexScanIT {
     // Progress tracker
     // ========================================================================
 
-    /** Suivi de progression + ETA live pendant le scan complet. */
+    /**
+     * Suivi de progression + ETA live pendant le scan complet.
+     *
+     * <p>La vitesse est calculée en <b>wall-clock</b> (chars scannés / temps écoulé depuis le
+     * début du scan), pas en cumul des durées par fichier : avec K appels concurrents, le cumul
+     * par fichier mesure la vitesse d'UN flux et gonflerait l'ETA d'un facteur ~K.
+     */
     private static final class ProgressTracker {
         private final long totalCharsToScan;
         private final int totalFiles;
+        private final Instant startedAt = Instant.now();
         private final AtomicLong scannedChars = new AtomicLong();
-        private final AtomicLong analyzedChars = new AtomicLong();
-        private final AtomicLong totalAnalyzeMillis = new AtomicLong();
         private int doneFiles = 0;
 
         ProgressTracker(long totalCharsToScan, int totalFiles) {
@@ -775,20 +953,16 @@ class CorpusGliner2PresidioRegexScanIT {
             this.totalFiles = totalFiles;
         }
 
-        void recordFile(int chars, long analyzeMillis, boolean successful) {
+        void recordFile(int chars) {
             scannedChars.addAndGet(chars);
-            if (successful) {
-                analyzedChars.addAndGet(chars);
-                totalAnalyzeMillis.addAndGet(Math.max(0, analyzeMillis));
-            }
             doneFiles++;
         }
 
         void logProgress(String currentFile) {
             long scanned = scannedChars.get();
-            long analyzeMs = totalAnalyzeMillis.get();
+            long wallMs = Math.max(1L, Duration.between(startedAt, Instant.now()).toMillis());
             double pct = totalCharsToScan > 0 ? (100.0 * scanned / totalCharsToScan) : 0.0;
-            double velocity = analyzeMs > 0 ? (analyzedChars.get() * 1000.0 / analyzeMs) : 0.0;
+            double velocity = scanned * 1000.0 / wallMs;
             long etaSec = velocity > 0 ? (long) (Math.max(0L, totalCharsToScan - scanned) / velocity) : -1;
 
             int filled = Math.min(30, Math.max(0, (int) (pct / 100.0 * 30)));
