@@ -331,13 +331,47 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         # Load throughput logging configuration
         self.log_throughput = self._load_log_throughput_config()
-        
+
         # Use singleton detector instance
         self.detector = get_detector_instance()
-        
+
+        # Optional inference worker pool (env PII_WORKER_PROCESSES > 1).
+        # The pipeline is ~99.7% GLiNER2 forward-pass bound on CPU; N worker
+        # processes give near-linear data parallelism where intra-op threads
+        # plateau (benchmarks/SCALING-CONCLUSIONS.md). On Linux the pool forks
+        # AFTER the singleton above loaded the weights (and before any forward
+        # ran), so all workers share them copy-on-write (~1 model copy in RAM).
+        self._worker_pool = None
+        self._init_worker_pool()
+
         # Start memory monitoring thread if enabled
         if self.enable_memory_monitoring:
             self._start_memory_monitoring()
+
+    def _init_worker_pool(self) -> None:
+        """Create and warm up the inference worker pool when enabled by env."""
+        try:
+            from pii_detector.infrastructure.model_management.detector_worker_pool import (
+                DetectorWorkerPool,
+                pool_size_from_env,
+            )
+
+            pool_size = pool_size_from_env()
+            if pool_size <= 1:
+                return
+            torch_threads = int(os.getenv('TORCH_NUM_THREADS', '1'))
+            self._worker_pool = DetectorWorkerPool(pool_size, torch_threads)
+            self._worker_pool.warm_up()
+            logger.info(
+                "Inference worker pool active: %d processes x %d torch threads",
+                pool_size, torch_threads)
+        except Exception:
+            # Defensive: a pool failure must never prevent the service from
+            # starting — fall back to the historical single-detector path.
+            logger.error(
+                "Failed to start inference worker pool; falling back to "
+                "in-process detection", exc_info=True)
+            self._worker_pool = None
     
     def _load_log_throughput_config(self) -> bool:
         """
@@ -781,7 +815,13 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         call_kwargs = self._build_detection_kwargs(
             detector_flags, pii_type_configs, chunk_size, request_id
         )
-        entities = self.detector.detect_pii(content, threshold, **call_kwargs)
+        if self._worker_pool is not None:
+            # Delegate the CPU-bound inference to a pool worker; this gRPC
+            # thread just blocks on the result, so K concurrent requests run
+            # on K worker processes in parallel.
+            entities = self._worker_pool.detect(content, threshold, call_kwargs)
+        else:
+            entities = self.detector.detect_pii(content, threshold, **call_kwargs)
 
         processing_time = time.time() - processing_start
         self._log_detection_metrics(request_id, content, entities, processing_time)
