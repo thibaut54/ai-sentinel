@@ -8,12 +8,18 @@
 enabled = false
 
 # Hugging Face model identifier.
+# ⚠ DOCUMENTATION ONLY — this file is not read by any code. The effective
+# model is GLINER2_DEFAULT_MODEL_ID in
+# pii_detector/infrastructure/detector/gliner2_detector.py (single source of
+# truth). Keep both in sync when switching models.
 # PII fine-tune `fastino/gliner2-privacy-filter-PII-multi` (42 native types,
 # 7 languages incl. FR) — same {label: description} schema and reliable
 # character offsets as the generalist large-v1, but specialised for PII so it
 # recovers the niche secret/credential/ID types the generalist gives up.
-#model_id = "fastino/gliner2-privacy-filter-PII-multi"
-model_id = "fastino/gliner2-large-v1"
+# Retained after the 2026-06-04 scaling bench: x2.65 per-stream velocity vs
+# large-v1 and ISO-RECALL on the real corpus (benchmarks/SCALING-CONCLUSIONS.md).
+model_id = "fastino/gliner2-privacy-filter-PII-multi"
+#model_id = "fastino/gliner2-large-v1"
 
 # Human-readable description
 description = "GLiNER2 - multi-task zero-shot PII detection with per-label descriptions ({label: description} schema)"

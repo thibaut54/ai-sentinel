@@ -49,7 +49,13 @@ from pii_detector.infrastructure.text_processing.semantic_chunker import (
     GlinerSubwordChunker,
 )
 
-GLINER2_DEFAULT_MODEL_ID = "fastino/gliner2-large-v1"
+# PII fine-tune (1.23 GB, mdeberta-base multilingue) retenu après le bench de
+# scaling 2026-06-04 (benchmarks/SCALING-CONCLUSIONS.md §7bis/7ter) : ×2.65 par
+# flux vs gliner2-large-v1 (1.86 GB, memory-bound) et ISO-RECALL démontré sur
+# les 45 pages HTML du corpus réel (17/45 pour les deux modèles, échange
+# carte -1 / secrets +1). NB : cette constante est LA source de vérité du
+# modèle — config/models/gliner2-pii.toml n'est lu par aucun code.
+GLINER2_DEFAULT_MODEL_ID = "fastino/gliner2-privacy-filter-PII-multi"
 # Recalibrated for GLiNER2 (scores NOT comparable to GLiNER) — spec §4.6.
 DEFAULT_GLOBAL_THRESHOLD = 0.50
 # Chunking: smaller windows keep GLiNER2 recall high on dense PII spans; attention
