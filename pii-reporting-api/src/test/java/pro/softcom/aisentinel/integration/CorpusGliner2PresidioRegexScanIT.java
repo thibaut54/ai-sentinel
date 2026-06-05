@@ -36,6 +36,7 @@ import pro.softcom.aisentinel.AiSentinelApplication;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DiscardedSensitiveData;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.SensitiveData;
 
 import javax.sql.DataSource;
@@ -63,6 +64,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -76,7 +78,7 @@ import java.util.stream.Stream;
  * Scanne le corpus Confluence hiérarchique ({@code src/test/resources/corpus/}) avec le
  * pipeline complet (backend Java + pii-detector Python + Postgres) en utilisant le seed
  * {@code data-improved-gliner2-presidio-regex.sql} (détecteurs actifs : GLINER2 + PRESIDIO
- * + REGEX ; GLiNER v1, OpenMed et LLM-judge désactivés).
+ * + REGEX ; GLiNER v1 et OpenMed désactivés ; LLM-judge activé par défaut, voir plus bas).
  *
  * <p>Version nettoyée de {@code CorpusDataSqlComparisonIT} : un seul variant SQL, pas de
  * machinerie de reprise/multi-variant. Deux apports :
@@ -101,7 +103,18 @@ import java.util.stream.Stream;
  *         attachments/*.pdf|...  (scannées via Tika ; images/archives exclues)
  * </pre>
  *
- * <p>Sorties : {@code target/corpus-gliner2-presidio-regex/findings.jsonl} + {@code report.md}.
+ * <p><b>LLM-as-judge</b> : par défaut le flag {@code llm_judge_enabled} est forcé à
+ * {@code true} après le seed ({@code -Dcorpus.scan.judge=false} pour revenir au scan brut)
+ * et le judge audite GLINER2 + PRESIDIO + REGEX. Chaque FP écarté par le judge remonte
+ * dans la réponse gRPC ({@code discarded_entities}) avec son verdict : le test logge
+ * chaque rejet (type de PII + détecteur), les journalise dans
+ * {@code judge-discards.jsonl} (corrélés au fichier scanné) et agrège dans le report
+ * l'efficacité du judge par PII type × détecteur (écartés vs gardés). Un pre-flight
+ * vérifie que LM Studio est joignable depuis le container — sinon le judge tournerait
+ * des heures en fail-open silencieux avec zéro rejet.
+ *
+ * <p>Sorties : {@code target/corpus-gliner2-presidio-regex/findings.jsonl} +
+ * {@code judge-discards.jsonl} + {@code report.md}.
  */
 @Testcontainers
 @SpringBootTest(classes = AiSentinelApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -188,6 +201,23 @@ class CorpusGliner2PresidioRegexScanIT {
     private static final String DETECTOR_WORKER_PROCESSES =
         System.getProperty("corpus.scan.detector-workers", "8");
 
+    /**
+     * Active le LLM-as-judge in-pipeline (flag {@code llm_judge_enabled} forcé à
+     * {@code true} après le seed) pour mesurer son efficacité anti-FP par PII type ×
+     * détecteur. {@code -Dcorpus.scan.judge=false} restaure le scan brut historique.
+     */
+    private static final boolean JUDGE_ENABLED =
+        Boolean.parseBoolean(System.getProperty("corpus.scan.judge", "true"));
+
+    /**
+     * Base URL LM Studio injectée dans le container ({@code LLM_JUDGE_BASE_URL}).
+     * Vide par défaut : la valeur falsy laisse le validator Python retomber sur le
+     * TOML ({@code [llm_judge].base_url}), source de vérité opérateur. Override :
+     * {@code -Dcorpus.scan.judge-base-url=http://host:1234/v1}.
+     */
+    private static final String JUDGE_BASE_URL_OVERRIDE =
+        System.getProperty("corpus.scan.judge-base-url", "");
+
     private static final String POSTGRES_ALIAS = "postgres-it";
     private static final String DB_NAME = "ai-sentinel";
     private static final String DB_USER = "postgres";
@@ -251,6 +281,12 @@ class CorpusGliner2PresidioRegexScanIT {
         // N x torch_threads doit rester <= CPU allouées au container.
         .withEnv("TORCH_NUM_THREADS", DETECTOR_TORCH_THREADS)
         .withEnv("PII_WORKER_PROCESSES", DETECTOR_WORKER_PROCESSES)
+        // Portée du LLM-as-judge : le défaut codé est {GLINER}, qui n'auditerait
+        // RIEN dans ce pipeline GLINER2+PRESIDIO+REGEX (passthrough silencieux).
+        // Inerte quand le judge est désactivé (-Dcorpus.scan.judge=false).
+        .withEnv("LLM_JUDGE_AUDIT_SOURCES", "GLINER2,PRESIDIO,REGEX")
+        // Vide par défaut -> falsy côté Python -> fallback TOML (voir constante).
+        .withEnv("LLM_JUDGE_BASE_URL", JUDGE_BASE_URL_OVERRIDE)
         // Python écrit tout (y compris INFO) sur stderr ; on parse le niveau réel pour ne
         // pas inonder le log de faux ERROR (cf. routeContainerLog).
         .withLogConsumer(CorpusGliner2PresidioRegexScanIT::routeContainerLog)
@@ -302,6 +338,7 @@ class CorpusGliner2PresidioRegexScanIT {
     void smokeBiggestPageAndAttachment() throws Exception {
         log.info("[smoke] === START ===");
         resetAndReseedDb();
+        assertJudgeReachable();
         warmupModels("[smoke]");
 
         CorpusInventory inv = inventory();
@@ -334,6 +371,7 @@ class CorpusGliner2PresidioRegexScanIT {
         log.info("[scan] === START ===");
         Instant start = Instant.now();
         resetAndReseedDb();
+        assertJudgeReachable();
         warmupModels("[scan]");
 
         CorpusInventory inv = inventory();
@@ -342,6 +380,7 @@ class CorpusGliner2PresidioRegexScanIT {
         Path outDir = Paths.get(OUTPUT_ROOT).toAbsolutePath();
         Files.createDirectories(outDir);
         Path findingsPath = outDir.resolve("findings.jsonl");
+        Path discardsPath = outDir.resolve("judge-discards.jsonl");
         Path processedPath = outDir.resolve("processed.txt");
         Path reportPath = outDir.resolve("report.md");
 
@@ -352,7 +391,7 @@ class CorpusGliner2PresidioRegexScanIT {
         Map<String, int[]> priorPageCounts = new HashMap<>();
         boolean resuming = Files.exists(processedPath)
             || (Files.exists(findingsPath) && Files.size(findingsPath) > 0);
-        loadPriorRun(findingsPath, processedPath, stats, doneFiles, priorPageCounts);
+        loadPriorRun(findingsPath, discardsPath, processedPath, stats, doneFiles, priorPageCounts);
 
         // ETA + barre de progression sur le RESTANT (fichiers analysables non encore faits).
         List<FileEntry> remaining = inv.analyzableFiles().stream()
@@ -374,6 +413,7 @@ class CorpusGliner2PresidioRegexScanIT {
 
         Path corpusRoot = Paths.get(CORPUS_ROOT).toAbsolutePath();
         try (BufferedWriter findingsWriter = Files.newBufferedWriter(findingsPath, StandardCharsets.UTF_8, findingsOpts);
+             BufferedWriter discardsWriter = Files.newBufferedWriter(discardsPath, StandardCharsets.UTF_8, findingsOpts);
              BufferedWriter processedWriter = Files.newBufferedWriter(processedPath, StandardCharsets.UTF_8,
                  StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE)) {
 
@@ -388,7 +428,8 @@ class CorpusGliner2PresidioRegexScanIT {
             // Comptes "expected/other" par page alimentés au fil des complétions (thread main
             // uniquement) ; fusionnés avec les comptes du run précédent dans finalizeRecall.
             Map<String, int[]> livePageCounts = new HashMap<>();
-            executeTasksConcurrently(tasks, stats, findingsWriter, progress, resume, livePageCounts);
+            executeTasksConcurrently(tasks, stats, findingsWriter, discardsWriter, progress,
+                resume, livePageCounts);
 
             finalizeRecall(corpusRoot, stats, priorPageCounts, livePageCounts);
         }
@@ -695,7 +736,8 @@ class CorpusGliner2PresidioRegexScanIT {
      * </ul>
      */
     private void executeTasksConcurrently(List<ScanTask> tasks, Stats stats, BufferedWriter findingsWriter,
-                                          ProgressTracker progress, ResumeState resume,
+                                          BufferedWriter discardsWriter, ProgressTracker progress,
+                                          ResumeState resume,
                                           Map<String, int[]> livePageCounts) throws IOException {
         ExecutorService executor = Executors.newFixedThreadPool(CLIENT_CONCURRENCY);
         CompletionService<ScanOutcome> completion = new ExecutorCompletionService<>(executor);
@@ -718,7 +760,8 @@ class CorpusGliner2PresidioRegexScanIT {
                     throw new IllegalStateException("Worker de scan en échec inattendu", ee.getCause());
                 }
                 completed++;
-                processOutcome(outcome, stats, findingsWriter, progress, resume, livePageCounts);
+                processOutcome(outcome, stats, findingsWriter, discardsWriter, progress,
+                    resume, livePageCounts);
             }
         } finally {
             executor.shutdownNow();
@@ -746,7 +789,8 @@ class CorpusGliner2PresidioRegexScanIT {
 
     /** Côté thread principal : écritures findings/processed/stats/progress (sérialisées). */
     private void processOutcome(ScanOutcome outcome, Stats stats, BufferedWriter findingsWriter,
-                                ProgressTracker progress, ResumeState resume,
+                                BufferedWriter discardsWriter, ProgressTracker progress,
+                                ResumeState resume,
                                 Map<String, int[]> livePageCounts) throws IOException {
         ScanTask task = outcome.task();
         String relPath = task.relPath();
@@ -779,9 +823,24 @@ class CorpusGliner2PresidioRegexScanIT {
                     stats.countByPiiType.merge(sd.type(), 1, Integer::sum);
                     stats.countByDetector.merge(detectorName(sd), 1, Integer::sum);
                     stats.countByFile.merge(relPath, 1, Integer::sum);
+                    stats.keptByTypeDetector.merge(typeDetectorKey(sd.type(), detectorName(sd)),
+                        1, Integer::sum);
                     pageCounts[expectedHit ? 0 : 1]++;
                 }
+                // FP écartés par le LLM-as-judge : log par rejet (type + détecteur),
+                // journal corrélé au fichier, et agrégats type×détecteur.
+                for (DiscardedSensitiveData discarded : outcome.detection().discardedByJudge()) {
+                    SensitiveData sd = discarded.data();
+                    log.info("[scan] [JUDGE-FP] type={} detector={} value=\"{}\" file={} reason=\"{}\"",
+                        sd.type(), detectorName(sd), sd.value(), relPath, discarded.judgeReason());
+                    writeDiscardLine(discardsWriter, task.piiTypeFolder(), task.pageFolder(),
+                        task.meta(), relPath, task.attachment(), outcome.text(), discarded);
+                    stats.totalDiscardedByJudge++;
+                    stats.discardedByTypeDetector.merge(
+                        typeDetectorKey(sd.type(), detectorName(sd)), 1, Integer::sum);
+                }
                 findingsWriter.flush(); // durable par fichier pour que la reprise garde les résultats
+                discardsWriter.flush();
                 resume.markProcessed(relPath);
             }
         }
@@ -846,7 +905,7 @@ class CorpusGliner2PresidioRegexScanIT {
      * <p>Les fichiers en ÉCHEC d'un run précédent n'apparaissent dans aucune des deux sources :
      * ils sont donc naturellement réessayés.
      */
-    private void loadPriorRun(Path findingsPath, Path processedPath, Stats stats,
+    private void loadPriorRun(Path findingsPath, Path discardsPath, Path processedPath, Stats stats,
                               Set<String> doneFiles, Map<String, int[]> priorPageCounts) throws IOException {
         if (Files.exists(processedPath)) {
             for (String line : Files.readAllLines(processedPath, StandardCharsets.UTF_8)) {
@@ -856,6 +915,7 @@ class CorpusGliner2PresidioRegexScanIT {
                 }
             }
         }
+        loadPriorDiscards(discardsPath, stats);
         if (!Files.exists(findingsPath)) {
             return;
         }
@@ -884,14 +944,37 @@ class CorpusGliner2PresidioRegexScanIT {
             if (detector != null) {
                 stats.countByDetector.merge(detector, 1, Integer::sum);
             }
+            if (type != null && detector != null) {
+                stats.keptByTypeDetector.merge(typeDetectorKey(type, detector), 1, Integer::sum);
+            }
             if (folder != null && page != null) {
                 int[] counts = priorPageCounts.computeIfAbsent(folder + "/" + page, k -> new int[2]);
                 counts[expectedHit ? 0 : 1]++;
             }
         }
         stats.filesScanned += filesWithFindings.size();
-        log.info("[scan] loadPriorRun : {} findings antérieurs sur {} fichiers, {} fichiers dans le skip-set",
-            stats.totalFindings, filesWithFindings.size(), doneFiles.size());
+        log.info("[scan] loadPriorRun : {} findings antérieurs sur {} fichiers, {} FP-judge antérieurs, "
+                + "{} fichiers dans le skip-set",
+            stats.totalFindings, filesWithFindings.size(), stats.totalDiscardedByJudge, doneFiles.size());
+    }
+
+    /** Replie les FP écartés d'un run précédent ({@code judge-discards.jsonl}) dans les stats. */
+    private void loadPriorDiscards(Path discardsPath, Stats stats) throws IOException {
+        if (!Files.exists(discardsPath)) {
+            return;
+        }
+        for (String line : Files.readAllLines(discardsPath, StandardCharsets.UTF_8)) {
+            if (line.isBlank()) {
+                continue;
+            }
+            JsonNode n = MAPPER.readTree(line);
+            String type = textOrNull(n, "piiTypeDetected");
+            String detector = textOrNull(n, "detector");
+            stats.totalDiscardedByJudge++;
+            if (type != null && detector != null) {
+                stats.discardedByTypeDetector.merge(typeDetectorKey(type, detector), 1, Integer::sum);
+            }
+        }
     }
 
     /**
@@ -1063,7 +1146,44 @@ class CorpusGliner2PresidioRegexScanIT {
         try (Connection conn = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(conn, new EncodedResource(resource, StandardCharsets.UTF_8));
         }
-        log.info("[seed] DB reseed depuis {}", SQL_SEED);
+        if (JUDGE_ENABLED) {
+            jdbcTemplate.execute(
+                "UPDATE pii_detection_config SET llm_judge_enabled = true WHERE id = 1");
+        }
+        log.info("[seed] DB reseed depuis {} (llm_judge_enabled={})", SQL_SEED, JUDGE_ENABLED);
+    }
+
+    /**
+     * Pre-flight LM Studio : vérifie depuis le <b>container</b> (résolution env >
+     * TOML identique à la prod) que l'endpoint du judge répond. Sans ce garde-fou,
+     * un LM Studio injoignable ferait tourner tout le scan en fail-open silencieux :
+     * zéro rejet, stats d'efficacité vides, des heures de CPU perdues.
+     */
+    private void assertJudgeReachable() {
+        if (!JUDGE_ENABLED) {
+            return;
+        }
+        String probe = "from pii_detector.infrastructure.validation.llm_validator import LLMJudgeValidator\n"
+            + "import httpx\n"
+            + "v = LLMJudgeValidator()\n"
+            + "r = httpx.get(v.base_url.rstrip('/') + '/models', timeout=15)\n"
+            + "r.raise_for_status()\n"
+            + "print('JUDGE_OK', v.base_url, r.status_code)\n";
+        try {
+            var result = piiDetector.execInContainer("python", "-c", probe);
+            log.info("[judge] pre-flight stdout: {}", result.getStdout().strip());
+            Assertions.assertTrue(result.getStdout().contains("JUDGE_OK"),
+                "LM Studio injoignable depuis le container pii-detector (le judge "
+                + "tournerait en fail-open silencieux pendant tout le scan). stdout="
+                + result.getStdout() + " stderr=" + result.getStderr()
+                + " — démarrer LM Studio, ou -Dcorpus.scan.judge-base-url=... pour "
+                + "pointer ailleurs, ou -Dcorpus.scan.judge=false pour scanner sans judge.");
+        } catch (IOException e) {
+            throw new IllegalStateException("Pre-flight LM Studio impossible", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Pre-flight LM Studio interrompu", e);
+        }
     }
 
     private PageMeta readMeta(Path metaJson) {
@@ -1091,6 +1211,36 @@ class CorpusGliner2PresidioRegexScanIT {
     private void writeFindingLine(BufferedWriter writer, String piiTypeFolder, String pageFolder,
                                   PageMeta meta, String relPath, boolean attachment, String fullText,
                                   SensitiveData sd, boolean expectedHit) throws IOException {
+        ObjectNode node = buildFindingNode(piiTypeFolder, pageFolder, meta, relPath, attachment,
+            fullText, sd);
+        node.put("expectedHit", expectedHit);
+        writer.write(MAPPER.writeValueAsString(node));
+        writer.newLine();
+    }
+
+    /**
+     * Une ligne de {@code judge-discards.jsonl} : mêmes champs qu'un finding (corrélation
+     * fichier/page conservée) + le verdict du LLM-as-judge qui a motivé le rejet.
+     */
+    private void writeDiscardLine(BufferedWriter writer, String piiTypeFolder, String pageFolder,
+                                  PageMeta meta, String relPath, boolean attachment, String fullText,
+                                  DiscardedSensitiveData discarded) throws IOException {
+        ObjectNode node = buildFindingNode(piiTypeFolder, pageFolder, meta, relPath, attachment,
+            fullText, discarded.data());
+        node.put("judgeVerdict", discarded.judgeVerdict());
+        if (discarded.judgeConfidence() != null) {
+            node.put("judgeConfidence", discarded.judgeConfidence());
+        } else {
+            node.putNull("judgeConfidence");
+        }
+        node.put("judgeReason", discarded.judgeReason());
+        writer.write(MAPPER.writeValueAsString(node));
+        writer.newLine();
+    }
+
+    private ObjectNode buildFindingNode(String piiTypeFolder, String pageFolder, PageMeta meta,
+                                        String relPath, boolean attachment, String fullText,
+                                        SensitiveData sd) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("piiTypeFolder", piiTypeFolder);
         node.put("pageFolder", pageFolder);
@@ -1112,9 +1262,12 @@ class CorpusGliner2PresidioRegexScanIT {
         node.put("contextAfter", contextAfter(fullText, sd.end()));
         node.put("start", sd.position());
         node.put("end", sd.end());
-        node.put("expectedHit", expectedHit);
-        writer.write(MAPPER.writeValueAsString(node));
-        writer.newLine();
+        return node;
+    }
+
+    /** Clé d'agrégation des comptes kept/écartés : {@code TYPE|DETECTOR}. */
+    private static String typeDetectorKey(String type, String detector) {
+        return type + "|" + detector;
     }
 
     private static String contextBefore(String text, int start) {
@@ -1146,9 +1299,12 @@ class CorpusGliner2PresidioRegexScanIT {
         sb.append("- Files oversized (> ").append(MAX_TEXT_SIZE).append(" chars, rejected): ")
           .append(stats.oversizedFiles.size()).append("\n");
         sb.append("- Pages scanned: ").append(stats.pagesScanned).append("\n");
-        sb.append("- **Total findings: ").append(stats.totalFindings).append("**\n\n");
+        sb.append("- LLM judge enabled: ").append(JUDGE_ENABLED).append("\n");
+        sb.append("- **Total findings (post-judge): ").append(stats.totalFindings).append("**\n");
+        sb.append("- **FP écartés par le judge: ").append(stats.totalDiscardedByJudge).append("**\n\n");
 
         appendRecallSection(sb, stats);
+        appendJudgeEfficiencySection(sb, stats);
         appendCountSection(sb, "Findings par PII type détecté", "PII Type", stats.countByPiiType, stats.totalFindings);
         appendCountSection(sb, "Findings par détecteur", "Detector", stats.countByDetector, stats.totalFindings);
         appendTopFilesSection(sb, stats);
@@ -1173,6 +1329,79 @@ class CorpusGliner2PresidioRegexScanIT {
                   .append(" | ").append(rc.hitPages)
                   .append(" | ").append(formatPct(rc.hitPages, rc.totalPages))
                   .append(" | ").append(String.join(", ", entry.getValue()))
+                  .append(" |\n");
+            });
+        sb.append("\n");
+    }
+
+    /**
+     * Efficacité du LLM-as-judge : pour chaque couple (PII type, détecteur), le nombre de
+     * findings bruts (gardés + écartés), les FP écartés et le taux d'écartement
+     * ({@code écartés / bruts}). Deux agrégats (par type seul, par détecteur seul)
+     * complètent la vue. Les "gardés" sont les findings finaux : l'amélioration du taux
+     * de FP apportée par le judge se lit directement dans la colonne {@code % écartés}.
+     */
+    private static void appendJudgeEfficiencySection(StringBuilder sb, Stats stats) {
+        sb.append("## Efficacité LLM-as-judge (FP écartés)\n\n");
+        if (!JUDGE_ENABLED) {
+            sb.append("_Judge désactivé (`-Dcorpus.scan.judge=false`) : aucune mesure._\n\n");
+            return;
+        }
+        if (stats.totalDiscardedByJudge == 0 && stats.discardedByTypeDetector.isEmpty()) {
+            sb.append("_Aucun FP écarté par le judge sur ce run._\n\n");
+            return;
+        }
+
+        sb.append("### Par PII type × détecteur\n\n");
+        sb.append("| PII type | Detector | Bruts | Écartés (FP) | Gardés | % écartés |\n");
+        sb.append("|---|---|---:|---:|---:|---:|\n");
+        Set<String> allKeys = new TreeSet<>(stats.keptByTypeDetector.keySet());
+        allKeys.addAll(stats.discardedByTypeDetector.keySet());
+        allKeys.stream()
+            .sorted(Comparator.comparingInt(
+                (String key) -> stats.discardedByTypeDetector.getOrDefault(key, 0)).reversed()
+                .thenComparing(Comparator.naturalOrder()))
+            .forEach(key -> {
+                int kept = stats.keptByTypeDetector.getOrDefault(key, 0);
+                int discarded = stats.discardedByTypeDetector.getOrDefault(key, 0);
+                String[] parts = key.split("\\|", 2);
+                sb.append("| ").append(parts[0])
+                  .append(" | ").append(parts.length > 1 ? parts[1] : "?")
+                  .append(" | ").append(kept + discarded)
+                  .append(" | ").append(discarded)
+                  .append(" | ").append(kept)
+                  .append(" | ").append(formatPct(discarded, kept + discarded))
+                  .append(" |\n");
+            });
+        sb.append("\n");
+
+        appendJudgeAggregate(sb, "Par PII type", "PII type", stats, 0);
+        appendJudgeAggregate(sb, "Par détecteur", "Detector", stats, 1);
+    }
+
+    /** Agrège kept/écartés sur un seul axe de la clé {@code TYPE|DETECTOR}. */
+    private static void appendJudgeAggregate(StringBuilder sb, String title, String keyHeader,
+                                             Stats stats, int keyPart) {
+        Map<String, int[]> agg = new TreeMap<>();
+        stats.keptByTypeDetector.forEach((key, count) ->
+            agg.computeIfAbsent(key.split("\\|", 2)[keyPart], k -> new int[2])[0] += count);
+        stats.discardedByTypeDetector.forEach((key, count) ->
+            agg.computeIfAbsent(key.split("\\|", 2)[keyPart], k -> new int[2])[1] += count);
+
+        sb.append("### ").append(title).append("\n\n");
+        sb.append("| ").append(keyHeader).append(" | Bruts | Écartés (FP) | Gardés | % écartés |\n");
+        sb.append("|---|---:|---:|---:|---:|\n");
+        agg.entrySet().stream()
+            .sorted(Map.Entry.<String, int[]>comparingByValue(
+                Comparator.comparingInt(c -> -c[1])))
+            .forEach(e -> {
+                int kept = e.getValue()[0];
+                int discarded = e.getValue()[1];
+                sb.append("| ").append(e.getKey())
+                  .append(" | ").append(kept + discarded)
+                  .append(" | ").append(discarded)
+                  .append(" | ").append(kept)
+                  .append(" | ").append(formatPct(discarded, kept + discarded))
                   .append(" |\n");
             });
         sb.append("\n");
@@ -1295,9 +1524,14 @@ class CorpusGliner2PresidioRegexScanIT {
         int filesScanned = 0;
         int pagesScanned = 0;
         int totalFindings = 0;
+        int totalDiscardedByJudge = 0;
         final Map<String, Integer> countByPiiType = new TreeMap<>();
         final Map<String, Integer> countByDetector = new TreeMap<>();
         final Map<String, Integer> countByFile = new LinkedHashMap<>();
+        /** Findings gardés (post-judge), clé {@code TYPE|DETECTOR}. */
+        final Map<String, Integer> keptByTypeDetector = new TreeMap<>();
+        /** FP écartés par le judge, clé {@code TYPE|DETECTOR}. */
+        final Map<String, Integer> discardedByTypeDetector = new TreeMap<>();
         final Map<String, RecallCounter> recallByPiiType = new TreeMap<>();
         final List<String> skippedFiles = new ArrayList<>();
         final List<String> failedFiles = new ArrayList<>();

@@ -30,12 +30,35 @@ message PIIDetectionRequest {
 message PIIDetectionResponse {
   // List of detected PII entities
   repeated PIIEntity entities = 1;
-  
+
   // Summary of detected PII types and counts
   map<string, int32> summary = 2;
-  
+
   // Optional masked version of the input text with PII replaced
   string masked_content = 3;
+
+  // Entities detected by the detectors but discarded by the LLM-as-judge
+  // post-filter (FALSE_POSITIVE verdicts). Empty when the judge is disabled.
+  // Exposed so callers can measure the judge's false-positive reduction per
+  // PII type and per detector while keeping the correlation with the
+  // analyzed content.
+  repeated DiscardedPIIEntity discarded_entities = 4;
+}
+
+// A PII entity rejected by the LLM-as-judge post-filter, with the verdict
+// that motivated the rejection
+message DiscardedPIIEntity {
+  // The entity as originally detected (before the judge discarded it)
+  PIIEntity entity = 1;
+
+  // Judge verdict that caused the rejection (e.g. FALSE_POSITIVE)
+  string judge_verdict = 2;
+
+  // Judge confidence in the verdict (0.0-1.0)
+  float judge_confidence = 3;
+
+  // Short natural-language justification produced by the judge
+  string judge_reason = 4;
 }
 
 // Update message emitted during streaming analysis

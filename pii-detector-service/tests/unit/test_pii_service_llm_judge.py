@@ -28,6 +28,7 @@ import pytest
 
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
+from pii_detector.infrastructure.validation.prompt_templates import PiiVerdict
 
 
 pii_service = importlib.import_module(
@@ -62,6 +63,12 @@ def _regex_entity(text: str = "alice@example.com") -> PIIEntity:
         end=len(text),
         score=1.0,
         source=DetectorSource.REGEX,
+    )
+
+
+def _fp_verdict(reason: str = "not a real PII") -> PiiVerdict:
+    return PiiVerdict(
+        verdict="FALSE_POSITIVE", confidence=0.95, reason=reason
     )
 
 
@@ -106,8 +113,9 @@ class TestApplyLlmJudge:
     def test_should_call_validator_and_return_filtered_entities(self) -> None:
         servicer = _FakeServicer()
         gliner = _gliner_entity()
+        verdict = _fp_verdict()
         validator = MagicMock()
-        validator.filter.return_value = []  # rejected
+        validator.filter_with_verdicts.return_value = ([], [(gliner, verdict)])
         with patch(
             "pii_detector.infrastructure.validation.llm_validator.get_instance",
             return_value=validator,
@@ -115,22 +123,24 @@ class TestApplyLlmJudge:
             result = servicer._apply_llm_judge(
                 [gliner], content="hello", request_id="req-1"
             )
-        validator.filter.assert_called_once_with("hello", [gliner])
-        assert result == []
+        validator.filter_with_verdicts.assert_called_once_with("hello", [gliner])
+        assert result == ([], [(gliner, verdict)])
 
     def test_should_passthrough_when_entities_empty(self) -> None:
         servicer = _FakeServicer()
         with patch(
             "pii_detector.infrastructure.validation.llm_validator.get_instance"
         ) as factory:
-            assert servicer._apply_llm_judge([], "text", "req-2") == []
+            assert servicer._apply_llm_judge([], "text", "req-2") == ([], [])
             factory.assert_not_called()
 
     def test_should_fail_open_when_validator_blows_up(self) -> None:
         servicer = _FakeServicer()
         entities: List[PIIEntity] = [_gliner_entity(), _regex_entity()]
         validator = MagicMock()
-        validator.filter.side_effect = RuntimeError("validator misconfigured")
+        validator.filter_with_verdicts.side_effect = RuntimeError(
+            "validator misconfigured"
+        )
         with patch(
             "pii_detector.infrastructure.validation.llm_validator.get_instance",
             return_value=validator,
@@ -138,8 +148,8 @@ class TestApplyLlmJudge:
             result = servicer._apply_llm_judge(
                 entities, "text", "req-3"
             )
-        # Defense-in-depth: original entities returned untouched.
-        assert result == entities
+        # Defense-in-depth: original entities returned untouched, no rejection.
+        assert result == (entities, [])
 
     def test_should_emit_structured_log_with_counts(
         self, caplog: pytest.LogCaptureFixture
@@ -148,7 +158,10 @@ class TestApplyLlmJudge:
         gliner_kept = _gliner_entity(text="Alice")
         gliner_rejected = _gliner_entity(text="DGAIC")
         validator = MagicMock()
-        validator.filter.return_value = [gliner_kept]
+        validator.filter_with_verdicts.return_value = (
+            [gliner_kept],
+            [(gliner_rejected, _fp_verdict())],
+        )
         with patch(
             "pii_detector.infrastructure.validation.llm_validator.get_instance",
             return_value=validator,
@@ -163,6 +176,53 @@ class TestApplyLlmJudge:
         assert "[LLM-JUDGE] post-filter" in message
         assert "rejected=1" in message
         assert "2->1 entities" in message
+
+
+# ---------------------------------------------------------------------------
+# _add_discarded_entities_to_response
+# ---------------------------------------------------------------------------
+
+
+class _FakeResponseServicer:
+    """Stand-in binding the response-building methods under test."""
+
+    _add_discarded_entities_to_response = (
+        PIIDetectionServicer._add_discarded_entities_to_response
+    )
+    _populate_proto_entity = staticmethod(
+        PIIDetectionServicer._populate_proto_entity
+    )
+
+
+class TestAddDiscardedEntitiesToResponse:
+    def test_should_expose_rejected_entity_with_verdict_fields(self) -> None:
+        from pii_detector.proto.generated import pii_detection_pb2
+
+        servicer = _FakeResponseServicer()
+        response = pii_detection_pb2.PIIDetectionResponse()
+        gliner = _gliner_entity(text="DGAIC")
+        verdict = _fp_verdict(reason="acronym, not a person")
+
+        servicer._add_discarded_entities_to_response(
+            response, [(gliner, verdict)], "req-5"
+        )
+
+        assert len(response.discarded_entities) == 1
+        discarded = response.discarded_entities[0]
+        assert discarded.entity.text == "DGAIC"
+        assert discarded.entity.type == "PERSON"
+        assert discarded.entity.source == pii_detection_pb2.DetectorSource.GLINER
+        assert discarded.judge_verdict == "FALSE_POSITIVE"
+        assert discarded.judge_confidence == pytest.approx(0.95)
+        assert discarded.judge_reason == "acronym, not a person"
+
+    def test_should_leave_field_empty_when_no_rejection(self) -> None:
+        from pii_detector.proto.generated import pii_detection_pb2
+
+        servicer = _FakeResponseServicer()
+        response = pii_detection_pb2.PIIDetectionResponse()
+        servicer._add_discarded_entities_to_response(response, [], "req-6")
+        assert len(response.discarded_entities) == 0
 
 
 # ---------------------------------------------------------------------------

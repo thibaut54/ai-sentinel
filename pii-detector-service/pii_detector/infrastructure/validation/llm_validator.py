@@ -606,11 +606,31 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         extend via :attr:`audit_sources` to also audit OpenMed / Regex /
         Presidio outputs (spec §10).
         """
+        kept, _rejections = self.filter_with_verdicts(text, entities)
+        return kept
+
+    def filter_with_verdicts(
+        self, text: str, entities: List[PIIEntity]
+    ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, PiiVerdict]]]:
+        """Filter entities and also return the rejected ones with verdicts.
+
+        Same semantics as :meth:`filter`, but exposes the discarded
+        entities so callers can surface the judge's false-positive
+        rejections (e.g. in the gRPC response for measurement purposes).
+
+        Returns:
+            ``(kept, rejections)`` where ``kept`` preserves the original
+            ordering (audited survivors + non-audited passthrough) and
+            ``rejections`` lists each discarded entity with the
+            ``FALSE_POSITIVE`` verdict that motivated the rejection.
+            Fail-open entities (verdict ``None``) are always kept and
+            never appear in ``rejections``.
+        """
         if self.backend == BACKEND_LOCAL:
             # Local backend is intentionally a no-op for the MVP.
-            return list(entities)
+            return list(entities), []
         if not entities:
-            return []
+            return [], []
 
         audited_entities: List[PIIEntity] = []
         for entity in entities:
@@ -618,25 +638,28 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
                 audited_entities.append(entity)
 
         if not audited_entities:
-            return list(entities)
+            return list(entities), []
 
         verdicts = self._judge_batch(text, audited_entities)
-        kept_ids = {
-            id(entity)
+        verdict_by_id = {
+            id(entity): verdict
             for entity, verdict in zip(audited_entities, verdicts)
-            if self._should_keep(verdict)
         }
 
         # Preserve the original ordering while filtering out the rejected
         # audited entities; non-audited entities are passed through as-is.
-        result: List[PIIEntity] = []
+        kept: List[PIIEntity] = []
+        rejections: List[Tuple[PIIEntity, PiiVerdict]] = []
         for entity in entities:
-            if self._is_audited(entity):
-                if id(entity) in kept_ids:
-                    result.append(entity)
+            if not self._is_audited(entity):
+                kept.append(entity)
+                continue
+            verdict = verdict_by_id.get(id(entity))
+            if self._should_keep(verdict):
+                kept.append(entity)
             else:
-                result.append(entity)
-        return result
+                rejections.append((entity, verdict))
+        return kept, rejections
 
     # -- Internals -----------------------------------------------------------
 

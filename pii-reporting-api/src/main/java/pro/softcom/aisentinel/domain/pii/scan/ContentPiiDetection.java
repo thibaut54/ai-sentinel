@@ -19,6 +19,9 @@ import java.util.Map;
  * @param analysisDate timestamp when the analysis was performed
  * @param sensitiveDataFound list of detected sensitive elements on the page
  * @param statistics aggregated counters for the page (keyed by metric name)
+ * @param discardedByJudge elements detected by the detectors but rejected by
+ *        the LLM-as-judge post-filter (empty when the judge is disabled);
+ *        exposed to measure the judge's false-positive reduction
  */
 @Builder
 public record ContentPiiDetection(
@@ -27,8 +30,14 @@ public record ContentPiiDetection(
     String spaceKey,
     LocalDateTime analysisDate,
     List<SensitiveData> sensitiveDataFound,
-    Map<String, Integer> statistics
+    Map<String, Integer> statistics,
+    List<DiscardedSensitiveData> discardedByJudge
 ) {
+
+    public ContentPiiDetection {
+        // Builder callers predating the judge measurement never set the field.
+        discardedByJudge = discardedByJudge == null ? List.of() : discardedByJudge;
+    }
     
     // Sonar S1192: avoid duplicate literal for phone number label
     /** Label used for all phone number related data types. */
@@ -199,6 +208,23 @@ public record ContentPiiDetection(
         Double score,
         String selector,
         DetectorSource source
+    ) {
+    }
+
+    /**
+     * A sensitive element detected by the detectors but discarded by the
+     * LLM-as-judge post-filter (FALSE_POSITIVE verdict).
+     *
+     * @param data the element as originally detected (before rejection)
+     * @param judgeVerdict verdict that motivated the rejection (e.g. FALSE_POSITIVE)
+     * @param judgeConfidence judge confidence in the verdict (0.0-1.0)
+     * @param judgeReason short natural-language justification from the judge
+     */
+    public record DiscardedSensitiveData(
+        SensitiveData data,
+        String judgeVerdict,
+        Double judgeConfidence,
+        String judgeReason
     ) {
     }
 }

@@ -567,10 +567,16 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             # Phase 2: LLM-as-Judge post-filter (spec section 2.1, 2.5).
             # Only invoked when the DB flag is ON; otherwise no judge
             # import / thread / metric is triggered (zero overhead path).
+            # Rejected entities are kept aside (with their verdicts) so the
+            # response can expose them in `discarded_entities` for
+            # false-positive measurement.
+            discarded_by_judge = []
             if self._is_llm_judge_enabled(detector_flags):
                 entities_before_judge = len(entities)
                 judge_start = time.monotonic()
-                entities = self._apply_llm_judge(entities, content, request_id)
+                entities, discarded_by_judge = self._apply_llm_judge(
+                    entities, content, request_id
+                )
                 judge_elapsed = time.monotonic() - judge_start
                 self._log_throughput(
                     "llm_judge",
@@ -591,7 +597,9 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 entities_final=len(entities),
             )
 
-            response = self._build_detection_response(content, entities, request_id)
+            response = self._build_detection_response(
+                content, entities, request_id, discarded_by_judge
+            )
             logger.info(
                 "[FINDING_TRACKER] [%s] step=GRPC_FINAL_RESPONSE count=%d",
                 request_id, len(response.entities) if hasattr(response, "entities") else len(entities),
@@ -1028,7 +1036,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
 
     def _apply_llm_judge(
         self, entities: List, content: str, request_id: str
-    ) -> List:
+    ) -> tuple:
         """Run the LLM judge post-filter on the merged entity list.
 
         The validator is built lazily via the singleton accessor so that
@@ -1036,9 +1044,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         no thread / metric is allocated (zero overhead -- spec section
         5.3). Only entities with ``source == DetectorSource.GLINER`` are
         audited; the rest passes through untouched (spec section 2.5).
+
+        Returns:
+            ``(kept_entities, rejections)`` where ``rejections`` is a list
+            of ``(entity, verdict)`` tuples for entities discarded as
+            FALSE_POSITIVE (surfaced in the response's
+            ``discarded_entities`` field for measurement).
         """
         if not entities:
-            return entities
+            return entities, []
         try:
             # Lazy import so the no-judge path never pulls httpx / pydantic
             # into hot code.
@@ -1049,7 +1063,9 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             validator = get_llm_judge()
             before_count = len(entities)
             judge_start = time.monotonic()
-            filtered = validator.filter(content, entities)
+            filtered, rejections = validator.filter_with_verdicts(
+                content, entities
+            )
             elapsed = time.monotonic() - judge_start
             rejected = before_count - len(filtered)
             logger.info(
@@ -1061,7 +1077,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 rejected,
                 elapsed,
             )
-            return filtered
+            return filtered, rejections
         except Exception as exc:
             # Defense-in-depth: fail-open at the orchestrator level too. If
             # the validator itself blows up (import error, configuration,
@@ -1073,7 +1089,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 exc.__class__.__name__,
                 exc,
             )
-            return entities
+            return entities, []
 
     def _filter_entities_by_type_config(
         self, entities: List, pii_type_configs: dict, request_id: str
@@ -1259,25 +1275,32 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 logger.debug("[%s] Failed to enqueue PII log", request_id, exc_info=True)
 
     def _build_detection_response(
-        self, content: str, entities: List, request_id: str
+        self, content: str, entities: List, request_id: str,
+        discarded_by_judge: Optional[List] = None
     ) -> pii_detection_pb2.PIIDetectionResponse:
         """Build complete detection response with entities, nbOfDetectedPIIBySeverity, and masked content.
-        
+
         Args:
             content: Original content
             entities: Detected PII entities
             request_id: Request identifier for logging
-            
+            discarded_by_judge: Optional list of ``(entity, verdict)`` tuples
+                rejected by the LLM judge, exposed in ``discarded_entities``
+
         Returns:
             Complete PIIDetectionResponse
         """
         logger.debug(f"[{request_id}] Building gRPC response...")
         response = pii_detection_pb2.PIIDetectionResponse()
-        
+
         self._add_entities_to_response(response, entities, request_id, content)
         self._add_summary_to_response(response, entities, request_id)
         self._add_masked_content_to_response(response, content, entities, request_id)
-        
+        if discarded_by_judge:
+            self._add_discarded_entities_to_response(
+                response, discarded_by_judge, request_id
+            )
+
         return response
 
     def _add_entities_to_response(
@@ -1299,37 +1322,85 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         for entity in entities[:1000]:
             try:
-                pii_entity = response.entities.add()
-                pii_entity.text = str(entity['text'])
-                # Normalize PII type to match Java enum (EMAIL not PIIType.EMAIL)
-                pii_entity.type = _normalize_pii_type_for_grpc(entity.get('type'))
-                pii_entity.type_label = str(entity['type_label'])
-                # Convert to native Python types for Protobuf compatibility
-                # (numpy.int64/float64 from Presidio/other detectors cause errors)
-                pii_entity.start = int(entity['start'])
-                pii_entity.end = int(entity['end'])
-                pii_entity.score = float(entity['score'])
-
-                # Detection source: Map Domain Enum to Proto Enum
-                domain_source = entity.get('source')
-                if isinstance(domain_source, DetectorSource):
-                    # Map directly using name if names match
-                    pii_entity.source = getattr(pii_detection_pb2.DetectorSource, domain_source.name, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
-                else:
-                    # Fallback for string or unknown
-                    source_str = str(domain_source or entity.get('detector') or 'UNKNOWN').upper()
-                    if source_str == 'UNKNOWN':
-                        source_str = 'UNKNOWN_SOURCE'
-                    pii_entity.source = getattr(pii_detection_pb2.DetectorSource, source_str, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+                self._populate_proto_entity(response.entities.add(), entity)
             except (ValueError, TypeError) as e:
                 logger.error(
                     f"[{request_id}] Failed to convert entity to protobuf: {e}. "
                     f"Entity: {entity}"
                 )
                 raise
-        
+
         if len(entities) > 1000:
             logger.warning(f"[{request_id}] Truncated entities list from {len(entities)} to 1000")
+
+    @staticmethod
+    def _populate_proto_entity(pii_entity, entity) -> None:
+        """Fill a proto ``PIIEntity`` from a domain entity (dict-style access).
+
+        Business rule: Convert all numeric values to native Python types to
+        ensure Protobuf compatibility (numpy types cause serialization
+        errors). PII types are normalized to match Java PiiType enum.
+        """
+        pii_entity.text = str(entity['text'])
+        # Normalize PII type to match Java enum (EMAIL not PIIType.EMAIL)
+        pii_entity.type = _normalize_pii_type_for_grpc(entity.get('type'))
+        pii_entity.type_label = str(entity['type_label'])
+        # Convert to native Python types for Protobuf compatibility
+        # (numpy.int64/float64 from Presidio/other detectors cause errors)
+        pii_entity.start = int(entity['start'])
+        pii_entity.end = int(entity['end'])
+        pii_entity.score = float(entity['score'])
+
+        # Detection source: Map Domain Enum to Proto Enum
+        domain_source = entity.get('source')
+        if isinstance(domain_source, DetectorSource):
+            # Map directly using name if names match
+            pii_entity.source = getattr(pii_detection_pb2.DetectorSource, domain_source.name, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+        else:
+            # Fallback for string or unknown
+            source_str = str(domain_source or entity.get('detector') or 'UNKNOWN').upper()
+            if source_str == 'UNKNOWN':
+                source_str = 'UNKNOWN_SOURCE'
+            pii_entity.source = getattr(pii_detection_pb2.DetectorSource, source_str, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+
+    def _add_discarded_entities_to_response(
+        self, response: pii_detection_pb2.PIIDetectionResponse,
+        discarded_by_judge: List, request_id: str
+    ) -> None:
+        """Add LLM-judge rejections to ``discarded_entities``.
+
+        Each item is a ``(entity, verdict)`` tuple produced by
+        ``LLMJudgeValidator.filter_with_verdicts``. Same 1000-entry cap as
+        the kept entities to bound the response size.
+
+        Args:
+            response: Response object to populate
+            discarded_by_judge: ``(entity, verdict)`` tuples rejected by the judge
+            request_id: Request identifier for logging
+        """
+        to_add = min(len(discarded_by_judge), 1000)
+        logger.debug(
+            f"[{request_id}] Adding {to_add} judge-discarded entities to response"
+        )
+        for entity, verdict in discarded_by_judge[:1000]:
+            try:
+                discarded = response.discarded_entities.add()
+                self._populate_proto_entity(discarded.entity, entity)
+                discarded.judge_verdict = str(getattr(verdict, 'verdict', 'FALSE_POSITIVE'))
+                discarded.judge_confidence = float(getattr(verdict, 'confidence', 0.0) or 0.0)
+                discarded.judge_reason = str(getattr(verdict, 'reason', '') or '')
+            except (ValueError, TypeError) as e:
+                # Measurement payload only: never fail the whole response
+                # because one rejected entity cannot be serialized.
+                logger.warning(
+                    f"[{request_id}] Failed to convert discarded entity to "
+                    f"protobuf: {e}. Entity: {entity}"
+                )
+        if len(discarded_by_judge) > 1000:
+            logger.warning(
+                f"[{request_id}] Truncated discarded entities list from "
+                f"{len(discarded_by_judge)} to 1000"
+            )
 
     def _add_summary_to_response(
         self, response: pii_detection_pb2.PIIDetectionResponse, entities: List, request_id: str

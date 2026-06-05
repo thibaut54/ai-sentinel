@@ -142,6 +142,11 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .map(entity -> convertToSensitiveData(entity, content, hasSupplementaryChars))
                 .toList();
 
+        List<ContentPiiDetection.DiscardedSensitiveData> discardedByJudge =
+                response.getDiscardedEntitiesList().stream()
+                        .map(discarded -> convertToDiscardedSensitiveData(discarded, content, hasSupplementaryChars))
+                        .toList();
+
         Map<String, Integer> statistics = response.getSummaryMap();
 
         return ContentPiiDetection.builder()
@@ -151,7 +156,18 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .analysisDate(LocalDateTime.now())
                 .sensitiveDataFound(sensitiveDataList)
                 .statistics(statistics)
+                .discardedByJudge(discardedByJudge)
                 .build();
+    }
+
+    private ContentPiiDetection.DiscardedSensitiveData convertToDiscardedSensitiveData(
+            PiiDetection.DiscardedPIIEntity discarded, String content, boolean hasSupplementaryChars) {
+        return new ContentPiiDetection.DiscardedSensitiveData(
+                convertToSensitiveData(discarded.getEntity(), content, hasSupplementaryChars),
+                discarded.getJudgeVerdict(),
+                (double) discarded.getJudgeConfidence(),
+                discarded.getJudgeReason()
+        );
     }
 
     private ContentPiiDetection.SensitiveData convertToSensitiveData(PiiDetection.PIIEntity entity,

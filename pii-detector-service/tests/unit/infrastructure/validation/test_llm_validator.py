@@ -711,6 +711,95 @@ class TestLLMJudgeValidatorRuleMVP:
             validator.shutdown()
 
 
+class TestFilterWithVerdicts:
+    """``filter_with_verdicts`` exposes the judge rejections (option C)."""
+
+    def test_should_return_rejection_with_verdict_for_false_positive(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            verdict = PiiVerdict(
+                verdict="FALSE_POSITIVE", confidence=0.9, reason="fp"
+            )
+            _wire_judge(validator, [verdict])
+            entity = _gliner_entity()
+            kept, rejections = validator.filter_with_verdicts(
+                "text", [entity]
+            )
+            assert kept == []
+            assert rejections == [(entity, verdict)]
+        finally:
+            validator.shutdown()
+
+    def test_should_not_reject_fail_open_none_verdict(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            _wire_judge(validator, [None])  # fail-open path
+            entity = _gliner_entity()
+            kept, rejections = validator.filter_with_verdicts(
+                "text", [entity]
+            )
+            assert kept == [entity]
+            assert rejections == []
+        finally:
+            validator.shutdown()
+
+    def test_should_split_mixed_batch_into_kept_and_rejections(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            verdicts: List[Optional[PiiVerdict]] = [
+                PiiVerdict(
+                    verdict="TRUE_POSITIVE", confidence=0.9, reason="ok"
+                ),
+                PiiVerdict(
+                    verdict="FALSE_POSITIVE", confidence=0.8, reason="fp"
+                ),
+            ]
+            _wire_judge(validator, verdicts)
+            gliner_tp = _gliner_entity(text="Marc", start=0, end=4)
+            gliner_fp = _gliner_entity(
+                text="DGAIC", pii_type="PASSWORD", start=10, end=15
+            )
+            regex_kept = _regex_entity(start=20, end=37)
+            kept, rejections = validator.filter_with_verdicts(
+                "text", [gliner_tp, gliner_fp, regex_kept]
+            )
+            assert kept == [gliner_tp, regex_kept]
+            assert rejections == [(gliner_fp, verdicts[1])]
+        finally:
+            validator.shutdown()
+
+    def test_should_passthrough_without_rejections_when_nothing_audited(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            calls = _wire_judge(validator, [])
+            entities = [_regex_entity()]
+            kept, rejections = validator.filter_with_verdicts(
+                "text", entities
+            )
+            assert kept == entities
+            assert rejections == []
+            assert calls == []
+        finally:
+            validator.shutdown()
+
+    def test_should_short_circuit_on_empty_entities(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            assert validator.filter_with_verdicts("text", []) == ([], [])
+        finally:
+            validator.shutdown()
+
+
 class TestLLMJudgeValidatorFailOpen:
     def test_should_keep_entity_on_timeout(self, validator_factory) -> None:
         validator = validator_factory(fail_open=True)
