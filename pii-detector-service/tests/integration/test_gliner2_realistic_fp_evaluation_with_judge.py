@@ -749,13 +749,13 @@ def _compute_dual_metrics(
             expected_spans=case.expected_spans,
         )
     log.info(
-        "[%s|%s] cases=%d baseline: tp=%d fp=%d fn=%d FP_rate=%.3f recall=%.3f "
-        "| judged: tp=%d fp=%d fn=%d FP_rate=%.3f recall=%.3f (%.1fs)",
+        "[%s|%s] cases=%d baseline: tp=%d fp=%d fn=%d P=%.3f R=%.3f F1=%.3f "
+        "| judged: tp=%d fp=%d fn=%d P=%.3f R=%.3f F1=%.3f (%.1fs)",
         detector.model_id, pii_type, metrics.cases,
         metrics.baseline_tp, metrics.baseline_fp, metrics.baseline_fn,
-        metrics.baseline_fp_rate, metrics.baseline_recall,
+        metrics.baseline_precision, metrics.baseline_recall, metrics.baseline_f1,
         metrics.judged_tp, metrics.judged_fp, metrics.judged_fn,
-        metrics.judged_fp_rate, metrics.judged_recall,
+        metrics.judged_precision, metrics.judged_recall, metrics.judged_f1,
         time.time() - t0,
     )
     collector[key] = metrics
@@ -899,12 +899,16 @@ def _write_metrics_json(path: Path, collector: Dict[str, DualMetrics]) -> None:
                 "baseline": {
                     "tp": m.baseline_tp, "fp": m.baseline_fp, "fn": m.baseline_fn,
                     "fp_rate": round(m.baseline_fp_rate, 4),
+                    "precision": round(m.baseline_precision, 4),
                     "recall": round(m.baseline_recall, 4),
+                    "f1": round(m.baseline_f1, 4),
                 },
                 "judged": {
                     "tp": m.judged_tp, "fp": m.judged_fp, "fn": m.judged_fn,
                     "fp_rate": round(m.judged_fp_rate, 4),
+                    "precision": round(m.judged_precision, 4),
                     "recall": round(m.judged_recall, 4),
+                    "f1": round(m.judged_f1, 4),
                 },
                 "recall_degradation": round(m.recall_degradation, 4),
             }
@@ -950,21 +954,25 @@ def _write_markdown_report(path: Path, collector: Dict[str, DualMetrics]) -> Non
     for model_id, per_type in _group_by_model(collector).items():
         lines.append(f"\n## {model_id}\n")
         lines.append(
-            "| PII type | Cases | Base FP rate | Judged FP rate | Δ FP "
-            "| Base recall | Judged recall | Δ recall | Verdict |"
+            "| PII type | Cases | Base P | Judged P | Base R | Judged R "
+            "| Base F1 | Judged F1 | Base FP rate | Judged FP rate | Δ FP | Verdict |"
         )
-        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---|")
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|")
         for pii_type in GLINER2_LABEL_SPECS:
             m = per_type.get(pii_type)
             if m is None:
-                lines.append(f"| {pii_type} | — | — | — | — | — | — | — | NOT RUN |")
+                lines.append(
+                    f"| {pii_type} | — | — | — | — | — | — | — | — | — | — | NOT RUN |"
+                )
                 continue
             verdict = _verdict_for(m)
             lines.append(
-                f"| {pii_type} | {m.cases} | {m.baseline_fp_rate:.3f} "
-                f"| {m.judged_fp_rate:.3f} | {m.judged_fp_rate - m.baseline_fp_rate:+.3f} "
+                f"| {pii_type} | {m.cases} "
+                f"| {m.baseline_precision:.3f} | {m.judged_precision:.3f} "
                 f"| {m.baseline_recall:.3f} | {m.judged_recall:.3f} "
-                f"| {m.judged_recall - m.baseline_recall:+.3f} | {verdict} |"
+                f"| {m.baseline_f1:.3f} | {m.judged_f1:.3f} "
+                f"| {m.baseline_fp_rate:.3f} | {m.judged_fp_rate:.3f} "
+                f"| {m.judged_fp_rate - m.baseline_fp_rate:+.3f} | {verdict} |"
             )
     path.write_text("\n".join(lines), encoding="utf-8")
 

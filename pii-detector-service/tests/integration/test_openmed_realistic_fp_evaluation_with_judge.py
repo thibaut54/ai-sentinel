@@ -417,6 +417,29 @@ class DualMetrics:
         """Percentage points lost between baseline and judged recall."""
         return max(0.0, self.baseline_recall - self.judged_recall)
 
+    @property
+    def baseline_precision(self) -> float:
+        d = self.baseline_tp + self.baseline_fp
+        return self.baseline_tp / d if d > 0 else 0.0
+
+    @property
+    def judged_precision(self) -> float:
+        d = self.judged_tp + self.judged_fp
+        return self.judged_tp / d if d > 0 else 0.0
+
+    @property
+    def baseline_f1(self) -> float:
+        return self._f1(self.baseline_precision, self.baseline_recall)
+
+    @property
+    def judged_f1(self) -> float:
+        return self._f1(self.judged_precision, self.judged_recall)
+
+    @staticmethod
+    def _f1(precision: float, recall: float) -> float:
+        d = precision + recall
+        return 2 * precision * recall / d if d > 0 else 0.0
+
 
 # ---------------------------------------------------------------------------
 # Session fixtures (heavy: OpenMed model + judge validator)

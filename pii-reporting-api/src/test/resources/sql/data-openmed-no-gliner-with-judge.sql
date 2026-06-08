@@ -19,10 +19,11 @@ INSERT INTO pii_detection_config (
     default_threshold,
     nb_of_label_by_pass,
     llm_judge_enabled,
+    prefilter_enabled,
     updated_at,
     updated_by
 )
-VALUES (1, false, true, true, 0.30, 35, true, CURRENT_TIMESTAMP, 'test-openmed-no-gliner-with-judge')
+VALUES (1, false, true, true, 0.30, 35, true, false, CURRENT_TIMESTAMP, 'test-openmed-no-gliner-with-judge')
     ON CONFLICT (id) DO UPDATE
         SET gliner_enabled      = EXCLUDED.gliner_enabled,
             presidio_enabled    = EXCLUDED.presidio_enabled,
@@ -30,6 +31,7 @@ VALUES (1, false, true, true, 0.30, 35, true, CURRENT_TIMESTAMP, 'test-openmed-n
             default_threshold   = EXCLUDED.default_threshold,
             nb_of_label_by_pass = EXCLUDED.nb_of_label_by_pass,
             llm_judge_enabled   = EXCLUDED.llm_judge_enabled,
+            prefilter_enabled   = EXCLUDED.prefilter_enabled,
             updated_at          = EXCLUDED.updated_at,
             updated_by          = EXCLUDED.updated_by;
 

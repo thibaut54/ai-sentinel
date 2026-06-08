@@ -35,8 +35,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- llm_judge_enabled = true : ce variant declenche le LLM-as-judge in-pipeline
 -- (post-filtre FP). La portee des detecteurs audites est pilotee par l'env var
 -- LLM_JUDGE_AUDIT_SOURCES sur le conteneur pii-detector (cf. CorpusDataSqlComparisonIT).
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, updated_at, updated_by)
-VALUES (1, false, true, true, true, 0.30, 35, true, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, updated_at, updated_by)
+VALUES (1, false, true, true, true, 0.30, 35, true, false, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- Category 1: IDENTITY

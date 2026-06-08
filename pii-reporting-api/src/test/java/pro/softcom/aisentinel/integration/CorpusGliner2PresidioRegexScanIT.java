@@ -272,6 +272,13 @@ class CorpusGliner2PresidioRegexScanIT {
         .withFileSystemBind(ensureHfCacheDir(), "/app/.cache/huggingface")
         .withEnv("HF_HOME", "/app/.cache/huggingface")
         .withEnv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
+        // Runtime GLiNER2 STRICT : sans lui, un worker dont le chargement ONNX
+        // échoue (lecture FUSE transitoirement tronquée -> InvalidProtobuf)
+        // retombe SILENCIEUSEMENT en PyTorch et les mesures de vélocité
+        // mélangent les deux runtimes. En strict, le worker meurt et le pool
+        // le respawne (rechargement depuis le staging local) : le run est
+        // garanti 100% fast_gliner ou échoue franchement.
+        .withEnv("GLINER2_RUNTIME", "fastgliner")
         .withEnv("DB_HOST", POSTGRES_ALIAS)
         .withEnv("DB_PORT", "5432")
         .withEnv("DB_NAME", DB_NAME)

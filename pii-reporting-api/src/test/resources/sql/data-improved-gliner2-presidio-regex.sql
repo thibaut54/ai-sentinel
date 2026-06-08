@@ -36,8 +36,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- llm_judge_enabled defaults to false (zero-effect MVP rollout, spec §1.4).
 -- gliner2_enabled defaults to false (explicit operator opt-in, spec D4).
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, updated_at, updated_by)
-VALUES (1, false, true, true, false, true, 0.30, 35, false, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, updated_at, updated_by)
+VALUES (1, false, true, true, false, true, 0.30, 35, false, false, CURRENT_TIMESTAMP, 'system')
 ON CONFLICT (id) DO NOTHING;
 
 -- Category 1: IDENTITY

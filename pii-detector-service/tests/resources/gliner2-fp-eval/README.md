@@ -31,6 +31,14 @@ Create it once (from the repo root `pii-detector-service/`):
 .venv-gliner2/Scripts/python.exe -m pip install -e . gliner2 pytest pytest-cov httpx
 ```
 
+For the **fastgliner** comparison run (see below), also install `fast_gliner` in
+the same venv. Its HuggingFace-hub pin can conflict, so install without deps:
+
+```
+.venv-gliner2/Scripts/python.exe -m pip install fast_gliner --no-deps
+.venv-gliner2/Scripts/python.exe -m pip install onnxruntime
+```
+
 ## Run
 
 LM Studio must serve the Qwen judge (see `[llm_judge].base_url` in
@@ -56,16 +64,50 @@ $env:LM_GLINER2_MODEL_IDS = "fastino/gliner2-large-v1"
     -k "PASSWORD and large-v1" -s --log-cli-level=INFO --no-cov
 ```
 
+### fastgliner vs pytorch on privacy-filter (P/R/F1 comparison)
+
+Quantifies the cost of the production speed mode (ONNX engine + lost
+descriptions). Needs `fast_gliner` (above) and a monolithic ONNX export of
+privacy-filter resolvable via `$HF_HOME/gliner2-privacy-filter-onnx`,
+`models/gliner2-privacy-filter-onnx`, or `GLINER2_ONNX_MODEL_DIR` (produced by
+`scripts/export_gliner2_to_monolithic_onnx.py`). The fastgliner file SKIPS
+cleanly if no export is resolvable.
+
+> **Platform**: `fast_gliner` ships **Linux/macOS wheels only** (no Windows
+> wheel — `pip install` builds the Rust crate and fails on Windows; see the
+> note in `pyproject.toml`). So the fastgliner half runs only on **Linux / WSL /
+> Docker / CI**, and SKIPS on a Windows host. The PyTorch half runs anywhere.
+
+```powershell
+# PyTorch half (privacy-filter only) — writes target/gliner2-fp-eval-with-judge/
+# NB: no -k filter — LM_GLINER2_MODEL_IDS already limits to privacy-filter, and a
+# `-k` on the model id would deselect the aggregate-report test (its name has no
+# model id), leaving report.md stale.
+$env:LM_GLINER2_MODEL_IDS = "fastino/gliner2-privacy-filter-PII-multi"
+.venv-gliner2\Scripts\python.exe -m pytest `
+    tests/integration/test_gliner2_realistic_fp_evaluation_with_judge.py `
+    -s --log-cli-level=INFO --no-cov
+
+# fastgliner half — writes target/gliner2-fastgliner-fp-eval-with-judge/
+.venv-gliner2\Scripts\python.exe -m pytest `
+    tests/integration/test_gliner2_fastgliner_fp_evaluation_with_judge.py `
+    -s --log-cli-level=INFO --no-cov
+```
+
+Compare the `report.md` (P/R/F1 columns) of the two output dirs: the pytorch↔
+fastgliner delta per type prices the lost descriptions.
+
 The fixture meta-test (`...LoadByteExactBalancedFixtures...`) needs neither
 GLiNER2 nor LM Studio and runs in any venv.
 
 ## Outputs
 
-Written to `target/gliner2-fp-eval-with-judge/`:
+PyTorch run → `target/gliner2-fp-eval-with-judge/`; fastgliner run →
+`target/gliner2-fastgliner-fp-eval-with-judge/`. Each holds:
 
 - `findings.jsonl` — per-detection record (model, baseline + judged verdict)
-- `metrics.json` — aggregated metrics per model per type
-- `report.md` — markdown comparison grouped by model then type
+- `metrics.json` — aggregated metrics per model per type (P/R/F1 + FP rate)
+- `report.md` — markdown comparison grouped by model then type (P/R/F1 columns)
 
 ## Gates (what a green run means)
 
