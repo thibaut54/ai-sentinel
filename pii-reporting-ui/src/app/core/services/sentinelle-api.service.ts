@@ -42,6 +42,37 @@ export interface ScanReportingSummaryDto {
   spaces: SpaceSummaryDto[];
 }
 
+export interface ScanFailedItemDto {
+  itemType: 'PAGE' | 'ATTACHMENT';
+  title: string;
+}
+
+export interface ScanDetectorStatDto {
+  detector: string;
+  detections: number;
+  charsProcessed: number;
+  busyMs: number;
+  charsPerSecond: number | null;
+  /** PII discarded by this stage (0 for real detectors; >0 for JUDGE/PREFILTER). */
+  discarded: number;
+}
+
+export interface SpaceScanStatsDto {
+  scanId: string;
+  spaceKey: string;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  pagesScanned: number;
+  pagesFailed: number;
+  pageChars: number;
+  attachmentsScanned: number;
+  attachmentsFailed: number;
+  attachmentChars: number;
+  failedItems: ScanFailedItemDto[];
+  detectorStats: ScanDetectorStatDto[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SentinelleApiService {
   /** Signal holding the reveal allowed configuration state */
@@ -171,6 +202,16 @@ export class SentinelleApiService {
       });
       return () => sub.unsubscribe();
     });
+  }
+
+  /**
+   * Fetch last-scan statistics for a single space (lazy-loaded on demand).
+   * Errors are propagated so the caller can distinguish 404 (no stats) from
+   * network/server failures and render the appropriate message.
+   */
+  getSpaceScanStats(spaceKey: string): Observable<SpaceScanStatsDto> {
+    const key = encodeURIComponent(String(spaceKey ?? ''));
+    return this.http.get<SpaceScanStatsDto>(`/api/v1/scans/dashboard/spaces/${key}/stats`);
   }
 
   /** Command the backend to resume the last scan with the same scanId (best-effort). */

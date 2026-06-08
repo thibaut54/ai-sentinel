@@ -79,6 +79,7 @@
                             </div>
                             <p-toggleswitch
                                 formControlName="glinerEnabled"
+                                (onChange)="onDetectorMasterToggle('GLINER')"
                                 [ariaLabel]="'settings.detectors.gliner.label' | transloco">
                             </p-toggleswitch>
                         </div>
@@ -98,6 +99,7 @@
                             </div>
                             <p-toggleswitch
                                 formControlName="presidioEnabled"
+                                (onChange)="onDetectorMasterToggle('PRESIDIO')"
                                 [ariaLabel]="'settings.detectors.presidio.label' | transloco">
                             </p-toggleswitch>
                         </div>
@@ -117,6 +119,7 @@
                             </div>
                             <p-toggleswitch
                                 formControlName="regexEnabled"
+                                (onChange)="onDetectorMasterToggle('REGEX')"
                                 [ariaLabel]="'settings.detectors.regex.label' | transloco">
                             </p-toggleswitch>
                         </div>
@@ -136,6 +139,7 @@
                             </div>
                             <p-toggleswitch
                                 formControlName="openmedEnabled"
+                                (onChange)="onDetectorMasterToggle('OPENMED')"
                                 [ariaLabel]="'settings.detectors.openmed.label' | transloco">
                             </p-toggleswitch>
                         </div>
@@ -157,7 +161,50 @@
                                 formControlName="gliner2Enabled"
                                 inputId="toggleGliner2Enabled"
                                 data-testid="toggleGliner2Enabled"
+                                (onChange)="onDetectorMasterToggle('GLINER2')"
                                 [ariaLabel]="'settings.detectors.gliner2.label' | transloco">
+                            </p-toggleswitch>
+                        </div>
+
+                        <!-- Pré-filtre déterministe -->
+                        <div class="detector-card prefilter"
+                             [class.enabled]="configForm.get('prefilterEnabled')?.value"
+                             [class.disabled]="!configForm.get('prefilterEnabled')?.value">
+                            <div class="detector-avatar prefilter"
+                                 [class.disabled-avatar]="!configForm.get('prefilterEnabled')?.value">PF</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('prefilterEnabled')?.value">
+                                    {{ 'settings.detectors.prefilter.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.prefilter.description' | transloco }}</div>
+                            </div>
+                            <p-toggleswitch
+                                formControlName="prefilterEnabled"
+                                inputId="togglePrefilterEnabled"
+                                data-testid="togglePrefilterEnabled"
+                                [ariaLabel]="'settings.detectors.prefilter.label' | transloco">
+                            </p-toggleswitch>
+                        </div>
+
+                        <!-- LLM as judge -->
+                        <div class="detector-card llm-judge"
+                             [class.enabled]="configForm.get('llmJudgeEnabled')?.value"
+                             [class.disabled]="!configForm.get('llmJudgeEnabled')?.value">
+                            <div class="detector-avatar llm-judge"
+                                 [class.disabled-avatar]="!configForm.get('llmJudgeEnabled')?.value">LJ</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('llmJudgeEnabled')?.value">
+                                    {{ 'settings.detectors.llmJudge.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.llmJudge.description' | transloco }}</div>
+                            </div>
+                            <p-toggleswitch
+                                formControlName="llmJudgeEnabled"
+                                inputId="toggleLlmJudgeEnabled"
+                                data-testid="toggleLlmJudgeEnabled"
+                                [ariaLabel]="'settings.detectors.llmJudge.label' | transloco">
                             </p-toggleswitch>
                         </div>
                     </div>
@@ -363,11 +410,23 @@
                                         </div>
 
                                         <div class="pii-type-controls">
-                                            <p-toggleswitch
-                                                [(ngModel)]="type.enabled"
-                                                (ngModelChange)="onPiiTypeToggleChange(type, $event)"
-                                                [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
-                                            </p-toggleswitch>
+                                            <div class="pii-type-switches">
+                                                <p-toggleswitch
+                                                    [(ngModel)]="type.enabled"
+                                                    (ngModelChange)="onPiiTypeToggleChange(type, $event)"
+                                                    [disabled]="!isDetectorEnabled(detectorGroup.detector)"
+                                                    [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
+                                                </p-toggleswitch>
+                                                <div class="pii-type-judge-row">
+                                                    <p-toggleswitch
+                                                        [ngModel]="isLlmJudgeMasterEnabled() && type.llmJudgeEnabled"
+                                                        (ngModelChange)="onPiiTypeJudgeToggleChange(type, $event)"
+                                                        [disabled]="!type.enabled || !isLlmJudgeMasterEnabled() || !isDetectorEnabled(detectorGroup.detector)"
+                                                        [ariaLabel]="'settings.piiTypes.llmJudgeToggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
+                                                    </p-toggleswitch>
+                                                    <span class="pii-type-judge-label">{{ 'settings.piiTypes.llmJudge' | transloco }}</span>
+                                                </div>
+                                            </div>
                                             @if (type.enabled) {
                                                 <p-inputNumber
                                                     [(ngModel)]="type.threshold"

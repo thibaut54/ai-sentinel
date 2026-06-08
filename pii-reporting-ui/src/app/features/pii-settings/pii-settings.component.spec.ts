@@ -13,6 +13,8 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   regexEnabled: true,
   openmedEnabled: false,
   gliner2Enabled: false,
+  prefilterEnabled: false,
+  llmJudgeEnabled: true,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
@@ -40,6 +42,8 @@ const FR_TRANSLATIONS = {
       presidio: { label: 'Presidio', description: 'desc' },
       regex: { label: 'Regex', description: 'desc' },
       openmed: { label: 'OpenMed', description: 'desc' },
+      prefilter: { label: 'Pré-filtre déterministe', description: 'desc' },
+      llmJudge: { label: 'LLM as judge', description: 'desc' },
     },
     messages: { loadError: 'Erreur', saveAllSuccess: 'Sauvegardé', saveAllError: 'Erreur' },
     confluence: { messages: { loadError: 'Erreur', saveSuccess: 'OK', saveError: 'Erreur' } },
@@ -188,6 +192,12 @@ describe('PiiSettingsComponent', () => {
     expect(gliner2Control?.value).toBe(false);
   });
 
+  it('Should_CreatePrefilterEnabledControl_When_FormInitialized', () => {
+    const prefilterControl = component.configForm.get('prefilterEnabled');
+    expect(prefilterControl).toBeTruthy();
+    expect(prefilterControl?.value).toBe(false);
+  });
+
   it('Should_PassAtLeastOneDetectorValidation_When_OnlyGliner2Enabled', () => {
     component.configForm.patchValue({
       glinerEnabled: false,
@@ -208,6 +218,7 @@ describe('PiiSettingsComponent', () => {
       detector: 'GLINER2' as const,
       enabled: true,
       threshold: 0.5,
+      llmJudgeEnabled: true,
       category: 'CONTACT',
       detectorDescription: 'adresse e-mail',
     };
@@ -223,5 +234,85 @@ describe('PiiSettingsComponent', () => {
 
     // Then the row is tracked as modified (drives the bulk save + unsaved indicator)
     expect(component.hasUnsavedTypeChanges()).toBe(true);
+  });
+
+  it('Should_CreateLlmJudgeEnabledControl_When_FormInitialized', () => {
+    // Then - llmJudgeEnabled control exists and defaults to true
+    const llmJudgeControl = component.configForm.get('llmJudgeEnabled');
+    expect(llmJudgeControl).toBeTruthy();
+    expect(llmJudgeControl?.value).toBe(true);
+  });
+
+  it('Should_TrackJudgeToggleChange_When_PiiTypeJudgeToggled', () => {
+    // Given a row registered as original with the judge enabled
+    const type = {
+      id: 1,
+      piiType: 'EMAIL',
+      detector: 'GLINER' as const,
+      enabled: true,
+      threshold: 0.5,
+      llmJudgeEnabled: true,
+      category: 'CONTACT',
+    };
+    component.groupedPiiTypes.set([
+      { detector: 'GLINER', categories: [{ category: 'CONTACT', types: [type] }] },
+    ]);
+    (component as unknown as { originalPiiTypes: { set: (m: Map<string, unknown>) => void } })
+      .originalPiiTypes.set(new Map([['GLINER:EMAIL', { ...type }]]));
+
+    // When the LLM-judge toggle is turned off
+    component.onPiiTypeJudgeToggleChange(type, false);
+
+    // Then the row is tracked as modified
+    expect(component.hasUnsavedTypeChanges()).toBe(true);
+  });
+
+  it('Should_ReflectDetectorMasterState_When_DetectorEnabledQueried', () => {
+    // Given - openmed master off, gliner master on (from MOCK config)
+    expect(component.isDetectorEnabled('GLINER')).toBe(true);
+    expect(component.isDetectorEnabled('OPENMED')).toBe(false);
+    // Unknown detector defaults to enabled
+    expect(component.isDetectorEnabled('UNKNOWN')).toBe(true);
+  });
+
+  it('Should_CollapseDetectorSubSection_When_MasterToggledOff', () => {
+    // Given - GLINER master is on and its sub-section expanded
+    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
+
+    // When - the master toggle is turned off then the handler runs
+    component.configForm.patchValue({ glinerEnabled: false });
+    component.onDetectorMasterToggle('GLINER');
+
+    // Then - the GLINER sub-section is collapsed
+    expect(component.isDetectorCollapsed('GLINER')).toBe(true);
+
+    // When - the master toggle is turned back on
+    component.configForm.patchValue({ glinerEnabled: true });
+    component.onDetectorMasterToggle('GLINER');
+
+    // Then - the GLINER sub-section is expanded again
+    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
+  });
+
+  it('Should_CollapseDisabledDetectorsOnLoad_When_ConfigLoaded', () => {
+    // The MOCK config has openmed + gliner2 disabled -> their sub-sections
+    // must start collapsed; the enabled ones must start expanded.
+    expect(component.isDetectorCollapsed('OPENMED')).toBe(true);
+    expect(component.isDetectorCollapsed('GLINER2')).toBe(true);
+    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
+    expect(component.isDetectorCollapsed('PRESIDIO')).toBe(false);
+  });
+
+  it('Should_PreservePerTypeJudgeValue_When_MasterJudgeToggledOff', () => {
+    // Given - the global judge master is on (MOCK config)
+    expect(component.isLlmJudgeMasterEnabled()).toBe(true);
+
+    // When - the global judge master is turned off
+    component.configForm.patchValue({ llmJudgeEnabled: false });
+
+    // Then - the master reads as off and the per-type values are NOT mutated
+    // (the view derives the off state; no modification is tracked).
+    expect(component.isLlmJudgeMasterEnabled()).toBe(false);
+    expect(component.hasUnsavedTypeChanges()).toBe(false);
   });
 });

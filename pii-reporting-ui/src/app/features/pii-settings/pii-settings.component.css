@@ -738,6 +738,26 @@
   transform-origin: center;
 }
 
+/* Enabled switch (top) + LLM-judge switch row (below), vertically aligned */
+.pii-type-switches {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pii-type-judge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pii-type-judge-label {
+  font-size: 11px;
+  color: var(--sentinel-text-secondary);
+  white-space: nowrap;
+}
+
 /* Custom badge and severity */
 .custom-badge {
   display: inline-block;
@@ -1075,6 +1095,32 @@
   background: var(--sentinel-gliner2-bg);
   color: var(--sentinel-gliner2-fg);
   border: 1px solid var(--sentinel-gliner2-border);
+}
+
+/* ============================================================
+   LLM-judge detector styling (card / avatar) -- reuses the
+   indigo gliner2 palette as a coherent dedicated variant
+   ============================================================ */
+.detector-card.llm-judge.enabled {
+  border-color: var(--sentinel-gliner2-border);
+  background: var(--sentinel-gliner2-bg);
+}
+
+.detector-card.llm-judge.disabled {
+  border-color: var(--sentinel-border-default);
+  background: var(--sentinel-bg-surface);
+}
+
+.detector-avatar.llm-judge {
+  background: var(--sentinel-gliner2-avatar-bg);
+  color: var(--sentinel-gliner2-fg);
+  border: 1px solid var(--sentinel-gliner2-avatar-border);
+}
+
+.detector-avatar.llm-judge.disabled-avatar {
+  background: var(--sentinel-bg-input-disabled);
+  color: var(--sentinel-text-subtle);
+  border-color: var(--sentinel-border-medium);
 }
 
 /* GLiNER2 per-type inference description editor */

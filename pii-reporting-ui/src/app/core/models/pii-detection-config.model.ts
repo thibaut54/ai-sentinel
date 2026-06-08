@@ -9,6 +9,8 @@ export interface PiiDetectionConfig {
   regexEnabled: boolean;
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
+  prefilterEnabled: boolean;
+  llmJudgeEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
   updatedAt?: string;
@@ -24,6 +26,8 @@ export interface UpdatePiiDetectionConfigRequest {
   regexEnabled: boolean;
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
+  prefilterEnabled: boolean;
+  llmJudgeEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
 }
@@ -37,6 +41,10 @@ export interface PiiTypeConfig {
   detector: DetectorType;
   enabled: boolean;
   threshold: number;
+  /**
+   * Whether the LLM judge post-filtering applies to detections of this PII type.
+   */
+  llmJudgeEnabled: boolean;
   category: string;
   countryCode?: string;
   isCustom?: boolean;
@@ -79,6 +87,11 @@ export interface UpdatePiiTypeConfigRequest {
    * backend leaves the stored description unchanged ("absent = unchanged").
    */
   detectorDescription?: string;
+  /**
+   * Per-type LLM judge toggle. When omitted the backend leaves the stored
+   * value unchanged ("absent = unchanged").
+   */
+  llmJudgeEnabled?: boolean;
 }
 
 /**

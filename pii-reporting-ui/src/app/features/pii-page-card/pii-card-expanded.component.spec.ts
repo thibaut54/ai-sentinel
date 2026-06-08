@@ -139,6 +139,30 @@ describe('PiiCardExpandedComponent', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  it('Should_DisplayTopRevealButton_When_RevealAllowed', () => {
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', MOCK_ITEM);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const topReveal = fixture.nativeElement.querySelector('.card-header-actions .btn-reveal');
+    expect(topReveal).toBeTruthy();
+    // Both the top duplicate and the footer button are present
+    const allReveal = fixture.nativeElement.querySelectorAll('.btn-reveal');
+    expect(allReveal.length).toBe(2);
+  });
+
+  it('Should_EmitRevealRequested_When_TopRevealClicked', () => {
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', MOCK_ITEM);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const spy = vi.spyOn(fixture.componentInstance.revealRequested, 'emit');
+    fixture.nativeElement.querySelector('.card-header-actions .btn-reveal').click();
+    expect(spy).toHaveBeenCalled();
+  });
+
   it('Should_DisplayConfluenceLink_When_PageUrlExists', () => {
     fixture = TestBed.createComponent(PiiCardExpandedComponent);
     fixture.componentRef.setInput('item', MOCK_ITEM);

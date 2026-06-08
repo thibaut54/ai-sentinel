@@ -187,6 +187,21 @@ export class PiiSettingsComponent implements OnInit {
     'detectors', 'thresholds', 'pii_types', 'confluence'
   ];
 
+  /**
+   * Maps a "Types d'IPI" detector group to its master toggle in the
+   * "Moteur de détection" section. The PII-type rows of a detector are
+   * derived (disabled + collapsed) from the state of this control so the
+   * two sections stay consistent without ever overwriting the per-type
+   * stored values (customisations are preserved by construction).
+   */
+  private static readonly DETECTOR_MASTER_CONTROL: Readonly<Record<string, string>> = {
+    GLINER: 'glinerEnabled',
+    PRESIDIO: 'presidioEnabled',
+    REGEX: 'regexEnabled',
+    OPENMED: 'openmedEnabled',
+    GLINER2: 'gliner2Enabled'
+  };
+
   ngOnInit(): void {
     const tabIndex = this.initialTab();
     const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
@@ -204,6 +219,8 @@ export class PiiSettingsComponent implements OnInit {
       regexEnabled: [true],
       openmedEnabled: [false],
       gliner2Enabled: [false],
+      prefilterEnabled: [false],
+      llmJudgeEnabled: [true],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {
@@ -377,6 +394,8 @@ export class PiiSettingsComponent implements OnInit {
           regexEnabled: detectorConfig.regexEnabled,
           openmedEnabled: detectorConfig.openmedEnabled,
           gliner2Enabled: detectorConfig.gliner2Enabled,
+          prefilterEnabled: detectorConfig.prefilterEnabled,
+          llmJudgeEnabled: detectorConfig.llmJudgeEnabled,
           defaultThreshold: detectorConfig.defaultThreshold,
           nbOfLabelByPass: detectorConfig.nbOfLabelByPass
         });
@@ -384,6 +403,10 @@ export class PiiSettingsComponent implements OnInit {
         // Set PII types
         this.groupedPiiTypes.set(piiTypes);
         this.initializeOriginalPiiTypes(piiTypes);
+
+        // Collapse the sub-sections of detectors that are disabled, so the
+        // "Types d'IPI" view reflects the "Moteur de détection" state on load.
+        this.syncCollapsedWithDetectorState();
 
         this.loading.set(false);
       },
@@ -470,6 +493,27 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
+   * Handle LLM-judge toggle change for a PII type.
+   * Reuses the same modification key as enabled/threshold so all edits of a row
+   * merge into a SINGLE bulk update entry.
+   */
+  onPiiTypeJudgeToggleChange(type: PiiTypeConfig, llmJudgeEnabled: boolean): void {
+    const key = this.getPiiTypeKey(type.detector, type.piiType);
+    const original = this.originalPiiTypes().get(key);
+
+    if (!original) return;
+
+    const modified: PiiTypeConfig = {
+      ...type,
+      llmJudgeEnabled
+    };
+
+    this.trackPiiTypeModification(key, original, modified);
+
+    this.updateGroupedPiiTypes(type.detector, type.piiType, {llmJudgeEnabled});
+  }
+
+  /**
    * Handle inference-description change for a GLINER2 PII type.
    * Reuses the same modification key as toggle/threshold so all edits of a row
    * merge into a SINGLE bulk update entry.
@@ -492,7 +536,7 @@ export class PiiSettingsComponent implements OnInit {
 
   /**
    * Track a PII-type row modification: record it when it differs from the
-   * original (enabled, threshold or description), drop it when it matches again.
+   * original (enabled, threshold, LLM-judge toggle or description), drop it when it matches again.
    * Always emits a new Map reference so the signal recomputes.
    */
   private trackPiiTypeModification(
@@ -503,6 +547,7 @@ export class PiiSettingsComponent implements OnInit {
     const changed =
       modified.enabled !== original.enabled ||
       modified.threshold !== original.threshold ||
+      modified.llmJudgeEnabled !== original.llmJudgeEnabled ||
       (modified.detectorDescription ?? '') !== (original.detectorDescription ?? '');
 
     if (changed) {
@@ -515,15 +560,17 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
-   * Build a bulk-update payload entry, adding detectorDescription ONLY for
-   * GLINER2 rows (extension of the bulk contract, sent conditionally).
+   * Build a bulk-update payload entry. Always carries the LLM-judge toggle and
+   * adds detectorDescription ONLY for GLINER2 rows (extension of the bulk
+   * contract, sent conditionally).
    */
   private toUpdateRequest(type: PiiTypeConfig): UpdatePiiTypeConfigRequest {
     const update: UpdatePiiTypeConfigRequest = {
       piiType: type.piiType,
       detector: type.detector,
       enabled: type.enabled,
-      threshold: type.threshold
+      threshold: type.threshold,
+      llmJudgeEnabled: type.llmJudgeEnabled
     };
     if (type.detector === 'GLINER2') {
       update.detectorDescription = type.detectorDescription ?? '';
@@ -744,10 +791,14 @@ export class PiiSettingsComponent implements OnInit {
         regexEnabled: this.currentConfig()!.regexEnabled,
         openmedEnabled: this.currentConfig()!.openmedEnabled,
         gliner2Enabled: this.currentConfig()!.gliner2Enabled,
+        prefilterEnabled: this.currentConfig()!.prefilterEnabled,
+        llmJudgeEnabled: this.currentConfig()!.llmJudgeEnabled,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
       });
       this.configForm.markAsPristine();
+      // Restore the collapse state to match the reset detector toggles.
+      this.syncCollapsedWithDetectorState();
     }
   }
 
@@ -869,5 +920,61 @@ export class PiiSettingsComponent implements OnInit {
    */
   isDetectorCollapsed(detector: string): boolean {
     return this.collapsedDetectors().has(detector);
+  }
+
+  /**
+   * Whether the detector that owns a "Types d'IPI" sub-section is enabled
+   * in the "Moteur de détection" section. Drives the disabled state of the
+   * per-type toggles so a disabled detector cannot be edited there.
+   * Unknown detectors (no master toggle) default to enabled.
+   */
+  isDetectorEnabled(detector: string): boolean {
+    const control = PiiSettingsComponent.DETECTOR_MASTER_CONTROL[detector];
+    if (!control) {
+      return true;
+    }
+    return !!this.configForm.get(control)?.value;
+  }
+
+  /**
+   * Whether the global LLM-as-Judge master toggle is enabled. When off, the
+   * per-type judge toggles are shown off and disabled WITHOUT mutating their
+   * stored values, so re-enabling restores each customisation (and an
+   * untouched config shows them all on).
+   */
+  isLlmJudgeMasterEnabled(): boolean {
+    return !!this.configForm.get('llmJudgeEnabled')?.value;
+  }
+
+  /**
+   * React to a detector master toggle in "Moteur de détection": collapse its
+   * "Types d'IPI" sub-section when disabled, expand it when re-enabled. The
+   * per-type values are never touched — only the visual state is derived.
+   */
+  onDetectorMasterToggle(detector: string): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    if (this.isDetectorEnabled(detector)) {
+      collapsed.delete(detector);
+    } else {
+      collapsed.add(detector);
+    }
+    this.collapsedDetectors.set(collapsed);
+  }
+
+  /**
+   * Collapse every detector sub-section whose master toggle is currently
+   * disabled, leaving enabled ones in their current state. Called after a
+   * config load so the two sections start consistent.
+   */
+  private syncCollapsedWithDetectorState(): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    for (const detector of Object.keys(PiiSettingsComponent.DETECTOR_MASTER_CONTROL)) {
+      if (this.isDetectorEnabled(detector)) {
+        collapsed.delete(detector);
+      } else {
+        collapsed.add(detector);
+      }
+    }
+    this.collapsedDetectors.set(collapsed);
   }
 }

@@ -1,0 +1,87 @@
+.scan-stats-panel {
+  min-width: 22rem;
+  max-width: 28rem;
+  font-size: 0.875rem;
+}
+
+.scan-stats-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.scan-stats-error {
+  color: var(--p-red-500, #d4351c);
+}
+
+.scan-stats-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.scan-stats-summary {
+  margin: 0 0 0.75rem;
+}
+
+.scan-stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.scan-stats-row dt {
+  font-weight: 600;
+}
+
+.scan-stats-row dd {
+  margin: 0;
+}
+
+.scan-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+.scan-stats-table th,
+.scan-stats-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+  border-bottom: 1px solid var(--p-content-border-color, #e5e7eb);
+}
+
+.scan-stats-table thead th {
+  font-weight: 600;
+}
+
+.scan-stats-table th[scope='row'],
+.scan-stats-table thead th:first-child {
+  text-align: left;
+}
+
+.scan-stats-failed h4,
+.scan-stats-detectors h4 {
+  margin: 0.5rem 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.scan-stats-failed ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scan-stats-failed li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+
+.scan-stats-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--p-text-muted-color, #6b7280);
+}

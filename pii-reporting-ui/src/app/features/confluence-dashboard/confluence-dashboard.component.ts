@@ -29,6 +29,7 @@ import { SpaceDataManagementService } from './services/space-data-management.ser
 import { ScanControlService } from './services/scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
+import { SpaceScanStatsPopoverComponent } from './components/space-scan-stats-popover/space-scan-stats-popover.component';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -59,7 +60,8 @@ import { SeverityCounts } from '../../core/models/severity-counts';
         NewSpacesBannerComponent,
         ConfluenceConfigBannerComponent,
         ScanProgressBarComponent,
-        SeverityCardsComponent
+        SeverityCardsComponent,
+        SpaceScanStatsPopoverComponent
     ],
   templateUrl: './confluence-dashboard.component.html',
   styleUrl: './confluence-dashboard.component.css',

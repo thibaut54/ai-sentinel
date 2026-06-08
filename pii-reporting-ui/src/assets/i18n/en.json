@@ -112,6 +112,32 @@
       "inactive": "Scan Inactive",
       "loading": "Loading..."
     },
+    "scanStats": {
+      "buttonAriaLabel": "View last scan statistics",
+      "title": "Last scan statistics",
+      "loading": "Loading statistics...",
+      "notAvailable": "Statistics not available for this scan",
+      "error": "Failed to load statistics",
+      "duration": "Scan duration",
+      "inProgress": "Scan in progress",
+      "scanned": "Scanned",
+      "failed": "Failed",
+      "chars": "Characters",
+      "pages": "Pages",
+      "attachments": "Attachments",
+      "failedItems": "Failed items",
+      "detectors": "Detectors",
+      "detector": "Detector",
+      "detections": "Detections",
+      "discarded": "Discarded",
+      "rate": "Avg. throughput",
+      "rateUnit": "char/s",
+      "busy": "Cumulative time",
+      "judgeLabel": "LLM Judge",
+      "prefilterLabel": "Pre-filter",
+      "judgeUnit": "s/PII",
+      "busyNote": "Per-detector time is cumulative compute time; it may exceed the total scan duration due to parallelism. Throughput is in characters per second, except for the LLM Judge (seconds per judged PII)."
+    },
     "logs": {
       "purging": "[ui] Purging previous results...",
       "purgeOk": "[ui] Purge OK. Connecting to /api/v1/stream/confluence/spaces/events...",
@@ -283,6 +309,14 @@
       "gliner2": {
         "label": "GLiNER2",
         "help": "Multi-task zero-shot detector with per-type descriptions for disambiguation. Complements GLiNER as an additional source (disabled by default)."
+      },
+      "prefilter": {
+        "label": "Deterministic pre-filter",
+        "description": "Rejects, before the LLM judge, values whose format is mechanically invalid (IP, MAC, IBAN)."
+      },
+      "llmJudge": {
+        "label": "LLM as judge",
+        "description": "LLM judge post-filtering of detections to reduce false positives"
       }
     },
     "threshold": {
@@ -311,6 +345,8 @@
       "types": "types",
       "threshold": "Confidence Threshold",
       "toggle": "Toggle {{type}}",
+      "llmJudge": "LLM as judge",
+      "llmJudgeToggle": "Enable/disable LLM judge for {{type}}",
       "descriptionLabel": "Inference description",
       "descriptionHelp": "Natural-language sentence GLiNER2 uses to recognise this type. Edit it to fine-tune detection without redeployment.",
       "detectors": {

@@ -112,6 +112,32 @@
       "inactive": "Scan inactif",
       "loading": "Chargement..."
     },
+    "scanStats": {
+      "buttonAriaLabel": "Voir les statistiques du dernier scan",
+      "title": "Statistiques du dernier scan",
+      "loading": "Chargement des statistiques...",
+      "notAvailable": "Statistiques non disponibles pour ce scan",
+      "error": "Erreur lors du chargement des statistiques",
+      "duration": "Durée du scan",
+      "inProgress": "Scan en cours",
+      "scanned": "Analysés",
+      "failed": "En échec",
+      "chars": "Caractères",
+      "pages": "Pages",
+      "attachments": "Pièces jointes",
+      "failedItems": "Items en échec",
+      "detectors": "Détecteurs",
+      "detector": "Détecteur",
+      "detections": "Détections",
+      "discarded": "Écartées",
+      "rate": "Débit moyen",
+      "rateUnit": "car/s",
+      "busy": "Temps cumulé",
+      "judgeLabel": "LLM Juge",
+      "prefilterLabel": "Pré-filtre",
+      "judgeUnit": "s/PII",
+      "busyNote": "Le temps par détecteur est un temps de calcul cumulé ; il peut dépasser la durée totale du scan en raison du parallélisme. Le débit est exprimé en caractères par seconde, sauf pour le LLM Juge (secondes par PII jugé)."
+    },
     "logs": {
       "purging": "[ui] Purge des résultats précédents ...",
       "purgeOk": "[ui] Purge OK. Connexion à /api/v1/stream/confluence/spaces/events ...",
@@ -283,6 +309,14 @@
       "gliner2": {
         "label": "GLiNER2",
         "help": "Détecteur zéro-shot multi-tâches avec descriptions par type pour désambiguïser. Source complémentaire de GLiNER (désactivé par défaut)."
+      },
+      "prefilter": {
+        "label": "Pré-filtre déterministe",
+        "description": "Rejette avant le juge LLM les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
+      },
+      "llmJudge": {
+        "label": "LLM as judge",
+        "description": "Post-filtrage des détections par un juge LLM pour réduire les faux positifs"
       }
     },
     "threshold": {
@@ -311,6 +345,8 @@
       "types": "types",
       "threshold": "Seuil de confiance",
       "toggle": "Activer/désactiver {{type}}",
+      "llmJudge": "LLM as judge",
+      "llmJudgeToggle": "Activer/désactiver le juge LLM pour {{type}}",
       "descriptionLabel": "Description d'inférence",
       "descriptionHelp": "Phrase en langage naturel que GLiNER2 utilise pour reconnaître ce type. Modifiable pour affiner la détection sans redéploiement.",
       "detectors": {
