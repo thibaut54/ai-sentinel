@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param nbOfLabelByPass  Maximum labels per detector batch
  * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled
+ * @param prefilterEnabled Whether the deterministic format pre-filter stage is enabled
  * @param updatedAt        Timestamp of last configuration update
  * @param updatedBy        User who last updated the configuration
  */
@@ -29,6 +30,7 @@ public record PiiDetectionConfigResponseDto(
     BigDecimal defaultThreshold,
     Integer nbOfLabelByPass,
     boolean llmJudgeEnabled,
+    boolean prefilterEnabled,
     LocalDateTime updatedAt,
     String updatedBy
 ) {

@@ -45,7 +45,7 @@ class PiiDetectionConfigControllerGliner2Test {
     @Test
     void Should_ExposeGliner2Enabled_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false,
+            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
@@ -58,7 +58,7 @@ class PiiDetectionConfigControllerGliner2Test {
     @Test
     void Should_DefaultGliner2EnabledFalse_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 35, false,
+            1, true, true, true, false, false, new BigDecimal("0.75"), 35, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
@@ -71,7 +71,7 @@ class PiiDetectionConfigControllerGliner2Test {
     @Test
     void Should_PersistGliner2Enabled_When_PutConfig() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false,
+            1, true, true, true, false, true, new BigDecimal("0.75"), 35, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))

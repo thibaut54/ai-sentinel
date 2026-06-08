@@ -52,6 +52,7 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
                 .category(command.category())
                 .detectorLabel(command.detectorLabel())
                 .detectorDescription(command.detectorDescription())
+                .llmJudgeEnabled(command.llmJudgeEnabled())
                 .countryCode(command.countryCode())
                 .custom(true)
                 .severity(command.severity() != null ? command.severity() : "LOW")
@@ -89,7 +90,7 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
             double threshold,
             String updatedBy
     ) {
-        return updateConfig(piiType, detector, enabled, threshold, null, updatedBy);
+        return updateConfig(piiType, detector, enabled, threshold, null, null, updatedBy);
     }
 
     @Override
@@ -99,13 +100,14 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
             boolean enabled,
             double threshold,
             String detectorDescription,
+            Boolean llmJudgeEnabled,
             String updatedBy
     ) {
         validateDetector(detector);
         validateThreshold(threshold);
 
         return repository.updateAtomically(
-                piiType, detector, enabled, threshold, detectorDescription, updatedBy);
+                piiType, detector, enabled, threshold, detectorDescription, llmJudgeEnabled, updatedBy);
     }
 
     @Override

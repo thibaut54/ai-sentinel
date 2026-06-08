@@ -52,7 +52,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "custom label", null, null, "HIGH", "admin"
+                "Custom", "custom label", null, true, null, "HIGH", "admin"
         ));
 
         // Assert
@@ -79,7 +79,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act & Assert
         var command = new CreatePiiTypeConfigCommand(
                 "EXISTING_TYPE", "GLINER", true, 0.5,
-                "Custom", "existing type", null, null, null, "admin"
+                "Custom", "existing type", null, true, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -93,7 +93,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidPiiTypeFormat() {
         var command = new CreatePiiTypeConfigCommand(
                 "invalid-type", "GLINER", true, 0.5,
-                "Custom", "label", null, null, null, "admin"
+                "Custom", "label", null, true, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -107,7 +107,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_InvalidDetector() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "INVALID", true, 0.5,
-                "Custom", "label", null, null, null, "admin"
+                "Custom", "label", null, true, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -121,7 +121,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_GlinerDetectorLabelBlank() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "", null, null, null, "admin"
+                "Custom", "", null, true, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -135,7 +135,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     void Should_ThrowException_When_ThresholdOutOfRange() {
         var command = new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "GLINER", true, 1.5,
-                "Custom", "label", null, null, null, "admin"
+                "Custom", "label", null, true, null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -164,7 +164,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Act - no detectorLabel for PRESIDIO should be fine
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
                 "CUSTOM_LABEL", "PRESIDIO", true, 0.7,
-                "Custom", null, null, null, null, "admin"
+                "Custom", null, null, true, null, null, "admin"
         ));
 
         // Assert
@@ -230,22 +230,22 @@ class ManagePiiTypeConfigsUseCaseTest {
     @Test
     @DisplayName("Should_AcceptGliner2Detector_When_Validating")
     void Should_AcceptGliner2Detector_When_Validating() {
-        when(repository.updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", "admin"))
+        when(repository.updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", null, "admin"))
                 .thenReturn(PiiTypeConfig.builder()
                         .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5)
                         .detectorDescription("desc").build());
 
-        PiiTypeConfig result = useCase.updateConfig("EMAIL", "GLINER2", true, 0.5, "desc", "admin");
+        PiiTypeConfig result = useCase.updateConfig("EMAIL", "GLINER2", true, 0.5, "desc", null, "admin");
 
         assertThat(result.getDetectorDescription()).isEqualTo("desc");
-        verify(repository).updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", "admin");
+        verify(repository).updateAtomically("EMAIL", "GLINER2", true, 0.5, "desc", null, "admin");
     }
 
     @Test
     @DisplayName("Should_ForwardDescription_When_BulkUpdate")
     void Should_ForwardDescription_When_BulkUpdate() {
         var update = new ManagePiiTypeConfigsPort.PiiTypeConfigUpdate(
-                "EMAIL", "GLINER2", true, 0.5, "adresse e-mail");
+                "EMAIL", "GLINER2", true, 0.5, "adresse e-mail", null);
         when(repository.bulkUpdateAtomically(java.util.List.of(update), "admin"))
                 .thenReturn(java.util.List.of(PiiTypeConfig.builder()
                         .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5)
@@ -263,8 +263,68 @@ class ManagePiiTypeConfigsUseCaseTest {
     @Test
     @DisplayName("Should_RejectUnknownDetector_When_Validating")
     void Should_RejectUnknownDetector_When_Validating() {
-        assertThatThrownBy(() -> useCase.updateConfig("EMAIL", "UNKNOWN", true, 0.5, null, "admin"))
+        assertThatThrownBy(() -> useCase.updateConfig("EMAIL", "UNKNOWN", true, 0.5, null, null, "admin"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("GLINER2");
+    }
+
+    // ====== per-type llmJudgeEnabled tests ======
+
+    @Test
+    @DisplayName("Should_ForwardLlmJudgeFlag_When_UpdateConfig")
+    void Should_ForwardLlmJudgeFlag_When_UpdateConfig() {
+        when(repository.updateAtomically("EMAIL", "GLINER2", true, 0.5, null, false, "admin"))
+                .thenReturn(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5)
+                        .llmJudgeEnabled(false).build());
+
+        PiiTypeConfig result = useCase.updateConfig("EMAIL", "GLINER2", true, 0.5, null, false, "admin");
+
+        assertThat(result.isLlmJudgeEnabled()).isFalse();
+        verify(repository).updateAtomically("EMAIL", "GLINER2", true, 0.5, null, false, "admin");
+    }
+
+    @Test
+    @DisplayName("Should_ForwardNullLlmJudgeFlag_When_UpdateConfigOmitsIt")
+    void Should_ForwardNullLlmJudgeFlag_When_UpdateConfigOmitsIt() {
+        when(repository.updateAtomically("EMAIL", "GLINER2", true, 0.5, null, null, "admin"))
+                .thenReturn(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.5).build());
+
+        useCase.updateConfig("EMAIL", "GLINER2", true, 0.5, null, null, "admin");
+
+        verify(repository).updateAtomically("EMAIL", "GLINER2", true, 0.5, null, null, "admin");
+    }
+
+    @Test
+    @DisplayName("Should_DefaultLlmJudgeToTrue_When_CreateConfigWithTrue")
+    void Should_DefaultLlmJudgeToTrue_When_CreateConfigWithTrue() {
+        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "PRESIDIO")).thenReturn(Optional.empty());
+        when(repository.save(any(PiiTypeConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        useCase.createConfig(new CreatePiiTypeConfigCommand(
+                "CUSTOM_LABEL", "PRESIDIO", true, 0.7,
+                "Custom", null, null, true, null, null, "admin"
+        ));
+
+        ArgumentCaptor<PiiTypeConfig> captor = ArgumentCaptor.forClass(PiiTypeConfig.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().isLlmJudgeEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should_PersistLlmJudgeFalse_When_CreateConfigWithFalse")
+    void Should_PersistLlmJudgeFalse_When_CreateConfigWithFalse() {
+        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "PRESIDIO")).thenReturn(Optional.empty());
+        when(repository.save(any(PiiTypeConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        useCase.createConfig(new CreatePiiTypeConfigCommand(
+                "CUSTOM_LABEL", "PRESIDIO", true, 0.7,
+                "Custom", null, null, false, null, null, "admin"
+        ));
+
+        ArgumentCaptor<PiiTypeConfig> captor = ArgumentCaptor.forClass(PiiTypeConfig.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().isLlmJudgeEnabled()).isFalse();
     }
 }

@@ -77,6 +77,14 @@ public class PiiDetectionConfigEntity {
     @Column(name = "llm_judge_enabled", nullable = false)
     private Boolean llmJudgeEnabled;
 
+    /**
+     * Activates the deterministic format pre-filter (IP/MAC/IBAN checksum) that
+     * runs before the LLM judge. Defaults to {@code false} for a zero-effect rollout.
+     */
+    @NotNull
+    @Column(name = "prefilter_enabled", nullable = false)
+    private Boolean prefilterEnabled;
+
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;

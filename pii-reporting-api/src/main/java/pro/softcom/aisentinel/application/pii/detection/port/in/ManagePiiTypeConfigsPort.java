@@ -56,6 +56,7 @@ public interface ManagePiiTypeConfigsPort {
             String category,
             String detectorLabel,
             String detectorDescription,
+            boolean llmJudgeEnabled,
             String countryCode,
             String severity,
             String createdBy
@@ -86,12 +87,15 @@ public interface ManagePiiTypeConfigsPort {
      * @param detectorDescription the GLiNER2 inference description; {@code null}
      *                            leaves the existing description unchanged
      *                            ("absent = unchanged" semantics)
+     * @param llmJudgeEnabled     per-type LLM-as-Judge toggle; {@code null}
+     *                            leaves the stored value unchanged
+     *                            ("absent = unchanged" semantics)
      * @param updatedBy           the user making the update
      * @return the updated configuration
      * @throws IllegalArgumentException if parameters are invalid
      */
     PiiTypeConfig updateConfig(String piiType, String detector, boolean enabled, double threshold,
-                               String detectorDescription, String updatedBy);
+                               String detectorDescription, Boolean llmJudgeEnabled, String updatedBy);
 
     /**
      * Bulk update of multiple PII type configurations.
@@ -121,7 +125,8 @@ public interface ManagePiiTypeConfigsPort {
             String detector,
             boolean enabled,
             double threshold,
-            String detectorDescription
+            String detectorDescription,
+            Boolean llmJudgeEnabled
     ) {
     }
 }

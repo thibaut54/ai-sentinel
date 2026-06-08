@@ -53,11 +53,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, updatedBy={}",
+                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, prefilterEnabled={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
                 config.regexEnabled(), config.openmedEnabled(), config.gliner2Enabled(),
                 config.defaultThreshold(), config.nbOfLabelByPass(), config.llmJudgeEnabled(),
-                config.updatedBy());
+                config.prefilterEnabled(), config.updatedBy());
 
 
         PiiDetectionConfigEntity entity = toEntity(config);
@@ -68,7 +68,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
 
     /**
      * Creates and persists default configuration.
-     * Default: All detectors enabled, threshold 0.75, LLM judge OFF.
+     * Default: All detectors enabled, threshold 0.75, LLM judge OFF, pre-filter OFF.
      */
     private PiiDetectionConfig createDefaultConfig() {
         log.info("Creating default PII detection configuration");
@@ -83,6 +83,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
                 false, // llmJudgeEnabled (cf. spec §1.4 — zero-effect MVP default)
+                false, // prefilterEnabled (zero-effect rollout default)
                 LocalDateTime.now(),
                 "system"
         );
@@ -105,6 +106,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
                 entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
+                entity.getPrefilterEnabled() != null && entity.getPrefilterEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -124,6 +126,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
                 .llmJudgeEnabled(config.llmJudgeEnabled())
+                .prefilterEnabled(config.prefilterEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
                 .updatedBy(config.updatedBy())
                 .build();

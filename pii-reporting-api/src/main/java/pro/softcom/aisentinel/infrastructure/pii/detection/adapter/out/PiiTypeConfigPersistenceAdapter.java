@@ -83,7 +83,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             double threshold,
             String updatedBy
     ) {
-        return updateAtomically(piiType, detector, enabled, threshold, null, updatedBy);
+        return updateAtomically(piiType, detector, enabled, threshold, null, null, updatedBy);
     }
 
     @Override
@@ -94,6 +94,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             boolean enabled,
             double threshold,
             String detectorDescription,
+            Boolean llmJudgeEnabled,
             String updatedBy
     ) {
         PiiTypeConfigEntity entity = jpaRepository.findByPiiTypeAndDetector(piiType, detector)
@@ -101,7 +102,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                         "Configuration not found for PII type: " + piiType + " and detector: " + detector
                 ));
 
-        applyUpdate(entity, enabled, threshold, detectorDescription, updatedBy);
+        applyUpdate(entity, enabled, threshold, detectorDescription, llmJudgeEnabled, updatedBy);
 
         PiiTypeConfigEntity saved = jpaRepository.save(entity);
         return saved.toDomain();
@@ -124,7 +125,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                     ));
 
                     applyUpdate(entity, update.enabled(), update.threshold(),
-                            update.detectorDescription(), updatedBy);
+                            update.detectorDescription(), update.llmJudgeEnabled(), updatedBy);
 
                     return entity;
                 })
@@ -140,20 +141,24 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
      * Applies an update to an entity in place.
      * <p>
      * "Absent = unchanged" semantics (spec §5.1): a {@code null}
-     * {@code detectorDescription} leaves the stored description untouched, so a
-     * client omitting the field never erases an existing description.
+     * {@code detectorDescription} or {@code llmJudgeEnabled} leaves the stored
+     * value untouched, so a client omitting the field never erases it.
      */
     private void applyUpdate(
             PiiTypeConfigEntity entity,
             boolean enabled,
             double threshold,
             String detectorDescription,
+            Boolean llmJudgeEnabled,
             String updatedBy
     ) {
         entity.setEnabled(enabled);
         entity.setThreshold(threshold);
         if (detectorDescription != null) {
             entity.setDetectorDescription(detectorDescription);
+        }
+        if (llmJudgeEnabled != null) {
+            entity.setLlmJudgeEnabled(llmJudgeEnabled);
         }
         entity.setUpdatedBy(updatedBy);
     }

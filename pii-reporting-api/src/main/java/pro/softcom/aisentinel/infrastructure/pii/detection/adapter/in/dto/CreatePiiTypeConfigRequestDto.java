@@ -12,6 +12,8 @@ import jakarta.validation.constraints.Size;
  *
  * @param detectorDescription Optional GLiNER2 inference description (only
  *        relevant for {@code GLINER2} rows).
+ * @param llmJudgeEnabled Optional per-type LLM-as-Judge toggle. When
+ *        {@code null} (field omitted) it defaults to {@code true}.
  */
 public record CreatePiiTypeConfigRequestDto(
         @NotBlank(message = "PII type cannot be blank")
@@ -41,6 +43,15 @@ public record CreatePiiTypeConfigRequestDto(
         String countryCode,
 
         @Pattern(regexp = "^(HIGH|MEDIUM|LOW)$", message = "Severity must be HIGH, MEDIUM, or LOW")
-        String severity
+        String severity,
+
+        Boolean llmJudgeEnabled
 ) {
+    /**
+     * Returns the {@code llmJudgeEnabled} flag value with a {@code true} default
+     * when the client omits the field.
+     */
+    public boolean llmJudgeEnabledOrDefault() {
+        return llmJudgeEnabled == null || llmJudgeEnabled;
+    }
 }

@@ -24,6 +24,8 @@ import java.math.BigDecimal;
  * @param nbOfLabelByPass  Maximum labels per detector batch
  * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled.
  *                         Optional in the payload: when omitted, defaults to {@code false}.
+ * @param prefilterEnabled Whether the deterministic format pre-filter stage is enabled.
+ *                         Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("glinerEnabled")
@@ -58,7 +60,10 @@ public record UpdatePiiDetectionConfigRequestDto(
     Integer nbOfLabelByPass,
 
     @JsonProperty("llmJudgeEnabled")
-    Boolean llmJudgeEnabled
+    Boolean llmJudgeEnabled,
+
+    @JsonProperty("prefilterEnabled")
+    Boolean prefilterEnabled
 ) {
     /**
      * Validates business rules for the configuration request.
@@ -80,6 +85,14 @@ public record UpdatePiiDetectionConfigRequestDto(
      */
     public boolean llmJudgeEnabledOrDefault() {
         return llmJudgeEnabled != null && llmJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code prefilterEnabled} flag value with a {@code false} default
+     * when the client omits the field. Keeps the rollout zero-effect.
+     */
+    public boolean prefilterEnabledOrDefault() {
+        return prefilterEnabled != null && prefilterEnabled;
     }
 
     private boolean notAtLeastOneAnalyserEnabled(){

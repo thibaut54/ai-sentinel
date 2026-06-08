@@ -31,10 +31,10 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
 
     @Override
     public PiiDetectionConfig updateConfig(UpdatePiiDetectionConfigCommand command) {
-        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}",
+        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, prefilterEnabled={}",
                 command.glinerEnabled(), command.presidioEnabled(), command.regexEnabled(),
                 command.openmedEnabled(), command.gliner2Enabled(), command.defaultThreshold(),
-                command.nbOfLabelByPass(), command.llmJudgeEnabled());
+                command.nbOfLabelByPass(), command.llmJudgeEnabled(), command.prefilterEnabled());
 
         PiiDetectionConfig newConfig = new PiiDetectionConfig(
                 CONFIG_ID,
@@ -46,6 +46,7 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
                 command.defaultThreshold(),
                 command.nbOfLabelByPass(),
                 command.llmJudgeEnabled(),
+                command.prefilterEnabled(),
                 LocalDateTime.now(),
                 command.updatedBy()
         );

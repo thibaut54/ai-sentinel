@@ -61,6 +61,9 @@ public class PiiTypeConfigEntity {
     @Column(name = "detector_description", columnDefinition = "text")
     private String detectorDescription;
 
+    @Column(name = "llm_judge_enabled", nullable = false, columnDefinition = "boolean not null default true")
+    private boolean llmJudgeEnabled = true;
+
     @Column(name = "is_custom", nullable = false, columnDefinition = "boolean not null default false")
     private boolean custom;
 
@@ -102,6 +105,7 @@ public class PiiTypeConfigEntity {
         entity.countryCode = domain.getCountryCode();
         entity.detectorLabel = domain.getDetectorLabel();
         entity.detectorDescription = domain.getDetectorDescription();
+        entity.llmJudgeEnabled = domain.isLlmJudgeEnabled();
         entity.custom = domain.isCustom();
         entity.severity = domain.getSeverity();
         entity.updatedAt = domain.getUpdatedAt();
@@ -121,6 +125,7 @@ public class PiiTypeConfigEntity {
                 .countryCode(countryCode)
                 .detectorLabel(detectorLabel)
                 .detectorDescription(detectorDescription)
+                .llmJudgeEnabled(llmJudgeEnabled)
                 .custom(custom)
                 .severity(severity)
                 .updatedAt(updatedAt)

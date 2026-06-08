@@ -35,3 +35,11 @@ ADD COLUMN IF NOT EXISTS llm_judge_enabled BOOLEAN NOT NULL DEFAULT false;
 
 COMMENT ON COLUMN pii_detection_config.llm_judge_enabled IS
     'Enables the LLM-as-Judge post-filtering stage (Qwen 3.6) that audits GLiNER findings to reduce false positives. Default: false.';
+
+-- Add deterministic format pre-filter flag for post-detection false positive filtering.
+-- Defaults to false so the rollout has zero behavioral impact until explicitly enabled.
+ALTER TABLE pii_detection_config
+ADD COLUMN IF NOT EXISTS prefilter_enabled BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN pii_detection_config.prefilter_enabled IS
+    'Enables the deterministic format pre-filter (IP/MAC/IBAN checksum) before the LLM judge. Default: false.';

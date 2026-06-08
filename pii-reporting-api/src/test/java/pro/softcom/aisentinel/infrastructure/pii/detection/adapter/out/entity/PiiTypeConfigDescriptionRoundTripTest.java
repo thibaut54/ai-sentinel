@@ -70,4 +70,25 @@ class PiiTypeConfigDescriptionRoundTripTest {
         PiiTypeConfigResponseDto dto = PiiTypeConfigResponseDto.fromDomain(domain(null));
         assertThat(dto.detectorDescription()).isNull();
     }
+
+    @Test
+    void Should_PreserveLlmJudgeFalse_When_RoundTripDomainEntityDomain() {
+        PiiTypeConfig source = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("GLINER2").enabled(true).threshold(0.50)
+                .llmJudgeEnabled(false).build();
+
+        PiiTypeConfigEntity entity = PiiTypeConfigEntity.fromDomain(source);
+        PiiTypeConfig back = entity.toDomain();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(entity.isLlmJudgeEnabled()).isFalse();
+        softly.assertThat(back.isLlmJudgeEnabled()).isFalse();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_ExposeLlmJudgeEnabledInResponseDto_When_FromDomain() {
+        PiiTypeConfigResponseDto dto = PiiTypeConfigResponseDto.fromDomain(domain("adresse e-mail"));
+        assertThat(dto.llmJudgeEnabled()).isTrue();
+    }
 }

@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.domain.pii.detection;
 
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -49,6 +50,16 @@ public class PiiTypeConfig {
      * {@code null} for the other detectors. Editable at runtime via the UI.
      */
     private final String detectorDescription;
+    /**
+     * Enables the LLM-as-Judge post-filter for this PII type.
+     * <p>
+     * Business purpose: lets an operator opt a single PII type out of the
+     * LLM-as-Judge stage while keeping it on for the rest. Defaults to
+     * {@code true}. Only effective when the global {@code llmJudgeEnabled} flag
+     * (on {@code PiiDetectionConfig}) is on.
+     */
+    @Default
+    private final boolean llmJudgeEnabled = true;
     private final boolean custom;
     private final String severity;
     private final LocalDateTime updatedAt;
@@ -79,6 +90,7 @@ public class PiiTypeConfig {
                 ", category='" + category + '\'' +
                 ", countryCode='" + countryCode + '\'' +
                 ", detectorDescription='" + detectorDescription + '\'' +
+                ", llmJudgeEnabled=" + llmJudgeEnabled +
                 ", custom=" + custom +
                 ", severity='" + severity + '\'' +
                 ", updatedAt=" + updatedAt +

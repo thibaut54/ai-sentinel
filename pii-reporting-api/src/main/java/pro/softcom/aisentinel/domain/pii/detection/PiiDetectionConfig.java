@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
  *
  * <p>The {@code llmJudgeEnabled} flag activates the LLM-as-Judge post-filtering
  * stage that audits GLiNER findings to reduce false positives (cf. spec §1.4).
+ *
+ * <p>The {@code prefilterEnabled} flag activates the deterministic format
+ * pre-filter (IP/MAC/IBAN checksum) that runs before the LLM judge.
  */
 public record PiiDetectionConfig(
         Integer id,
@@ -22,6 +25,7 @@ public record PiiDetectionConfig(
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
         boolean llmJudgeEnabled,
+        boolean prefilterEnabled,
         LocalDateTime updatedAt,
         String updatedBy) {
 
