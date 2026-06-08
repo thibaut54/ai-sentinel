@@ -117,7 +117,12 @@ model_timeout = 180
 [llm_judge]
 enabled_default = false                       # DB flag wins; TOML is a fallback
 #base_url = "http://127.0.0.1:1234/v1"       # LM Studio endpoint
-base_url = "http://172.22.22.63:1234/v1"       # LM Studio endpoint
+# LM Studio host on the LAN (172.22.22.0/24). Two known traps if unreachable:
+# 1. A leftover docker network on 172.22.0.0/16 shadows the whole LAN
+#    (docker network ls + inspect, remove the colliding one).
+# 2. The corporate VPN installs a 172.22.22.0/24 route hijacking the subnet
+#    (route print | findstr 172.22) — disconnect the VPN.
+base_url = "http://172.22.22.63:1234/v1"             # LM Studio endpoint
 #preferred_model = "qwen/qwen3.6-35b-a3b"        # resolved via /v1/models
 preferred_model = "qwen3.6-35b-a3b-instruct-pure"        # resolved via /v1/models
 #preferred_model = "qwen3.6-27b-mtp"        # resolved via /v1/models
@@ -139,3 +144,17 @@ use_json_schema = true                         # response_format=json_schema str
 # exists as the single source of truth for documented operator-facing
 # defaults until the corresponding DB column ships.
 audit_sources = "GLINER"
+
+# ============================================================================
+# GLINER2 RUNTIME SETTINGS
+# Inference runtime selection for the GLiNER2 detector. Overridable by the
+# env var GLINER2_RUNTIME (env > TOML > code default).
+# ============================================================================
+[gliner2]
+# "fastgliner" (gline-rs/ONNX, ~4x faster on CPU) or "pytorch".
+# fastgliner does NOT send the per-label detector_description to the model
+# (labels only) and hard-caps the effective threshold at a 0.5 floor.
+# pytorch sends the descriptions and honours any threshold. Choose pytorch
+# when detection fidelity matters, fastgliner when CPU throughput matters.
+#runtime = "fastgliner"
+runtime = "pytorch"

@@ -24,6 +24,20 @@ structured heads are ignored, spec §4.3).
 Long documents are chunked with :class:`GlinerSubwordChunker` (384/80, spec
 §4.4); chunk-local offsets are rebased to the original text and ``(start, end,
 pii_type)`` duplicates from overlaps are dropped.
+
+Runtime selection (2026-06-05): the model manager prefers the ``fast_gliner``
+runtime (Rust gline-rs + monolithic ONNX export, no torch on the inference
+path) and falls back to the historical ``gliner2`` PyTorch pipeline. The
+detector branches on ``self.runtime``:
+
+- ``"fastgliner"``: ``model.predict_entities(chunk, labels)`` returns flat
+  ``{text, label, score, start, end}`` dicts (char offsets, validated by
+  ``experiments/fastgliner_api_probe.py``). Two behavioural deltas vs PyTorch:
+  per-label descriptions are NOT sent to the model (prompt is labels-only),
+  and the gline-rs decoder hard-codes a 0.5 probability floor, so effective
+  thresholds below 0.5 cannot be honoured (all GLINER2 rows in data.sql sit
+  at exactly 0.50 today).
+- ``"pytorch"``: unchanged ``model.extract(...)`` path described above.
 """
 from __future__ import annotations
 
@@ -89,6 +103,8 @@ class Gliner2Detector:
         self.model_manager = Gliner2ModelManager(self.config)
         self.model: Optional[Any] = None
         self.chunker: Optional[GlinerSubwordChunker] = None
+        # "pytorch" | "fastgliner" — set by load_model() from the manager.
+        self.runtime: str = "pytorch"
         self.logger.info("GLiNER2 Detector initialized with device: %s", self.device)
 
     # ------------------------------------------------------------------
@@ -104,8 +120,11 @@ class Gliner2Detector:
 
     def load_model(self) -> None:
         self.model = self.model_manager.load_model()
+        self.runtime = self.model_manager.runtime
         self._initialize_chunker()
-        self.logger.info("GLiNER2 model loaded successfully")
+        self.logger.info(
+            "GLiNER2 model loaded successfully (runtime=%s)", self.runtime
+        )
 
     def detect_pii(
         self,
@@ -175,11 +194,18 @@ class Gliner2Detector:
     # ------------------------------------------------------------------
 
     def _build_schema(self, schema_dict: Dict[str, str]) -> Any:
-        """Build a GLiNER2 schema from ``{detector_label: description}``."""
+        """Build the per-runtime schema from ``{detector_label: description}``.
+
+        fastgliner: plain label list — fast_gliner's ``entities()`` rejects
+        dicts, so DB descriptions are not part of the prompt on this runtime.
+        pytorch: GLiNER2 schema object carrying the descriptions.
+        """
+        if self.runtime == "fastgliner":
+            return list(schema_dict)
         return self.model.create_schema().entities(schema_dict)
 
     def _run_inference(self, text: str, schema: Any, threshold: float) -> List[Dict]:
-        """Run ``extract`` per chunk, rebase offsets, dedup overlaps.
+        """Run inference per chunk, rebase offsets, dedup overlaps.
 
         Returns a flat list of ``{"label", "text", "score", "start", "end"}``
         dicts in ORIGINAL-text coordinates.
@@ -191,15 +217,8 @@ class Gliner2Detector:
         aggregated: List[Dict] = []
         seen: set = set()
         for chunk_result in chunk_results:
-            raw = self.model.extract(
-                chunk_result.text,
-                schema,
-                threshold=float(threshold),
-                format_results=False,
-                include_confidence=True,
-                include_spans=True,
-            )
-            for span in self._iter_raw_spans(raw):
+            spans = self._infer_chunk(chunk_result.text, schema, threshold)
+            for span in spans:
                 rebased = self._rebase_span(span, chunk_result.start)
                 key = (rebased["start"], rebased["end"], rebased["label"])
                 if key in seen:
@@ -207,6 +226,27 @@ class Gliner2Detector:
                 seen.add(key)
                 aggregated.append(rebased)
         return aggregated
+
+    def _infer_chunk(self, chunk_text: str, schema: Any, threshold: float) -> List[Dict]:
+        """Run one chunk through the active runtime, returning flat span dicts."""
+        if self.runtime == "fastgliner":
+            # Already flat {text, label, score, start, end} dicts. gline-rs
+            # pre-filters at 0.5; re-filter for thresholds above that floor.
+            raw = self.model.predict_entities(chunk_text, schema)
+            return [
+                span for span in raw
+                if float(span.get("score", 0.0)) >= float(threshold)
+            ]
+
+        raw = self.model.extract(
+            chunk_text,
+            schema,
+            threshold=float(threshold),
+            format_results=False,
+            include_confidence=True,
+            include_spans=True,
+        )
+        return self._iter_raw_spans(raw)
 
     @staticmethod
     def _iter_raw_spans(raw: Any) -> List[Dict]:

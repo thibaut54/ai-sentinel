@@ -43,16 +43,21 @@ class _FakeChunkResult:
         self.token_count = len(text.split())
 
 
-def _make_detector(extract_returns, chunks):
+def _make_detector(extract_returns, chunks, runtime="pytorch"):
     """Build a Gliner2Detector with a fake model + fake chunker (no model load)."""
     det = Gliner2Detector.__new__(Gliner2Detector)
     det.logger = logging.getLogger("test.gliner2")
     det.threshold = 0.5
+    det.runtime = runtime
 
     fake_model = MagicMock()
     fake_model.create_schema.return_value = _FakeSchema()
-    # extract() is called once per chunk -> side_effect list
-    fake_model.extract.side_effect = extract_returns
+    if runtime == "fastgliner":
+        # predict_entities() is called once per chunk -> side_effect list
+        fake_model.predict_entities.side_effect = extract_returns
+    else:
+        # extract() is called once per chunk -> side_effect list
+        fake_model.extract.side_effect = extract_returns
     det.model = fake_model
 
     fake_chunker = MagicMock()
@@ -196,6 +201,67 @@ class TestChunkingRecombination:
         assert len(entities) == 1
         assert entities[0].start == iban_start_global
         assert entities[0].end == iban_end_global
+        assert text[entities[0].start:entities[0].end] == iban
+
+
+# ----------------------------------------------------------------------
+# fast_gliner runtime (flat span dicts from predict_entities)
+# ----------------------------------------------------------------------
+
+class TestFastglinerRuntime:
+    CONFIGS = {
+        "GLINER2:PERSON_NAME": {"enabled": True, "detector": "GLINER2",
+                                "detector_label": "person_name", "threshold": 0.5},
+        "GLINER2:EMAIL": {"enabled": True, "detector": "GLINER2",
+                          "detector_label": "email", "threshold": 0.5},
+    }
+
+    def test_Should_MapFlatSpans_When_FastglinerRuntime(self):
+        text = "Bonjour, je m'appelle Jean Dupont et mon email est jean.dupont@example.ch."
+        raw = [
+            {"text": "Jean Dupont", "label": "person_name", "score": 0.99,
+             "start": 22, "end": 33},
+            {"text": "jean.dupont@example.ch", "label": "email", "score": 0.97,
+             "start": 51, "end": 73},
+        ]
+        det = _make_detector([raw], [_FakeChunkResult(text, 0)], runtime="fastgliner")
+        entities = det.detect_pii(text, threshold=0.5, pii_type_configs=self.CONFIGS)
+
+        assert len(entities) == 2
+        for entity in entities:
+            assert entity.source is DetectorSource.GLINER2
+            assert text[entity.start:entity.end] == entity.text
+        by_type = {e.pii_type: e for e in entities}
+        assert by_type["PERSON_NAME"].text == "Jean Dupont"
+        assert by_type["EMAIL"].text == "jean.dupont@example.ch"
+        # fast_gliner gets a plain label list, never the {label: desc} dict.
+        called_with = det.model.predict_entities.call_args[0][1]
+        assert called_with == ["person_name", "email"]
+
+    def test_Should_FilterByEffectiveThreshold_When_FastglinerRuntime(self):
+        # gline-rs pre-filters at 0.5 internally; the detector re-filters for
+        # effective thresholds ABOVE that floor.
+        text = "Marie Curie"
+        raw = [{"text": "Marie Curie", "label": "person_name", "score": 0.60,
+                "start": 0, "end": 11}]
+        det = _make_detector([raw], [_FakeChunkResult(text, 0)], runtime="fastgliner")
+        entities = det.detect_pii(text, threshold=0.70, pii_type_configs=self.CONFIGS)
+        assert entities == []  # 0.60 < 0.70 effective threshold
+
+    def test_Should_RebaseAndDedup_When_FastglinerMultiChunk(self):
+        iban = "CH9300762011623852957"
+        text = "A" * 100 + iban + "B" * 100
+        chunk0 = _FakeChunkResult(text[:130], 0)
+        chunk1 = _FakeChunkResult(text[80:], 80)
+        raw0 = [{"text": iban, "label": "iban", "score": 0.95, "start": 100, "end": 121}]
+        raw1 = [{"text": iban, "label": "iban", "score": 0.95, "start": 20, "end": 41}]
+        det = _make_detector([raw0, raw1], [chunk0, chunk1], runtime="fastgliner")
+        configs = {"GLINER2:IBAN": {"enabled": True, "detector": "GLINER2",
+                                    "detector_label": "iban", "threshold": 0.5}}
+        entities = det.detect_pii(text, pii_type_configs=configs)
+
+        assert len(entities) == 1
+        assert entities[0].start == 100
         assert text[entities[0].start:entities[0].end] == iban
 
 

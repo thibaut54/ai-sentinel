@@ -166,7 +166,10 @@ class DetectionConfig:
     stride_tokens: Optional[int] = None
     long_text_threshold: Optional[int] = None
     custom_filenames: Optional[Dict[str, str]] = None
-    
+    # GLiNER2 inference runtime ("fastgliner" | "pytorch"); None falls back to
+    # the [gliner2].runtime TOML default, then to the manager's code default.
+    gliner2_runtime: Optional[str] = None
+
     def __post_init__(self):
         """Load defaults from TOML if values not provided.
         
@@ -209,7 +212,11 @@ class DetectionConfig:
                 self.long_text_threshold = config["detection"].get("long_text_threshold", 10000)
             if self.custom_filenames is None:
                 self.custom_filenames = primary_model.get("custom_filenames")
-                
+            if self.gliner2_runtime is None:
+                # Optional section: a TOML without [gliner2] leaves this None,
+                # so the model manager applies its own code default.
+                self.gliner2_runtime = config.get("gliner2", {}).get("runtime")
+
         except FileNotFoundError as e:
             raise FileNotFoundError(
                 "Configuration files not found. "

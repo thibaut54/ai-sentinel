@@ -28,6 +28,11 @@ COPY proto /proto
 RUN pip install --upgrade pip \
     && pip install --pre -e . --extra-index-url https://download.pytorch.org/whl/cpu \
     && pip install --pre --upgrade --no-deps "transformers>=5.9.0,<6.0.0" \
+    # fast_gliner (Rust gline-rs runtime for GLiNER2) pins huggingface-hub<1.0,
+    # which conflicts with the hub >=1.x required by transformers 5.9. Its only
+    # hub import is snapshot_download (still present in 1.x), so install it
+    # without deps — same technique as the transformers bump above.
+    && pip install --no-deps "fast_gliner>=0.2.1" \
     && python -m pii_detector.proto.generate_pb
 
 FROM python:3.11-slim AS runtime
