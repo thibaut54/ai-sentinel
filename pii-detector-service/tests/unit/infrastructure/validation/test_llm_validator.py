@@ -27,6 +27,7 @@ import httpx
 import pytest
 
 from pii_detector.domain.entity.detector_source import DetectorSource
+from pii_detector.domain.entity.judge_status import JudgeStatus
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.port.pii_post_filter_protocol import (
     PIIPostFilterProtocol,
@@ -796,6 +797,66 @@ class TestFilterWithVerdicts:
         validator = validator_factory()
         try:
             assert validator.filter_with_verdicts("text", []) == ([], [])
+        finally:
+            validator.shutdown()
+
+
+class TestJudgeStatusTagging:
+    """Each kept entity is tagged with its judge status so callers can tell
+    a validated finding apart from one kept unjudged or by fail-open."""
+
+    def test_should_tag_true_positive_as_validated_true_positive(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            _wire_judge(
+                validator,
+                [PiiVerdict(verdict="TRUE_POSITIVE", confidence=0.9, reason="ok")],
+            )
+            entity = _gliner_entity()
+            kept, _ = validator.filter_with_verdicts("text", [entity])
+            assert kept[0].judge_status is JudgeStatus.VALIDATED_TRUE_POSITIVE
+        finally:
+            validator.shutdown()
+
+    def test_should_tag_unsure_as_validated_unsure(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            _wire_judge(
+                validator,
+                [PiiVerdict(verdict="UNSURE", confidence=0.4, reason="?")],
+            )
+            entity = _gliner_entity()
+            kept, _ = validator.filter_with_verdicts("text", [entity])
+            assert kept[0].judge_status is JudgeStatus.VALIDATED_UNSURE
+        finally:
+            validator.shutdown()
+
+    def test_should_tag_fail_open_none_verdict_as_fail_open_kept(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            _wire_judge(validator, [None])  # judge call failed -> fail-open
+            entity = _gliner_entity()
+            kept, _ = validator.filter_with_verdicts("text", [entity])
+            assert kept[0].judge_status is JudgeStatus.FAIL_OPEN_KEPT
+        finally:
+            validator.shutdown()
+
+    def test_should_tag_non_audited_entity_as_not_audited(
+        self, validator_factory
+    ) -> None:
+        validator = validator_factory()
+        try:
+            calls = _wire_judge(validator, [])
+            entity = _regex_entity()  # source not in audit_sources
+            kept, _ = validator.filter_with_verdicts("text", [entity])
+            assert kept[0].judge_status is JudgeStatus.NOT_AUDITED
+            assert calls == []  # judge never called
         finally:
             validator.shutdown()
 

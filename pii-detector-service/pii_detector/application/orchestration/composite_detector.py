@@ -14,8 +14,10 @@ Business value:
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple
+import time
+from typing import Dict, List, Optional, Tuple
 
+from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.port.pii_detector_protocol import PIIDetectorProtocol
 from pii_detector.domain.service.detection_merger import DetectionMerger
@@ -236,26 +238,59 @@ class CompositePIIDetector:
         Returns:
             Merged list of PII entities
         """
+        entities, _stats = self.detect_pii_with_stats(
+            text, threshold, enable_ml, enable_regex, enable_presidio,
+            enable_openmed, enable_gliner2, pii_type_configs, chunk_size,
+        )
+        return entities
+
+    def detect_pii_with_stats(
+        self,
+        text: str,
+        threshold: Optional[float] = None,
+        enable_ml: Optional[bool] = None,
+        enable_regex: Optional[bool] = None,
+        enable_presidio: Optional[bool] = None,
+        enable_openmed: Optional[bool] = None,
+        enable_gliner2: Optional[bool] = None,
+        pii_type_configs: Optional[dict] = None,
+        chunk_size: Optional[int] = None,
+    ) -> Tuple[List[PIIEntity], List[Dict]]:
+        """Detect PII and return per-detector execution stats alongside results.
+
+        Same contract as :meth:`detect_pii` but additionally returns one stats
+        entry per detector that actually ran (even with 0 detections). Each
+        stats entry is a plain dict (picklable across the worker-pool boundary)::
+
+            {"source": DetectorSource, "duration_ms": int, "entities_found": int}
+
+        Stats are returned by value (never stored on the instance) because the
+        composite is a singleton shared across concurrent gRPC worker threads;
+        per-instance mutable state would be a race condition.
+
+        Returns:
+            Tuple of (merged_entities, detector_stats).
+        """
         if not text:
-            return []
+            return [], []
 
         use_ml, use_regex, use_presidio, use_openmed, use_gliner2 = self._resolve_detector_flags(
             enable_ml, enable_regex, enable_presidio, enable_openmed, enable_gliner2
         )
         self._log_active_detectors(use_ml, use_regex, use_presidio, use_openmed, use_gliner2)
 
-        results_per_detector = self._collect_detection_results(
+        results_per_detector, stats = self._collect_detection_results(
             text, threshold, use_ml, use_regex, use_presidio, use_openmed, use_gliner2,
             pii_type_configs, chunk_size
         )
 
         if not results_per_detector:
             self.logger.warning("No detectors available")
-            return []
+            return [], stats
 
         merged_entities = self._merger.merge(results_per_detector)
         self._log_detection_summary(results_per_detector, merged_entities)
-        return merged_entities
+        return merged_entities, stats
     
     def _resolve_detector_flags(
         self,
@@ -302,20 +337,44 @@ class CompositePIIDetector:
         use_gliner2: bool,
         pii_type_configs: Optional[dict],
         chunk_size: Optional[int],
-    ) -> List[Tuple[PIIDetectorProtocol, List[PIIEntity]]]:
-        """Run each enabled detector and collect results."""
+    ) -> Tuple[List[Tuple[PIIDetectorProtocol, List[PIIEntity]]], List[Dict]]:
+        """Run each enabled detector, collect results and per-detector stats.
+
+        Detectors run sequentially here, so the wall-clock measured around each
+        ``_run_*_detection`` call is the real busy time of that detector for
+        this request. Returns the (detector, entities) tuples used by the merger
+        and a parallel list of stats dicts (one per detector that actually ran).
+        """
         results: List[Tuple[PIIDetectorProtocol, List[PIIEntity]]] = []
+        stats: List[Dict] = []
+
+        def _run(detector: PIIDetectorProtocol, source: DetectorSource, fn) -> None:
+            started = time.perf_counter()
+            entities = fn()
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            stats.append({
+                "source": source,
+                "duration_ms": duration_ms,
+                "entities_found": len(entities),
+            })
+            results.append((detector, entities))
+
         if use_ml and self.ml_detector:
-            results.append((self.ml_detector, self._run_ml_detection(text, threshold, pii_type_configs, chunk_size)))
+            _run(self.ml_detector, DetectorSource.GLINER,
+                 lambda: self._run_ml_detection(text, threshold, pii_type_configs, chunk_size))
         if use_regex and self.regex_detector:
-            results.append((self.regex_detector, self._run_regex_detection(text, threshold)))
+            _run(self.regex_detector, DetectorSource.REGEX,
+                 lambda: self._run_regex_detection(text, threshold))
         if use_presidio and self.presidio_detector:
-            results.append((self.presidio_detector, self._run_presidio_detection(text, threshold)))
+            _run(self.presidio_detector, DetectorSource.PRESIDIO,
+                 lambda: self._run_presidio_detection(text, threshold))
         if use_openmed and self.openmed_detector:
-            results.append((self.openmed_detector, self._run_openmed_detection(text, threshold, pii_type_configs)))
+            _run(self.openmed_detector, DetectorSource.OPENMED,
+                 lambda: self._run_openmed_detection(text, threshold, pii_type_configs))
         if use_gliner2 and self.gliner2_detector:
-            results.append((self.gliner2_detector, self._run_gliner2_detection(text, threshold, pii_type_configs)))
-        return results
+            _run(self.gliner2_detector, DetectorSource.GLINER2,
+                 lambda: self._run_gliner2_detection(text, threshold, pii_type_configs))
+        return results, stats
 
     def _log_detection_summary(
         self,

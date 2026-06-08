@@ -1,0 +1,46 @@
+"""IBAN pre-filter strategy (compact shape + mod-97 via python-stdnum).
+
+Rejects a value only when it has the canonical compact IBAN shape
+(``^[A-Z]{2}\\d{2}[A-Z0-9]{11,30}$`` after stripping spaces) AND
+:func:`stdnum.iban.is_valid` reports it invalid (country length + mod-97).
+Any non-canonical / truncated form fails open, and any exception keeps the
+entity (fail-open absolute).
+
+``iban.is_valid`` checks length + mod-97 only (no ``check_country=True``),
+which is more conservative than country-aware validation (research §2 -- an
+unusual but valid Swiss BBAN must not be rejected). Measured on the corpus:
+0 false positives caught (the IBAN FPs are base64 blobs out of shape ->
+fail-open), 0 collisions; the value is prod protection against any
+well-formed but mod-97-invalid IBAN.
+"""
+
+import re
+
+from stdnum import iban as _iban
+from stdnum.exceptions import ValidationError
+
+from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+    PASS,
+    PrefilterVerdict,
+)
+
+_IBAN_SHAPE = re.compile(r"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$")
+
+
+class IbanStrategy:
+    """Reject canonical-shaped IBANs failing the mod-97 / length checksum."""
+
+    pii_type = "IBAN"
+
+    def evaluate(self, value: str) -> PrefilterVerdict:
+        if not isinstance(value, str):
+            return PASS
+        s = value.strip().replace(" ", "").upper()
+        if not _IBAN_SHAPE.match(s):  # non-canonical / truncated -> keep
+            return PASS
+        try:
+            if _iban.is_valid(s):  # country length + mod-97
+                return PASS
+            return PrefilterVerdict(False, "iban mod-97 / length failed")
+        except (ValidationError, Exception):  # fail-open absolute
+            return PASS

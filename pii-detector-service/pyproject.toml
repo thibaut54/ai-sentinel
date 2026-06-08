@@ -85,7 +85,11 @@ dependencies = [
     
     # Configuration management (TOML support)
     "toml>=0.10.0",
-    "tomli>=2.0.0; python_version < '3.11'"
+    "tomli>=2.0.0; python_version < '3.11'",
+
+    # Deterministic format pre-filter checksums (Luhn / IBAN mod-97 / AVS EAN-13).
+    # LGPL-2.1+ : imported unmodified at runtime (linking) -> compatible; license to be tracked.
+    "python-stdnum>=1.20",
 ]
 
 [project.optional-dependencies]
@@ -94,6 +98,15 @@ dependencies = [
 # If absolutely needed for EN/DE only, install locally outside project deps:
 #   pip install spacy && python -m spacy download en_core_web_sm de_core_news_sm
 nlp = []
+
+# fast_gliner (Rust gline-rs inference runtime for GLiNER2, no torch on the
+# inference path) is deliberately NOT an extra here: it pins
+# huggingface-hub<1.0, which would make pip downgrade the hub required by
+# transformers >=5.9 and break it. The Dockerfile installs it with
+# `pip install --no-deps fast_gliner` instead (its only hub import,
+# snapshot_download, still exists in hub 1.x). Linux/macOS wheels only; on a
+# Windows host the detector falls back to the gliner2 PyTorch runtime
+# automatically (see Gliner2ModelManager).
 
 dev = [
     # Testing framework

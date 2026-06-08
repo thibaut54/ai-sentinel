@@ -50,6 +50,7 @@ import httpx
 from pydantic import ValidationError
 
 from pii_detector.domain.entity.detector_source import DetectorSource
+from pii_detector.domain.entity.judge_status import JudgeStatus
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.port.pii_post_filter_protocol import (
     PIIPostFilterProtocol,
@@ -627,8 +628,12 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             never appear in ``rejections``.
         """
         if self.backend == BACKEND_LOCAL:
-            # Local backend is intentionally a no-op for the MVP.
-            return list(entities), []
+            # Local backend is intentionally a no-op for the MVP: nothing is
+            # judged, so every kept entity is NOT_AUDITED.
+            passthrough = list(entities)
+            for entity in passthrough:
+                self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
+            return passthrough, []
         if not entities:
             return [], []
 
@@ -638,7 +643,10 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
                 audited_entities.append(entity)
 
         if not audited_entities:
-            return list(entities), []
+            passthrough = list(entities)
+            for entity in passthrough:
+                self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
+            return passthrough, []
 
         verdicts = self._judge_batch(text, audited_entities)
         verdict_by_id = {
@@ -648,18 +656,51 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
 
         # Preserve the original ordering while filtering out the rejected
         # audited entities; non-audited entities are passed through as-is.
+        # Each kept entity is tagged with the judge status so callers can
+        # distinguish a validated finding from one kept unjudged (not audited)
+        # or kept by the fail-open policy after a failed judge call.
         kept: List[PIIEntity] = []
         rejections: List[Tuple[PIIEntity, PiiVerdict]] = []
         for entity in entities:
             if not self._is_audited(entity):
+                self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
                 kept.append(entity)
                 continue
             verdict = verdict_by_id.get(id(entity))
             if self._should_keep(verdict):
+                self._tag_judge_status(entity, self._status_for_kept(verdict))
                 kept.append(entity)
             else:
                 rejections.append((entity, verdict))
         return kept, rejections
+
+    @staticmethod
+    def _tag_judge_status(entity: PIIEntity, status: JudgeStatus) -> None:
+        """Attach the judge status to a kept entity (best-effort).
+
+        Uses the same dynamic-attribute convention detectors use for
+        ``source``; never raises so a non-attributable entity can't break
+        the filter.
+        """
+        try:
+            entity.judge_status = status
+        except (AttributeError, TypeError):  # pragma: no cover - defensive
+            pass
+
+    @staticmethod
+    def _status_for_kept(verdict: Optional[PiiVerdict]) -> JudgeStatus:
+        """Map a judge verdict to the status of an entity that was kept.
+
+        ``None`` means the judge call failed and the entity survived by the
+        fail-open policy. A ``TRUE_POSITIVE`` is a validated finding;
+        anything else kept (``UNSURE``) is the recall-preserving case.
+        ``FALSE_POSITIVE`` never reaches this method (those are rejected).
+        """
+        if verdict is None:
+            return JudgeStatus.FAIL_OPEN_KEPT
+        if verdict.verdict == "TRUE_POSITIVE":
+            return JudgeStatus.VALIDATED_TRUE_POSITIVE
+        return JudgeStatus.VALIDATED_UNSURE
 
     # -- Internals -----------------------------------------------------------
 

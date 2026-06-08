@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pii_detector.domain.entity.detector_source import DetectorSource
+from pii_detector.domain.entity.judge_status import JudgeStatus
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.infrastructure.validation.prompt_templates import PiiVerdict
 
@@ -107,6 +108,9 @@ class _FakeServicer:
     """
 
     _apply_llm_judge = PIIDetectionServicer._apply_llm_judge
+    _is_judge_enabled_for_entity = staticmethod(
+        PIIDetectionServicer._is_judge_enabled_for_entity
+    )
 
 
 class TestApplyLlmJudge:
@@ -179,6 +183,104 @@ class TestApplyLlmJudge:
 
 
 # ---------------------------------------------------------------------------
+# Per-type judge exemption (llm_judge_enabled on pii_type_config)
+# ---------------------------------------------------------------------------
+
+
+class TestPerTypeJudgeExemption:
+    def test_should_default_to_enabled_when_no_config(self) -> None:
+        entity = _gliner_entity()
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, None
+        ) is True
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, {}
+        ) is True
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, {"EMAIL": {"llm_judge_enabled": False}}
+        ) is True
+
+    def test_should_default_to_enabled_when_flag_missing_in_config(
+        self,
+    ) -> None:
+        """Pre-migration config dict without the key -> judge enabled."""
+        entity = _gliner_entity()
+        configs = {"PERSON": {"enabled": True, "threshold": 0.5}}
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, configs
+        ) is True
+
+    def test_should_exempt_when_flag_false_on_composite_key(self) -> None:
+        entity = _gliner_entity()
+        configs = {
+            "GLINER:PERSON": {"detector": "GLINER", "llm_judge_enabled": False},
+        }
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, configs
+        ) is False
+
+    def test_should_ignore_config_when_detector_mismatch(self) -> None:
+        """A PRESIDIO-scoped config must not exempt a GLINER entity."""
+        entity = _gliner_entity()
+        configs = {
+            "PERSON": {"detector": "PRESIDIO", "llm_judge_enabled": False},
+        }
+        assert PIIDetectionServicer._is_judge_enabled_for_entity(
+            entity, configs
+        ) is True
+
+    def test_should_judge_only_auditable_and_keep_exempt(self) -> None:
+        servicer = _FakeServicer()
+        judged = _gliner_entity(text="Alice")
+        exempt = PIIEntity(
+            text="Bob",
+            pii_type="USERNAME",
+            type_label="USERNAME",
+            start=10,
+            end=13,
+            score=0.8,
+            source=DetectorSource.GLINER,
+        )
+        configs = {
+            "GLINER:USERNAME": {
+                "detector": "GLINER", "llm_judge_enabled": False,
+            },
+        }
+        validator = MagicMock()
+        validator.filter_with_verdicts.return_value = ([judged], [])
+        with patch(
+            "pii_detector.infrastructure.validation.llm_validator.get_instance",
+            return_value=validator,
+        ):
+            kept, rejections = servicer._apply_llm_judge(
+                [judged, exempt], "text", "req-7", configs
+            )
+        # Only the auditable entity reaches the validator.
+        validator.filter_with_verdicts.assert_called_once_with(
+            "text", [judged]
+        )
+        # Exempt entity is kept, original order preserved.
+        assert kept == [judged, exempt]
+        assert rejections == []
+
+    def test_should_skip_validator_when_all_entities_exempt(self) -> None:
+        servicer = _FakeServicer()
+        entity = _gliner_entity()
+        configs = {
+            "GLINER:PERSON": {"detector": "GLINER", "llm_judge_enabled": False},
+        }
+        with patch(
+            "pii_detector.infrastructure.validation.llm_validator.get_instance"
+        ) as factory:
+            kept, rejections = servicer._apply_llm_judge(
+                [entity], "text", "req-8", configs
+            )
+            factory.assert_not_called()
+        assert kept == [entity]
+        assert rejections == []
+
+
+# ---------------------------------------------------------------------------
 # _add_discarded_entities_to_response
 # ---------------------------------------------------------------------------
 
@@ -223,6 +325,33 @@ class TestAddDiscardedEntitiesToResponse:
         response = pii_detection_pb2.PIIDetectionResponse()
         servicer._add_discarded_entities_to_response(response, [], "req-6")
         assert len(response.discarded_entities) == 0
+
+
+class TestPopulateProtoEntityJudgeStatus:
+    """The kept-entity judge status round-trips into the proto field."""
+
+    def test_should_map_tagged_judge_status_to_proto(self) -> None:
+        from pii_detector.proto.generated import pii_detection_pb2
+
+        servicer = _FakeResponseServicer()
+        entity = _gliner_entity()
+        entity.judge_status = JudgeStatus.FAIL_OPEN_KEPT
+        proto = pii_detection_pb2.PIIEntity()
+
+        servicer._populate_proto_entity(proto, entity)
+
+        assert proto.judge_status == pii_detection_pb2.JudgeStatus.FAIL_OPEN_KEPT
+
+    def test_should_default_to_not_audited_when_untagged(self) -> None:
+        from pii_detector.proto.generated import pii_detection_pb2
+
+        servicer = _FakeResponseServicer()
+        entity = _gliner_entity()  # no judge_status attribute attached
+        proto = pii_detection_pb2.PIIEntity()
+
+        servicer._populate_proto_entity(proto, entity)
+
+        assert proto.judge_status == pii_detection_pb2.JudgeStatus.NOT_AUDITED
 
 
 # ---------------------------------------------------------------------------

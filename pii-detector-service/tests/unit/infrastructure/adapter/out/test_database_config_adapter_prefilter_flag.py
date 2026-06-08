@@ -1,8 +1,9 @@
-"""
-Tests for the ``llm_judge_enabled`` flag in
+"""Tests for the ``prefilter_enabled`` flag in
 :class:`DatabaseConfigAdapter.fetch_config`.
 
-These tests focus narrowly on the new column added in spec section 2.6:
+These tests focus narrowly on the new column added for the deterministic
+format pre-filter (PLAN.md section 1.7), mirroring the ``llm_judge_enabled``
+flag tests:
 
 - Normal path returning the flag from the row.
 - Defensive fallback when the column is missing (migration not yet
@@ -17,7 +18,6 @@ from typing import Any, Dict, Iterator, List, Optional
 from unittest.mock import MagicMock, patch
 
 import psycopg2
-import pytest
 
 from pii_detector.infrastructure.adapter.out.database_config_adapter import (
     DatabaseConfigAdapter,
@@ -34,21 +34,25 @@ def _row(
     gliner: bool = True,
     presidio: bool = True,
     regex: bool = False,
+    openmed: bool = False,
+    gliner2: bool = False,
     threshold: float = 0.5,
     chunk_size: int = 10,
     llm_judge: Any = False,
+    prefilter: Any = False,
 ) -> Dict[str, Any]:
+    # Mirrors what a RealDictCursor returns for the main SELECT (openmed /
+    # gliner2 are COALESCEd to FALSE there, so they are always present).
     return {
         "gliner_enabled": gliner,
         "presidio_enabled": presidio,
         "regex_enabled": regex,
-        # The real query COALESCEs these to FALSE; the mocked cursor
-        # bypasses SQL so the keys must be present in the fixture row.
-        "openmed_enabled": False,
-        "gliner2_enabled": False,
+        "openmed_enabled": openmed,
+        "gliner2_enabled": gliner2,
         "default_threshold": threshold,
         "nb_of_label_by_pass": chunk_size,
         "llm_judge_enabled": llm_judge,
+        "prefilter_enabled": prefilter,
     }
 
 
@@ -64,10 +68,6 @@ def _patched_adapter(
     if execute_side_effects:
         cursor.execute.side_effect = execute_side_effects
 
-    cursor_cm = MagicMock()
-    cursor_cm.__enter__ = MagicMock(return_value=cursor)
-    cursor_cm.__exit__ = MagicMock(return_value=False)
-
     connection = MagicMock()
     connection.cursor.return_value = cursor
     connection.rollback = MagicMock()
@@ -82,40 +82,39 @@ def _patched_adapter(
 # ---------------------------------------------------------------------------
 
 
-class TestFetchConfigJudgeFlag:
-    def test_should_return_llm_judge_enabled_true_when_db_sets_it(self) -> None:
-        with _patched_adapter([_row(llm_judge=True)]) as adapter:
+class TestFetchConfigPrefilterFlag:
+    def test_should_return_prefilter_enabled_true_when_db_sets_it(self) -> None:
+        with _patched_adapter([_row(prefilter=True)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["llm_judge_enabled"] is True
+        assert config["prefilter_enabled"] is True
 
     def test_should_return_false_when_db_sets_false(self) -> None:
-        with _patched_adapter([_row(llm_judge=False)]) as adapter:
+        with _patched_adapter([_row(prefilter=False)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["llm_judge_enabled"] is False
+        assert config["prefilter_enabled"] is False
 
     def test_should_default_to_false_when_value_is_none(self) -> None:
-        with _patched_adapter([_row(llm_judge=None)]) as adapter:
+        with _patched_adapter([_row(prefilter=None)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["llm_judge_enabled"] is False
+        assert config["prefilter_enabled"] is False
 
     def test_should_default_to_false_when_column_missing(self) -> None:
-        """The pre-migration schema lacks ``llm_judge_enabled``.
+        """The pre-migration schema lacks ``prefilter_enabled``.
 
         The adapter must execute a fallback query without the column and
         normalise the flag to ``False`` so downstream code stays
         compatible with deployments that have not migrated yet.
         """
         missing_column_error = psycopg2.errors.UndefinedColumn(
-            "column llm_judge_enabled does not exist"
+            "column prefilter_enabled does not exist"
         )
         fallback_row = {
             "gliner_enabled": True,
             "presidio_enabled": True,
             "regex_enabled": False,
-            # The fallback query selects literal FALSE for these aliases.
             "openmed_enabled": False,
             "gliner2_enabled": False,
             "default_threshold": 0.5,
@@ -127,4 +126,4 @@ class TestFetchConfigJudgeFlag:
         ) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["llm_judge_enabled"] is False
+        assert config["prefilter_enabled"] is False
