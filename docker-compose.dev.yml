@@ -110,9 +110,17 @@ services:
       # Static non-sensitive configuration
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
+      # GLiNER2 runtime override (env > TOML > default). Uncomment to force:
+      # "fastgliner" (speed, labels-only, 0.5 threshold floor) or "pytorch"
+      # (sends detector_description, honours any threshold). Empty => TOML value.
+      # GLINER2_RUNTIME: pytorch
     volumes:
       - huggingface-cache:/app/.cache/huggingface
       - ./secrets:/secrets:ro
+      # Monolithic GLiNER2 ONNX export consumed by the fast_gliner runtime
+      # (auto-discovered at /app/models/...; PyTorch fallback if absent).
+      # Produced by pii-detector-service/scripts/export_gliner2_to_monolithic_onnx.py
+      - ./pii-detector-service/models/gliner2-privacy-filter-onnx:/app/models/gliner2-privacy-filter-onnx:ro
     depends_on:
       postgres:
         condition: service_healthy

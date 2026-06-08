@@ -21,6 +21,11 @@ DOCKER_DEPLOYMENT.md
 # Build artifacts in pii-reporting-api (will be rebuilt in Docker)
 pii-reporting-api/target/
 
+# Local model exports (mounted as volumes, never COPYed — keeps the 1.2 GB
+# gliner2-privacy-filter ONNX export out of every build context)
+pii-detector-service/models/
+pii-detector-service/target/
+
 # Scripts
 start-app.sh
 start-app.ps1
