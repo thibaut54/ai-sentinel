@@ -24,6 +24,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.PageSecretsResponse;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.PiiAccessDeniedException;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
@@ -166,7 +167,7 @@ class RevealPiiSecretsUseCaseTest {
         ((TestReadPiiConfigPort) readPiiConfigPort).setAllow(true);
 
         DetectedPersonallyIdentifiableInformation entity = new DetectedPersonallyIdentifiableInformation(0, 5, "EMAIL", "Email", 0.99,
-                                                                                                         "secret@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE);
+                                                                                                         "secret@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE, JudgeStatus.NOT_AUDITED);
         ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
             .scanId(scanId)
             .spaceKey("SPACE-1")

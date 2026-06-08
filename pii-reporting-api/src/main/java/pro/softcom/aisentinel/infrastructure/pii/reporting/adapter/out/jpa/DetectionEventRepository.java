@@ -53,4 +53,19 @@ public interface DetectionEventRepository extends
     List<ScanEventEntity> findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(
             String scanId, String spaceKey, Collection<String> eventTypes
     );
+
+    /**
+     * Lists error events for a given scan and space, oldest first.
+     *
+     * <p>Used to build the dashboard list of failed pages/attachments. Callers
+     * deduplicate and bound the result.
+     *
+     * @param scanId    unique scan identifier
+     * @param spaceKey  Confluence space key
+     * @param eventType the error event type label (e.g. "scanError")
+     * @return error events ordered by sequence (may be empty)
+     */
+    List<ScanEventEntity> findByScanIdAndSpaceKeyAndEventTypeOrderByEventSeqAsc(
+            String scanId, String spaceKey, String eventType
+    );
 }

@@ -119,6 +119,7 @@ class StreamConfluenceResumeScanUseCaseTest {
                 attachmentTextExtractionService
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
+        ScanSpaceStatsCollector scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
         streamConfluenceResumeScanPort = new StreamConfluenceResumeScanUseCase(
                 confluenceAccessor,
                 piiDetectorClient,
@@ -126,7 +127,8 @@ class StreamConfluenceResumeScanUseCaseTest {
                 attachmentProcessor,
                 scanCheckpointRepository,
                 scanTimeoutConfig,
-                htmlContentParser
+                htmlContentParser,
+                scanSpaceStatsCollector
         );
     }
 

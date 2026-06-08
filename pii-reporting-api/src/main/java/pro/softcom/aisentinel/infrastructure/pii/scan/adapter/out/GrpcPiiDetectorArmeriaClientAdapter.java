@@ -8,7 +8,9 @@ import pii_detection.PIIDetectionServiceGrpc;
 import pii_detection.PiiDetection;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorRunStat;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.PersonallyIdentifiableInformationType;
 import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.config.PiiDetectorConfig;
 import reactor.core.publisher.Mono;
@@ -149,6 +151,10 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
 
         Map<String, Integer> statistics = response.getSummaryMap();
 
+        List<DetectorRunStat> detectorRunStats = response.getDetectorStatsList().stream()
+                .map(this::convertToDetectorRunStat)
+                .toList();
+
         return ContentPiiDetection.builder()
                 .pageId(pageId)
                 .pageTitle(pageTitle)
@@ -157,7 +163,16 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .sensitiveDataFound(sensitiveDataList)
                 .statistics(statistics)
                 .discardedByJudge(discardedByJudge)
+                .detectorRunStats(detectorRunStats)
                 .build();
+    }
+
+    private DetectorRunStat convertToDetectorRunStat(PiiDetection.DetectorRunStats stats) {
+        return new DetectorRunStat(
+                convertToDetectorSource(stats.getSource()),
+                stats.getDurationMs(),
+                stats.getEntitiesFound(),
+                stats.getEntitiesDiscarded());
     }
 
     private ContentPiiDetection.DiscardedSensitiveData convertToDiscardedSensitiveData(
@@ -199,8 +214,27 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 end,
                 (double) entity.getScore(),
                 String.format("pii-entity-%s", entity.getType().toLowerCase()),
-                source
+                source,
+                convertToJudgeStatus(entity.getJudgeStatus())
         );
+    }
+
+    /**
+     * Maps the gRPC {@link PiiDetection.JudgeStatus} to the domain enum.
+     * Name-based mapping keeps the adapter forward-compatible; an unknown or
+     * unspecified value falls back to {@link JudgeStatus#UNSPECIFIED}.
+     */
+    private JudgeStatus convertToJudgeStatus(PiiDetection.JudgeStatus protoStatus) {
+        if (protoStatus == null) {
+            return JudgeStatus.UNSPECIFIED;
+        }
+        return switch (protoStatus.name()) {
+            case "NOT_AUDITED" -> JudgeStatus.NOT_AUDITED;
+            case "VALIDATED_TRUE_POSITIVE" -> JudgeStatus.VALIDATED_TRUE_POSITIVE;
+            case "VALIDATED_UNSURE" -> JudgeStatus.VALIDATED_UNSURE;
+            case "FAIL_OPEN_KEPT" -> JudgeStatus.FAIL_OPEN_KEPT;
+            default -> JudgeStatus.UNSPECIFIED;
+        };
     }
 
     /**
@@ -234,6 +268,8 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
             case "PRESIDIO" -> PRESIDIO;
             case "REGEX" -> REGEX;
             case "OPENMED" -> OPENMED;
+            case "JUDGE" -> JUDGE;
+            case "PREFILTER" -> PREFILTER;
             default -> DetectorSource.UNKNOWN_SOURCE;
         };
     }

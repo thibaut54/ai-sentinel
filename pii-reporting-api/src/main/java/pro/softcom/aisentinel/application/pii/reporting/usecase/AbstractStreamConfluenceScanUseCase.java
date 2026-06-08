@@ -9,6 +9,7 @@ import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConf
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentTextExtracted;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
+import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
@@ -46,6 +47,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     protected final AttachmentProcessor attachmentProcessor;
     protected final ScanTimeOutConfig scanTimeoutConfig;
     protected final HtmlContentParser htmlContentParser;
+    protected final ScanSpaceStatsCollector scanSpaceStatsCollector;
 
     protected record ConfluencePageContext(String scanId, String spaceKey, String pageId,
                                            String pageTitle) {
@@ -83,6 +85,17 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                         .retryWhen(Retry.backoff(3, Duration.ofMillis(100)))
                         .onErrorResume(e -> {
                             log.warn("[PERSISTENCE] Failed to persist async operations: {}", e.getMessage());
+                            return Mono.empty();
+                        })
+                        .subscribe();
+
+                    // Per-space scan statistics: additive, atomic at the SQL level, and
+                    // self-contained (errors swallowed inside the collector) so a stats
+                    // failure can never make the scan itself fail.
+                    Mono.fromRunnable(() -> scanSpaceStatsCollector.record(event))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            log.warn("[SPACE_STATS] Failed to record scan space stats: {}", e.getMessage());
                             return Mono.empty();
                         })
                         .subscribe();

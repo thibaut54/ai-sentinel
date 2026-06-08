@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.domain.pii.reporting;
 
 import lombok.Builder;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 
 /**
  * Represents a detected PII with its metadata and sensitive values.
@@ -26,7 +27,8 @@ public record DetectedPersonallyIdentifiableInformation(
         String sensitiveValue,
         String sensitiveContext,
         String maskedContext,
-        DetectorSource source
+        DetectorSource source,
+        JudgeStatus judgeStatus
 ) {
     /**
      * Creates a safe copy with sensitive data masked (set to null).

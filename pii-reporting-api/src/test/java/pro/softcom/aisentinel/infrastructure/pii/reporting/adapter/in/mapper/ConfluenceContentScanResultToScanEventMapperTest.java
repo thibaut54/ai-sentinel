@@ -7,6 +7,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 
@@ -86,7 +87,8 @@ class ConfluenceContentScanResultToScanEventMapperTest {
             null,  // detectedValue
             null,  // context
             null,  // maskedContext
-            DetectorSource.UNKNOWN_SOURCE
+            DetectorSource.UNKNOWN_SOURCE,
+            JudgeStatus.NOT_AUDITED
         );
     }
 }

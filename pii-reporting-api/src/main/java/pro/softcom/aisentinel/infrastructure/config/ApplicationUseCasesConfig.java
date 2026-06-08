@@ -138,6 +138,19 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public ScanSpaceStatsCollector scanSpaceStatsCollector(ScanSpaceStatsRepository scanSpaceStatsRepository) {
+        return new ScanSpaceStatsCollector(scanSpaceStatsRepository);
+    }
+
+    @Bean
+    public GetScanSpaceStatsPort getScanSpaceStatsPort(
+            ScanCheckpointRepository scanCheckpointRepository,
+            ScanSpaceStatsRepository scanSpaceStatsRepository,
+            FailedScanItemQuery failedScanItemQuery) {
+        return new GetScanSpaceStatsUseCase(scanCheckpointRepository, scanSpaceStatsRepository, failedScanItemQuery);
+    }
+
+    @Bean
     public StreamConfluenceScanPort streamConfluenceScanUseCase(
             ConfluenceAccessor confluenceAccessor,
             PiiDetectorClient piiDetectorClient,
@@ -145,6 +158,7 @@ public class ApplicationUseCasesConfig {
             AttachmentProcessor attachmentProcessor,
             ScanTimeOutConfig scanTimeoutConfig,
             HtmlContentParser htmlContentParser,
+            ScanSpaceStatsCollector scanSpaceStatsCollector,
             PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort,
             ScanCheckpointRepository scanCheckpointRepository) {
         return new StreamConfluenceScanUseCase(
@@ -154,6 +168,7 @@ public class ApplicationUseCasesConfig {
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
+                scanSpaceStatsCollector,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
     }
@@ -166,7 +181,8 @@ public class ApplicationUseCasesConfig {
             AttachmentProcessor attachmentProcessor,
             ScanCheckpointRepository scanCheckpointRepository,
             ScanTimeOutConfig scanTimeoutConfig,
-            HtmlContentParser htmlContentParser) {
+            HtmlContentParser htmlContentParser,
+            ScanSpaceStatsCollector scanSpaceStatsCollector) {
         return new StreamConfluenceResumeScanUseCase(
                 confluenceAccessor,
                 piiDetectorClient,
@@ -174,7 +190,8 @@ public class ApplicationUseCasesConfig {
                 attachmentProcessor,
                 scanCheckpointRepository,
                 scanTimeoutConfig,
-                htmlContentParser
+                htmlContentParser,
+                scanSpaceStatsCollector
         );
     }
 

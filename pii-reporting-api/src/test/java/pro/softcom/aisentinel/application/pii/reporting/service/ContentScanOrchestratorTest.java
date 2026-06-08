@@ -14,6 +14,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
+import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 
 import java.util.List;
 
@@ -122,7 +123,7 @@ class ContentScanOrchestratorTest {
             String scanId = "scan-async";
             String spaceKey = "ASYNC";
             List<DetectedPersonallyIdentifiableInformation> detectedEntities = List.of(
-                    new DetectedPersonallyIdentifiableInformation(10, 27, "email", "Email", 0.98, "test@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE)
+                    new DetectedPersonallyIdentifiableInformation(10, 27, "email", "Email", 0.98, "test@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE, JudgeStatus.NOT_AUDITED)
             );
 
             ConfluenceContentScanResult event = ConfluenceContentScanResult.builder()

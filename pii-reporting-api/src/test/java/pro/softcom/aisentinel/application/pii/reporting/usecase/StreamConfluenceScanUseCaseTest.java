@@ -129,6 +129,7 @@ class StreamConfluenceScanUseCaseTest {
                 attachmentTextExtractionService
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
+        ScanSpaceStatsCollector scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
 
         streamConfluenceScanUseCase = new StreamConfluenceScanUseCase(
                 confluenceAccessor,
@@ -137,6 +138,7 @@ class StreamConfluenceScanUseCaseTest {
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
+                scanSpaceStatsCollector,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -602,6 +604,7 @@ class StreamConfluenceScanUseCaseTest {
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
+            Mockito.mock(ScanSpaceStatsCollector.class),
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -679,6 +682,7 @@ class StreamConfluenceScanUseCaseTest {
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
+            Mockito.mock(ScanSpaceStatsCollector.class),
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 

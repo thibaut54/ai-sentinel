@@ -22,6 +22,9 @@ import java.util.Map;
  * @param discardedByJudge elements detected by the detectors but rejected by
  *        the LLM-as-judge post-filter (empty when the judge is disabled);
  *        exposed to measure the judge's false-positive reduction
+ * @param detectorRunStats per-detector execution stats for this analysis (one
+ *        entry per detector that actually ran, even at zero detection); empty
+ *        when the detection service does not report them
  */
 @Builder
 public record ContentPiiDetection(
@@ -31,17 +34,24 @@ public record ContentPiiDetection(
     LocalDateTime analysisDate,
     List<SensitiveData> sensitiveDataFound,
     Map<String, Integer> statistics,
-    List<DiscardedSensitiveData> discardedByJudge
+    List<DiscardedSensitiveData> discardedByJudge,
+    List<DetectorRunStat> detectorRunStats
 ) {
 
     public ContentPiiDetection {
         // Builder callers predating the judge measurement never set the field.
         discardedByJudge = discardedByJudge == null ? List.of() : discardedByJudge;
+        // Builder callers predating detector-stats collection never set the field.
+        detectorRunStats = detectorRunStats == null ? List.of() : detectorRunStats;
     }
     
     // Sonar S1192: avoid duplicate literal for phone number label
     /** Label used for all phone number related data types. */
     public static final String PHONE_NUMBER_LABEL = "Numéro de téléphone";
+
+    // Sonar S1192: avoid duplicate literal for postal code label (ZIPCODE/ZIP_CODE/POSTAL_CODE)
+    /** Label used for all postal/zip code related data types. */
+    public static final String POSTAL_CODE_LABEL = "Code postal";
 
     /**
      * Detectable categories of sensitive data found during analysis.
@@ -51,6 +61,7 @@ public record ContentPiiDetection(
     public enum PersonallyIdentifiableInformationType {
         // Contact Information
         EMAIL("Email"),
+        EMAIL_ADDRESS("Email"),
         PHONE("Téléphone"),
         PHONE_NUMBER(PHONE_NUMBER_LABEL),
         TELEPHONENUM(PHONE_NUMBER_LABEL),
@@ -60,57 +71,115 @@ public record ContentPiiDetection(
         DATE_OF_BIRTH("Date de naissance"),
         PERSON("Personne"),
         NAME("Nom"),
+        PERSON_NAME("Nom"),
+        FULL_NAME("Nom complet"),
+        FIRST_NAME("Prénom"),
+        MIDDLE_NAME("Deuxième prénom"),
+        LAST_NAME("Nom de famille"),
         SURNAME("Nom de famille"),
         USERNAME("Identifiant système ou compte de connexion"),
         GENDER("Genre"),
         NATIONALITY("Nationalité"),
         MARITAL_STATUS("État civil"),
+        EYE_COLOR("Couleur des yeux"),
         NRP("Nationalité, Religion ou Groupe Politique"),
 
         // Location
         LOCATION("Localisation"),
         ADDRESS("Adresse"),
         STREET("Rue"),
+        STREET_ADDRESS("Adresse (rue)"),
         CITY("Ville"),
-        ZIPCODE("Code postal"),
+        ZIPCODE(POSTAL_CODE_LABEL),
+        ZIP_CODE(POSTAL_CODE_LABEL),
+        POSTAL_CODE(POSTAL_CODE_LABEL),
         BUILDINGNUM("Numéro de bâtiment"),
         COUNTRY("Pays"),
         STATE("État/Province"),
+        STATE_OR_REGION("Canton ou région"),
         GPS("Coordonnées GPS"),
 
         // Financial
         CREDIT_CARD("Carte de crédit"),
+        CREDIT_CARD_NUMBER("Numéro de carte de crédit"),
+        CREDIT_CARD_ISSUER("Émetteur de carte"),
+        PAYMENT_CARD("Carte de paiement"),
+        CARD_NUMBER("Numéro de carte de paiement"),
+        CARD_EXPIRY("Date d'expiration de carte"),
+        CARD_CVV("Cryptogramme de carte (CVV/CVC)"),
+        CVV("Cryptogramme de carte (CVV/CVC)"),
+        PIN("Code PIN"),
+        MASKED_NUMBER("Numéro masqué"),
         BANK_ACCOUNT("Compte bancaire"),
+        BANK_ACCOUNT_NUMBER("Numéro de compte bancaire"),
+        ACCOUNT_NAME("Nom de compte"),
+        ACCOUNT_NUMBER("Numéro de compte"),
+        ROUTING_NUMBER("Numéro de routage bancaire"),
+        BIC_SWIFT("Code BIC/SWIFT"),
         IBAN("Identifiant bancaire international (IBAN)"),
+        IBAN_CODE("Identifiant bancaire international (IBAN)"),
+        CRYPTO("Adresse de cryptomonnaie"),
+        BITCOIN_ADDRESS("Adresse Bitcoin"),
+        ETHEREUM_ADDRESS("Adresse Ethereum"),
+        LITECOIN_ADDRESS("Adresse Litecoin"),
+        AMOUNT("Montant"),
+        CURRENCY("Devise"),
+        CURRENCY_CODE("Code de devise"),
+        CURRENCY_NAME("Nom de devise"),
+        CURRENCY_SYMBOL("Symbole monétaire"),
         TAX("Numéro fiscal"),
+        TAX_ID("Identifiant fiscal"),
+        TAX_NUMBER("Numéro fiscal (IDE/TVA)"),
         INVOICE("Facture"),
         SALARY("Salaire"),
         TRANSACTION("Transaction"),
 
         // Government IDs
         SSN("Numéro AVS"),
+        AVS_NUMBER("Numéro AVS"),
+        SOCIALNUM("Numéro de sécurité sociale"),
+        GOVERNMENT_ID("Identifiant officiel"),
+        NATIONAL_ID("Carte d'identité"),
+        NATIONAL_ID_NUMBER("Numéro de carte d'identité"),
         ID_CARD("Carte d'identité"),
         PASSPORT("Passeport"),
+        PASSPORT_NUMBER("Numéro de passeport"),
         DRIVER_LICENSE("Permis de conduire"),
+        DRIVER_LICENSE_NUMBER("Numéro de permis de conduire"),
+        DRIVERS_LICENSE_NUMBER("Numéro de permis de conduire"),
+        LICENSE_NUMBER("Numéro de licence"),
 
         // IT & Credentials
         PASSWORD("Mot de passe ou code PIN"),
         API_KEY("Clé API"),
         TOKEN("Jeton"),
+        ACCESS_TOKEN("Jeton d'accès"),
         SECRET("Secret"),
+        SECRET_KEY("Clé secrète"),
+        RECOVERY_CODE("Code de récupération"),
         URL("URL"),
         IP_ADDRESS("Adresse IP"),
         MAC_ADDRESS("Adresse MAC"),
         HOSTNAME("Nom d'hôte"),
         DEVICE("Appareil"),
+        DEVICE_ID("Identifiant d'appareil"),
+        IMEI("Numéro IMEI"),
         SESSION("Session"),
+        SESSION_ID("Identifiant de session"),
+        ACCOUNT_ID("Identifiant de compte"),
+        SENSITIVE_ACCOUNT_ID("Identifiant de compte sensible"),
 
         // Medical/Healthcare
         MEDICAL("Information médicale"),
+        MEDICAL_LICENSE("Licence médicale"),
         PATIENT("Patient"),
+        PATIENT_ID("Identifiant patient"),
         DIAGNOSIS("Diagnostic"),
         MEDICATION("Médicament"),
         HEALTH_INSURANCE("Assurance maladie"),
+        HEALTH_INSURANCE_NUMBER("Numéro d'assurance maladie"),
+        INSURANCE_POLICY_NUMBER("Numéro de police d'assurance"),
+        MEDICAL_RECORD_NUMBER("Numéro de dossier médical"),
         DOCTOR("Médecin"),
         HOSPITAL("Hôpital"),
 
@@ -133,8 +202,10 @@ public record ContentPiiDetection(
 
         // Assets
         VEHICLE("Véhicule"),
+        VEHICLE_REGISTRATION("Immatriculation de véhicule"),
         LICENSE_PLATE("Plaque d'immatriculation"),
         VIN("Numéro VIN"),
+        VEHICLE_VIN("Numéro VIN"),
         PROPERTY("Propriété"),
         INSURANCE("Assurance"),
 
@@ -150,6 +221,11 @@ public record ContentPiiDetection(
         DATE("Date"),
         TIME("Heure"),
         TIMESTAMP("Horodatage"),
+        DATE_TIME("Horodatage"),
+        SENSITIVE_DATE("Date sensible"),
+        DOCUMENT_DATE("Date de document"),
+        EXPIRATION_DATE("Date d'expiration"),
+        TRANSACTION_DATE("Date de transaction"),
         AGE("Âge"),
 
         // Digital Identity
@@ -157,6 +233,37 @@ public record ContentPiiDetection(
         ONLINE_HANDLE("Pseudonyme"),
         ACCOUNT("Compte"),
         CUSTOMER("Client"),
+
+        // Country-specific (Presidio)
+        US_SSN("Numéro de sécurité sociale (US)"),
+        US_BANK_NUMBER("Compte bancaire (US)"),
+        US_DRIVER_LICENSE("Permis de conduire (US)"),
+        US_ITIN("Numéro fiscal ITIN (US)"),
+        US_PASSPORT("Passeport (US)"),
+        UK_NHS("Numéro NHS (UK)"),
+        UK_NINO("Numéro d'assurance nationale (UK)"),
+        ES_NIF("NIF (ES)"),
+        ES_NIE("NIE (ES)"),
+        IT_FISCAL_CODE("Code fiscal (IT)"),
+        IT_DRIVER_LICENSE("Permis de conduire (IT)"),
+        IT_VAT_CODE("Numéro TVA (IT)"),
+        IT_PASSPORT("Passeport (IT)"),
+        IT_IDENTITY_CARD("Carte d'identité (IT)"),
+        PL_PESEL("Numéro PESEL (PL)"),
+        SG_NRIC_FIN("NRIC/FIN (SG)"),
+        SG_UEN("UEN (SG)"),
+        AU_ABN("ABN (AU)"),
+        AU_ACN("ACN (AU)"),
+        AU_TFN("Numéro fiscal TFN (AU)"),
+        AU_MEDICARE("Medicare (AU)"),
+        IN_PAN("PAN (IN)"),
+        IN_AADHAAR("Aadhaar (IN)"),
+        IN_VEHICLE_REGISTRATION("Immatriculation (IN)"),
+        IN_VOTER("Carte d'électeur (IN)"),
+        IN_PASSPORT("Passeport (IN)"),
+        FI_PERSONAL_IDENTITY_CODE("Code d'identité personnel (FI)"),
+        KR_RRN("Numéro RRN (KR)"),
+        TH_TNIN("Numéro TNIN (TH)"),
 
         // Other
         UNKNOWN("Inconnu"),
@@ -182,9 +289,43 @@ public record ContentPiiDetection(
         PRESIDIO,
         REGEX,
         OPENMED,
-        GLINER2
+        GLINER2,
+        /**
+         * The LLM-as-judge post-filter, surfaced as a pseudo detector in
+         * run-stats only. Its velocity is seconds per judged PII, not
+         * characters per second.
+         */
+        JUDGE,
+        /**
+         * The deterministic format pre-filter, surfaced as a pseudo detector in
+         * run-stats only to expose how many PII it discarded.
+         */
+        PREFILTER
     }
-    
+
+    /**
+     * Outcome of the LLM-as-judge post-filter for a kept PII entity.
+     *
+     * <p>Mirrors the {@code JudgeStatus} gRPC enum. There is no
+     * {@code FALSE_POSITIVE} value on purpose: such entities are discarded and
+     * surfaced via {@link DiscardedSensitiveData} instead, never kept. Lets
+     * reporting tell a judge-validated finding apart from one kept without
+     * being judged or kept by the fail-open policy after a failed judge call,
+     * so fail-open noise can be measured rather than silently mixed in.</p>
+     */
+    public enum JudgeStatus {
+        /** Unknown / legacy (produced before the field existed). */
+        UNSPECIFIED,
+        /** Not submitted to the judge (judge disabled, source not audited, or per-type opt-out). */
+        NOT_AUDITED,
+        /** Judge returned TRUE_POSITIVE: finding explicitly validated. */
+        VALIDATED_TRUE_POSITIVE,
+        /** Judge returned UNSURE: kept by the recall-preserving policy. */
+        VALIDATED_UNSURE,
+        /** Judge call failed: kept by the fail-open policy without being judged. */
+        FAIL_OPEN_KEPT
+    }
+
     /**
      * Represents a single sensitive element detected on the page.
      *
@@ -197,6 +338,7 @@ public record ContentPiiDetection(
      * @param score confidence score provided by the detector (may be null)
      * @param selector optional selector or hint pointing to the element location
      * @param source source of the detected PII entity (e.g. GLiNER, Presidio)
+     * @param judgeStatus whether/how the LLM-judge processed this kept entity
      */
     public record SensitiveData(
         String type,
@@ -207,7 +349,41 @@ public record ContentPiiDetection(
         int end,
         Double score,
         String selector,
-        DetectorSource source
+        DetectorSource source,
+        JudgeStatus judgeStatus
+    ) {
+        /**
+         * Convenience constructor for callers predating the judge-status field
+         * (e.g. tests and detectors that never went through the judge): defaults
+         * {@code judgeStatus} to {@link JudgeStatus#NOT_AUDITED}.
+         */
+        public SensitiveData(
+            String type, String typeLabel, String value, String context,
+            int position, int end, Double score, String selector, DetectorSource source
+        ) {
+            this(type, typeLabel, value, context, position, end, score, selector, source,
+                JudgeStatus.NOT_AUDITED);
+        }
+    }
+
+    /**
+     * Execution stats of a single detector for one analysis request.
+     *
+     * <p>Detectors run sequentially within a request, so {@code durationMs} is
+     * the real time spent by this detector and is safe to sum per detector
+     * across requests to obtain cumulated busy time.
+     *
+     * @param source the detector these stats belong to
+     * @param durationMs wall-clock duration of this detector's execution, in milliseconds
+     * @param entitiesFound for real detectors, raw entities found (pre-merge); for the
+     *                      JUDGE/PREFILTER post-filters, the number of PII examined
+     * @param entitiesDiscarded number of PII the stage discarded (0 for real detectors)
+     */
+    public record DetectorRunStat(
+        DetectorSource source,
+        long durationMs,
+        int entitiesFound,
+        int entitiesDiscarded
     ) {
     }
 
