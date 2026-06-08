@@ -25,6 +25,7 @@ Why Load from Database?
 """
 
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -148,6 +149,12 @@ class MultiPassGlinerDetector:
 
         # Create the underlying GLiNER detector (reuses existing implementation)
         self._gliner_detector = GLiNERDetector(config=self.config)
+
+        # The HF fast tokenizer (Rust) shared by all passes is NOT thread-safe:
+        # enable_padding() called while another thread encodes raises
+        # "RuntimeError: Already borrowed". Serialize every model/tokenizer
+        # access across the parallel passes (post-processing stays concurrent).
+        self._model_lock = threading.Lock()
 
         # Category mappings - loaded from database on first detection
         self._pass_categories: Optional[Dict[str, Dict[str, str]]] = None
@@ -610,11 +617,14 @@ class MultiPassGlinerDetector:
         # Use GLiNER through the whitespace-token chunker. Calling predict_entities
         # directly would let GLiNER silently truncate any input exceeding 384
         # whitespace tokens, dropping every entity past the cutoff.
-        raw_entities = self._gliner_detector.predict_chunked(
-            text,
-            labels,
-            threshold=threshold,
-        )
+        # Lock: chunker + predict_entities share the model's fast tokenizer,
+        # which is not thread-safe across parallel passes (see _model_lock).
+        with self._model_lock:
+            raw_entities = self._gliner_detector.predict_chunked(
+                text,
+                labels,
+                threshold=threshold,
+            )
 
         # Convert to PIIEntity format
         entities = []
