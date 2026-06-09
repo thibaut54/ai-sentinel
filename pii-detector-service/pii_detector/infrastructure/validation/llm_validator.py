@@ -44,7 +44,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import httpx
 from pydantic import ValidationError
@@ -61,6 +61,7 @@ from pii_detector.infrastructure.validation.prompt_templates import (
     SYSTEM_PROMPT,
     VERDICT_SCHEMA,
     build_user_prompt,
+    load_per_type_prompts,
 )
 
 logger = logging.getLogger(__name__)
@@ -459,6 +460,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         http_client: Optional[httpx.Client] = None,
         audit_sources: Optional[Iterable[DetectorSource]] = None,
         system_prompt: Optional[str] = None,
+        per_type_prompts: Optional[bool] = None,
     ) -> None:
         """Build the validator.
 
@@ -496,6 +498,9 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
                 variant from :data:`prompt_templates.PROMPT_VARIANTS` here to
                 A/B-test prompt formulations without mutating the module
                 constant.
+            per_type_prompts: Enable v7 per-``pii_type`` system prompt
+                routing. Defaults to env ``LLM_JUDGE_PER_TYPE_PROMPTS``, then
+                ``[llm_judge].per_type_prompts``, then ``False``.
         """
         # Precedence: explicit constructor arg > env var > TOML (single
         # source of truth) > hardcoded final fallback.
@@ -564,6 +569,18 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         # so the prompt-comparison eval can inject PROMPT_VARIANTS entries
         # without ever mutating the canonical constant.
         self.system_prompt = system_prompt or SYSTEM_PROMPT
+        self.per_type_prompts = (
+            per_type_prompts
+            if per_type_prompts is not None
+            else _env_bool(
+                "LLM_JUDGE_PER_TYPE_PROMPTS",
+                bool(toml_defaults.get("per_type_prompts", False)),
+            )
+        )
+        self._per_type_name: Optional[str] = None
+        self._per_type_builder: Optional[Callable[[str], str]] = None
+        if self.per_type_prompts:
+            self._per_type_name, self._per_type_builder = load_per_type_prompts()
         self.context_window = context_window
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -595,29 +612,41 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         return self.NAME
 
     def filter(
-        self, text: str, entities: List[PIIEntity]
+        self,
+        text: str,
+        entities: List[PIIEntity],
+        audit_sources: Optional[Set[DetectorSource]] = None,
     ) -> List[PIIEntity]:
-        """Filter entities whose source is in :attr:`audit_sources`.
+        """Filter entities whose source is in the audited set.
 
-        Detectors not listed in :attr:`audit_sources` bypass the LLM and
-        are kept as-is (recall-preserving passthrough). Audited entities
-        are submitted in parallel via the thread-pool executor.
+        Detectors not in the audited set bypass the LLM and are kept as-is
+        (recall-preserving passthrough). Audited entities are submitted in
+        parallel via the thread-pool executor.
 
-        Defaults to ``{GLINER}`` for MVP §2.5 backwards compatibility;
-        extend via :attr:`audit_sources` to also audit OpenMed / Regex /
-        Presidio outputs (spec §10).
+        ``audit_sources`` overrides the instance default for this call only
+        (per-request routing driven by the per-detector judge flags). When
+        ``None`` the instance :attr:`audit_sources` is used (``{GLINER}`` by
+        default for MVP §2.5 backwards compatibility).
         """
-        kept, _rejections = self.filter_with_verdicts(text, entities)
+        kept, _rejections = self.filter_with_verdicts(
+            text, entities, audit_sources=audit_sources
+        )
         return kept
 
     def filter_with_verdicts(
-        self, text: str, entities: List[PIIEntity]
+        self,
+        text: str,
+        entities: List[PIIEntity],
+        audit_sources: Optional[Set[DetectorSource]] = None,
     ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, PiiVerdict]]]:
         """Filter entities and also return the rejected ones with verdicts.
 
         Same semantics as :meth:`filter`, but exposes the discarded
         entities so callers can surface the judge's false-positive
         rejections (e.g. in the gRPC response for measurement purposes).
+
+        ``audit_sources`` overrides the instance default for this call only;
+        see :meth:`filter`.
 
         Returns:
             ``(kept, rejections)`` where ``kept`` preserves the original
@@ -639,7 +668,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
 
         audited_entities: List[PIIEntity] = []
         for entity in entities:
-            if self._is_audited(entity):
+            if self._is_audited(entity, audit_sources):
                 audited_entities.append(entity)
 
         if not audited_entities:
@@ -662,7 +691,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         kept: List[PIIEntity] = []
         rejections: List[Tuple[PIIEntity, PiiVerdict]] = []
         for entity in entities:
-            if not self._is_audited(entity):
+            if not self._is_audited(entity, audit_sources):
                 self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
                 kept.append(entity)
                 continue
@@ -704,23 +733,31 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
 
     # -- Internals -----------------------------------------------------------
 
-    def _is_audited(self, entity: PIIEntity) -> bool:
+    def _is_audited(
+        self,
+        entity: PIIEntity,
+        audit_sources: Optional[Set[DetectorSource]] = None,
+    ) -> bool:
         """Return ``True`` if ``entity`` should be sent to the judge.
 
         Accepts both :class:`DetectorSource` enum values and plain strings
         (legacy paths attach the source as a string in some detectors).
         Unknown or missing sources are treated as non-audited
         (passthrough).
+
+        ``audit_sources`` overrides the instance default for this check only
+        (per-request routing); ``None`` falls back on :attr:`audit_sources`.
         """
+        sources = audit_sources if audit_sources is not None else self.audit_sources
         source = getattr(entity, "source", None)
         if isinstance(source, DetectorSource):
-            return source in self.audit_sources
+            return source in sources
         if isinstance(source, str):
             try:
                 normalised = DetectorSource(source.upper())
             except ValueError:
                 return False
-            return normalised in self.audit_sources
+            return normalised in sources
         return False
 
     @staticmethod
@@ -786,7 +823,15 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             user_prompt = build_user_prompt(
                 entity, text, context_window=self.context_window
             )
-            response_json = self._invoke_remote(user_prompt, request_id)
+            system_prompt = None
+            if self.per_type_prompts and self._per_type_builder is not None:
+                pii_type = getattr(entity, "pii_type", None) or getattr(
+                    entity, "type", "UNKNOWN"
+                )
+                system_prompt = self._per_type_builder(pii_type)
+            response_json = self._invoke_remote(
+                user_prompt, request_id, system_prompt=system_prompt
+            )
             _log_inference_metrics(response_json, request_id)
             payload = _extract_json_payload(response_json)
             return PiiVerdict.model_validate(payload)
@@ -829,11 +874,13 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             self._client = httpx.Client(timeout=self.timeout_seconds)
         return self._client
 
-    def _build_payload(self, user_prompt: str) -> Dict[str, Any]:
+    def _build_payload(
+        self, user_prompt: str, system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": self._resolve_model_id_lazy(),
             "messages": [
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": system_prompt or self.system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             "temperature": self.temperature,
@@ -853,11 +900,13 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             "chat_template_kwargs": {"enable_thinking": False},
         }
 
-    def _invoke_remote(self, user_prompt: str, request_id: str) -> dict:
+    def _invoke_remote(
+        self, user_prompt: str, request_id: str, system_prompt: Optional[str] = None
+    ) -> dict:
         """POST ``/chat/completions`` and return the decoded JSON response."""
         client = self._get_client()
         url = f"{self.base_url}/chat/completions"
-        payload = self._build_payload(user_prompt)
+        payload = self._build_payload(user_prompt, system_prompt=system_prompt)
         start = time.monotonic()
         resp = client.post(url, json=payload, timeout=self.timeout_seconds)
         elapsed = time.monotonic() - start

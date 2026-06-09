@@ -111,6 +111,7 @@ class _FakeServicer:
     _is_judge_enabled_for_entity = staticmethod(
         PIIDetectionServicer._is_judge_enabled_for_entity
     )
+    _audit_sources_from_flags = PIIDetectionServicer._audit_sources_from_flags
 
 
 class TestApplyLlmJudge:
@@ -127,8 +128,44 @@ class TestApplyLlmJudge:
             result = servicer._apply_llm_judge(
                 [gliner], content="hello", request_id="req-1"
             )
-        validator.filter_with_verdicts.assert_called_once_with("hello", [gliner])
+        # No detector_flags passed -> audit_sources resolves to None (validator
+        # falls back on its own default).
+        validator.filter_with_verdicts.assert_called_once_with(
+            "hello", [gliner], audit_sources=None
+        )
         assert result == ([], [(gliner, verdict)])
+
+    def test_should_derive_audit_sources_from_detector_flags(self) -> None:
+        servicer = _FakeServicer()
+        gliner2 = PIIEntity(
+            text="0023 6589 12",
+            pii_type="BANK_ACCOUNT",
+            type_label="BANK_ACCOUNT",
+            start=0,
+            end=12,
+            score=0.9,
+            source=DetectorSource.GLINER2,
+        )
+        validator = MagicMock()
+        validator.filter_with_verdicts.return_value = ([gliner2], [])
+        # Only GLiNER2 has its judge flag ON -> audit set must be {GLINER2}.
+        flags = {
+            "gliner_judge_enabled": False,
+            "presidio_judge_enabled": False,
+            "regex_judge_enabled": False,
+            "openmed_judge_enabled": False,
+            "gliner2_judge_enabled": True,
+        }
+        with patch(
+            "pii_detector.infrastructure.validation.llm_validator.get_instance",
+            return_value=validator,
+        ):
+            servicer._apply_llm_judge(
+                [gliner2], "text", "req-9", None, detector_flags=flags
+            )
+        validator.filter_with_verdicts.assert_called_once_with(
+            "text", [gliner2], audit_sources={DetectorSource.GLINER2}
+        )
 
     def test_should_passthrough_when_entities_empty(self) -> None:
         servicer = _FakeServicer()
@@ -257,7 +294,7 @@ class TestPerTypeJudgeExemption:
             )
         # Only the auditable entity reaches the validator.
         validator.filter_with_verdicts.assert_called_once_with(
-            "text", [judged]
+            "text", [judged], audit_sources=None
         )
         # Exempt entity is kept, original order preserved.
         assert kept == [judged, exempt]

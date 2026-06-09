@@ -46,6 +46,11 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
                 command.defaultThreshold(),
                 command.nbOfLabelByPass(),
                 command.llmJudgeEnabled(),
+                command.glinerJudgeEnabled(),
+                command.presidioJudgeEnabled(),
+                command.regexJudgeEnabled(),
+                command.openmedJudgeEnabled(),
+                command.gliner2JudgeEnabled(),
                 command.prefilterEnabled(),
                 LocalDateTime.now(),
                 command.updatedBy()

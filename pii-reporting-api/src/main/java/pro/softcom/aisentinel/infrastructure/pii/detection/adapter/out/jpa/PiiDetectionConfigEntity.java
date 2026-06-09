@@ -78,6 +78,46 @@ public class PiiDetectionConfigEntity {
     private Boolean llmJudgeEnabled;
 
     /**
+     * Routes the LLM-as-Judge stage for GLiNER findings. Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "gliner_judge_enabled", nullable = false)
+    private Boolean glinerJudgeEnabled;
+
+    /**
+     * Routes the LLM-as-Judge stage for Presidio findings. Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "presidio_judge_enabled", nullable = false)
+    private Boolean presidioJudgeEnabled;
+
+    /**
+     * Routes the LLM-as-Judge stage for regex findings. Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "regex_judge_enabled", nullable = false)
+    private Boolean regexJudgeEnabled;
+
+    /**
+     * Routes the LLM-as-Judge stage for OpenMed findings. Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "openmed_judge_enabled", nullable = false)
+    private Boolean openmedJudgeEnabled;
+
+    /**
+     * Routes the LLM-as-Judge stage for GLiNER2 findings. Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "gliner2_judge_enabled", nullable = false)
+    private Boolean gliner2JudgeEnabled;
+
+    /**
      * Activates the deterministic format pre-filter (IP/MAC/IBAN checksum) that
      * runs before the LLM judge. Defaults to {@code false} for a zero-effect rollout.
      */

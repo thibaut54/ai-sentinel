@@ -314,10 +314,9 @@
         "label": "Deterministic pre-filter",
         "description": "Rejects, before the LLM judge, values whose format is mechanically invalid (IP, MAC, IBAN)."
       },
-      "llmJudge": {
-        "label": "LLM as judge",
-        "description": "LLM judge post-filtering of detections to reduce false positives"
-      }
+      "detectorLabel": "Detector",
+      "judgeLabel": "LLM judge",
+      "judgeAriaLabel": "Enable the LLM judge for {{detector}}"
     },
     "threshold": {
       "label": "Default Confidence Threshold",

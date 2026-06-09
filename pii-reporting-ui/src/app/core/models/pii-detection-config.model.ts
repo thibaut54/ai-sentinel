@@ -10,7 +10,16 @@ export interface PiiDetectionConfig {
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
   prefilterEnabled: boolean;
+  /**
+   * Read-only derived flag: true when at least one per-detector judge toggle is on.
+   * Computed by the backend (OR of the five `*JudgeEnabled` flags); not sent on update.
+   */
   llmJudgeEnabled: boolean;
+  glinerJudgeEnabled: boolean;
+  presidioJudgeEnabled: boolean;
+  regexJudgeEnabled: boolean;
+  openmedJudgeEnabled: boolean;
+  gliner2JudgeEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
   updatedAt?: string;
@@ -27,7 +36,11 @@ export interface UpdatePiiDetectionConfigRequest {
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
   prefilterEnabled: boolean;
-  llmJudgeEnabled: boolean;
+  glinerJudgeEnabled: boolean;
+  presidioJudgeEnabled: boolean;
+  regexJudgeEnabled: boolean;
+  openmedJudgeEnabled: boolean;
+  gliner2JudgeEnabled: boolean;
   defaultThreshold: number;
   nbOfLabelByPass: number;
 }

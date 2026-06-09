@@ -9,8 +9,16 @@ import java.time.LocalDateTime;
  * This is the single source of truth for detection configuration in the system.
  * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2.
  *
- * <p>The {@code llmJudgeEnabled} flag activates the LLM-as-Judge post-filtering
- * stage that audits GLiNER findings to reduce false positives (cf. spec §1.4).
+ * <p>The {@code llmJudgeEnabled} flag is a <strong>derived</strong> global guard:
+ * it equals the logical OR of the five per-detector judge flags. The Python
+ * detector service reads {@code llm_judge_enabled} as a global gate, so it must
+ * stay {@code true} whenever at least one detector has its judge enabled
+ * (cf. spec §1.4). Use {@link #computeGlobalLlmJudgeEnabled} to compute it.
+ *
+ * <p>The per-detector judge flags ({@code glinerJudgeEnabled},
+ * {@code presidioJudgeEnabled}, {@code regexJudgeEnabled},
+ * {@code openmedJudgeEnabled}, {@code gliner2JudgeEnabled}) route the LLM-as-Judge
+ * post-filtering stage on a per-detector basis. They default to {@code false}.
  *
  * <p>The {@code prefilterEnabled} flag activates the deterministic format
  * pre-filter (IP/MAC/IBAN checksum) that runs before the LLM judge.
@@ -25,6 +33,11 @@ public record PiiDetectionConfig(
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
         boolean llmJudgeEnabled,
+        boolean glinerJudgeEnabled,
+        boolean presidioJudgeEnabled,
+        boolean regexJudgeEnabled,
+        boolean openmedJudgeEnabled,
+        boolean gliner2JudgeEnabled,
         boolean prefilterEnabled,
         LocalDateTime updatedAt,
         String updatedBy) {
@@ -61,5 +74,26 @@ public record PiiDetectionConfig(
             throw new IllegalArgumentException(
                     "Number of labels by pass must be at least 1");
         }
+    }
+
+    /**
+     * Computes the derived global LLM-judge guard as the logical OR of the five
+     * per-detector judge flags. The Python detector service reads
+     * {@code llm_judge_enabled} as a global gate, so it must be {@code true}
+     * whenever at least one detector has its judge enabled.
+     *
+     * @return {@code true} if any per-detector judge flag is enabled
+     */
+    public static boolean computeGlobalLlmJudgeEnabled(
+            boolean glinerJudgeEnabled,
+            boolean presidioJudgeEnabled,
+            boolean regexJudgeEnabled,
+            boolean openmedJudgeEnabled,
+            boolean gliner2JudgeEnabled) {
+        return glinerJudgeEnabled
+                || presidioJudgeEnabled
+                || regexJudgeEnabled
+                || openmedJudgeEnabled
+                || gliner2JudgeEnabled;
     }
 }

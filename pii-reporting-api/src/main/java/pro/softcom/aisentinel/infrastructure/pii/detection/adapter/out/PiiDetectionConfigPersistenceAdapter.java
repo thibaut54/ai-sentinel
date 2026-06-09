@@ -82,7 +82,12 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 false, // gliner2Enabled (cf. spec D4 — explicit operator opt-in)
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
-                false, // llmJudgeEnabled (cf. spec §1.4 — zero-effect MVP default)
+                false, // llmJudgeEnabled (derived = OR of per-detector judge flags)
+                false, // glinerJudgeEnabled
+                false, // presidioJudgeEnabled
+                false, // regexJudgeEnabled
+                false, // openmedJudgeEnabled
+                false, // gliner2JudgeEnabled
                 false, // prefilterEnabled (zero-effect rollout default)
                 LocalDateTime.now(),
                 "system"
@@ -106,6 +111,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
                 entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
+                entity.getGlinerJudgeEnabled() != null && entity.getGlinerJudgeEnabled(),
+                entity.getPresidioJudgeEnabled() != null && entity.getPresidioJudgeEnabled(),
+                entity.getRegexJudgeEnabled() != null && entity.getRegexJudgeEnabled(),
+                entity.getOpenmedJudgeEnabled() != null && entity.getOpenmedJudgeEnabled(),
+                entity.getGliner2JudgeEnabled() != null && entity.getGliner2JudgeEnabled(),
                 entity.getPrefilterEnabled() != null && entity.getPrefilterEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
@@ -126,6 +136,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
                 .llmJudgeEnabled(config.llmJudgeEnabled())
+                .glinerJudgeEnabled(config.glinerJudgeEnabled())
+                .presidioJudgeEnabled(config.presidioJudgeEnabled())
+                .regexJudgeEnabled(config.regexJudgeEnabled())
+                .openmedJudgeEnabled(config.openmedJudgeEnabled())
+                .gliner2JudgeEnabled(config.gliner2JudgeEnabled())
                 .prefilterEnabled(config.prefilterEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
                 .updatedBy(config.updatedBy())

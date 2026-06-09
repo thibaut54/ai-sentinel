@@ -15,6 +15,11 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   gliner2Enabled: false,
   prefilterEnabled: false,
   llmJudgeEnabled: true,
+  glinerJudgeEnabled: true,
+  presidioJudgeEnabled: false,
+  regexJudgeEnabled: false,
+  openmedJudgeEnabled: false,
+  gliner2JudgeEnabled: false,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
@@ -43,7 +48,9 @@ const FR_TRANSLATIONS = {
       regex: { label: 'Regex', description: 'desc' },
       openmed: { label: 'OpenMed', description: 'desc' },
       prefilter: { label: 'Pré-filtre déterministe', description: 'desc' },
-      llmJudge: { label: 'LLM as judge', description: 'desc' },
+      detectorLabel: 'Détecteur',
+      judgeLabel: 'Juge LLM',
+      judgeAriaLabel: 'Activer le juge LLM pour {{detector}}',
     },
     messages: { loadError: 'Erreur', saveAllSuccess: 'Sauvegardé', saveAllError: 'Erreur' },
     confluence: { messages: { loadError: 'Erreur', saveSuccess: 'OK', saveError: 'Erreur' } },
@@ -236,11 +243,28 @@ describe('PiiSettingsComponent', () => {
     expect(component.hasUnsavedTypeChanges()).toBe(true);
   });
 
-  it('Should_CreateLlmJudgeEnabledControl_When_FormInitialized', () => {
-    // Then - llmJudgeEnabled control exists and defaults to true
-    const llmJudgeControl = component.configForm.get('llmJudgeEnabled');
-    expect(llmJudgeControl).toBeTruthy();
-    expect(llmJudgeControl?.value).toBe(true);
+  it('Should_CreatePerDetectorJudgeControls_When_FormInitialized', () => {
+    // Then - each per-detector judge control exists on the form
+    for (const control of [
+      'glinerJudgeEnabled',
+      'presidioJudgeEnabled',
+      'regexJudgeEnabled',
+      'openmedJudgeEnabled',
+      'gliner2JudgeEnabled',
+    ]) {
+      expect(component.configForm.get(control)).toBeTruthy();
+    }
+  });
+
+  it('Should_NotCreateGlobalLlmJudgeControl_When_FormInitialized', () => {
+    // Then - the removed global judge control no longer exists on the form
+    expect(component.configForm.get('llmJudgeEnabled')).toBeNull();
+  });
+
+  it('Should_PatchPerDetectorJudgeControls_When_ConfigLoaded', () => {
+    // The MOCK config has the GLINER judge on and the others off.
+    expect(component.configForm.get('glinerJudgeEnabled')?.value).toBe(true);
+    expect(component.configForm.get('presidioJudgeEnabled')?.value).toBe(false);
   });
 
   it('Should_TrackJudgeToggleChange_When_PiiTypeJudgeToggled', () => {
@@ -303,16 +327,20 @@ describe('PiiSettingsComponent', () => {
     expect(component.isDetectorCollapsed('PRESIDIO')).toBe(false);
   });
 
-  it('Should_PreservePerTypeJudgeValue_When_MasterJudgeToggledOff', () => {
-    // Given - the global judge master is on (MOCK config)
-    expect(component.isLlmJudgeMasterEnabled()).toBe(true);
+  it('Should_PreservePerTypeJudgeValue_When_DetectorJudgeToggledOff', () => {
+    // Given - the GLINER judge is on (MOCK config)
+    expect(component.isDetectorJudgeEnabled('GLINER')).toBe(true);
 
-    // When - the global judge master is turned off
-    component.configForm.patchValue({ llmJudgeEnabled: false });
+    // When - the GLINER judge is turned off
+    component.configForm.patchValue({ glinerJudgeEnabled: false });
 
-    // Then - the master reads as off and the per-type values are NOT mutated
-    // (the view derives the off state; no modification is tracked).
-    expect(component.isLlmJudgeMasterEnabled()).toBe(false);
+    // Then - the detector judge reads as off and the per-type values are NOT
+    // mutated (the view derives the off state; no modification is tracked).
+    expect(component.isDetectorJudgeEnabled('GLINER')).toBe(false);
     expect(component.hasUnsavedTypeChanges()).toBe(false);
+  });
+
+  it('Should_DefaultToDisabled_When_DetectorJudgeQueriedForUnknownDetector', () => {
+    expect(component.isDetectorJudgeEnabled('UNKNOWN')).toBe(false);
   });
 });

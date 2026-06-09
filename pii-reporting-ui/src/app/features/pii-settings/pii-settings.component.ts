@@ -202,6 +202,19 @@ export class PiiSettingsComponent implements OnInit {
     GLINER2: 'gliner2Enabled'
   };
 
+  /**
+   * Maps a "Types d'IPI" detector group to its per-detector LLM-judge toggle in
+   * the "Moteur de détection" section. A per-type judge toggle is only editable
+   * when the judge of its owning detector is on.
+   */
+  private static readonly DETECTOR_JUDGE_CONTROL: Readonly<Record<string, string>> = {
+    GLINER: 'glinerJudgeEnabled',
+    PRESIDIO: 'presidioJudgeEnabled',
+    REGEX: 'regexJudgeEnabled',
+    OPENMED: 'openmedJudgeEnabled',
+    GLINER2: 'gliner2JudgeEnabled'
+  };
+
   ngOnInit(): void {
     const tabIndex = this.initialTab();
     const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
@@ -220,7 +233,11 @@ export class PiiSettingsComponent implements OnInit {
       openmedEnabled: [false],
       gliner2Enabled: [false],
       prefilterEnabled: [false],
-      llmJudgeEnabled: [true],
+      glinerJudgeEnabled: [false],
+      presidioJudgeEnabled: [false],
+      regexJudgeEnabled: [false],
+      openmedJudgeEnabled: [false],
+      gliner2JudgeEnabled: [false],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {
@@ -395,7 +412,11 @@ export class PiiSettingsComponent implements OnInit {
           openmedEnabled: detectorConfig.openmedEnabled,
           gliner2Enabled: detectorConfig.gliner2Enabled,
           prefilterEnabled: detectorConfig.prefilterEnabled,
-          llmJudgeEnabled: detectorConfig.llmJudgeEnabled,
+          glinerJudgeEnabled: detectorConfig.glinerJudgeEnabled,
+          presidioJudgeEnabled: detectorConfig.presidioJudgeEnabled,
+          regexJudgeEnabled: detectorConfig.regexJudgeEnabled,
+          openmedJudgeEnabled: detectorConfig.openmedJudgeEnabled,
+          gliner2JudgeEnabled: detectorConfig.gliner2JudgeEnabled,
           defaultThreshold: detectorConfig.defaultThreshold,
           nbOfLabelByPass: detectorConfig.nbOfLabelByPass
         });
@@ -792,7 +813,11 @@ export class PiiSettingsComponent implements OnInit {
         openmedEnabled: this.currentConfig()!.openmedEnabled,
         gliner2Enabled: this.currentConfig()!.gliner2Enabled,
         prefilterEnabled: this.currentConfig()!.prefilterEnabled,
-        llmJudgeEnabled: this.currentConfig()!.llmJudgeEnabled,
+        glinerJudgeEnabled: this.currentConfig()!.glinerJudgeEnabled,
+        presidioJudgeEnabled: this.currentConfig()!.presidioJudgeEnabled,
+        regexJudgeEnabled: this.currentConfig()!.regexJudgeEnabled,
+        openmedJudgeEnabled: this.currentConfig()!.openmedJudgeEnabled,
+        gliner2JudgeEnabled: this.currentConfig()!.gliner2JudgeEnabled,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
       });
@@ -937,13 +962,18 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
-   * Whether the global LLM-as-Judge master toggle is enabled. When off, the
-   * per-type judge toggles are shown off and disabled WITHOUT mutating their
-   * stored values, so re-enabling restores each customisation (and an
-   * untouched config shows them all on).
+   * Whether the per-detector LLM-judge toggle is enabled for the detector that
+   * owns a "Types d'IPI" sub-section. When off, the per-type judge toggles of
+   * that detector are shown off and disabled WITHOUT mutating their stored
+   * values, so re-enabling restores each customisation.
+   * Unknown detectors (no judge control) default to disabled.
    */
-  isLlmJudgeMasterEnabled(): boolean {
-    return !!this.configForm.get('llmJudgeEnabled')?.value;
+  isDetectorJudgeEnabled(detector: string): boolean {
+    const control = PiiSettingsComponent.DETECTOR_JUDGE_CONTROL[detector];
+    if (!control) {
+      return false;
+    }
+    return !!this.configForm.get(control)?.value;
   }
 
   /**

@@ -314,10 +314,9 @@
         "label": "Pré-filtre déterministe",
         "description": "Rejette avant le juge LLM les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
       },
-      "llmJudge": {
-        "label": "LLM as judge",
-        "description": "Post-filtrage des détections par un juge LLM pour réduire les faux positifs"
-      }
+      "detectorLabel": "Détecteur",
+      "judgeLabel": "Juge LLM",
+      "judgeAriaLabel": "Activer le juge LLM pour {{detector}}"
     },
     "threshold": {
       "label": "Seuil de confiance par défaut",

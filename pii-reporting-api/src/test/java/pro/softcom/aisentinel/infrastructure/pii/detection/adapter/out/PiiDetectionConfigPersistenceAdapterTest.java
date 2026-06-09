@@ -109,6 +109,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             newThreshold,
             30,
             false,
+            false, false, false, false, false,
             false,
             updateTime,
             "integration-test"
@@ -153,6 +154,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             false, false, new BigDecimal("0.75"),
             30,
             true,
+            true, false, false, false, false,
             false,
             LocalDateTime.now(),
             "judge-enabler"
@@ -181,6 +183,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             false, false, new BigDecimal("0.75"),
             30,
             false,
+            false, false, false, false, false,
             true,
             LocalDateTime.now(),
             "prefilter-enabler"
@@ -194,6 +197,56 @@ class PiiDetectionConfigPersistenceAdapterTest {
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(reloaded.prefilterEnabled()).isTrue();
         softly.assertThat(entity.getPrefilterEnabled()).isTrue();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_RoundTripPerDetectorJudgeFlags_When_Persisted() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            CONFIG_ID,
+            true, true, true, false, false, new BigDecimal("0.75"),
+            30,
+            true,
+            true, false, true, false, true,
+            false,
+            LocalDateTime.now(),
+            "per-detector-judge"
+        );
+
+        persistenceAdapter.updateConfig(config);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.glinerJudgeEnabled()).isTrue();
+        softly.assertThat(reloaded.presidioJudgeEnabled()).isFalse();
+        softly.assertThat(reloaded.regexJudgeEnabled()).isTrue();
+        softly.assertThat(reloaded.openmedJudgeEnabled()).isFalse();
+        softly.assertThat(reloaded.gliner2JudgeEnabled()).isTrue();
+        softly.assertThat(entity.getGlinerJudgeEnabled()).isTrue();
+        softly.assertThat(entity.getPresidioJudgeEnabled()).isFalse();
+        softly.assertThat(entity.getRegexJudgeEnabled()).isTrue();
+        softly.assertThat(entity.getOpenmedJudgeEnabled()).isFalse();
+        softly.assertThat(entity.getGliner2JudgeEnabled()).isTrue();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_DefaultPerDetectorJudgeFlagsToFalse_When_DefaultConfigCreated() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig config = persistenceAdapter.findConfig();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(config.glinerJudgeEnabled()).isFalse();
+        softly.assertThat(config.presidioJudgeEnabled()).isFalse();
+        softly.assertThat(config.regexJudgeEnabled()).isFalse();
+        softly.assertThat(config.openmedJudgeEnabled()).isFalse();
+        softly.assertThat(config.gliner2JudgeEnabled()).isFalse();
+        softly.assertThat(config.llmJudgeEnabled()).isFalse();
         softly.assertAll();
     }
 }

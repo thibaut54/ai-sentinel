@@ -21,11 +21,22 @@ import java.math.BigDecimal;
  * @param openmedEnabled   Whether OpenMed detector should be enabled
  * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
- * @param nbOfLabelByPass  Maximum labels per detector batch
- * @param llmJudgeEnabled  Whether the LLM-as-Judge post-filtering stage is enabled.
- *                         Optional in the payload: when omitted, defaults to {@code false}.
- * @param prefilterEnabled Whether the deterministic format pre-filter stage is enabled.
- *                         Optional in the payload: when omitted, defaults to {@code false}.
+ * @param nbOfLabelByPass     Maximum labels per detector batch
+ * @param llmJudgeEnabled     Deprecated/ignored: the global guard is now derived server-side
+ *                            as the OR of the five per-detector judge flags. Kept optional for
+ *                            backward compatibility; any incoming value is ignored.
+ * @param glinerJudgeEnabled  Whether the LLM-as-Judge stage runs on GLiNER findings.
+ *                            Optional: when omitted, defaults to {@code false}.
+ * @param presidioJudgeEnabled Whether the LLM-as-Judge stage runs on Presidio findings.
+ *                            Optional: when omitted, defaults to {@code false}.
+ * @param regexJudgeEnabled   Whether the LLM-as-Judge stage runs on regex findings.
+ *                            Optional: when omitted, defaults to {@code false}.
+ * @param openmedJudgeEnabled Whether the LLM-as-Judge stage runs on OpenMed findings.
+ *                            Optional: when omitted, defaults to {@code false}.
+ * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings.
+ *                            Optional: when omitted, defaults to {@code false}.
+ * @param prefilterEnabled    Whether the deterministic format pre-filter stage is enabled.
+ *                            Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("glinerEnabled")
@@ -62,6 +73,21 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("llmJudgeEnabled")
     Boolean llmJudgeEnabled,
 
+    @JsonProperty("glinerJudgeEnabled")
+    Boolean glinerJudgeEnabled,
+
+    @JsonProperty("presidioJudgeEnabled")
+    Boolean presidioJudgeEnabled,
+
+    @JsonProperty("regexJudgeEnabled")
+    Boolean regexJudgeEnabled,
+
+    @JsonProperty("openmedJudgeEnabled")
+    Boolean openmedJudgeEnabled,
+
+    @JsonProperty("gliner2JudgeEnabled")
+    Boolean gliner2JudgeEnabled,
+
     @JsonProperty("prefilterEnabled")
     Boolean prefilterEnabled
 ) {
@@ -85,6 +111,46 @@ public record UpdatePiiDetectionConfigRequestDto(
      */
     public boolean llmJudgeEnabledOrDefault() {
         return llmJudgeEnabled != null && llmJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code glinerJudgeEnabled} flag with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean glinerJudgeEnabledOrDefault() {
+        return glinerJudgeEnabled != null && glinerJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code presidioJudgeEnabled} flag with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean presidioJudgeEnabledOrDefault() {
+        return presidioJudgeEnabled != null && presidioJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code regexJudgeEnabled} flag with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean regexJudgeEnabledOrDefault() {
+        return regexJudgeEnabled != null && regexJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code openmedJudgeEnabled} flag with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean openmedJudgeEnabledOrDefault() {
+        return openmedJudgeEnabled != null && openmedJudgeEnabled;
+    }
+
+    /**
+     * Returns the {@code gliner2JudgeEnabled} flag with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean gliner2JudgeEnabledOrDefault() {
+        return gliner2JudgeEnabled != null && gliner2JudgeEnabled;
     }
 
     /**

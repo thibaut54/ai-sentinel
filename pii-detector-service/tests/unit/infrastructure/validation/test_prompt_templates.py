@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import pytest
 from pydantic import ValidationError
 
+from pii_detector.infrastructure.validation import prompt_templates as pt
 from pii_detector.infrastructure.validation.prompt_templates import (
     ACTIVE_VARIANT,
     DEFAULT_CONTEXT_WINDOW,
@@ -22,9 +23,16 @@ from pii_detector.infrastructure.validation.prompt_templates import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_CONTEXT_AWARE,
     VERDICT_SCHEMA,
+    build_per_type_system_prompt,
     build_user_prompt,
     extract_context,
+    load_per_type_prompts,
 )
+
+try:
+    import tomllib  # type: ignore[import-not-found]  # Python 3.11+
+except ImportError:  # pragma: no cover - py3.9/3.10 fallback
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +190,59 @@ class TestContextAwareVariant:
         assert SYSTEM_PROMPT_CONTEXT_AWARE.index("CONTEXTE (CRITIQUE") < (
             SYSTEM_PROMPT_CONTEXT_AWARE.index("REGLES DE SORTIE (CRITIQUES)")
         )
+
+
+# ---------------------------------------------------------------------------
+# Per-type v7 prompts
+# ---------------------------------------------------------------------------
+
+
+class TestPerTypePrompts:
+    def setup_method(self) -> None:
+        pt._reset_per_type_cache_for_tests()
+
+    def teardown_method(self) -> None:
+        pt._reset_per_type_cache_for_tests()
+
+    def test_load_per_type_prompts_wraps_type_body(self) -> None:
+        name, build = load_per_type_prompts()
+
+        iban = build("IBAN")
+
+        assert name == "v7_per_type_hybrid_ext"
+        assert iban.startswith("/no_think")
+        assert "TYPE = IBAN" in iban
+        assert "SORTIE : JSON STRICT" in iban
+
+    def test_load_per_type_prompts_falls_back_to_default_body(self) -> None:
+        _name, build = load_per_type_prompts()
+
+        unknown = build("TYPE_INCONNU")
+
+        assert unknown.startswith("/no_think")
+        assert "TYPE = voir type_label." in unknown
+        assert "SORTIE : JSON STRICT" in unknown
+
+    def test_build_per_type_system_prompt_uses_loader(self) -> None:
+        prompt = build_per_type_system_prompt("BANK_ACCOUNT")
+
+        assert "TYPE = BANK_ACCOUNT" in prompt
+
+    def test_all_per_type_prompts_keep_output_contract(self) -> None:
+        with open(pt._PER_TYPE_TOML_PATH, "rb") as f:
+            data = tomllib.load(f)
+        common = data["common"]
+        prefix = common["prefix"].strip()
+        suffix = common["suffix"].strip()
+
+        for type_name, block in data["types"].items():
+            prompt = f"{prefix}\n\n{block['body'].strip()}\n\n{suffix}"
+            assert prompt.index("reason") < prompt.index("verdict"), type_name
+            assert "TRUE_POSITIVE" in prompt, type_name
+            assert "FALSE_POSITIVE" in prompt, type_name
+            assert "UNSURE" in prompt, type_name
+            assert "Ne calcule JAMAIS Luhn/mod-97" in prompt, type_name
+            assert "test/exemple" in prompt, type_name
 
 
 # ---------------------------------------------------------------------------

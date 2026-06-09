@@ -80,7 +80,12 @@ class DatabaseConfigAdapter:
                     default_threshold,
                     nb_of_label_by_pass,
                     llm_judge_enabled,
-                    prefilter_enabled
+                    prefilter_enabled,
+                    COALESCE(gliner_judge_enabled, FALSE) AS gliner_judge_enabled,
+                    COALESCE(presidio_judge_enabled, FALSE) AS presidio_judge_enabled,
+                    COALESCE(regex_judge_enabled, FALSE) AS regex_judge_enabled,
+                    COALESCE(openmed_judge_enabled, FALSE) AS openmed_judge_enabled,
+                    COALESCE(gliner2_judge_enabled, FALSE) AS gliner2_judge_enabled
                 FROM pii_detection_config
                 WHERE id = 1
             """
@@ -135,6 +140,19 @@ class DatabaseConfigAdapter:
             config.setdefault("gliner2_enabled", False)
             if config["gliner2_enabled"] is None:
                 config["gliner2_enabled"] = False
+            # Per-detector LLM-judge routing flags (added by migration 012).
+            # Absent / NULL -> False so a pre-migration DB audits nothing extra
+            # and the judge stays a no-op until an operator opts a detector in.
+            for _judge_flag in (
+                "gliner_judge_enabled",
+                "presidio_judge_enabled",
+                "regex_judge_enabled",
+                "openmed_judge_enabled",
+                "gliner2_judge_enabled",
+            ):
+                config.setdefault(_judge_flag, False)
+                if config[_judge_flag] is None:
+                    config[_judge_flag] = False
             logger.info(
                 "Successfully fetched config from database: "
                 f"gliner={config['gliner_enabled']}, "

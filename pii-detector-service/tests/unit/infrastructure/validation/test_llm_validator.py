@@ -46,6 +46,7 @@ from pii_detector.infrastructure.validation.llm_validator import (
 from pii_detector.infrastructure.validation.prompt_templates import (
     PiiVerdict,
     SYSTEM_PROMPT,
+    load_per_type_prompts,
 )
 
 
@@ -401,6 +402,7 @@ def validator_factory(monkeypatch: pytest.MonkeyPatch):
             "LLM_JUDGE_FAIL_OPEN",
             "LLM_JUDGE_BACKEND",
             "LLM_JUDGE_AUDIT_SOURCES",
+            "LLM_JUDGE_PER_TYPE_PROMPTS",
         ):
             monkeypatch.delenv(var, raising=False)
         defaults: Dict[str, Any] = dict(
@@ -584,6 +586,135 @@ class TestSystemPromptInjection:
         validator = validator_factory(system_prompt=custom)
         try:
             assert validator.system_prompt == custom
+        finally:
+            validator.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# per_type_prompts v7 routing
+# ---------------------------------------------------------------------------
+
+
+class TestPerTypePromptRouting:
+    def test_should_disable_per_type_prompts_when_explicitly_false(
+        self, validator_factory
+    ) -> None:
+        # Explicit OFF must skip the builder regardless of the TOML default
+        # (which now ships per_type_prompts=true for the v7 routing).
+        validator = validator_factory(per_type_prompts=False)
+        try:
+            assert validator.per_type_prompts is False
+            assert validator._per_type_builder is None
+        finally:
+            validator.shutdown()
+
+    def test_should_default_per_type_prompts_from_toml(
+        self, validator_factory
+    ) -> None:
+        # No explicit arg, no env -> falls back on the TOML default, which is
+        # now true (v7 per-type routing shipped on by default).
+        validator = validator_factory()
+        try:
+            assert validator.per_type_prompts is True
+            assert validator._per_type_name == "v7_per_type_hybrid_ext"
+            assert validator._per_type_builder is not None
+        finally:
+            validator.shutdown()
+
+    def test_should_enable_per_type_prompts_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("LLM_JUDGE_PER_TYPE_PROMPTS", "1")
+        validator = LLMJudgeValidator(
+            base_url="http://judge.test/v1",
+            preferred_model="qwen/qwen3.6-35b-a3b",
+            timeout_seconds=5.0,
+            max_workers=1,
+            backend=BACKEND_REMOTE,
+        )
+        try:
+            assert validator.per_type_prompts is True
+            assert validator._per_type_name == "v7_per_type_hybrid_ext"
+            assert validator._per_type_builder is not None
+        finally:
+            validator.shutdown()
+
+    def test_should_send_type_specific_system_prompt(
+        self, validator_factory
+    ) -> None:
+        _name, build = load_per_type_prompts()
+        expected_system_prompt = build("BANK_ACCOUNT")
+        validator = validator_factory(per_type_prompts=True)
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json = MagicMock(return_value=_completion_response())
+        response.status_code = 200
+        post = MagicMock(return_value=response)
+        client = MagicMock(spec=httpx.Client)
+        client.post = post
+        validator._client = client
+        validator._owns_client = True
+        entity = _gliner_entity(
+            text="0023 6589 12",
+            pii_type="BANK_ACCOUNT",
+            start=0,
+            end=12,
+        )
+        try:
+            verdict = validator._judge_one("0023 6589 12", entity, "req-v7")
+
+            assert verdict is not None
+            assert verdict.verdict == "TRUE_POSITIVE"
+            _args, kwargs = post.call_args
+            sent_payload = kwargs["json"]
+            assert sent_payload["messages"][0]["content"] == expected_system_prompt
+            assert sent_payload["messages"][1]["role"] == "user"
+        finally:
+            validator.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# Per-call audit_sources override (per-detector judge routing)
+# ---------------------------------------------------------------------------
+
+
+class TestPerCallAuditSources:
+    def test_should_route_audit_by_per_call_sources(
+        self, validator_factory
+    ) -> None:
+        """``filter`` honours a per-call ``audit_sources`` set: only entities
+        whose source is in that set are judged; the rest pass through. This is
+        the per-detector judge routing driven by the DB flags."""
+        validator = validator_factory()  # instance default audit_sources={GLINER}
+        response = MagicMock()
+        response.raise_for_status = MagicMock()
+        response.json = MagicMock(
+            return_value=_completion_response(verdict="FALSE_POSITIVE")
+        )
+        response.status_code = 200
+        post = MagicMock(return_value=response)
+        client = MagicMock(spec=httpx.Client)
+        client.post = post
+        validator._client = client
+        validator._owns_client = True
+
+        gliner = _gliner_entity(text="John Doe", pii_type="PERSON")
+        openmed = _openmed_entity(text="Tr0ub4dor!", pii_type="PASSWORD")
+        try:
+            # Audit OPENMED only, NOT the instance default (GLINER).
+            kept = validator.filter(
+                "John Doe Tr0ub4dor!",
+                [gliner, openmed],
+                audit_sources={DetectorSource.OPENMED},
+            )
+            kept_values = {e.text for e in kept}
+
+            # GLINER entity is not in scope -> kept untouched (passthrough).
+            assert "John Doe" in kept_values
+            # OPENMED entity was judged FALSE_POSITIVE -> rejected.
+            assert "Tr0ub4dor!" not in kept_values
+            # Exactly one HTTP call: only the OPENMED entity was judged.
+            assert post.call_count == 1
         finally:
             validator.shutdown()
 
@@ -867,7 +998,9 @@ class TestLLMJudgeValidatorFailOpen:
         try:
             # Wire a failing judge through the real ``_judge_one`` path so
             # the actual error handling kicks in.
-            def fake_invoke(prompt: str, request_id: str) -> dict:
+            def fake_invoke(
+                prompt: str, request_id: str, system_prompt: Optional[str] = None
+            ) -> dict:
                 raise httpx.TimeoutException("slow")
 
             validator._invoke_remote = fake_invoke  # type: ignore[assignment]
@@ -882,7 +1015,9 @@ class TestLLMJudgeValidatorFailOpen:
     ) -> None:
         validator = validator_factory(fail_open=True)
         try:
-            def fake_invoke(prompt: str, request_id: str) -> dict:
+            def fake_invoke(
+                prompt: str, request_id: str, system_prompt: Optional[str] = None
+            ) -> dict:
                 return {
                     "choices": [
                         {"message": {"content": "", "reasoning_content": ""}}
@@ -902,7 +1037,9 @@ class TestLLMJudgeValidatorFailOpen:
     ) -> None:
         validator = validator_factory(fail_open=True)
         try:
-            def fake_invoke(prompt: str, request_id: str) -> dict:
+            def fake_invoke(
+                prompt: str, request_id: str, system_prompt: Optional[str] = None
+            ) -> dict:
                 # confidence out of range -> Pydantic ValidationError.
                 return {
                     "choices": [
@@ -932,7 +1069,9 @@ class TestLLMJudgeValidatorFailOpen:
     ) -> None:
         validator = validator_factory(fail_open=False)
         try:
-            def fake_invoke(prompt: str, request_id: str) -> dict:
+            def fake_invoke(
+                prompt: str, request_id: str, system_prompt: Optional[str] = None
+            ) -> dict:
                 raise httpx.TimeoutException("slow")
 
             validator._invoke_remote = fake_invoke  # type: ignore[assignment]

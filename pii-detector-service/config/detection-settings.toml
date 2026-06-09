@@ -135,6 +135,8 @@ top_p = 1.0
 context_window_chars = 300                     # ctx_before / ctx_after window
 fail_open = true                               # timeout / error -> entity kept
 use_json_schema = true                         # response_format=json_schema strict
+# Override with LLM_JUDGE_PER_TYPE_PROMPTS=1.
+per_type_prompts = true                        # true -> route system prompt by pii_type (v7)
 
 # Detector sources audited by the LLM judge (post-MVP extension, spec §10).
 # Comma-separated list. Empty / missing -> {GLINER} (MVP default).

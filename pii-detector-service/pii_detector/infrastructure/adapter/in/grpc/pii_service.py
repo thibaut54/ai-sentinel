@@ -14,7 +14,7 @@ import time
 from concurrent import futures
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import grpc
 import psutil
@@ -610,7 +610,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 entities_before_judge = len(entities)
                 judge_start = time.monotonic()
                 entities, discarded_by_judge = self._apply_llm_judge(
-                    entities, content, request_id, pii_type_configs
+                    entities, content, request_id, pii_type_configs,
+                    detector_flags=detector_flags,
                 )
                 judge_elapsed = time.monotonic() - judge_start
                 self._log_throughput(
@@ -780,6 +781,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'gliner2_enabled': db_config.get('gliner2_enabled', False),
                 'llm_judge_enabled': db_config.get('llm_judge_enabled', False),
                 'prefilter_enabled': db_config.get('prefilter_enabled', False),
+                # Per-detector LLM-judge routing: which detector sources the
+                # judge audits. ``llm_judge_enabled`` (above) stays the global
+                # on/off gate (kept as the OR of these by the API); these flags
+                # decide *which* sources are submitted (see _audit_sources_from_flags).
+                'gliner_judge_enabled': db_config.get('gliner_judge_enabled', False),
+                'presidio_judge_enabled': db_config.get('presidio_judge_enabled', False),
+                'regex_judge_enabled': db_config.get('regex_judge_enabled', False),
+                'openmed_judge_enabled': db_config.get('openmed_judge_enabled', False),
+                'gliner2_judge_enabled': db_config.get('gliner2_judge_enabled', False),
             }
 
             logger.info(
@@ -1129,20 +1139,54 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         flag = type_config.get('llm_judge_enabled')
         return True if flag is None else bool(flag)
 
+    # Per-detector judge flag -> the DetectorSource it controls. A detector
+    # whose flag is ON has its findings submitted to the judge; OFF detectors
+    # pass through untouched. The pre-filter is intentionally absent (it is not
+    # a detector source, spec §2.5 / user requirement).
+    _JUDGE_FLAG_TO_SOURCE = {
+        'gliner_judge_enabled': DetectorSource.GLINER,
+        'presidio_judge_enabled': DetectorSource.PRESIDIO,
+        'regex_judge_enabled': DetectorSource.REGEX,
+        'openmed_judge_enabled': DetectorSource.OPENMED,
+        'gliner2_judge_enabled': DetectorSource.GLINER2,
+    }
+
+    @classmethod
+    def _audit_sources_from_flags(
+        cls, detector_flags: Optional[dict]
+    ) -> Optional[Set[DetectorSource]]:
+        """Build the set of audited :class:`DetectorSource` from per-detector
+        judge flags.
+
+        Returns ``None`` when ``detector_flags`` is missing, so the validator
+        falls back on its own default (``{GLINER}``) — preserving the legacy
+        env/TOML-driven behaviour for callers that don't pass flags.
+        """
+        if not detector_flags:
+            return None
+        return {
+            source
+            for flag, source in cls._JUDGE_FLAG_TO_SOURCE.items()
+            if bool(detector_flags.get(flag, False))
+        }
+
     def _apply_llm_judge(
         self,
         entities: List,
         content: str,
         request_id: str,
         pii_type_configs: Optional[dict] = None,
+        detector_flags: Optional[dict] = None,
     ) -> tuple:
         """Run the LLM judge post-filter on the merged entity list.
 
         The validator is built lazily via the singleton accessor so that
         when ``llm_judge_enabled=false`` the module is never imported and
         no thread / metric is allocated (zero overhead -- spec section
-        5.3). Only entities with ``source == DetectorSource.GLINER`` are
-        audited; the rest passes through untouched (spec section 2.5).
+        5.3). The set of audited sources is derived per-request from the
+        per-detector judge flags (``detector_flags``); a detector whose judge
+        flag is OFF passes through untouched (spec section 2.5). When
+        ``detector_flags`` is absent the validator default applies.
 
         Entities whose pii_type has ``llm_judge_enabled=false`` in
         ``pii_type_configs`` are exempt from the judge and pass through
@@ -1180,10 +1224,11 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             )
 
             validator = get_llm_judge()
+            audit_sources = self._audit_sources_from_flags(detector_flags)
             before_count = len(auditable)
             judge_start = time.monotonic()
             filtered, rejections = validator.filter_with_verdicts(
-                content, auditable
+                content, auditable, audit_sources=audit_sources
             )
             elapsed = time.monotonic() - judge_start
             rejected = before_count - len(filtered)

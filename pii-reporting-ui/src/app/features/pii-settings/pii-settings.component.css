@@ -1098,29 +1098,34 @@
 }
 
 /* ============================================================
-   LLM-judge detector styling (card / avatar) -- reuses the
-   indigo gliner2 palette as a coherent dedicated variant
+   Per-detector switches: detector activation + LLM-judge toggle
+   on a single row, each with a compact caption.
    ============================================================ */
-.detector-card.llm-judge.enabled {
-  border-color: var(--sentinel-gliner2-border);
-  background: var(--sentinel-gliner2-bg);
+.detector-switches {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-.detector-card.llm-judge.disabled {
-  border-color: var(--sentinel-border-default);
-  background: var(--sentinel-bg-surface);
+.detector-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
-.detector-avatar.llm-judge {
-  background: var(--sentinel-gliner2-avatar-bg);
-  color: var(--sentinel-gliner2-fg);
-  border: 1px solid var(--sentinel-gliner2-avatar-border);
+.detector-switch-label {
+  font-size: 11px;
+  color: var(--sentinel-text-secondary);
+  white-space: nowrap;
 }
 
-.detector-avatar.llm-judge.disabled-avatar {
-  background: var(--sentinel-bg-input-disabled);
-  color: var(--sentinel-text-subtle);
-  border-color: var(--sentinel-border-medium);
+/* ::ng-deep needed: PrimeNG toggleswitch internal structure */
+:host .detector-switches ::ng-deep .p-toggleswitch {
+  transform: scale(0.85);
+  transform-origin: center;
 }
 
 /* GLiNER2 per-type inference description editor */

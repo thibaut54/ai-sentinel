@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, Literal, Tuple
+from typing import Any, Callable, Dict, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -123,6 +123,83 @@ SYSTEM_PROMPT = PROMPT_VARIANTS[ACTIVE_VARIANT]
 # Back-compat alias kept for imports/tests; identical to SYSTEM_PROMPT whenever
 # v2_context_aware is the active variant.
 SYSTEM_PROMPT_CONTEXT_AWARE = PROMPT_VARIANTS.get("v2_context_aware", SYSTEM_PROMPT)
+
+
+# Per-type prompt spec used by the opt-in v7 routing. It is loaded lazily so a
+# deployment without this file keeps importing cleanly while the flag is off.
+_PER_TYPE_TOML_PATH = (
+    Path(__file__).resolve().parents[3] / "config" / "llm-judge-prompts-per-type.toml"
+)
+_PER_TYPE_CACHE: Optional[Tuple[str, Callable[[str], str]]] = None
+
+
+def load_per_type_prompts(
+    path: Path = _PER_TYPE_TOML_PATH,
+) -> Tuple[str, Callable[[str], str]]:
+    """Load per-type prompts and return ``(name, builder)``.
+
+    ``builder(pii_type)`` mirrors the benchmark contract:
+    ``prefix + "\\n\\n" + body + "\\n\\n" + suffix``, with fallback to
+    ``[types._default]`` for unknown ``pii_type`` values.
+
+    Raises:
+        RuntimeError: if the file is missing, malformed, or does not expose the
+            common prefix/suffix and a default type body.
+    """
+    global _PER_TYPE_CACHE
+    if _PER_TYPE_CACHE is not None:
+        return _PER_TYPE_CACHE
+
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"Per-type LLM-judge prompts file not found: {path} "
+            "(required when per_type_prompts is enabled)."
+        ) from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise RuntimeError(f"Could not parse {path}: {exc}") from exc
+
+    name = data.get("name", "per_type")
+    common = data.get("common", {})
+    raw_types = data.get("types", {})
+    prefix = (common.get("prefix") or "").strip()
+    suffix = (common.get("suffix") or "").strip()
+    if not prefix or not suffix or not isinstance(raw_types, dict):
+        raise RuntimeError(
+            f"{path}: expected [common].prefix/suffix and [types.*] blocks."
+        )
+
+    bodies: Dict[str, str] = {
+        key: (block.get("body") or "").strip()
+        for key, block in raw_types.items()
+        if isinstance(block, dict)
+    }
+    default_body = bodies.get("_default", "")
+    if not bodies or not default_body:
+        raise RuntimeError(
+            f"{path}: expected non-empty [types.*] and [types._default].body."
+        )
+
+    def builder(pii_type: str) -> str:
+        body = bodies.get(pii_type, default_body)
+        return f"{prefix}\n\n{body}\n\n{suffix}"
+
+    _PER_TYPE_CACHE = (name, builder)
+    return _PER_TYPE_CACHE
+
+
+def build_per_type_system_prompt(pii_type: str) -> str:
+    """Return the per-type system prompt for ``pii_type``."""
+    _name, builder = load_per_type_prompts()
+    return builder(pii_type)
+
+
+def _reset_per_type_cache_for_tests() -> None:
+    """Reset the cached per-type prompt builder (test-only helper)."""
+    global _PER_TYPE_CACHE
+    _PER_TYPE_CACHE = None
 
 
 # Default context window when neither the caller nor the TOML overrides it.
@@ -294,6 +371,8 @@ __all__ = [
     "SYSTEM_PROMPT_CONTEXT_AWARE",
     "VERDICT_SCHEMA",
     "VerdictLiteral",
+    "build_per_type_system_prompt",
     "build_user_prompt",
     "extract_context",
+    "load_per_type_prompts",
 ]
