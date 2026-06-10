@@ -121,6 +121,13 @@ class TestPIIDetectionServicer:
             }
         ]
         detector.mask_pii.return_value = ("Masked content", [])
+        # The servicer prefers detect_pii_with_stats(...) -> (entities, stats)
+        # when the detector exposes it (the in-process composite path).
+        # Delegate to detect_pii so the existing return_value/side_effect wiring
+        # and detect_pii.assert_called_* checks keep working.
+        detector.detect_pii_with_stats.side_effect = (
+            lambda content, threshold, **kw: (detector.detect_pii(content, threshold, **kw), [])
+        )
         return detector
     
     @pytest.fixture
@@ -420,6 +427,13 @@ class TestMemoryLimitedServer:
                 ('grpc.max_receive_message_length', 10 * 1024 * 1024),
                 ('grpc.max_send_message_length', 10 * 1024 * 1024),
                 ('grpc.max_concurrent_streams', 100),
+                # Keepalive/connection-age tuning for long (minutes-scale)
+                # inferences that send no DATA frames — see serve().
+                ('grpc.http2.max_pings_without_data', 0),
+                ('grpc.http2.min_time_between_pings_ms', 10_000),
+                ('grpc.keepalive_permit_without_calls', 1),
+                ('grpc.max_connection_age_ms', 0x7FFFFFFF),
+                ('grpc.max_connection_idle_ms', 0x7FFFFFFF),
             ]
         )
         
@@ -808,6 +822,11 @@ class TestDetectPIIAdditional:
         detector = Mock()
         detector.detect_pii.return_value = []
         detector._apply_masks = Mock(return_value="masked")
+        # Servicer prefers detect_pii_with_stats(...) -> (entities, stats);
+        # delegate to detect_pii (see fixture above for rationale).
+        detector.detect_pii_with_stats.side_effect = (
+            lambda content, threshold, **kw: (detector.detect_pii(content, threshold, **kw), [])
+        )
         return detector
     
     @patch('pii_detector.infrastructure.adapter.in.grpc.pii_service.get_detector_instance')
@@ -902,6 +921,11 @@ class TestIntegration:
             }
         ]
         mock_detector._apply_masks = Mock(return_value="***@***.com")
+        # Servicer prefers detect_pii_with_stats(...) -> (entities, stats);
+        # delegate to detect_pii so the assertions below still hold.
+        mock_detector.detect_pii_with_stats.side_effect = (
+            lambda content, threshold, **kw: (mock_detector.detect_pii(content, threshold, **kw), [])
+        )
         mock_get_detector.return_value = mock_detector
         
         mock_response = Mock()

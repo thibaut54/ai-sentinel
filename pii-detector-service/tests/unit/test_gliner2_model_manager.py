@@ -194,8 +194,15 @@ class TestGliner2RuntimeConfig:
     """``DetectionConfig`` carries the [gliner2].runtime TOML default."""
 
     def test_Should_DefaultRuntimeToTomlValue_When_NotProvided(self):
-        # The shipped detection-settings.toml declares runtime = "fastgliner".
-        assert DetectionConfig().gliner2_runtime == "fastgliner"
+        # Assert the wiring (config surfaces the [gliner2].runtime TOML value)
+        # without coupling to a specific tuning choice: the shipped default has
+        # toggled between "fastgliner" and "pytorch" (fast_gliner ships no
+        # Windows wheel). Read the expected value from the same loader the
+        # config uses so this test tracks the TOML rather than a literal.
+        from pii_detector.application.config import detection_policy
+
+        expected = detection_policy._load_llm_config().get("gliner2", {}).get("runtime")
+        assert DetectionConfig().gliner2_runtime == expected
 
     def test_Should_LeaveRuntimeNone_When_SectionAbsent(self, monkeypatch):
         from pii_detector.application.config import detection_policy

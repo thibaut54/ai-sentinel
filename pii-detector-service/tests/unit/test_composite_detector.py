@@ -111,16 +111,25 @@ class TestCompositePIIDetector:
     def test_Should_HandleMLFailure_When_ExceptionThrown(
         self, mock_presidio_class, mock_ml_detector, mock_regex_detector
     ):
-        """Should continue with regex if ML detector fails."""
+        """Should re-raise when the ML detector fails.
+
+        ML failures (OOM, model crash, thread deadlock) are intentionally
+        propagated rather than swallowed: ``_run_ml_detection`` logs the full
+        stack trace at ERROR and re-raises so the gRPC client gets a real
+        INTERNAL error instead of a silently degraded Presidio/Regex-only
+        response that loses findings. Regex/OpenMed failures, by contrast, are
+        still swallowed — the asymmetry is deliberate.
+        """
         # Mock presidio detector
         mock_presidio = Mock()
         mock_presidio.detect_pii.return_value = []
         mock_presidio_class.return_value = mock_presidio
-        
+
         # ML detector throws exception
         mock_ml_detector.detect_pii.side_effect = Exception("ML failed")
-        
-        # Regex detector returns entity
+
+        # Regex detector returns entity (would be used only if ML degraded
+        # gracefully — which it no longer does).
         regex_entity = PIIEntity(
             text="test@example.com",
             pii_type="EMAIL",
@@ -130,18 +139,15 @@ class TestCompositePIIDetector:
             score=0.95
         )
         mock_regex_detector.detect_pii.return_value = [regex_entity]
-        
+
         composite = CompositePIIDetector(
             ml_detector=mock_ml_detector,
             regex_detector=mock_regex_detector
         )
-        
+
         text = "test@example.com"
-        entities = composite.detect_pii(text)
-        
-        # Should still return regex results
-        assert len(entities) >= 1
-        assert any(e.pii_type == "EMAIL" for e in entities)
+        with pytest.raises(Exception, match="ML failed"):
+            composite.detect_pii(text)
     
     @patch('pii_detector.application.orchestration.composite_detector.PresidioDetector')
     def test_Should_HandleRegexFailure_When_ExceptionThrown(

@@ -1,13 +1,14 @@
 """
 Unit tests for ``OpenMedDetector``.
 
-The detector delegates inference to ``openmed.extract_pii``, which loads the
-HuggingFace model (~2.8 GB) lazily. All tests here inject a mocked
-``_extract_pii`` so no model is loaded.
+The detector caches a ``PrivacyFilterTorchPipeline`` (loaded lazily, ~2.7 GB)
+and calls it directly; the pipeline returns HF token-classification dicts
+(``entity_group``/``score``/``start``/``end``/``word``). All tests here inject
+a mocked ``_pipeline`` so no model is loaded.
 
 Coverage focuses on:
 - runtime config resolution (label mapping + per-type thresholds)
-- conversion of ``openmed`` ``EntityPrediction`` -> domain ``PIIEntity``
+- conversion of the pipeline's HF dicts -> domain ``PIIEntity``
 - per-type threshold filtering
 - masking
 - transformers version guard
@@ -26,24 +27,22 @@ from pii_detector.infrastructure.detector.openmed_detector import OpenMedDetecto
 
 
 def _fake_entity(label: str, confidence: float, start: int, end: int, text: str = ""):
-    """Build a stand-in for ``openmed.EntityPrediction``."""
-    ent = MagicMock()
-    ent.label = label
-    ent.confidence = confidence
-    ent.start = start
-    ent.end = end
-    ent.text = text
-    return ent
+    """Build a stand-in for one HF token-classification dict emitted by the
+    ``PrivacyFilterTorchPipeline`` (``entity_group``/``score``/``start``/
+    ``end``/``word``)."""
+    return {
+        "entity_group": label,
+        "score": confidence,
+        "start": start,
+        "end": end,
+        "word": text,
+    }
 
 
 def _build_detector(entities) -> OpenMedDetector:
-    """Wire a detector with a mocked ``extract_pii`` returning ``entities``."""
+    """Wire a detector with a mocked pipeline returning HF-style ``entities``."""
     detector = OpenMedDetector()
-    fake_result = MagicMock()
-    fake_result.entities = entities
-
-    fake_extract = MagicMock(return_value=fake_result)
-    detector._extract_pii = fake_extract
+    detector._pipeline = MagicMock(return_value=list(entities))
     detector._loaded = True
     return detector
 
@@ -164,35 +163,50 @@ class TestMasking:
 
 class TestErrorHandling:
     def test_Should_RaisePIIDetectionError_When_TransformersVersionTooLow(self, monkeypatch):
+        import sys
+        import types
+
         detector = OpenMedDetector()
 
-        class FakeOpenMed:
-            extract_pii = MagicMock()
+        # Make `from openmed.torch.privacy_filter import PrivacyFilterTorchPipeline`
+        # succeed so _ensure_loaded reaches the transformers version guard.
+        openmed_mod = types.ModuleType("openmed")
+        torch_mod = types.ModuleType("openmed.torch")
+        pf_mod = types.ModuleType("openmed.torch.privacy_filter")
+        pf_mod.PrivacyFilterTorchPipeline = MagicMock()
+        openmed_mod.torch = torch_mod
+        torch_mod.privacy_filter = pf_mod
+        monkeypatch.setitem(sys.modules, "openmed", openmed_mod)
+        monkeypatch.setitem(sys.modules, "openmed.torch", torch_mod)
+        monkeypatch.setitem(sys.modules, "openmed.torch.privacy_filter", pf_mod)
 
-        class FakeTransformers:
-            __version__ = "4.57.0"
-
-        monkeypatch.setitem(__import__("sys").modules, "openmed", FakeOpenMed)
-        monkeypatch.setitem(__import__("sys").modules, "transformers", FakeTransformers)
+        fake_transformers = types.ModuleType("transformers")
+        fake_transformers.__version__ = "4.57.0"
+        monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
 
         from pii_detector.domain.exception.exceptions import PIIDetectionError
         with pytest.raises(PIIDetectionError, match="transformers >= 5.0"):
             detector._ensure_loaded()
 
     def test_Should_RaisePIIDetectionError_When_OpenMedLibraryMissing(self, monkeypatch):
-        detector = OpenMedDetector()
-
         import builtins
+        import sys
+
+        detector = OpenMedDetector()
         real_import = builtins.__import__
 
         def deny_openmed(name, *args, **kwargs):
-            if name == "openmed":
+            # `from openmed.torch.privacy_filter import X` calls
+            # __import__("openmed.torch.privacy_filter", ...), so match the
+            # whole openmed package tree.
+            if name == "openmed" or name.startswith("openmed."):
                 raise ImportError("openmed not installed")
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", deny_openmed)
-        # Also clear any cached openmed module
-        monkeypatch.delitem(__import__("sys").modules, "openmed", raising=False)
+        # Clear any cached openmed modules so the import actually re-runs.
+        for mod in ("openmed", "openmed.torch", "openmed.torch.privacy_filter"):
+            monkeypatch.delitem(sys.modules, mod, raising=False)
 
         from pii_detector.domain.exception.exceptions import PIIDetectionError
         with pytest.raises(PIIDetectionError, match="openmed"):
