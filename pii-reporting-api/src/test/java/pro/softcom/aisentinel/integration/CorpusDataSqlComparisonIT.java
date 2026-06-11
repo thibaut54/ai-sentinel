@@ -1,13 +1,19 @@
 package pro.softcom.aisentinel.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.tika.Tika;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Volume;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +65,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -105,7 +112,6 @@ import java.util.stream.Stream;
 @SpringBootTest(classes = AiSentinelApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-//@EnabledIfEnvironmentVariable(named = "RUN_CORPUS_DATA_SQL_COMPARISON", matches = "true")
 class CorpusDataSqlComparisonIT {
 
     private static final Logger log = LoggerFactory.getLogger(CorpusDataSqlComparisonIT.class);
@@ -163,7 +169,11 @@ class CorpusDataSqlComparisonIT {
         .withExposedPorts(GRPC_PORT)
         .withNetwork(NETWORK)
         .withNetworkAliases("pii-detector")
-        .withFileSystemBind(ensureHfCacheDir(), "/app/.cache/huggingface")
+        .withCreateContainerCmdModifier(cmd -> {
+            HostConfig hc = cmd.getHostConfig() != null ? cmd.getHostConfig() : new HostConfig();
+            hc.withBinds(new Bind(ensureHfCacheDir(), new Volume("/app/.cache/huggingface")));
+            cmd.withHostConfig(hc);
+        })
         .withEnv("HF_HOME", "/app/.cache/huggingface")
         .withEnv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
         .withEnv("DB_HOST", POSTGRES_ALIAS)
@@ -249,7 +259,7 @@ class CorpusDataSqlComparisonIT {
             .withFileFromPath("pii-detector-service/docker-entrypoint.sh",
                 detectorRoot.resolve("docker-entrypoint.sh"))
             .withFileFromPath("proto", repoRoot.resolve("proto"))
-            .withDockerfilePath("pii-detector-service/Dockerfile");
+            .withDockerfile(detectorRoot.resolve("Dockerfile"));
     }
 
     @DynamicPropertySource
@@ -285,8 +295,6 @@ class CorpusDataSqlComparisonIT {
     @Autowired private DataSource dataSource;
     @Autowired private PiiDetectorClient piiDetectorClient;
     @Autowired private HtmlContentParser htmlContentParser;
-
-    private static final Tika TIKA = new Tika();
 
     private String parseWithTika(Path file) throws Exception {
         // Bypass {@code Tika.parseToString}'s implicit {@code
@@ -391,12 +399,18 @@ class CorpusDataSqlComparisonIT {
     @Order(1)
     void runBaseline() throws Exception {
         runVariant("baseline", "classpath:data.sql");
+        assertThat(Paths.get(OUTPUT_ROOT, "baseline", "report.md").toAbsolutePath())
+            .as("baseline report.md should be written after variant run")
+            .exists();
     }
 
     @Test
     @Order(2)
     void runImproved() throws Exception {
         runVariant("improved", "classpath:sql/data-improved.sql");
+        assertThat(Paths.get(OUTPUT_ROOT, "improved", "report.md").toAbsolutePath())
+            .as("improved report.md should be written after variant run")
+            .exists();
     }
 
     /**
@@ -416,6 +430,9 @@ class CorpusDataSqlComparisonIT {
     @Order(6)
     void runImprovedV3WithOpenMed() throws Exception {
         runVariant("improved-v3-openmed", "classpath:sql/data-openmed-no-gliner.sql");
+        assertThat(Paths.get(OUTPUT_ROOT, "improved-v3-openmed", "report.md").toAbsolutePath())
+            .as("improved-v3-openmed report.md should be written after variant run")
+            .exists();
     }
 
     /**
@@ -736,7 +753,6 @@ class CorpusDataSqlComparisonIT {
             new java.util.concurrent.atomic.AtomicLong();
         private final java.util.concurrent.atomic.AtomicInteger doneFiles =
             new java.util.concurrent.atomic.AtomicInteger();
-        private final Instant startedAt = Instant.now();
 
         ProgressTracker(long totalCharsToScan, int totalFiles) {
             this.totalCharsToScan = totalCharsToScan;
@@ -773,7 +789,7 @@ class CorpusDataSqlComparisonIT {
             bar.append(']');
 
             log.info(
-                "[{}] [PROGRESS] {} {} files {}/{} chars {}/{} ({}%) velocity {} chars/s ETA {} (last: {})",
+                "[{}] [PROGRESS] {} files {}/{} chars {}/{} ({}%) velocity {} chars/s ETA {} (last: {})",
                 variantName, bar,
                 filesDone, totalFiles,
                 scanned, totalCharsToScan,
@@ -819,7 +835,7 @@ class CorpusDataSqlComparisonIT {
             try {
                 String t = extractText(file);
                 if (t != null) totalChars.addAndGet(t.length());
-            } catch (Throwable ignored) {
+            } catch (Throwable _) {
                 // Unreadable files are skipped both in pre-calc and scan,
                 // so they don't bias the ETA.
             }
@@ -1140,25 +1156,18 @@ class CorpusDataSqlComparisonIT {
      * real file is served by a fully-ready detector.
      */
     private void waitForDetectorReady(String variantName) {
-        Instant deadline = Instant.now().plus(Duration.ofMinutes(15));
-        int attempt = 0;
-        while (Instant.now().isBefore(deadline)) {
-            attempt++;
-            try {
-                piiDetectorClient.analyzeContent("warmup IBAN CH9300762011623852957");
-                log.info("[{}][recovery] pii-detector ready after {} probe(s)", variantName, attempt);
-                return;
-            } catch (Throwable t) {
-                log.info("[{}][recovery] not ready yet (probe {}): {}", variantName, attempt, t.toString());
-                try {
-                    Thread.sleep(5_000L);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
+        try {
+            Awaitility.await()
+                .atMost(Duration.ofMinutes(15))
+                .pollInterval(Duration.ofSeconds(5))
+                .ignoreExceptions()
+                .untilAsserted(() -> {
+                    piiDetectorClient.analyzeContent("warmup IBAN CH9300762011623852957");
+                    log.info("[{}][recovery] pii-detector ready", variantName);
+                });
+        } catch (ConditionTimeoutException e) {
+            log.error("[{}][recovery] pii-detector NOT ready within 15min after restart", variantName);
         }
-        log.error("[{}][recovery] pii-detector NOT ready within 15min after restart", variantName);
     }
 
     /**
@@ -1195,9 +1204,8 @@ class CorpusDataSqlComparisonIT {
                 long backoffMs = 5_000L * attempt;
                 log.warn("[{}] analyze attempt {}/{} failed for {} : {} — retrying in {}ms",
                     variantName, attempt, maxAttempts, relPath, msg, backoffMs);
-                try {
-                    Thread.sleep(backoffMs);
-                } catch (InterruptedException ie) {
+                LockSupport.parkNanos(backoffMs * 1_000_000L);
+                if (Thread.interrupted()) {
                     Thread.currentThread().interrupt();
                     return null;
                 }

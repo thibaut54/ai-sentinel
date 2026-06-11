@@ -1,5 +1,7 @@
 package pro.softcom.aisentinel.integration;
 
+import org.awaitility.Awaitility;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,6 +26,9 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Volume;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -103,9 +108,11 @@ import java.util.stream.Stream;
  *         attachments/*.pdf|...  (scannées via Tika ; images/archives exclues)
  * </pre>
  *
- * <p><b>LLM-as-judge</b> : par défaut le flag {@code llm_judge_enabled} est forcé à
- * {@code true} après le seed ({@code -Dcorpus.scan.judge=false} pour revenir au scan brut)
- * et le judge audite GLINER2 + PRESIDIO + REGEX. Chaque FP écarté par le judge remonte
+ * <p><b>LLM-as-judge</b> : par défaut les flags {@code llm_judge_enabled} (gate global)
+ * et per-detector {@code presidio/regex/gliner2_judge_enabled} (routage des
+ * audit_sources, migration 012) sont forcés à {@code true} après le seed
+ * ({@code -Dcorpus.scan.judge=false} pour revenir au scan brut) : le judge audite
+ * GLINER2 + PRESIDIO + REGEX. Chaque FP écarté par le judge remonte
  * dans la réponse gRPC ({@code discarded_entities}) avec son verdict : le test logge
  * chaque rejet (type de PII + détecteur), les journalise dans
  * {@code judge-discards.jsonl} (corrélés au fichier scanné) et agrège dans le report
@@ -202,12 +209,23 @@ class CorpusGliner2PresidioRegexScanIT {
         System.getProperty("corpus.scan.detector-workers", "8");
 
     /**
-     * Active le LLM-as-judge in-pipeline (flag {@code llm_judge_enabled} forcé à
-     * {@code true} après le seed) pour mesurer son efficacité anti-FP par PII type ×
-     * détecteur. {@code -Dcorpus.scan.judge=false} restaure le scan brut historique.
+     * Active le LLM-as-judge in-pipeline (flags {@code llm_judge_enabled} +
+     * per-detector {@code presidio/regex/gliner2_judge_enabled} forcés à {@code true}
+     * après le seed) pour mesurer son efficacité anti-FP par PII type × détecteur.
+     * {@code -Dcorpus.scan.judge=false} restaure le scan brut historique.
      */
     private static final boolean JUDGE_ENABLED =
         Boolean.parseBoolean(System.getProperty("corpus.scan.judge", "true"));
+
+    /**
+     * Runtime GLiNER2 du détecteur : {@code pytorch} (historique, défaut ici) ou
+     * {@code fastgliner} (ONNX via gline-rs, STRICT quand forcé par l'env : un worker
+     * dont le chargement ONNX échoue meurt et est respawné au lieu de retomber
+     * silencieusement en PyTorch — garantit un run 100% mono-runtime).
+     * Override : {@code -Dcorpus.scan.gliner2-runtime=fastgliner}.
+     */
+    private static final String GLINER2_RUNTIME =
+        System.getProperty("corpus.scan.gliner2-runtime", "pytorch");
 
     /**
      * Base URL LM Studio injectée dans le container ({@code LLM_JUDGE_BASE_URL}).
@@ -269,16 +287,16 @@ class CorpusGliner2PresidioRegexScanIT {
         .withExposedPorts(GRPC_PORT)
         .withNetwork(NETWORK)
         .withNetworkAliases("pii-detector")
-        .withFileSystemBind(ensureHfCacheDir(), "/app/.cache/huggingface")
+        .withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+            new HostConfig().withBinds(new Bind(ensureHfCacheDir(), new Volume("/app/.cache/huggingface")))))
         .withEnv("HF_HOME", "/app/.cache/huggingface")
         .withEnv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
-        // Runtime GLiNER2 STRICT : sans lui, un worker dont le chargement ONNX
-        // échoue (lecture FUSE transitoirement tronquée -> InvalidProtobuf)
-        // retombe SILENCIEUSEMENT en PyTorch et les mesures de vélocité
-        // mélangent les deux runtimes. En strict, le worker meurt et le pool
-        // le respawne (rechargement depuis le staging local) : le run est
-        // garanti 100% fast_gliner ou échoue franchement.
-        .withEnv("GLINER2_RUNTIME", "fastgliner")
+        // Runtime explicite (jamais le défaut "fastgliner-avec-fallback" du code
+        // Python) : en pytorch le run est mono-runtime par construction ; en
+        // fastgliner l'env force le mode STRICT (un worker dont le chargement
+        // ONNX échoue meurt et est respawné au lieu de retomber silencieusement
+        // en PyTorch, ce qui mélangerait les runtimes dans les mesures).
+        .withEnv("GLINER2_RUNTIME", GLINER2_RUNTIME)
         .withEnv("DB_HOST", POSTGRES_ALIAS)
         .withEnv("DB_PORT", "5432")
         .withEnv("DB_NAME", DB_NAME)
@@ -288,10 +306,10 @@ class CorpusGliner2PresidioRegexScanIT {
         // N x torch_threads doit rester <= CPU allouées au container.
         .withEnv("TORCH_NUM_THREADS", DETECTOR_TORCH_THREADS)
         .withEnv("PII_WORKER_PROCESSES", DETECTOR_WORKER_PROCESSES)
-        // Portée du LLM-as-judge : le défaut codé est {GLINER}, qui n'auditerait
-        // RIEN dans ce pipeline GLINER2+PRESIDIO+REGEX (passthrough silencieux).
-        // Inerte quand le judge est désactivé (-Dcorpus.scan.judge=false).
-        .withEnv("LLM_JUDGE_AUDIT_SOURCES", "GLINER2,PRESIDIO,REGEX")
+        // Portée du LLM-as-judge : depuis la migration 012 elle est dérivée par
+        // requête des flags *_judge_enabled lus en DB (forcés par resetAndReseedDb).
+        // L'env LLM_JUDGE_AUDIT_SOURCES n'est plus qu'un fallback DB-injoignable,
+        // jamais le cas ici — on ne l'injecte donc pas.
         // Vide par défaut -> falsy côté Python -> fallback TOML (voir constante).
         .withEnv("LLM_JUDGE_BASE_URL", JUDGE_BASE_URL_OVERRIDE)
         // Python écrit tout (y compris INFO) sur stderr ; on parse le niveau réel pour ne
@@ -1009,12 +1027,9 @@ class CorpusGliner2PresidioRegexScanIT {
                 long backoffMs = 5_000L * attempt;
                 log.warn("[scan] tentative {}/{} échouée sur {} : {} — retry dans {}ms",
                     attempt, maxAttempts, relPath, msg, backoffMs);
-                try {
-                    Thread.sleep(backoffMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return null;
-                }
+                Awaitility.await()
+                    .pollDelay(Duration.ofMillis(backoffMs))
+                    .until(() -> true);
             }
         }
         return null;
@@ -1154,10 +1169,16 @@ class CorpusGliner2PresidioRegexScanIT {
             ScriptUtils.executeSqlScript(conn, new EncodedResource(resource, StandardCharsets.UTF_8));
         }
         if (JUDGE_ENABLED) {
+            // Le routage du judge est per-detector depuis la migration 012 : le Python
+            // dérive les audit_sources des flags *_judge_enabled lus en DB à chaque
+            // requête. llm_judge_enabled reste le gate global (OR dérivé côté API).
             jdbcTemplate.execute(
-                "UPDATE pii_detection_config SET llm_judge_enabled = true WHERE id = 1");
+                "UPDATE pii_detection_config SET llm_judge_enabled = true, "
+                + "presidio_judge_enabled = true, regex_judge_enabled = true, "
+                + "gliner2_judge_enabled = true WHERE id = 1");
         }
-        log.info("[seed] DB reseed depuis {} (llm_judge_enabled={})", SQL_SEED, JUDGE_ENABLED);
+        log.info("[seed] DB reseed depuis {} (judge={} sur PRESIDIO+REGEX+GLINER2)",
+            SQL_SEED, JUDGE_ENABLED);
     }
 
     /**
@@ -1170,12 +1191,14 @@ class CorpusGliner2PresidioRegexScanIT {
         if (!JUDGE_ENABLED) {
             return;
         }
-        String probe = "from pii_detector.infrastructure.validation.llm_validator import LLMJudgeValidator\n"
-            + "import httpx\n"
-            + "v = LLMJudgeValidator()\n"
-            + "r = httpx.get(v.base_url.rstrip('/') + '/models', timeout=15)\n"
-            + "r.raise_for_status()\n"
-            + "print('JUDGE_OK', v.base_url, r.status_code)\n";
+        String probe = """
+            from pii_detector.infrastructure.validation.llm_validator import LLMJudgeValidator
+            import httpx
+            v = LLMJudgeValidator()
+            r = httpx.get(v.base_url.rstrip('/') + '/models', timeout=15)
+            r.raise_for_status()
+            print('JUDGE_OK', v.base_url, r.status_code)
+            """;
         try {
             var result = piiDetector.execInContainer("python", "-c", probe);
             log.info("[judge] pre-flight stdout: {}", result.getStdout().strip());
@@ -1511,7 +1534,7 @@ class CorpusGliner2PresidioRegexScanIT {
             .withFileFromPath("pii-detector-service/docker-entrypoint.sh",
                 detectorRoot.resolve("docker-entrypoint.sh"))
             .withFileFromPath("proto", repoRoot.resolve("proto"))
-            .withDockerfilePath("pii-detector-service/Dockerfile");
+            .withDockerfile(detectorRoot.resolve("Dockerfile"));
     }
 
     // ========================================================================

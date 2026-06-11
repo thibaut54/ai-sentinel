@@ -126,14 +126,14 @@ class FormatPrefilterValidator(PIIPostFilterProtocol):
       fail-open).
     """
 
-    NAME = "format-prefilter"
+    SOURCE_NAME = "format-prefilter"
 
     # -- PIIPostFilterProtocol -----------------------------------------------
 
     @property
     def name(self) -> str:
         """Stable identifier for the filter, used in logs and metrics."""
-        return self.NAME
+        return self.SOURCE_NAME
 
     def filter(
         self, text: str, entities: List[PIIEntity]

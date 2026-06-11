@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.tika.Tika;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Volume;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -141,7 +143,8 @@ class CorpusBenchmarkIT {
         .withExposedPorts(GRPC_PORT)
         .withNetwork(NETWORK)
         .withNetworkAliases("pii-detector")
-        .withFileSystemBind(ensureHfCacheDir(), "/app/.cache/huggingface")
+        .withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+            new HostConfig().withBinds(new Bind(ensureHfCacheDir(), new Volume("/app/.cache/huggingface")))))
         .withEnv("HF_HOME", "/app/.cache/huggingface")
         .withEnv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
         // Postgres reachable via the shared network alias on its native port (5432, not the
@@ -185,7 +188,7 @@ class CorpusBenchmarkIT {
             .withFileFromPath("pii-detector-service/docker-entrypoint.sh",
                 detectorRoot.resolve("docker-entrypoint.sh"))
             .withFileFromPath("proto", repoRoot.resolve("proto"))
-            .withDockerfilePath("pii-detector-service/Dockerfile");
+            .withDockerfile(detectorRoot.resolve("Dockerfile"));
     }
 
     @DynamicPropertySource

@@ -131,14 +131,17 @@ class StreamConfluenceScanUseCaseTest {
         HtmlContentParser htmlContentParser = new HtmlContentParser();
         ScanSpaceStatsCollector scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
 
-        streamConfluenceScanUseCase = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
                 confluenceAccessor,
                 piiDetectorClient,
                 contentScanOrchestrator,
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
-                scanSpaceStatsCollector,
+                scanSpaceStatsCollector
+        );
+        streamConfluenceScanUseCase = new StreamConfluenceScanUseCase(
+                pipelineDependencies,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -597,14 +600,17 @@ class StreamConfluenceScanUseCaseTest {
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
 
-        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
             confluenceAccessor,
             piiDetectorClient,
             contentScanOrchestrator,
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
-            Mockito.mock(ScanSpaceStatsCollector.class),
+            Mockito.mock(ScanSpaceStatsCollector.class)
+        );
+        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+            pipelineDependencies,
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -675,14 +681,17 @@ class StreamConfluenceScanUseCaseTest {
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
 
-        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
             confluenceAccessor,
             piiDetectorClient,
             contentScanOrchestrator,
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
-            Mockito.mock(ScanSpaceStatsCollector.class),
+            Mockito.mock(ScanSpaceStatsCollector.class)
+        );
+        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+            pipelineDependencies,
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 

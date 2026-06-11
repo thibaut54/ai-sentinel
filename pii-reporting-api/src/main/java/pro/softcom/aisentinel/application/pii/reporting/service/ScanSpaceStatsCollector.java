@@ -33,7 +33,7 @@ public class ScanSpaceStatsCollector {
      * @param event the scan event to account for (ignored when null or missing
      *              its scan/space identifiers)
      */
-    public void record(ConfluenceContentScanResult event) {
+    public void recordEvent(ConfluenceContentScanResult event) {
         if (event == null || event.scanId() == null || event.spaceKey() == null) {
             return;
         }

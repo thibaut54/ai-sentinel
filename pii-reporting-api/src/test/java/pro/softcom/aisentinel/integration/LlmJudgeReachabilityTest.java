@@ -3,18 +3,12 @@ package pro.softcom.aisentinel.integration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link LlmJudgeReachability}.
@@ -77,64 +71,25 @@ class LlmJudgeReachabilityTest {
             .isEmpty();
     }
 
-    @Test
-    void Should_ExcludeUncensored_When_BlacklistApplied() {
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "qwen3.6-35b-a3b-uncensored",
+        "qwen3.6-35b-a3b-heretic",
+        "qwen3.6-35b-a3b-reasoning-distilled",
+        "qwen3.6-35b-a3b-aggressive-v2",
+        "qwen3.6-35b-a3b-custom-finetune"
+    })
+    void Should_ExcludeModel_When_BlacklistMarkerPresent(String blacklistedModelId) {
         // Arrange
-        List<String> models = List.of("qwen3.6-35b-a3b-uncensored");
+        List<String> models = List.of(blacklistedModelId);
 
         // Act
         List<String> candidates = LlmJudgeReachability.filterCandidates(models);
 
         // Assert
-        assertThat(candidates).as("uncensored marker should be blacklisted").isEmpty();
-    }
-
-    @Test
-    void Should_ExcludeHeretic_When_BlacklistApplied() {
-        // Arrange
-        List<String> models = List.of("qwen3.6-35b-a3b-heretic");
-
-        // Act
-        List<String> candidates = LlmJudgeReachability.filterCandidates(models);
-
-        // Assert
-        assertThat(candidates).as("heretic marker should be blacklisted").isEmpty();
-    }
-
-    @Test
-    void Should_ExcludeDistilled_When_BlacklistApplied() {
-        // Arrange
-        List<String> models = List.of("qwen3.6-35b-a3b-reasoning-distilled");
-
-        // Act
-        List<String> candidates = LlmJudgeReachability.filterCandidates(models);
-
-        // Assert
-        assertThat(candidates).as("distilled marker should be blacklisted").isEmpty();
-    }
-
-    @Test
-    void Should_ExcludeAggressive_When_BlacklistApplied() {
-        // Arrange
-        List<String> models = List.of("qwen3.6-35b-a3b-aggressive-v2");
-
-        // Act
-        List<String> candidates = LlmJudgeReachability.filterCandidates(models);
-
-        // Assert
-        assertThat(candidates).as("aggressive marker should be blacklisted").isEmpty();
-    }
-
-    @Test
-    void Should_ExcludeFinetune_When_BlacklistApplied() {
-        // Arrange
-        List<String> models = List.of("qwen3.6-35b-a3b-custom-finetune");
-
-        // Act
-        List<String> candidates = LlmJudgeReachability.filterCandidates(models);
-
-        // Assert
-        assertThat(candidates).as("finetune marker should be blacklisted").isEmpty();
+        assertThat(candidates)
+            .as("Model '%s' contains a blacklist marker and should be excluded", blacklistedModelId)
+            .isEmpty();
     }
 
     @Test

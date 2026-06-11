@@ -7,21 +7,21 @@
           [attr.data-testid]="'space-scan-stats-button'"></p-button>
 
 <p-popover #popover (onShow)="onShow()">
-  <div class="scan-stats-panel" role="region"
+  <section class="scan-stats-panel"
        [attr.aria-label]="'dashboard.scanStats.title' | transloco">
 
     @switch (state()) {
       @case ('loading') {
-        <div class="scan-stats-status" role="status" aria-live="polite">
+        <output class="scan-stats-status">
           <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
           <span>{{ 'dashboard.scanStats.loading' | transloco }}</span>
-        </div>
+        </output>
       }
       @case ('notFound') {
-        <div class="scan-stats-status" role="status" aria-live="polite">
+        <output class="scan-stats-status">
           <i class="pi pi-info-circle" aria-hidden="true"></i>
           <span>{{ 'dashboard.scanStats.notAvailable' | transloco }}</span>
-        </div>
+        </output>
       }
       @case ('error') {
         <div class="scan-stats-status scan-stats-error" role="alert">
@@ -149,5 +149,5 @@
         }
       }
     }
-  </div>
+  </section>
 </p-popover>

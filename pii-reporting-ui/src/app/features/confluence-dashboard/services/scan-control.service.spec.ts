@@ -361,6 +361,88 @@ describe('ScanControlService', () => {
     expect(confirmCall.icon).toBe('pi pi-trash');
   });
 
+  // ========== executeStartAll error path ==========
+
+  it('Should_ClearStreamingAndPending_When_PurgeFailsOnStartAll', () => {
+    apiMock.purgeAllScans.mockReturnValue(throwError(() => new Error('purge boom')));
+    service.startAll();
+    const confirmCall = confirmMock.confirm.mock.calls[0][0];
+
+    confirmCall.accept();
+
+    expect(service.isStreaming()).toBe(false);
+    expect(pollingMock.actionPending()).toBe(false);
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
+  // ========== completion detection ==========
+
+  it('Should_FinalizeScan_When_AllSpacesCompleted', () => {
+    service.startAll();
+    confirmMock.confirm.mock.calls[0][0].accept();
+
+    pollingMock.scanCompleted$.next();
+
+    expect(dataManagementMock.loadLastSpaceStatuses).toHaveBeenCalled();
+    expect(dataManagementMock.loadLastScan).toHaveBeenCalled();
+    expect(dataManagementMock.currentScanSpaceKeys()).toBeNull();
+  });
+
+  // ========== SSE error path ==========
+
+  it('Should_StopStreaming_When_SseErrors', () => {
+    const stream = new Subject<void>();
+    apiMock.startAllSpacesStream.mockReturnValue(stream.asObservable());
+    service.startAll();
+    confirmMock.confirm.mock.calls[0][0].accept();
+    expect(service.isStreaming()).toBe(true);
+
+    stream.error(new Error('sse down'));
+
+    expect(service.isStreaming()).toBe(false);
+    expect(uiStateMock.append).toHaveBeenCalled();
+  });
+
+  // ========== SSE routing ==========
+
+  it('Should_RouteEvent_When_SseEmitsItem', () => {
+    const stream = new Subject<{ type: string; data: unknown }>();
+    apiMock.startAllSpacesStream.mockReturnValue(stream.asObservable());
+    service.startAll();
+    confirmMock.confirm.mock.calls[0][0].accept();
+
+    stream.next({ type: 'item', data: { pageId: 1 } });
+
+    expect(sseMock.routeStreamEvent).toHaveBeenCalledWith('item', { pageId: 1 });
+  });
+
+  // ========== reconnectIfScanRunning extra branches ==========
+
+  it('Should_NotReconnect_When_AlreadyStreaming', () => {
+    service.startAll();
+    confirmMock.confirm.mock.calls[0][0].accept();
+    pollingMock.start.mockClear();
+
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
+  it('Should_NotReconnect_When_PausedScan', () => {
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([{ status: 'RUNNING' }, { status: 'PAUSED' }]);
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
+  it('Should_NotReconnect_When_NoScanMeta', () => {
+    dataManagementMock.lastScanMeta.set(null);
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([{ status: 'RUNNING' }]);
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
   // ========== reset ==========
 
   it('Should_StopEverything_When_Reset', () => {

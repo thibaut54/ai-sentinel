@@ -10,7 +10,7 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiScanBenchRecorder
  */
 public class NoOpBenchRecorderAdapter implements PiiScanBenchRecorderPort {
     @Override
-    public void record(BenchRecord record) {
+    public void recordSample(BenchRecord sample) {
         // intentionally empty — bench disabled
     }
 }

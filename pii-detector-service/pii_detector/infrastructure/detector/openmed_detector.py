@@ -314,30 +314,50 @@ class OpenMedDetector:
         )
         merged: List[Dict[str, Any]] = []
         for ent in spans_sorted:
-            label = ent.get("entity_group") or ent.get("entity") or ""
-            start = int(ent.get("start", 0) or 0)
-            end = int(ent.get("end", 0) or 0)
-            score = float(ent.get("score", 0.0) or 0.0)
-            replaced = False
-            for idx, kept in enumerate(merged):
-                kept_label = kept.get("entity_group") or kept.get("entity") or ""
-                if kept_label != label:
-                    continue
-                kept_start = int(kept.get("start", 0) or 0)
-                kept_end = int(kept.get("end", 0) or 0)
-                # Overlap predicate (touch counts as adjacent, not overlap).
-                if start < kept_end and end > kept_start:
-                    kept_score = float(kept.get("score", 0.0) or 0.0)
-                    # Prefer wider span; tie-break on score.
-                    cur_width = end - start
-                    kept_width = kept_end - kept_start
-                    if (cur_width, score) > (kept_width, kept_score):
-                        merged[idx] = ent
-                    replaced = True
-                    break
-            if not replaced:
+            if not OpenMedDetector._absorb_into_overlapping(merged, ent):
                 merged.append(ent)
         return merged
+
+    @staticmethod
+    def _absorb_into_overlapping(
+        merged: List[Dict[str, Any]], ent: Dict[str, Any]
+    ) -> bool:
+        """Try to merge ``ent`` into a same-label overlapping span in ``merged``.
+
+        Returns ``True`` when ``ent`` overlaps an existing span (and replaces
+        it in place if ``ent`` is wider / higher-scored), ``False`` when it has
+        no overlap and must be appended by the caller.
+        """
+        label = ent.get("entity_group") or ent.get("entity") or ""
+        start = int(ent.get("start", 0) or 0)
+        end = int(ent.get("end", 0) or 0)
+        score = float(ent.get("score", 0.0) or 0.0)
+        for idx, kept in enumerate(merged):
+            if not OpenMedDetector._overlaps_same_label(kept, label, start, end):
+                continue
+            kept_score = float(kept.get("score", 0.0) or 0.0)
+            kept_width = int(kept.get("end", 0) or 0) - int(kept.get("start", 0) or 0)
+            # Prefer wider span; tie-break on score.
+            if (end - start, score) > (kept_width, kept_score):
+                merged[idx] = ent
+            return True
+        return False
+
+    @staticmethod
+    def _overlaps_same_label(
+        kept: Dict[str, Any], label: str, start: int, end: int
+    ) -> bool:
+        """Return ``True`` when ``kept`` shares ``label`` and overlaps ``[start, end)``.
+
+        Touching spans (``start == kept_end`` or ``end == kept_start``) count as
+        adjacent, not overlapping.
+        """
+        kept_label = kept.get("entity_group") or kept.get("entity") or ""
+        if kept_label != label:
+            return False
+        kept_start = int(kept.get("start", 0) or 0)
+        kept_end = int(kept.get("end", 0) or 0)
+        return start < kept_end and end > kept_start
 
     @staticmethod
     def _merge_adjacent_fragments(
@@ -384,33 +404,55 @@ class OpenMedDetector:
         merged: List[Dict[str, Any]] = [dict(sorted_e[0])]
         for ent in sorted_e[1:]:
             last = merged[-1]
-            last_label = last.get("entity_group") or last.get("entity") or ""
-            ent_label = ent.get("entity_group") or ent.get("entity") or ""
-            ent_start = int(ent.get("start", 0) or 0)
-            last_end = int(last.get("end", 0) or 0)
-            gap = ent_start - last_end
-            gap_text = (
-                text[last_end:ent_start]
-                if 0 <= last_end <= ent_start <= len(text) else ""
-            )
-            if (last_label != ent_label
-                    or gap < 0 or gap > max_gap_chars
-                    or "\n" in gap_text or "\r" in gap_text):
+            if OpenMedDetector._is_mergeable_fragment(last, ent, text, max_gap_chars):
+                OpenMedDetector._extend_fragment(last, ent, text)
+            else:
                 merged.append(dict(ent))
-                continue
-            # Extend the kept entity to cover both fragments.
-            new_end = int(ent.get("end", 0) or 0)
-            last["end"] = new_end
-            last["score"] = max(
-                float(last.get("score", 0.0) or 0.0),
-                float(ent.get("score", 0.0) or 0.0),
-            )
-            # Refresh the word field to the actual merged text slice (the
-            # original fragments' ``word`` no longer represents the span).
-            last_start = int(last.get("start", 0) or 0)
-            if 0 <= last_start < new_end <= len(text):
-                last["word"] = text[last_start:new_end]
         return merged
+
+    @staticmethod
+    def _is_mergeable_fragment(
+        last: Dict[str, Any],
+        ent: Dict[str, Any],
+        text: str,
+        max_gap_chars: int,
+    ) -> bool:
+        """Return ``True`` when ``ent`` is a same-label adjacent fragment of ``last``.
+
+        The gap (``ent.start - last.end``) must lie in ``[0, max_gap_chars]``
+        and contain no line break, which would be a structural boundary.
+        """
+        last_label = last.get("entity_group") or last.get("entity") or ""
+        ent_label = ent.get("entity_group") or ent.get("entity") or ""
+        if last_label != ent_label:
+            return False
+        ent_start = int(ent.get("start", 0) or 0)
+        last_end = int(last.get("end", 0) or 0)
+        gap = ent_start - last_end
+        if gap < 0 or gap > max_gap_chars:
+            return False
+        gap_text = (
+            text[last_end:ent_start]
+            if 0 <= last_end <= ent_start <= len(text) else ""
+        )
+        return "\n" not in gap_text and "\r" not in gap_text
+
+    @staticmethod
+    def _extend_fragment(
+        last: Dict[str, Any], ent: Dict[str, Any], text: str
+    ) -> None:
+        """Extend ``last`` in place to cover ``ent`` (end, max score, word)."""
+        new_end = int(ent.get("end", 0) or 0)
+        last["end"] = new_end
+        last["score"] = max(
+            float(last.get("score", 0.0) or 0.0),
+            float(ent.get("score", 0.0) or 0.0),
+        )
+        # Refresh the word field to the actual merged text slice (the
+        # original fragments' ``word`` no longer represents the span).
+        last_start = int(last.get("start", 0) or 0)
+        if 0 <= last_start < new_end <= len(text):
+            last["word"] = text[last_start:new_end]
 
     # ------------------------------------------------------------------
     # Mapping + filtering
@@ -447,32 +489,12 @@ class OpenMedDetector:
                 # our OPENMED mapping doesn't know (case/format mismatch in
                 # data.sql detector_label, or a label outside our config).
                 # Collect here, log once per call below.
-                miss_start = int(ent.get("start", 0) or 0)
-                miss_end = int(ent.get("end", 0) or 0)
-                miss_slice = (
-                    text[miss_start:miss_end]
-                    if 0 <= miss_start < miss_end <= len(text)
-                    else str(ent.get("word", "") or "")
+                unmapped.setdefault(label, []).append(
+                    self._entity_text_slice(ent, text)
                 )
-                unmapped.setdefault(label, []).append(miss_slice)
                 continue
-            start = int(ent.get("start", 0) or 0)
-            end = int(ent.get("end", 0) or 0)
-            entity_text = (
-                text[start:end] if 0 <= start < end <= len(text)
-                else str(ent.get("word", "") or "")
-            )
-            score = float(ent.get("score", 0.0) or 0.0)
             results.append(
-                PIIEntity(
-                    text=entity_text,
-                    pii_type=pii_type,
-                    type_label=type_labels.get(pii_type, pii_type),
-                    start=start,
-                    end=end,
-                    score=score,
-                    source=DetectorSource.OPENMED,
-                )
+                self._build_pii_entity(ent, text, pii_type, type_labels)
             )
         if unmapped:
             self.logger.warning(
@@ -484,6 +506,35 @@ class OpenMedDetector:
                 {lbl: vals[:3] for lbl, vals in unmapped.items()},
             )
         return results
+
+    @staticmethod
+    def _entity_text_slice(ent: Dict[str, Any], text: str) -> str:
+        """Return the original text slice for a raw entity, falling back on ``word``."""
+        start = int(ent.get("start", 0) or 0)
+        end = int(ent.get("end", 0) or 0)
+        if 0 <= start < end <= len(text):
+            return text[start:end]
+        return str(ent.get("word", "") or "")
+
+    @staticmethod
+    def _build_pii_entity(
+        ent: Dict[str, Any],
+        text: str,
+        pii_type: str,
+        type_labels: Dict[str, str],
+    ) -> PIIEntity:
+        """Build a :class:`PIIEntity` from a mapped raw OpenMed entity dict."""
+        start = int(ent.get("start", 0) or 0)
+        end = int(ent.get("end", 0) or 0)
+        return PIIEntity(
+            text=OpenMedDetector._entity_text_slice(ent, text),
+            pii_type=pii_type,
+            type_label=type_labels.get(pii_type, pii_type),
+            start=start,
+            end=end,
+            score=float(ent.get("score", 0.0) or 0.0),
+            source=DetectorSource.OPENMED,
+        )
 
     def _apply_per_type_thresholds(
         self, entities: List[PIIEntity], scoring_overrides: Dict[str, float]
@@ -517,32 +568,52 @@ class OpenMedDetector:
         type_labels: Dict[str, str] = {}
 
         for key, cfg in configs.items():
-            detector_value = cfg.get("detector") if isinstance(cfg, dict) else None
-            if isinstance(key, str) and key.startswith("OPENMED:"):
-                pii_type = key.split(":", 1)[1]
-            elif detector_value == "OPENMED":
-                pii_type = cfg.get("pii_type") or (
-                    key if isinstance(key, str) and ":" not in key else None
-                )
-            else:
+            pii_type = self._resolve_pii_type_for_entry(key, cfg)
+            if not pii_type or not cfg.get("enabled", False):
                 continue
-            if not pii_type:
-                continue
-            if not cfg.get("enabled", False):
-                continue
-            detector_label = cfg.get("detector_label")
-            if detector_label:
-                label_mapping[detector_label] = pii_type
-            threshold = cfg.get("threshold")
-            if threshold is not None:
-                scoring_overrides[pii_type] = float(threshold)
-            # Optional human-readable label forwarded to the LLM judge. When
-            # absent, _convert_to_pii_entities falls back to the pii_type.
-            type_label = cfg.get("type_label")
-            if type_label:
-                type_labels[pii_type] = str(type_label)
+            self._fill_runtime_dicts(
+                pii_type, cfg, label_mapping, scoring_overrides, type_labels
+            )
 
         return label_mapping, scoring_overrides, type_labels
+
+    @staticmethod
+    def _resolve_pii_type_for_entry(key: Any, cfg: Any) -> Optional[str]:
+        """Resolve the canonical ``pii_type`` for one config entry.
+
+        Accepts both the ``OPENMED:<type>`` keyed shape and the flat shape
+        where the row carries ``detector == "OPENMED"``. Returns ``None`` when
+        the entry is not an OPENMED config (caller skips it).
+        """
+        if isinstance(key, str) and key.startswith("OPENMED:"):
+            return key.split(":", 1)[1]
+        detector_value = cfg.get("detector") if isinstance(cfg, dict) else None
+        if detector_value == "OPENMED":
+            return cfg.get("pii_type") or (
+                key if isinstance(key, str) and ":" not in key else None
+            )
+        return None
+
+    @staticmethod
+    def _fill_runtime_dicts(
+        pii_type: str,
+        cfg: Dict[str, Any],
+        label_mapping: Dict[str, str],
+        scoring_overrides: Dict[str, float],
+        type_labels: Dict[str, str],
+    ) -> None:
+        """Populate the label / threshold / type_label maps for one entry."""
+        detector_label = cfg.get("detector_label")
+        if detector_label:
+            label_mapping[detector_label] = pii_type
+        threshold = cfg.get("threshold")
+        if threshold is not None:
+            scoring_overrides[pii_type] = float(threshold)
+        # Optional human-readable label forwarded to the LLM judge. When
+        # absent, _convert_to_pii_entities falls back to the pii_type.
+        type_label = cfg.get("type_label")
+        if type_label:
+            type_labels[pii_type] = str(type_label)
 
     def _fetch_configs_from_db(self) -> Optional[Dict]:
         try:

@@ -35,9 +35,11 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- PII Detection Global Config (Singleton with id=1)
 -- llm_judge_enabled defaults to false (zero-effect MVP rollout, spec §1.4).
 -- gliner2_enabled defaults to false (explicit operator opt-in, spec D4).
+-- *_judge_enabled default to false: per-detector LLM-judge routing is opt-in
+-- (migration 012). llm_judge_enabled is the derived OR, maintained by the API.
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, updated_at, updated_by)
-VALUES (1, false, true, true, false, true, 0.30, 35, false, false, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, gliner_judge_enabled, presidio_judge_enabled, regex_judge_enabled, openmed_judge_enabled, gliner2_judge_enabled, updated_at, updated_by)
+VALUES (1, false, true, true, false, true, 0.30, 35, false, false, false, false, false, false, false, CURRENT_TIMESTAMP, 'system')
 ON CONFLICT (id) DO NOTHING;
 
 -- Category 1: IDENTITY

@@ -2,7 +2,6 @@ package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
@@ -37,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * progress calculation, checkpoint persistence, and attachment processing. Returns a reactive
  * stream of scan events that the presentation layer can convert to SSE.
  */
-@RequiredArgsConstructor
 @Slf4j
 public abstract class AbstractStreamConfluenceScanUseCase {
 
@@ -48,6 +46,16 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     protected final ScanTimeOutConfig scanTimeoutConfig;
     protected final HtmlContentParser htmlContentParser;
     protected final ScanSpaceStatsCollector scanSpaceStatsCollector;
+
+    protected AbstractStreamConfluenceScanUseCase(ScanPipelineDependencies dependencies) {
+        this.confluenceAccessor = dependencies.confluenceAccessor();
+        this.piiDetectorClient = dependencies.piiDetectorClient();
+        this.contentScanOrchestrator = dependencies.contentScanOrchestrator();
+        this.attachmentProcessor = dependencies.attachmentProcessor();
+        this.scanTimeoutConfig = dependencies.scanTimeoutConfig();
+        this.htmlContentParser = dependencies.htmlContentParser();
+        this.scanSpaceStatsCollector = dependencies.scanSpaceStatsCollector();
+    }
 
     protected record ConfluencePageContext(String scanId, String spaceKey, String pageId,
                                            String pageTitle) {
@@ -92,7 +100,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                     // Per-space scan statistics: additive, atomic at the SQL level, and
                     // self-contained (errors swallowed inside the collector) so a stats
                     // failure can never make the scan itself fail.
-                    Mono.fromRunnable(() -> scanSpaceStatsCollector.record(event))
+                    Mono.fromRunnable(() -> scanSpaceStatsCollector.recordEvent(event))
                         .subscribeOn(Schedulers.boundedElastic())
                         .onErrorResume(e -> {
                             log.warn("[SPACE_STATS] Failed to record scan space stats: {}", e.getMessage());

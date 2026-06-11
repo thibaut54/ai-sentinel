@@ -14,6 +14,7 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -48,7 +49,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_MarkStarted_When_StartEventReceived")
     void Should_MarkStarted_When_StartEventReceived() {
-        collector.record(event(DetectionReportingEventType.START).build());
+        collector.recordEvent(event(DetectionReportingEventType.START).build());
 
         verify(repository).markStarted(eq(SCAN_ID), eq(SPACE_KEY), any());
     }
@@ -56,7 +57,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_MarkFinished_When_CompleteEventReceived")
     void Should_MarkFinished_When_CompleteEventReceived() {
-        collector.record(event(DetectionReportingEventType.COMPLETE).build());
+        collector.recordEvent(event(DetectionReportingEventType.COMPLETE).build());
 
         verify(repository).markFinished(eq(SCAN_ID), eq(SPACE_KEY), any());
     }
@@ -68,7 +69,7 @@ class ScanSpaceStatsCollectorTest {
             .sourceContent("hello world")
             .build();
 
-        collector.record(ev);
+        collector.recordEvent(ev);
 
         verify(repository).incrementPageScanned(SCAN_ID, SPACE_KEY, 11L);
     }
@@ -76,7 +77,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IncrementPageScannedWithZeroChars_When_SourceContentNull")
     void Should_IncrementPageScannedWithZeroChars_When_SourceContentNull() {
-        collector.record(event(DetectionReportingEventType.ITEM).build());
+        collector.recordEvent(event(DetectionReportingEventType.ITEM).build());
 
         verify(repository).incrementPageScanned(SCAN_ID, SPACE_KEY, 0L);
     }
@@ -89,7 +90,7 @@ class ScanSpaceStatsCollectorTest {
             .sourceContent("abcde")
             .build();
 
-        collector.record(ev);
+        collector.recordEvent(ev);
 
         verify(repository).incrementAttachmentScanned(SCAN_ID, SPACE_KEY, 5L);
     }
@@ -97,7 +98,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IncrementPageFailed_When_ErrorEventWithoutAttachment")
     void Should_IncrementPageFailed_When_ErrorEventWithoutAttachment() {
-        collector.record(event(DetectionReportingEventType.ERROR).pageId("p1").build());
+        collector.recordEvent(event(DetectionReportingEventType.ERROR).pageId("p1").build());
 
         verify(repository).incrementPageFailed(SCAN_ID, SPACE_KEY);
         verify(repository, never()).incrementAttachmentFailed(any(), any());
@@ -106,7 +107,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IncrementAttachmentFailed_When_ErrorEventHasAttachmentName")
     void Should_IncrementAttachmentFailed_When_ErrorEventHasAttachmentName() {
-        collector.record(event(DetectionReportingEventType.ERROR).attachmentName("file.pdf").build());
+        collector.recordEvent(event(DetectionReportingEventType.ERROR).attachmentName("file.pdf").build());
 
         verify(repository).incrementAttachmentFailed(SCAN_ID, SPACE_KEY);
         verify(repository, never()).incrementPageFailed(any(), any());
@@ -122,7 +123,7 @@ class ScanSpaceStatsCollectorTest {
                 new DetectorRunStat(DetectorSource.JUDGE, 1_400L, 12, 4)))
             .build();
 
-        collector.record(ev);
+        collector.recordEvent(ev);
 
         verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "GLINER2", 520L, 10L, 12, 0);
         verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "JUDGE", 1_400L, 10L, 12, 4);
@@ -131,7 +132,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_NotAccumulateDetectors_When_StatsAbsent")
     void Should_NotAccumulateDetectors_When_StatsAbsent() {
-        collector.record(event(DetectionReportingEventType.ITEM).sourceContent("x").build());
+        collector.recordEvent(event(DetectionReportingEventType.ITEM).sourceContent("x").build());
 
         verify(repository, never()).accumulateDetectorStat(any(), any(), any(), anyLong(), anyLong(),
             org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
@@ -140,7 +141,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IgnoreEvent_When_ScanIdNull")
     void Should_IgnoreEvent_When_ScanIdNull() {
-        collector.record(ConfluenceContentScanResult.builder().spaceKey(SPACE_KEY)
+        collector.recordEvent(ConfluenceContentScanResult.builder().spaceKey(SPACE_KEY)
             .eventType(DetectionReportingEventType.START.getLabel()).build());
 
         verifyNoInteractions(repository);
@@ -149,7 +150,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IgnoreNullEvent_When_RecordingNothing")
     void Should_IgnoreNullEvent_When_RecordingNothing() {
-        collector.record(null);
+        collector.recordEvent(null);
 
         verifyNoInteractions(repository);
     }
@@ -157,7 +158,7 @@ class ScanSpaceStatsCollectorTest {
     @Test
     @DisplayName("Should_IgnoreUnknownEventType_When_EventTypeNotRecognized")
     void Should_IgnoreUnknownEventType_When_EventTypeNotRecognized() {
-        collector.record(ConfluenceContentScanResult.builder()
+        collector.recordEvent(ConfluenceContentScanResult.builder()
             .scanId(SCAN_ID).spaceKey(SPACE_KEY).eventType("pageStart").build());
 
         verifyNoInteractions(repository);
@@ -168,8 +169,10 @@ class ScanSpaceStatsCollectorTest {
     void Should_SwallowRepositoryFailure_When_PersistenceThrows() {
         doThrow(new RuntimeException("db down"))
             .when(repository).markStarted(any(), any(), any());
+        ConfluenceContentScanResult startEvent = event(DetectionReportingEventType.START).build();
 
         // Must not propagate: stats collection can never fail the scan.
-        collector.record(event(DetectionReportingEventType.START).build());
+        assertThatCode(() -> collector.recordEvent(startEvent))
+            .doesNotThrowAnyException();
     }
 }

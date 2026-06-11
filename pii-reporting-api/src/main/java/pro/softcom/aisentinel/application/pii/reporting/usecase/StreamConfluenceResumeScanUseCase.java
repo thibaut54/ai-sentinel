@@ -1,14 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import lombok.extern.slf4j.Slf4j;
-import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceResumeScanPort;
-import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
-import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
-import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
-import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
-import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
-import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -35,16 +28,9 @@ public class StreamConfluenceResumeScanUseCase extends
     private final ScanCheckpointRepository scanCheckpointRepository;
 
     public StreamConfluenceResumeScanUseCase(
-        ConfluenceAccessor confluenceAccessor,
-        PiiDetectorClient piiDetectorClient,
-        ContentScanOrchestrator contentScanOrchestrator,
-        AttachmentProcessor attachmentProcessor,
-        ScanCheckpointRepository scanCheckpointRepository,
-        ScanTimeOutConfig scanTimeoutConfig,
-        HtmlContentParser htmlContentParser,
-        ScanSpaceStatsCollector scanSpaceStatsCollector) {
-        super(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor, scanTimeoutConfig,
-              htmlContentParser, scanSpaceStatsCollector);
+        ScanPipelineDependencies dependencies,
+        ScanCheckpointRepository scanCheckpointRepository) {
+        super(dependencies);
         this.scanCheckpointRepository = scanCheckpointRepository;
     }
 

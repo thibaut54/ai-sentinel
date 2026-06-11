@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.infrastructure.pii.scan.config.BenchProperties;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,7 +26,7 @@ class FileBenchRecorderAdapterTest {
         FileBenchRecorderAdapter adapter = startAdapter(file, "onnx", 100);
 
         try {
-            adapter.record(new BenchRecord("scan-1", "SPACE-A", "page-42", "page", 1000, 250, 3));
+            adapter.recordSample(new BenchRecord("scan-1", "SPACE-A", "page-42", "page", 1000, 250, 3));
 
             await().atMost(3, TimeUnit.SECONDS).until(() -> Files.lines(file).count() >= 2);
             adapter.stop();
@@ -56,7 +57,7 @@ class FileBenchRecorderAdapterTest {
 
         FileBenchRecorderAdapter adapter = startAdapter(file, "pytorch", 100);
         try {
-            adapter.record(new BenchRecord("scan-2", "SPACE-B", "page-1", "page", 500, 1000, 0));
+            adapter.recordSample(new BenchRecord("scan-2", "SPACE-B", "page-1", "page", 500, 1000, 0));
             await().atMost(3, TimeUnit.SECONDS).until(() -> Files.lines(file).count() >= 3);
         } finally {
             adapter.stop();
@@ -79,7 +80,7 @@ class FileBenchRecorderAdapterTest {
         try {
             AtomicInteger pushed = new AtomicInteger();
             for (int i = 0; i < 5000; i++) {
-                adapter.record(new BenchRecord("s", "S", "p" + i, "page", 10, 1, 0));
+                adapter.recordSample(new BenchRecord("s", "S", "p" + i, "page", 10, 1, 0));
                 pushed.incrementAndGet();
             }
             // Just assert: API never threw, dropped counter is consistent (>=0)
@@ -95,10 +96,11 @@ class FileBenchRecorderAdapterTest {
         Path file = tmp.resolve("bench.tsv");
         FileBenchRecorderAdapter adapter = startAdapter(file, "x", 100);
         try {
-            adapter.record(null);
-            // Header written but no data line expected after a brief wait
-            Thread.sleep(200);
-            assertThat(Files.readAllLines(file)).hasSize(1);
+            adapter.recordSample(null);
+            // Header written but no data line ever expected: assert the file stays at a
+            // single line for a stable observation window (deterministic, no Thread.sleep).
+            await().during(Duration.ofMillis(200)).atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(Files.readAllLines(file)).hasSize(1));
         } finally {
             adapter.stop();
         }
@@ -109,7 +111,7 @@ class FileBenchRecorderAdapterTest {
         Path file = tmp.resolve("bench.tsv");
         FileBenchRecorderAdapter adapter = startAdapter(file, "lab\tel", 100);
         try {
-            adapter.record(new BenchRecord("a\tb", "S\nE", "p\rid", "page", 1, 1, 0));
+            adapter.recordSample(new BenchRecord("a\tb", "S\nE", "p\rid", "page", 1, 1, 0));
             await().atMost(3, TimeUnit.SECONDS).until(() -> Files.lines(file).count() >= 2);
         } finally {
             adapter.stop();

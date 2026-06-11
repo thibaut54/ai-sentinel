@@ -19,11 +19,12 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Asynchronous file recorder for PII scan bench measurements.
  *
- * <p>Producers (the scan pipeline) call {@link #record} which only does an
+ * <p>Producers (the scan pipeline) call {@link #recordSample} which only does an
  * in-memory {@code offer} on a bounded queue and returns immediately. A single
  * daemon worker thread drains the queue and writes TSV lines to disk, batching
  * flushes to amortise I/O cost. When the queue is saturated, records are
@@ -44,8 +45,8 @@ public class FileBenchRecorderAdapter implements PiiScanBenchRecorderPort {
     private final BlockingQueue<String> queue;
     private final AtomicLong droppedCount = new AtomicLong();
 
-    private volatile BufferedWriter writer;
-    private volatile Thread worker;
+    private final AtomicReference<BufferedWriter> writerRef = new AtomicReference<>();
+    private final AtomicReference<Thread> workerRef = new AtomicReference<>();
     private volatile boolean shuttingDown;
 
     public FileBenchRecorderAdapter(BenchProperties props) {
@@ -61,30 +62,32 @@ public class FileBenchRecorderAdapter implements PiiScanBenchRecorderPort {
             Files.createDirectories(path.getParent());
         }
         boolean writeHeader = !Files.exists(path) || Files.size(path) == 0L;
-        this.writer = Files.newBufferedWriter(
+        BufferedWriter newWriter = Files.newBufferedWriter(
             path,
             StandardCharsets.UTF_8,
             StandardOpenOption.CREATE,
             StandardOpenOption.APPEND
         );
         if (writeHeader) {
-            writer.write(HEADER);
-            writer.newLine();
-            writer.flush();
+            newWriter.write(HEADER);
+            newWriter.newLine();
+            newWriter.flush();
         }
-        this.worker = new Thread(this::runWriterLoop, "ai-sentinel-bench-writer");
-        this.worker.setDaemon(true);
-        this.worker.start();
+        this.writerRef.set(newWriter);
+        Thread newWorker = new Thread(this::runWriterLoop, "ai-sentinel-bench-writer");
+        newWorker.setDaemon(true);
+        this.workerRef.set(newWorker);
+        newWorker.start();
         log.info("[BENCH] FileBenchRecorderAdapter started file={} label={} queueCapacity={}",
             path, props.getLabel(), props.getQueueCapacity());
     }
 
     @Override
-    public void record(BenchRecord record) {
-        if (shuttingDown || record == null) {
+    public void recordSample(BenchRecord sample) {
+        if (shuttingDown || sample == null) {
             return;
         }
-        String line = formatLine(record);
+        String line = formatLine(sample);
         if (!queue.offer(line)) {
             long dropped = droppedCount.incrementAndGet();
             if (dropped == 1 || dropped % 100 == 0) {
@@ -116,53 +119,73 @@ public class FileBenchRecorderAdapter implements PiiScanBenchRecorderPort {
     }
 
     private void runWriterLoop() {
+        BufferedWriter writer = writerRef.get();
         int sinceFlush = 0;
         try {
-            while (true) {
+            boolean draining = true;
+            while (draining) {
                 String line = queue.poll(IDLE_POLL_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                if (line == null) {
-                    if (sinceFlush > 0) {
-                        writer.flush();
-                        sinceFlush = 0;
-                    }
-                    continue;
-                }
                 if (POISON_PILL.equals(line)) {
-                    break;
-                }
-                writer.write(line);
-                writer.newLine();
-                sinceFlush++;
-                if (sinceFlush >= props.getFlushEveryNLines()) {
-                    writer.flush();
-                    sinceFlush = 0;
+                    draining = false;
+                } else {
+                    sinceFlush = handlePolledLine(writer, line, sinceFlush);
                 }
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {
             log.error("[BENCH] writer loop failed: {}", e.getMessage(), e);
         }
     }
 
+    private int handlePolledLine(BufferedWriter writer, String line, int sinceFlush) throws IOException {
+        if (line == null) {
+            return flushIfPending(writer, sinceFlush);
+        }
+        writer.write(line);
+        writer.newLine();
+        int pending = sinceFlush + 1;
+        if (pending >= props.getFlushEveryNLines()) {
+            writer.flush();
+            return 0;
+        }
+        return pending;
+    }
+
+    private int flushIfPending(BufferedWriter writer, int sinceFlush) throws IOException {
+        if (sinceFlush > 0) {
+            writer.flush();
+            return 0;
+        }
+        return sinceFlush;
+    }
+
     @PreDestroy
     void stop() {
         shuttingDown = true;
         try {
-            queue.offer(POISON_PILL, 1, TimeUnit.SECONDS);
+            boolean poisonAccepted = queue.offer(POISON_PILL, 1, TimeUnit.SECONDS);
+            if (!poisonAccepted) {
+                log.warn("[BENCH] could not enqueue poison pill within timeout; interrupting writer");
+            }
+            Thread worker = workerRef.get();
             if (worker != null) {
+                if (!poisonAccepted) {
+                    worker.interrupt();
+                }
                 worker.join(SHUTDOWN_JOIN_MS);
             }
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         } finally {
             try {
+                BufferedWriter writer = writerRef.get();
                 if (writer != null) {
                     writer.flush();
                     writer.close();
                 }
-            } catch (IOException e) {
-                log.warn("[BENCH] error closing writer: {}", e.getMessage());
+            } catch (IOException _) {
+                log.warn("[BENCH] error closing writer");
             }
             log.info("[BENCH] FileBenchRecorderAdapter stopped (totalDropped={})", droppedCount.get());
         }

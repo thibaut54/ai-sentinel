@@ -14,6 +14,9 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Volume;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -113,7 +116,8 @@ class JudgeDiscardedEntitiesSmokeIT {
         .withExposedPorts(GRPC_PORT)
         .withNetwork(NETWORK)
         .withNetworkAliases("pii-detector")
-        .withFileSystemBind(ensureHfCacheDir(), "/app/.cache/huggingface")
+        .withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+            new HostConfig().withBinds(new Bind(ensureHfCacheDir(), new Volume("/app/.cache/huggingface")))))
         .withEnv("HF_HOME", "/app/.cache/huggingface")
         .withEnv("TRANSFORMERS_CACHE", "/app/.cache/huggingface")
         .withEnv("DB_HOST", POSTGRES_ALIAS)
@@ -249,6 +253,6 @@ class JudgeDiscardedEntitiesSmokeIT {
             .withFileFromPath("pii-detector-service/docker-entrypoint.sh",
                 detectorRoot.resolve("docker-entrypoint.sh"))
             .withFileFromPath("proto", repoRoot.resolve("proto"))
-            .withDockerfilePath("pii-detector-service/Dockerfile");
+            .withDockerfile(detectorRoot.resolve("Dockerfile"));
     }
 }

@@ -58,14 +58,11 @@ class LlmJudgeDeltaReporterTest {
         String report = Files.readString(reportFile);
         assertThat(report)
             .as("Report should contain the main heading")
-            .contains("# LLM Judge Delta Report");
-        assertThat(report)
+            .contains("# LLM Judge Delta Report")
             .as("Report should contain global summary")
-            .contains("## Global Summary");
-        assertThat(report)
+            .contains("## Global Summary")
             .as("Report should show baseline total of 3")
-            .contains("| Baseline findings | 3 |");
-        assertThat(report)
+            .contains("| Baseline findings | 3 |")
             .as("Report should show judged total of 1")
             .contains("| Judged findings | 1 |");
         assertThat(summary).as("compareAndWrite must return a non-null DeltaSummary").isNotNull();
@@ -103,8 +100,7 @@ class LlmJudgeDeltaReporterTest {
         String report = Files.readString(reportFile);
         assertThat(report)
             .as("Report should contain rejection rate")
-            .contains("| Rejected by judge |");
-        assertThat(report)
+            .contains("| Rejected by judge |")
             .as("Report should reference judgedKept/judgedRejected section when fields present")
             .contains("Kept (TRUE_POSITIVE / UNSURE)");
     }
@@ -143,12 +139,10 @@ class LlmJudgeDeltaReporterTest {
         String report = Files.readString(reportFile);
         assertThat(report)
             .as("Report should contain recall preservation section")
-            .contains("## Recall Preservation (Non-GLiNER Detectors)");
-        assertThat(report)
+            .contains("## Recall Preservation (Non-GLiNER Detectors)")
             .as("REGEX recall should be marked as preserved")
             .contains("REGEX")
-            .contains("YES");
-        assertThat(report)
+            .contains("YES")
             .as("PRESIDIO recall should be marked as preserved")
             .contains("PRESIDIO")
             .contains("YES");
@@ -233,11 +227,9 @@ class LlmJudgeDeltaReporterTest {
         String report = Files.readString(reportFile);
         assertThat(report)
             .as("Report should include per-type breakdown section")
-            .contains("## Findings by PII Type");
-        assertThat(report)
+            .contains("## Findings by PII Type")
             .as("PASSWORD type should appear in breakdown")
-            .contains("PASSWORD");
-        assertThat(report)
+            .contains("PASSWORD")
             .as("NATIONAL_ID type should appear in breakdown")
             .contains("NATIONAL_ID");
     }
@@ -432,8 +424,7 @@ class LlmJudgeDeltaReporterTest {
         String report = Files.readString(reportFile);
         assertThat(report)
             .as("Spec §5 — report must contain the acceptance criteria section")
-            .contains("## Acceptance Criteria (spec §5)");
-        assertThat(report)
+            .contains("## Acceptance Criteria (spec §5)")
             .as("Spec §5.1 — REGEX recall not preserved must produce FAIL verdict")
             .contains("**FAIL**");
     }

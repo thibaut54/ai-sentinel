@@ -115,7 +115,7 @@ class PiiTypeConfigConsistencyTest {
                 .filter(config -> "GLINER2".equals(config.getDetector()))
                 .toList();
 
-        assertThat(gliner2).allSatisfy(config -> {
+        assertThat(gliner2).isNotEmpty().allSatisfy(config -> {
             boolean expectedEnabled = enabledCategories.contains(config.getCategory());
             assertThat(config.isEnabled())
                     .as("GLINER2 row %s (category %s) enabled-by-default should be %s",
@@ -132,7 +132,7 @@ class PiiTypeConfigConsistencyTest {
                 .filter(config -> "GLINER2".equals(config.getDetector()))
                 .toList();
 
-        assertThat(gliner2).allSatisfy(config -> {
+        assertThat(gliner2).isNotEmpty().allSatisfy(config -> {
             assertThat(config.getDetectorLabel())
                     .as("GLINER2 row %s must have a detector_label", config.getPiiType())
                     .isNotBlank();

@@ -20,9 +20,9 @@ public interface PiiScanBenchRecorderPort {
      * dropped silently (with a counter logged elsewhere) — the contract
      * favours scan throughput over measurement completeness.
      *
-     * @param record the immutable measurement to persist
+     * @param sample the immutable measurement to persist
      */
-    void record(BenchRecord record);
+    void recordSample(BenchRecord sample);
 
     /**
      * Single bench measurement captured around a gRPC call to the PII detector.

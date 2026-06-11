@@ -14,7 +14,7 @@ import time
 from concurrent import futures
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import grpc
 import psutil
@@ -856,7 +856,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         detector_flags: Optional[dict] = None,
         pii_type_configs: Optional[Dict] = None,
         chunk_size: Optional[int] = None
-    ) -> List:
+    ) -> Tuple[List, List[Dict]]:
         """Execute PII detection with dynamic detector activation and log performance metrics.
 
         Business rule: Detector activation flags from database override default configuration

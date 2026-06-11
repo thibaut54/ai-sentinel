@@ -1,6 +1,5 @@
 package pro.softcom.aisentinel.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class LlmJudgeReachabilityIT {
 
     private static final Logger log = LoggerFactory.getLogger(LlmJudgeReachabilityIT.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
     void Should_ConfirmLmStudioIsReachable_When_TargetIsLive() {

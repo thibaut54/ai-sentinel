@@ -43,11 +43,11 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import httpx
-from pydantic import ValidationError
 
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.judge_status import JudgeStatus
@@ -98,6 +98,26 @@ _FINETUNE_BLACKLIST: Tuple[str, ...] = (
 _FUZZY_MATCH_TOKENS = ("qwen3.6", "a3b")
 _DEFAULT_BASE_URL = "http://127.0.0.1:1234/v1"
 _DEFAULT_PREFERRED_MODEL = "qwen/qwen3.6-35b-a3b"
+
+
+# ---------------------------------------------------------------------------
+# Generation config (groups the rarely-overridden sampling knobs)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LlmValidatorConfig:
+    """Generation parameters for the ``/chat/completions`` payload.
+
+    Groups the four sampling/budget knobs that share the same concern
+    (how the model generates the verdict) so the validator constructor
+    stays under the parameter budget. The defaults mirror spec section 2.6.
+    """
+
+    context_window: int = DEFAULT_CONTEXT_WINDOW
+    max_tokens: int = 2048
+    temperature: float = 0.2
+    top_p: float = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +364,8 @@ def _extract_json_payload(response_json: dict) -> dict:
     # strip residual <think> blocks and markdown fences before parsing.
     raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
+    if raw.endswith("```"):
+        raw = raw[:-3].rstrip()
     if not raw.startswith("{"):
         match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
         if match:
@@ -442,7 +463,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
     constructor.
     """
 
-    NAME = "llm-judge-qwen-3.6"
+    SOURCE_NAME = "llm-judge-qwen-3.6"
 
     def __init__(
         self,
@@ -453,10 +474,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         max_workers: Optional[int] = None,
         fail_open: Optional[bool] = None,
         backend: Optional[str] = None,
-        context_window: int = DEFAULT_CONTEXT_WINDOW,
-        max_tokens: int = 2048,
-        temperature: float = 0.2,
-        top_p: float = 1.0,
+        generation: Optional[LlmValidatorConfig] = None,
         http_client: Optional[httpx.Client] = None,
         audit_sources: Optional[Iterable[DetectorSource]] = None,
         system_prompt: Optional[str] = None,
@@ -478,11 +496,10 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             max_workers: Parallel HTTP calls (env: ``LLM_JUDGE_MAX_WORKERS``).
             fail_open: When ``True`` (default), any error keeps the entity.
             backend: ``remote`` (default) or ``local`` (no-op for MVP).
-            context_window: Chars before / after the entity sent in the
-                prompt.
-            max_tokens: Generation budget (absorbs Qwen 3.6 reasoning).
-            temperature: Sampling temperature.
-            top_p: Nucleus sampling threshold.
+            generation: Sampling / budget knobs bundled in
+                :class:`LlmValidatorConfig` (``context_window``,
+                ``max_tokens``, ``temperature``, ``top_p``). When ``None``
+                (default), the dataclass defaults are used.
             http_client: Optional pre-built :class:`httpx.Client` (useful
                 in tests).
             audit_sources: Iterable of :class:`DetectorSource` to audit
@@ -581,10 +598,11 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         self._per_type_builder: Optional[Callable[[str], str]] = None
         if self.per_type_prompts:
             self._per_type_name, self._per_type_builder = load_per_type_prompts()
-        self.context_window = context_window
-        self.max_tokens = max_tokens
-        self.temperature = temperature
-        self.top_p = top_p
+        generation = generation or LlmValidatorConfig()
+        self.context_window = generation.context_window
+        self.max_tokens = generation.max_tokens
+        self.temperature = generation.temperature
+        self.top_p = generation.top_p
 
         self._client: Optional[httpx.Client] = http_client
         self._owns_client = http_client is None
@@ -609,7 +627,7 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
     @property
     def name(self) -> str:
         """Stable identifier for the filter, used in logs and metrics."""
-        return self.NAME
+        return self.SOURCE_NAME
 
     def filter(
         self,
@@ -659,35 +677,48 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
         if self.backend == BACKEND_LOCAL:
             # Local backend is intentionally a no-op for the MVP: nothing is
             # judged, so every kept entity is NOT_AUDITED.
-            passthrough = list(entities)
-            for entity in passthrough:
-                self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
-            return passthrough, []
+            return self._passthrough_not_audited(entities)
         if not entities:
             return [], []
 
-        audited_entities: List[PIIEntity] = []
-        for entity in entities:
-            if self._is_audited(entity, audit_sources):
-                audited_entities.append(entity)
-
+        audited_entities = [
+            entity
+            for entity in entities
+            if self._is_audited(entity, audit_sources)
+        ]
         if not audited_entities:
-            passthrough = list(entities)
-            for entity in passthrough:
-                self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
-            return passthrough, []
+            return self._passthrough_not_audited(entities)
 
         verdicts = self._judge_batch(text, audited_entities)
         verdict_by_id = {
             id(entity): verdict
             for entity, verdict in zip(audited_entities, verdicts)
         }
+        return self._partition_judged(entities, audit_sources, verdict_by_id)
 
-        # Preserve the original ordering while filtering out the rejected
-        # audited entities; non-audited entities are passed through as-is.
-        # Each kept entity is tagged with the judge status so callers can
-        # distinguish a validated finding from one kept unjudged (not audited)
-        # or kept by the fail-open policy after a failed judge call.
+    def _passthrough_not_audited(
+        self, entities: List[PIIEntity]
+    ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, PiiVerdict]]]:
+        """Tag every entity NOT_AUDITED and keep them all (no rejection)."""
+        passthrough = list(entities)
+        for entity in passthrough:
+            self._tag_judge_status(entity, JudgeStatus.NOT_AUDITED)
+        return passthrough, []
+
+    def _partition_judged(
+        self,
+        entities: List[PIIEntity],
+        audit_sources: Optional[Set[DetectorSource]],
+        verdict_by_id: Dict[int, Optional[PiiVerdict]],
+    ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, PiiVerdict]]]:
+        """Split entities into kept / rejected, preserving original ordering.
+
+        Non-audited entities pass through as-is; audited ones are kept or
+        rejected per their verdict. Each kept entity is tagged with the judge
+        status so callers can distinguish a validated finding from one kept
+        unjudged (not audited) or kept by the fail-open policy after a failed
+        judge call.
+        """
         kept: List[PIIEntity] = []
         rejections: List[Tuple[PIIEntity, PiiVerdict]] = []
         for entity in entities:
@@ -836,11 +867,8 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             payload = _extract_json_payload(response_json)
             return PiiVerdict.model_validate(payload)
         except (
-            httpx.TimeoutException,
             httpx.HTTPError,
             ValueError,
-            json.JSONDecodeError,
-            ValidationError,
         ) as exc:
             logger.warning(
                 "[LLM-JUDGE] request_id=%s failed (%s: %s); fail_open=%s",
@@ -942,6 +970,7 @@ __all__ = [
     "BACKEND_LOCAL",
     "BACKEND_REMOTE",
     "LLMJudgeValidator",
+    "LlmValidatorConfig",
     "_extract_json_payload",
     "_log_inference_metrics",
     "_parse_audit_sources",

@@ -1,15 +1,8 @@
 package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import lombok.extern.slf4j.Slf4j;
-import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceScanPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
-import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
-import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
-import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
-import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
-import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
-import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import reactor.core.publisher.Flux;
@@ -32,17 +25,10 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
     private final PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort;
 
     public StreamConfluenceScanUseCase(
-        ConfluenceAccessor confluenceAccessor,
-        PiiDetectorClient piiDetectorClient,
-        ContentScanOrchestrator contentScanOrchestrator,
-        AttachmentProcessor attachmentProcessor,
-        ScanTimeOutConfig scanTimeoutConfig,
-        HtmlContentParser htmlContentParser,
-        ScanSpaceStatsCollector scanSpaceStatsCollector,
+        ScanPipelineDependencies dependencies,
         PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort
     ) {
-        super(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor, scanTimeoutConfig,
-              htmlContentParser, scanSpaceStatsCollector);
+        super(dependencies);
         this.personallyIdentifiableInformationScanExecutionOrchestratorPort = personallyIdentifiableInformationScanExecutionOrchestratorPort;
     }
 

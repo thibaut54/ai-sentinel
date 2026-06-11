@@ -83,35 +83,22 @@ class CompositePIIDetector:
             enable_gliner2: Enable GLiNER2 detection (default: False, opt-in per DB flag)
         """
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
+
         # Initialize ML detector
         self.ml_detector = ml_detector
         if self.ml_detector is None:
             self.logger.info("No ML detector provided - using rule-based detection only (Presidio/Regex)")
-        
+
         # Initialize regex detector if enabled
-        self.regex_detector = regex_detector
-        if enable_regex and self.regex_detector is None:
-            try:
-                self.regex_detector = RegexDetector()
-                self.logger.info("RegexDetector initialized successfully")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize RegexDetector: {e}")
-        
+        self.regex_detector = self._init_regex_detector(regex_detector, enable_regex)
         # Set enable_regex based on actual availability
         self.enable_regex = enable_regex and self.regex_detector is not None
-        
+
         # Initialize Presidio detector if enabled
-        self.enable_presidio = enable_presidio and PRESIDIO_AVAILABLE
-        self.presidio_detector = presidio_detector
-        if self.enable_presidio and self.presidio_detector is None:
-            try:
-                self.presidio_detector = PresidioDetector()
-                self.logger.info("PresidioDetector initialized successfully")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize PresidioDetector: {e}")
-                self.enable_presidio = False
-        
+        self.presidio_detector, self.enable_presidio = self._init_presidio_detector(
+            presidio_detector, enable_presidio
+        )
+
         # Initialize OpenMed detector slot (opt-in)
         self.openmed_detector = openmed_detector
         self.enable_openmed = enable_openmed and self.openmed_detector is not None
@@ -133,6 +120,39 @@ class CompositePIIDetector:
             f"GLiNER2={'enabled' if self.enable_gliner2 else 'disabled'}"
         )
     
+    def _init_regex_detector(
+        self,
+        regex_detector: Optional[RegexDetector],
+        enable_regex: bool,
+    ) -> Optional[RegexDetector]:
+        """Return the regex detector, building a default one when enabled."""
+        if regex_detector is not None or not enable_regex:
+            return regex_detector
+        try:
+            detector = RegexDetector()
+            self.logger.info("RegexDetector initialized successfully")
+            return detector
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize RegexDetector: {e}")
+            return None
+
+    def _init_presidio_detector(
+        self,
+        presidio_detector: Optional[PresidioDetector],
+        enable_presidio: bool,
+    ) -> Tuple[Optional[PresidioDetector], bool]:
+        """Return ``(detector, enabled)``, building a default when enabled."""
+        enabled = enable_presidio and PRESIDIO_AVAILABLE
+        if presidio_detector is not None or not enabled:
+            return presidio_detector, enabled
+        try:
+            detector = PresidioDetector()
+            self.logger.info("PresidioDetector initialized successfully")
+            return detector, True
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize PresidioDetector: {e}")
+            return None, False
+
     @property
     def model_id(self) -> str:
         """Get composite model identifier."""
