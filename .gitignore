@@ -25,6 +25,9 @@ secrets/*.txt
 
 personally-identifiable-information-scan-results/
 
+# Confluence scan corpus (real exported pages/attachments) — local test data, never versioned
+/pii-reporting-api/src/test/resources/corpus/
+
 # Logs
 **/logs/
 
