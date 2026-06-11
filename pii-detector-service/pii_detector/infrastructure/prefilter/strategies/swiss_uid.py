@@ -38,7 +38,7 @@ from pii_detector.infrastructure.prefilter.prefilter_strategy import (
 
 # Tolerated VAT register suffixes (TVA / MWST / IVA), stripped before matching
 # the strict shape so "CHE-123.456.789 MWST" reduces to "CHE123456789".
-_VAT_SUFFIX = re.compile(r"\s*(TVA|MWST|IVA)\s*$", re.IGNORECASE)
+_VAT_SUFFIXES = ("TVA", "MWST", "IVA")
 # Canonical UID separators (space / dot / hyphen) removed before the shape check.
 _SEPARATORS = re.compile(r"[\s.\-]")
 # Strict Swiss UID form: "CHE" + exactly 9 digits, nothing else.
@@ -53,7 +53,11 @@ class SwissUidStrategy:
     def evaluate(self, value: str) -> PrefilterVerdict:
         if not isinstance(value, str):  # type barrier (research §5)
             return PASS
-        cleaned = _VAT_SUFFIX.sub("", value.strip().upper())
+        cleaned = value.strip().upper()
+        for suffix in _VAT_SUFFIXES:
+            if cleaned.endswith(suffix):
+                cleaned = cleaned[: -len(suffix)].rstrip()
+                break
         cleaned = _SEPARATORS.sub("", cleaned)
         if not _UID_FORM.match(cleaned):  # not the strict CHE+9 form -> keep
             return PASS
