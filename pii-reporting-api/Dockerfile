@@ -12,7 +12,7 @@ COPY pii-reporting-api/src ./src
 
 RUN mvn -B clean package -DskipTests -Pdocker-build
 
-FROM amazoncorretto:25 AS runtime
+FROM amazoncorretto:25.0.3 AS runtime
 
 # Install Infisical CLI
 # Note: curl-minimal and bash are already installed in amazoncorretto:24 base image
