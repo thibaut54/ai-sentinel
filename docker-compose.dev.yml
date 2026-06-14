@@ -8,7 +8,7 @@ services:
   # - infisical_project_id.txt
   # ============================================================================
   secrets-bootstrap:
-    image: alpine:3.20
+    image: alpine:3.24
     container_name: ai-sentinel-secrets-bootstrap-dev
     restart: "no"
     command: ["sh", "/usr/local/bin/secrets-bootstrap-dev.sh"]
@@ -24,7 +24,7 @@ services:
   # and stores the Universal Auth credentials in ./secrets
   # ============================================================================
   infisical-configurator:
-    image: alpine:3.20
+    image: alpine:3.24
     container_name: ai-sentinel-infisical-configurator-dev
     restart: "no"
     command: ["sh", "/usr/local/bin/infisical-configurator-dev.sh"]
@@ -312,7 +312,7 @@ services:
       - ai-sentinel-network
 
   infisical:
-    image: infisical/infisical:v0.153.4
+    image: infisical/infisical:v0.161.0
     container_name: infisical-dev
     restart: unless-stopped
     ports:

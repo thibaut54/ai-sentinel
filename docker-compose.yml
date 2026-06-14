@@ -19,7 +19,7 @@ services:
   # - infisical_project_id.txt
   # ============================================================================
   secrets-bootstrap:
-    image: alpine:3.20
+    image: alpine:3.24
     container_name: ai-sentinel-secrets-bootstrap
     restart: "no"
     command: >
@@ -169,7 +169,7 @@ services:
   # - Saves credentials to ./secrets/ directory
   # ============================================================================
   infisical-configurator:
-    image: alpine:3.20
+    image: alpine:3.24
     container_name: ai-sentinel-infisical-configurator
     restart: "no"
     command: >
@@ -746,7 +746,7 @@ services:
       - ai-sentinel-network
 
   infisical:
-    image: infisical/infisical:v0.153.4
+    image: infisical/infisical:v0.161.0
     container_name: infisical-prod
     restart: unless-stopped
     ports:
