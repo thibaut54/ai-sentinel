@@ -11,13 +11,22 @@ import org.springframework.http.HttpStatus;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.domain.pii.detection.PiiTypeConfig;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.CategoryGroupResponseDto;
+import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.CreatePiiTypeConfigRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.GroupedPiiTypesResponseDto;
+import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto.UpdatePiiTypeConfigRequestDto;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -174,5 +183,138 @@ class PiiTypeConfigControllerTest {
                 .map(GroupedPiiTypesResponseDto::detector)
                 .toList();
         assertThat(detectors).containsExactly("GLINER", "PRESIDIO", "REGEX");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnAllConfigs_When_GetAllConfigsCalled")
+    void Should_ReturnAllConfigs_When_GetAllConfigsCalled() {
+        // Arrange
+        var config = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
+        when(managePiiTypeConfigsPort.getAllConfigs()).thenReturn(List.of(config));
+
+        // Act
+        var response = controller.getAllConfigs();
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().getFirst().piiType()).isEqualTo("EMAIL");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnConfigsByDetector_When_GetConfigsByDetectorCalled")
+    void Should_ReturnConfigsByDetector_When_GetConfigsByDetectorCalled() {
+        // Arrange
+        var config = PiiTypeConfig.builder()
+                .piiType("CREDIT_CARD").detector("PRESIDIO").enabled(true)
+                .threshold(0.75).category("Financial").detectorLabel("credit card").severity("HIGH").build();
+        when(managePiiTypeConfigsPort.getConfigsByDetector("PRESIDIO")).thenReturn(List.of(config));
+
+        // Act
+        var response = controller.getConfigsByDetector("PRESIDIO");
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().getFirst().detector()).isEqualTo("PRESIDIO");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnConfigsByCategory_When_GetConfigsByCategoryCalled")
+    void Should_ReturnConfigsByCategory_When_GetConfigsByCategoryCalled() {
+        // Arrange
+        var config = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
+        when(managePiiTypeConfigsPort.getConfigsByCategory())
+                .thenReturn(Map.of("CONTACT", List.of(config)));
+
+        // Act
+        var response = controller.getConfigsByCategory();
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("CONTACT");
+        assertThat(response.getBody().get("CONTACT")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should_ReturnCreated_When_CreateConfigCalled")
+    void Should_ReturnCreated_When_CreateConfigCalled() {
+        // Arrange
+        var created = PiiTypeConfig.builder()
+                .piiType("CUSTOM_TYPE").detector("GLINER").enabled(true)
+                .threshold(0.80).category("CONTACT").detectorLabel("custom").severity("LOW").build();
+        when(managePiiTypeConfigsPort.createConfig(any())).thenReturn(created);
+        var request = new CreatePiiTypeConfigRequestDto(
+                "CUSTOM_TYPE", "GLINER", true, 0.80,
+                "CONTACT", "custom", null, null, "LOW", null
+        );
+
+        // Act
+        var response = controller.createConfig(request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().piiType()).isEqualTo("CUSTOM_TYPE");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnUpdated_When_UpdateConfigCalled")
+    void Should_ReturnUpdated_When_UpdateConfigCalled() {
+        // Arrange
+        var updated = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("GLINER").enabled(false)
+                .threshold(0.90).category("CONTACT").detectorLabel("email").severity("LOW").build();
+        when(managePiiTypeConfigsPort.updateConfig(anyString(), anyString(), anyBoolean(),
+                anyDouble(), any(), any(), anyString())).thenReturn(updated);
+        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "GLINER", false, 0.90, null, null);
+
+        // Act
+        var response = controller.updateConfig("GLINER", "EMAIL", request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().enabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should_ThrowIllegalArgument_When_UpdateConfigPathMismatch")
+    void Should_ThrowIllegalArgument_When_UpdateConfigPathMismatch() {
+        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "PRESIDIO", true, 0.80, null, null);
+
+        assertThatThrownBy(() -> controller.updateConfig("GLINER", "EMAIL", request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Path parameters must match request body values");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnNoContent_When_DeleteConfigCalled")
+    void Should_ReturnNoContent_When_DeleteConfigCalled() {
+        var response = controller.deleteConfig("GLINER", "CUSTOM_TYPE");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verify(managePiiTypeConfigsPort).deleteConfig("CUSTOM_TYPE", "GLINER");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnBulkUpdated_When_BulkUpdateCalled")
+    void Should_ReturnBulkUpdated_When_BulkUpdateCalled() {
+        // Arrange
+        var updated = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .threshold(0.85).category("CONTACT").detectorLabel("email").severity("LOW").build();
+        when(managePiiTypeConfigsPort.bulkUpdate(any(), anyString())).thenReturn(List.of(updated));
+        var request = List.of(new UpdatePiiTypeConfigRequestDto("EMAIL", "GLINER", true, 0.85, null, null));
+
+        // Act
+        var response = controller.bulkUpdate(request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
     }
 }

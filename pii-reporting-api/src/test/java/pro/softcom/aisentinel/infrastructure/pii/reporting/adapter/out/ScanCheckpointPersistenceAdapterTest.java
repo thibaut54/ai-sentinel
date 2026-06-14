@@ -11,6 +11,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.Detec
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanCheckpointEntity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -146,5 +147,108 @@ class ScanCheckpointPersistenceAdapterTest {
             any(),
             any(LocalDateTime.class)
         );
+    }
+
+    @Test
+    void Should_ReturnEmpty_When_FindByScanAndSpaceWithBlankScanId() {
+        Optional<ScanCheckpoint> result = adapter.findByScanAndSpace("", "SPACE");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_ReturnEmpty_When_FindByScanAndSpaceWithBlankSpaceKey() {
+        Optional<ScanCheckpoint> result = adapter.findByScanAndSpace("scan-1", "");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_ReturnEmptyList_When_FindByScanWithBlankScanId() {
+        List<ScanCheckpoint> result = adapter.findByScan("");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_ReturnList_When_FindByScanWithValidScanId() {
+        ScanCheckpointEntity entity = ScanCheckpointEntity.builder()
+            .scanId("scan-1")
+            .spaceKey("SPACE")
+            .status("RUNNING")
+            .progressPercentage(50.0)
+            .updatedAt(LocalDateTime.now())
+            .build();
+        when(jpaRepository.findByScanIdOrderBySpaceKey("scan-1")).thenReturn(List.of(entity));
+
+        List<ScanCheckpoint> result = adapter.findByScan("scan-1");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().scanId()).isEqualTo("scan-1");
+    }
+
+    @Test
+    void Should_ReturnEmptyList_When_FindBySpaceWithBlankSpaceKey() {
+        List<ScanCheckpoint> result = adapter.findBySpace("  ");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_ReturnEmpty_When_FindLatestBySpaceWithBlankKey() {
+        Optional<ScanCheckpoint> result = adapter.findLatestBySpace("");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void Should_CallDelete_When_DeleteByScanWithValidId() {
+        adapter.deleteByScan("scan-del");
+
+        verify(jpaRepository).deleteByScanId("scan-del");
+    }
+
+    @Test
+    void Should_NotCallDelete_When_DeleteByScanWithBlankId() {
+        adapter.deleteByScan("");
+
+        verify(jpaRepository, org.mockito.Mockito.never()).deleteByScanId(anyString());
+    }
+
+    @Test
+    void Should_ReturnZero_When_PauseAllRunningCheckpointsWithBlankScanId() {
+        int result = adapter.pauseAllRunningCheckpoints("");
+
+        assertThat(result).isZero();
+    }
+
+    @Test
+    void Should_DelegateAndReturnCount_When_PauseAllRunningCheckpoints() {
+        when(jpaRepository.pauseAllRunningCheckpoints("scan-1")).thenReturn(3);
+
+        int result = adapter.pauseAllRunningCheckpoints("scan-1");
+
+        assertThat(result).isEqualTo(3);
+    }
+
+    @Test
+    void Should_ReturnZero_When_ResumeAllPausedCheckpointsWithBlankScanId() {
+        int result = adapter.resumeAllPausedCheckpoints("  ");
+
+        assertThat(result).isZero();
+    }
+
+    @Test
+    void Should_ReturnZero_When_ResolveStaleActiveCheckpointsWithEmptyList() {
+        int result = adapter.resolveStaleActiveCheckpoints(List.of());
+
+        assertThat(result).isZero();
+    }
+
+    @Test
+    void Should_ReturnZero_When_DeleteAllCheckpointsForSpacesWithEmptyList() {
+        adapter.deleteAllCheckpointsForSpaces(List.of());
+
+        verify(jpaRepository, org.mockito.Mockito.never()).deleteAllCheckpointsForSpaces(any());
     }
 }
