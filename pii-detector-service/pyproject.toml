@@ -53,7 +53,7 @@ dependencies = [
     "betterproto[compiler]>=2.0.0b6",
     "grpclib>=0.4.7",
 
-    "psutil == 7.1.0",
+    "psutil ==7.2.2",
     
     # PII Detection libraries
     "presidio-analyzer>=2.2.360",
