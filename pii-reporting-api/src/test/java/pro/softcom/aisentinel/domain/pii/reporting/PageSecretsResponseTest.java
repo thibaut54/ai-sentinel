@@ -30,7 +30,8 @@ class PageSecretsResponseTest {
     @Test
     @DisplayName("Should_ThrowException_When_ScanIdIsNull")
     void Should_ThrowException_When_ScanIdIsNull() {
-        assertThatThrownBy(() -> new PageSecretsResponse(null, "page-1", "Title", List.of()))
+        List<RevealedSecret> emptySecrets = List.of();
+        assertThatThrownBy(() -> new PageSecretsResponse(null, "page-1", "Title", emptySecrets))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("scanId");
     }
@@ -38,7 +39,8 @@ class PageSecretsResponseTest {
     @Test
     @DisplayName("Should_ThrowException_When_ScanIdIsBlank")
     void Should_ThrowException_When_ScanIdIsBlank() {
-        assertThatThrownBy(() -> new PageSecretsResponse("   ", "page-1", "Title", List.of()))
+        List<RevealedSecret> emptySecrets = List.of();
+        assertThatThrownBy(() -> new PageSecretsResponse("   ", "page-1", "Title", emptySecrets))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("scanId");
     }
@@ -46,7 +48,8 @@ class PageSecretsResponseTest {
     @Test
     @DisplayName("Should_ThrowException_When_PageIdIsNull")
     void Should_ThrowException_When_PageIdIsNull() {
-        assertThatThrownBy(() -> new PageSecretsResponse("scan-1", null, "Title", List.of()))
+        List<RevealedSecret> emptySecrets = List.of();
+        assertThatThrownBy(() -> new PageSecretsResponse("scan-1", null, "Title", emptySecrets))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("pageId");
     }
@@ -54,7 +57,8 @@ class PageSecretsResponseTest {
     @Test
     @DisplayName("Should_ThrowException_When_PageIdIsBlank")
     void Should_ThrowException_When_PageIdIsBlank() {
-        assertThatThrownBy(() -> new PageSecretsResponse("scan-1", "", "Title", List.of()))
+        List<RevealedSecret> emptySecrets = List.of();
+        assertThatThrownBy(() -> new PageSecretsResponse("scan-1", "", "Title", emptySecrets))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("pageId");
     }

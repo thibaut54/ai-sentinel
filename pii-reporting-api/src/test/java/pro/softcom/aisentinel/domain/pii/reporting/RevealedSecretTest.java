@@ -49,6 +49,6 @@ class RevealedSecretTest {
     @DisplayName("Should_AllowZeroStart_When_PiiAtBeginning")
     void Should_AllowZeroStart_When_PiiAtBeginning() {
         RevealedSecret secret = new RevealedSecret(0, 10, "value", "ctx", "masked");
-        assertThat(secret.startPosition()).isEqualTo(0);
+        assertThat(secret.startPosition()).isZero();
     }
 }

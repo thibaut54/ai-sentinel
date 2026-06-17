@@ -22,6 +22,9 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
  * @param scanTimeoutConfig       per-call PII detection timeouts
  * @param htmlContentParser       cleans raw HTML page content before detection
  * @param scanSpaceStatsCollector accumulates per-space scan statistics
+ * @param pageConcurrency         number of pages whose PII detection runs
+ *                                concurrently (1 = sequential, the historical
+ *                                behaviour); feeds the detector worker pool
  */
 public record ScanPipelineDependencies(
     ConfluenceAccessor confluenceAccessor,
@@ -30,6 +33,26 @@ public record ScanPipelineDependencies(
     AttachmentProcessor attachmentProcessor,
     ScanTimeOutConfig scanTimeoutConfig,
     HtmlContentParser htmlContentParser,
-    ScanSpaceStatsCollector scanSpaceStatsCollector
+    ScanSpaceStatsCollector scanSpaceStatsCollector,
+    int pageConcurrency
 ) {
+
+    /**
+     * Backward-compatible constructor defaulting page concurrency to 1
+     * (sequential page processing — the historical behaviour). Kept so existing
+     * call sites (tests) compile unchanged; production wiring uses the canonical
+     * constructor with the configured value.
+     */
+    public ScanPipelineDependencies(
+        ConfluenceAccessor confluenceAccessor,
+        PiiDetectorClient piiDetectorClient,
+        ContentScanOrchestrator contentScanOrchestrator,
+        AttachmentProcessor attachmentProcessor,
+        ScanTimeOutConfig scanTimeoutConfig,
+        HtmlContentParser htmlContentParser,
+        ScanSpaceStatsCollector scanSpaceStatsCollector
+    ) {
+        this(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor,
+             scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, 1);
+    }
 }

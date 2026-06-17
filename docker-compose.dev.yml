@@ -86,11 +86,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '12.0'      # Max 4 CPU cores (adjust based on host)
-          memory: 16G       # Max 8GB RAM for NLP/ML models
+          cpus: '8.0'       # <= host CPU count; covers PII_WORKER_PROCESSES (6) + headroom
+          memory: 16G       # NLP/ML models (fast_gliner ONNX ~1.4G x workers)
         reservations:
-          cpus: '12.0'      # Guaranteed 2 CPU cores
-          memory: 16G       # Guaranteed 4GB RAM
+          cpus: '2.0'       # guaranteed minimum
+          memory: 16G       # guaranteed for model load
     
     ports:
       - "50051:50051"
@@ -110,6 +110,22 @@ services:
       # Static non-sensitive configuration
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
+
+      # Detection data-parallelism (dev box has 12 CPU / 16G, so higher than
+      # prod's 3). N inference worker processes serving the K concurrent
+      # DetectPII calls driven by PII_SCAN_PAGE_CONCURRENCY on the API. Keep
+      # PII_WORKER_PROCESSES * TORCH_NUM_THREADS <= cpus limit below.
+      PII_WORKER_PROCESSES: ${PII_WORKER_PROCESSES:-6}
+      TORCH_NUM_THREADS: ${TORCH_NUM_THREADS:-1}
+      # LLM-as-judge HTTP concurrency cap (matches LM Studio "Max Concurrent").
+      # Held here by a producer-side semaphore regardless of page concurrency.
+      LLM_JUDGE_MAX_WORKERS: ${LLM_JUDGE_MAX_WORKERS:-4}
+      # LM Studio endpoint + exact model id. The TOML default points at a
+      # Tailscale IP; override to the reachable LAN endpoint. The model id MUST
+      # include the quant suffix (@q8_0) so _resolve_model_id exact-matches it
+      # instead of falling back to the qwen3.6-35b fuzzy match.
+      LLM_JUDGE_BASE_URL: ${LLM_JUDGE_BASE_URL:-http://172.22.22.63:1234/v1}
+      LLM_JUDGE_PREFERRED_MODEL: ${LLM_JUDGE_PREFERRED_MODEL:-detect-pii-4b-v2@q8_0}
       # GLiNER2 runtime override (env > TOML > default). Uncomment to force:
       # "fastgliner" (speed, labels-only, 0.5 threshold floor) or "pytorch"
       # (sends detector_description, honours any threshold). Empty => TOML value.
@@ -165,7 +181,11 @@ services:
       PII_DETECTOR_CLIENT: armeria
       PII_DETECTOR_HOST: pii-detector
       PII_DETECTOR_PORT: 50051
-      
+      # Pages scanned concurrently — match PII_WORKER_PROCESSES on the detector
+      # so the worker pool stays fed. Page events stay ordered; the LLM judge
+      # remains bounded to LLM_JUDGE_MAX_WORKERS independently.
+      PII_SCAN_PAGE_CONCURRENCY: ${PII_SCAN_PAGE_CONCURRENCY:-6}
+
       PII_DATABASE_ENCRYPTION_KEY_FILE: /secrets/pii_database_encryption_key.txt
     volumes:
       - ./personally-identifiable-information-scan-results:/personally-identifiable-information-scan-results
@@ -282,7 +302,9 @@ services:
       POSTGRES_PASSWORD_FILE: /secrets/infisical_db_password.txt
       POSTGRES_DB: infisical
     volumes:
-      - infisical-db-data:/var/lib/postgresql/data
+      # PG18 stores data in a version subdir of /var/lib/postgresql (mount the
+      # parent, not /var/lib/postgresql/data) — mirrors the healthy main db.
+      - infisical-db-data:/var/lib/postgresql
       - ./secrets:/secrets:ro
     depends_on:
       secrets-bootstrap:

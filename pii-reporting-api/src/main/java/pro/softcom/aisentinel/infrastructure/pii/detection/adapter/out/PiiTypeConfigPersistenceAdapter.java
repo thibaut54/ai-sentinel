@@ -75,6 +75,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
     }
 
     @Override
+    @Transactional
     public PiiTypeConfig updateAtomically(
             String piiType,
             String detector,
@@ -82,14 +83,31 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             double threshold,
             String updatedBy
     ) {
-        // Delegates to the full overload, which carries the @Transactional boundary.
-        // No annotation here so the self-invocation does not rely on a (bypassed) proxy.
-        return updateAtomically(piiType, detector, enabled, threshold, null, null, updatedBy);
+        return doUpdateAtomically(piiType, detector, enabled, threshold, null, null, updatedBy);
     }
 
     @Override
     @Transactional
     public PiiTypeConfig updateAtomically(
+            String piiType,
+            String detector,
+            boolean enabled,
+            double threshold,
+            String detectorDescription,
+            Boolean llmJudgeEnabled,
+            String updatedBy
+    ) {
+        return doUpdateAtomically(piiType, detector, enabled, threshold, detectorDescription, llmJudgeEnabled, updatedBy);
+    }
+
+    /**
+     * Performs the atomic single-config update within the caller's transaction.
+     * <p>
+     * Extracted as a private method so both public overloads can declare their own
+     * {@code @Transactional} boundary without self-invoking a proxied method
+     * (which would bypass the transactional advice).
+     */
+    private PiiTypeConfig doUpdateAtomically(
             String piiType,
             String detector,
             boolean enabled,

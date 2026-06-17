@@ -8,6 +8,7 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ScanTaskManagerAdapterTest {
@@ -29,7 +30,8 @@ class ScanTaskManagerAdapterTest {
 
     @Test
     void Should_ThrowIllegalArgument_When_StartScanWithNullScanId() {
-        assertThatThrownBy(() -> adapter.startScan(null, Flux.empty()))
+        Flux<ConfluenceContentScanResult> emptyStream = Flux.empty();
+        assertThatThrownBy(() -> adapter.startScan(null, emptyStream))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("scanId cannot be null");
     }
@@ -76,15 +78,13 @@ class ScanTaskManagerAdapterTest {
     }
 
     @Test
-    void Should_ReturnTrue_When_PauseActiveScan() throws InterruptedException {
-        // Arrange
+    void Should_ReturnTrue_When_PauseActiveScan() {
+        // Arrange: a never-ending source so the subscription stays active until paused
         String scanId = "scan-pause-test";
         Flux<ConfluenceContentScanResult> neverEndingSource = Flux.never();
 
         // Act
         adapter.startScan(scanId, neverEndingSource);
-        // Give the independent subscription time to start
-        Thread.sleep(50);
         boolean paused = adapter.pauseScan(scanId);
 
         // Assert
@@ -92,26 +92,27 @@ class ScanTaskManagerAdapterTest {
     }
 
     @Test
-    void Should_ReturnFalse_When_PauseAlreadyDisposedScan() throws InterruptedException {
-        // Arrange
+    void Should_ReturnFalse_When_PauseAlreadyDisposedScan() {
+        // Arrange: a never-ending scan that is disposed only by our explicit first pause,
+        // so the "already disposed" state is reached deterministically (no async wait).
         String scanId = "scan-already-disposed";
-        Flux<ConfluenceContentScanResult> source = Flux.empty();
+        Flux<ConfluenceContentScanResult> source = Flux.never();
 
         adapter.startScan(scanId, source);
-        Thread.sleep(100); // Let the scan complete and dispose
-        adapter.pauseScan(scanId); // first pause
+        boolean firstPause = adapter.pauseScan(scanId); // disposes the subscription
 
-        // Act - second pause
+        // Act - second pause sees the subscription already disposed
         boolean secondPause = adapter.pauseScan(scanId);
 
         // Assert
+        assertThat(firstPause).isTrue();
         assertThat(secondPause).isFalse();
     }
 
     @Test
     void Should_DoNothing_When_CleanupCalledWithNoScans() {
-        // Should not throw
-        adapter.cleanupCompletedScans();
+        assertThatCode(() -> adapter.cleanupCompletedScans())
+                .doesNotThrowAnyException();
     }
 
     @Test

@@ -18,15 +18,15 @@ class PiiAuditRecordTest {
     @Test
     @DisplayName("Should_CreateRecord_When_AllFieldsAreValid")
     void Should_CreateRecord_When_AllFieldsAreValid() {
-        PiiAuditRecord record = new PiiAuditRecord(
+        PiiAuditRecord auditRecord = new PiiAuditRecord(
                 "scan-1", "SPACE", "page-1", "Page Title",
                 NOW, RETENTION, AccessPurpose.USER_DISPLAY, 3);
 
-        assertThat(record.scanId()).isEqualTo("scan-1");
-        assertThat(record.spaceKey()).isEqualTo("SPACE");
-        assertThat(record.pageId()).isEqualTo("page-1");
-        assertThat(record.piiEntitiesCount()).isEqualTo(3);
-        assertThat(record.purpose()).isEqualTo(AccessPurpose.USER_DISPLAY);
+        assertThat(auditRecord.scanId()).isEqualTo("scan-1");
+        assertThat(auditRecord.spaceKey()).isEqualTo("SPACE");
+        assertThat(auditRecord.pageId()).isEqualTo("page-1");
+        assertThat(auditRecord.piiEntitiesCount()).isEqualTo(3);
+        assertThat(auditRecord.purpose()).isEqualTo(AccessPurpose.USER_DISPLAY);
     }
 
     @Test
@@ -92,9 +92,9 @@ class PiiAuditRecordTest {
     @Test
     @DisplayName("Should_AllowZeroPiiEntities_When_PageHasNoDetections")
     void Should_AllowZeroPiiEntities_When_PageHasNoDetections() {
-        PiiAuditRecord record = new PiiAuditRecord(
+        PiiAuditRecord auditRecord = new PiiAuditRecord(
                 "scan-1", "SPACE", "page-1", null,
                 NOW, RETENTION, AccessPurpose.USER_DISPLAY, 0);
-        assertThat(record.piiEntitiesCount()).isZero();
+        assertThat(auditRecord.piiEntitiesCount()).isZero();
     }
 }

@@ -1083,6 +1083,95 @@ class TestLLMJudgeValidatorFailOpen:
 
 
 # ---------------------------------------------------------------------------
+# Submit-semaphore backpressure
+# ---------------------------------------------------------------------------
+
+
+class TestSubmitSemaphoreBackpressure:
+    """The shared submit semaphore caps in-flight judge calls at
+    ``max_workers`` no matter how many concurrent callers feed the validator,
+    so the executor's work queue never grows and ``future.result`` never times
+    out merely because a future is waiting in line (the FAIL_OPEN_KEPT cause)."""
+
+    def test_should_cap_concurrent_judge_calls_at_max_workers(
+        self, validator_factory
+    ) -> None:
+        import threading
+        import time
+
+        max_workers = 3
+        validator = validator_factory(max_workers=max_workers)
+        release = threading.Event()
+        try:
+            lock = threading.Lock()
+            state = {"current": 0, "peak": 0}
+
+            def slow_judge_one(text, entity, request_id):
+                with lock:
+                    state["current"] += 1
+                    state["peak"] = max(state["peak"], state["current"])
+                # Block so concurrent callers pile up against the semaphore.
+                release.wait(timeout=5.0)
+                with lock:
+                    state["current"] -= 1
+                return PiiVerdict(
+                    verdict="TRUE_POSITIVE", confidence=0.9, reason="ok"
+                )
+
+            validator._judge_one = slow_judge_one  # type: ignore[assignment]
+
+            # 8 concurrent callers x 4 entities = 32 calls competing for the
+            # max_workers permits on the shared singleton-style executor.
+            callers, per_caller = 8, 4
+            kept_counts: List[int] = []
+            statuses: List[JudgeStatus] = []
+            counts_lock = threading.Lock()
+
+            def run_caller():
+                kept, _ = validator.filter_with_verdicts(
+                    "text", [_gliner_entity() for _ in range(per_caller)]
+                )
+                with counts_lock:
+                    kept_counts.append(len(kept))
+                    statuses.extend(e.judge_status for e in kept)
+
+            threads = [
+                threading.Thread(target=run_caller) for _ in range(callers)
+            ]
+            for thread in threads:
+                thread.start()
+
+            # Wait (bounded) until the cap is actually REACHED, proving liveness
+            # (not just the safety bound), then snapshot the peak before release.
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                with lock:
+                    if state["peak"] >= max_workers:
+                        break
+                time.sleep(0.01)
+            with lock:
+                observed_peak = state["peak"]
+
+            release.set()
+            for thread in threads:
+                thread.join(timeout=10.0)
+
+            # Cap is both REACHED (liveness) and never EXCEEDED (safety).
+            assert observed_peak == max_workers, (
+                f"observed peak {observed_peak} != cap {max_workers}"
+            )
+            # No fail-open occurred: every entity got a real TRUE_POSITIVE verdict
+            # (a mass timeout/starvation would surface as FAIL_OPEN_KEPT instead).
+            assert kept_counts == [per_caller] * callers
+            assert statuses == (
+                [JudgeStatus.VALIDATED_TRUE_POSITIVE] * (callers * per_caller)
+            )
+        finally:
+            release.set()
+            validator.shutdown()
+
+
+# ---------------------------------------------------------------------------
 # Backend handling
 # ---------------------------------------------------------------------------
 

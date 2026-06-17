@@ -40,10 +40,10 @@ class ExportContextTest {
     @Test
     @DisplayName("Should_ThrowException_When_ReportNameIsNull")
     void Should_ThrowException_When_ReportNameIsNull() {
-        assertThatThrownBy(() -> ExportContext.builder()
+        var builder = ExportContext.builder()
                 .reportName(null)
-                .reportIdentifier("RPT-001")
-                .build())
+                .reportIdentifier("RPT-001");
+        assertThatThrownBy(builder::build)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Report name");
     }
@@ -51,10 +51,10 @@ class ExportContextTest {
     @Test
     @DisplayName("Should_ThrowException_When_ReportNameIsBlank")
     void Should_ThrowException_When_ReportNameIsBlank() {
-        assertThatThrownBy(() -> ExportContext.builder()
+        var builder = ExportContext.builder()
                 .reportName("   ")
-                .reportIdentifier("RPT-001")
-                .build())
+                .reportIdentifier("RPT-001");
+        assertThatThrownBy(builder::build)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Report name");
     }
@@ -62,10 +62,10 @@ class ExportContextTest {
     @Test
     @DisplayName("Should_ThrowException_When_ReportIdentifierIsNull")
     void Should_ThrowException_When_ReportIdentifierIsNull() {
-        assertThatThrownBy(() -> ExportContext.builder()
+        var builder = ExportContext.builder()
                 .reportName("My Report")
-                .reportIdentifier(null)
-                .build())
+                .reportIdentifier(null);
+        assertThatThrownBy(builder::build)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Report identifier");
     }
@@ -73,10 +73,10 @@ class ExportContextTest {
     @Test
     @DisplayName("Should_ThrowException_When_ReportIdentifierIsBlank")
     void Should_ThrowException_When_ReportIdentifierIsBlank() {
-        assertThatThrownBy(() -> ExportContext.builder()
+        var builder = ExportContext.builder()
                 .reportName("My Report")
-                .reportIdentifier("")
-                .build())
+                .reportIdentifier("");
+        assertThatThrownBy(builder::build)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Report identifier");
     }

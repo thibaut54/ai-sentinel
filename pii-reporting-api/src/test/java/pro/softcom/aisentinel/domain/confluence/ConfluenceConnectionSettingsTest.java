@@ -46,7 +46,7 @@ class ConfluenceConnectionSettingsTest {
                 1, null, "admin", 5000, 30000, 0, 25, 1000,
                 ConfluenceDeploymentType.CLOUD, null, null
         );
-        assertThat(settings.baseUrl()).isEqualTo("");
+        assertThat(settings.baseUrl()).isEmpty();
     }
 
     @Test
@@ -56,7 +56,7 @@ class ConfluenceConnectionSettingsTest {
                 1, "https://example.atlassian.net", null, 5000, 30000, 0, 25, 1000,
                 ConfluenceDeploymentType.CLOUD, null, null
         );
-        assertThat(settings.username()).isEqualTo("");
+        assertThat(settings.username()).isEmpty();
     }
 
     @Test

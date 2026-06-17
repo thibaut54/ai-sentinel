@@ -3,6 +3,9 @@ package pro.softcom.aisentinel.domain.pii.reporting;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 
@@ -123,40 +126,14 @@ class ScanRemainingPagesCalculatorTest {
     @DisplayName("computeRemainingPages - edge cases")
     class ComputeRemainingPagesEdgeCases {
 
-        @Test
-        @DisplayName("Should_ReturnAllPages_When_LastProcessedPageIdIsBlank")
-        void Should_ReturnAllPages_When_LastProcessedPageIdIsBlank() {
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"p-unknown"})
+        @DisplayName("Should_ReturnAllPages_When_LastProcessedPageIdIsBlankNullOrUnknown")
+        void Should_ReturnAllPages_When_LastProcessedPageIdIsBlankNullOrUnknown(String lastProcessedPageId) {
             // Arrange
             List<ConfluencePage> pages = List.of(page("p1"), page("p2"));
-            ScanCheckpoint cp = checkpoint("", null, ScanStatus.RUNNING);
-
-            // Act
-            List<ConfluencePage> remaining = ScanRemainingPagesCalculator.computeRemainingPages(pages, cp);
-
-            // Assert
-            assertThat(remaining).containsExactlyElementsOf(pages);
-        }
-
-        @Test
-        @DisplayName("Should_ReturnAllPages_When_LastProcessedPageIdIsNull")
-        void Should_ReturnAllPages_When_LastProcessedPageIdIsNull() {
-            // Arrange
-            List<ConfluencePage> pages = List.of(page("p1"), page("p2"));
-            ScanCheckpoint cp = checkpoint(null, null, ScanStatus.RUNNING);
-
-            // Act
-            List<ConfluencePage> remaining = ScanRemainingPagesCalculator.computeRemainingPages(pages, cp);
-
-            // Assert
-            assertThat(remaining).containsExactlyElementsOf(pages);
-        }
-
-        @Test
-        @DisplayName("Should_ReturnAllPages_When_LastProcessedPageNotFoundInList")
-        void Should_ReturnAllPages_When_LastProcessedPageNotFoundInList() {
-            // Arrange
-            List<ConfluencePage> pages = List.of(page("p1"), page("p2"));
-            ScanCheckpoint cp = checkpoint("p-unknown", null, ScanStatus.RUNNING);
+            ScanCheckpoint cp = checkpoint(lastProcessedPageId, null, ScanStatus.RUNNING);
 
             // Act
             List<ConfluencePage> remaining = ScanRemainingPagesCalculator.computeRemainingPages(pages, cp);
@@ -234,7 +211,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, null);
 
             // Assert
-            assertThat(result.analyzedOffset()).isEqualTo(0);
+            assertThat(result.analyzedOffset()).isZero();
         }
 
         @Test
@@ -248,7 +225,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
 
             // Assert
-            assertThat(result.analyzedOffset()).isEqualTo(0);
+            assertThat(result.analyzedOffset()).isZero();
         }
 
         @Test

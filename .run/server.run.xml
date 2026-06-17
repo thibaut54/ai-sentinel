@@ -5,7 +5,13 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
-      <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="DB_PORT" value="5433" />
+        <env name="DB_NAME" value="ai-sentinel" />
+        <env name="DB_HOST" value="localhost" />
+        <env name="PII_DATABASE_ENCRYPTION_KEY" value="0VbKF4QQonigye2zwYnk4suDB4CV9YqM9w53EM/kKqY=" />
+        <env name="DB_USER" value="postgres" />
+        <env name="DB_PASSWORD" value="postgres" />
       <env name="DB_PORT" value="5433" />
       <env name="DB_NAME" value="ai-sentinel" />
       <env name="DB_HOST" value="localhost" />

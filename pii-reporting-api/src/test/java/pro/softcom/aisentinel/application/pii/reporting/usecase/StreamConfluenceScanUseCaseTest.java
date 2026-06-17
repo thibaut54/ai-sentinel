@@ -90,6 +90,14 @@ class StreamConfluenceScanUseCaseTest {
 
     private StreamConfluenceScanUseCase streamConfluenceScanUseCase;
 
+    // Collaborators promoted to fields so tests can rebuild the use case with a
+    // custom page concurrency (see useCaseWithConcurrency).
+    private ConfluenceAccessor confluenceAccessor;
+    private ContentScanOrchestrator contentScanOrchestrator;
+    private AttachmentProcessor attachmentProcessor;
+    private HtmlContentParser htmlContentParser;
+    private ScanSpaceStatsCollector scanSpaceStatsCollector;
+
     @BeforeEach
     void setUp() {
         // Keep only baseUrl relevant for URL building
@@ -119,17 +127,17 @@ class StreamConfluenceScanUseCaseTest {
                                                                           Runnable::run);
 
         // Create parameter objects
-        ConfluenceAccessor confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
-        ContentScanOrchestrator contentScanOrchestrator = new ContentScanOrchestrator(
+        confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
+        contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
                 severityCalculationService, scanSeverityCountService
         );
-        AttachmentProcessor attachmentProcessor = new AttachmentProcessor(
+        attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,
                 attachmentTextExtractionService
         );
-        HtmlContentParser htmlContentParser = new HtmlContentParser();
-        ScanSpaceStatsCollector scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
+        htmlContentParser = new HtmlContentParser();
+        scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
 
         ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
                 confluenceAccessor,
@@ -163,6 +171,62 @@ class StreamConfluenceScanUseCaseTest {
                 })
                 .when(personallyIdentifiableInformationScanExecutionOrchestratorPort)
                 .startScan(any(), any());
+    }
+
+    /** Rebuilds the use case with a custom page concurrency, reusing the shared collaborators. */
+    private StreamConfluenceScanUseCase useCaseWithConcurrency(int concurrency) {
+        ScanPipelineDependencies deps = new ScanPipelineDependencies(
+                confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor,
+                scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, concurrency);
+        return new StreamConfluenceScanUseCase(
+                deps, personallyIdentifiableInformationScanExecutionOrchestratorPort);
+    }
+
+    @Test
+    @DisplayName("streamSpace - with pageConcurrency>1, page events are still emitted in source order")
+    void streamSpace_concurrentPages_preserveOrder() {
+        String spaceKey = "S-CONC";
+        ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t", "http://test.com", "d",
+                ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(confluenceService.getSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(Optional.of(space)));
+
+        int pageCount = 5;
+        java.util.List<ConfluencePage> pages = new java.util.ArrayList<>();
+        for (int i = 1; i <= pageCount; i++) {
+            pages.add(ConfluencePage.builder()
+                .id("p-" + i)
+                .title("T" + i)
+                .spaceKey(spaceKey)
+                .content(new ConfluencePage.HtmlContent("scan marker P" + i + " end"))
+                .build());
+            when(confluenceAttachmentService.getPageAttachments("p-" + i))
+                .thenReturn(CompletableFuture.completedFuture(List.of()));
+        }
+        when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(pages));
+        when(scanTimeoutConfig.getPiiDetection()).thenReturn(Duration.ofSeconds(30));
+
+        // Inverse-latency detection: page 1 is SLOWEST. An unordered flatMap would
+        // emit later (faster) pages first; flatMapSequential must still emit in
+        // source order p-1..p-5. The differing sleeps run concurrently because
+        // pageConcurrency = pageCount, proving both concurrency AND ordering.
+        when(piiDetectorClient.analyzeContent(any())).thenAnswer(invocation -> {
+            String text = invocation.getArgument(0);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("P(\\d+)").matcher(text);
+            int pageNum = matcher.find() ? Integer.parseInt(matcher.group(1)) : 0;
+            Thread.sleep((pageCount + 1 - pageNum) * 40L);
+            return ContentPiiDetection.builder().statistics(Map.of()).sensitiveDataFound(List.of()).build();
+        });
+
+        StreamConfluenceScanUseCase useCase = useCaseWithConcurrency(pageCount);
+
+        List<String> pageStartOrder = useCase.streamSpace(spaceKey)
+                .filter(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()))
+                .map(ConfluenceContentScanResult::pageId)
+                .timeout(Duration.ofSeconds(15))
+                .collectList()
+                .block();
+
+        assertThat(pageStartOrder).containsExactly("p-1", "p-2", "p-3", "p-4", "p-5");
     }
 
     @Test

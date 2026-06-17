@@ -42,7 +42,11 @@ import re
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import (
+    Future,
+    ThreadPoolExecutor,
+    TimeoutError as FuturesTimeoutError,
+)
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
@@ -610,11 +614,34 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
             max_workers=max(1, self.max_workers),
             thread_name_prefix="llm-judge",
         )
+        # Producer-side backpressure: cap the number of judge calls handed to
+        # the executor at any instant to ``max_workers``. The executor alone
+        # bounds *execution* concurrency, but its work queue is unbounded, so a
+        # burst of concurrent callers (e.g. N Confluence pages scanned in
+        # parallel, all funnelled through this process-wide singleton) could
+        # pile hundreds of futures behind the workers. ``future.result`` would
+        # then time out while a future merely WAITS in the queue rather than
+        # while it runs, manufacturing spurious ``FAIL_OPEN_KEPT``. Acquiring
+        # this shared semaphore *before* ``submit`` (released in the future's
+        # done callback) keeps the queue empty, so the per-call timeout measures
+        # the real HTTP round-trip and judge HTTP concurrency stays at
+        # ``max_workers`` regardless of how many requests are in flight.
+        self._submit_semaphore = threading.BoundedSemaphore(
+            max(1, self.max_workers)
+        )
         self._resolved_model_id: Optional[str] = None
         self._resolve_lock = threading.Lock()
         self._shutdown_called = False
 
         atexit.register(self.shutdown)
+
+        logger.info(
+            "[LLM-JUDGE] concurrency cap: max_workers=%d (executor + submit "
+            "semaphore), timeout=%.0fs, fail_open=%s",
+            self.max_workers,
+            self.timeout_seconds,
+            self.fail_open,
+        )
 
         if self.backend == BACKEND_LOCAL:
             logger.warning(
@@ -805,24 +832,89 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
     def _judge_batch(
         self, text: str, entities: List[PIIEntity]
     ) -> List[Optional[PiiVerdict]]:
-        """Submit one judge call per entity using the executor."""
+        """Submit one judge call per entity, bounded by the submit semaphore.
+
+        The semaphore caps in-flight submissions at ``max_workers`` so the
+        executor's work queue never grows under concurrent callers. This keeps
+        ``future.result`` measuring the real HTTP round-trip rather than queue
+        wait, and holds judge HTTP concurrency at ``max_workers`` regardless of
+        how many scan pages are processed in parallel (see ``__init__``).
+
+        Failures are classified so the caller can tell a genuine slow/stuck LM
+        Studio call (``TimeoutError``) from any other error. The semaphore
+        ``acquire`` is itself bounded by ``timeout_seconds`` and the executor is
+        re-checked per iteration: if no slot frees in time, or a concurrent
+        ``shutdown`` nulls the executor, the entity fails open instead of
+        blocking the producer thread unboundedly or crashing the whole batch.
+        """
         if self._executor is None:  # pragma: no cover - defensive
             raise RuntimeError("LLMJudgeValidator already shut down")
 
-        futures = []
+        # futures[i] is the Future for entity i, or None when the entity could
+        # not be submitted (slot starvation / executor gone) and must fail open.
+        futures: List[Optional[Future]] = []
+        sem_wait_max_s = 0.0
+        slot_starvations = 0
+        other_failures = 0
         for entity in entities:
             request_id = uuid.uuid4().hex[:12]
-            futures.append(
-                self._executor.submit(
-                    self._judge_one, text, entity, request_id
-                )
-            )
+            wait_start = time.monotonic()
+            # Bound the producer wait: never block longer than one call budget.
+            # If no slot frees in time the judge cannot keep up, so fail open
+            # this entity rather than stalling the whole scan thread (the very
+            # unbounded-wait this backpressure exists to prevent).
+            acquired = self._submit_semaphore.acquire(timeout=self.timeout_seconds)
+            sem_wait_max_s = max(sem_wait_max_s, time.monotonic() - wait_start)
+            if not acquired:
+                slot_starvations += 1
+                futures.append(None)
+                continue
+            # Snapshot the executor: shutdown() nulls it without a lock, so a
+            # concurrent shutdown must fail open here, not raise out of the batch.
+            executor = self._executor
+            if executor is None:  # pragma: no cover - shutdown race
+                self._submit_semaphore.release()
+                futures.append(None)
+                continue
+            try:
+                future = executor.submit(self._judge_one, text, entity, request_id)
+            except Exception:
+                # Rejected (executor shutting down) or any submit error: release
+                # the permit and fail open this entity instead of crashing.
+                self._submit_semaphore.release()
+                other_failures += 1
+                futures.append(None)
+                continue
+            future.add_done_callback(self._release_submit_slot)
+            futures.append(future)
 
         results: List[Optional[PiiVerdict]] = []
+        timeouts = 0
         for future in futures:
+            if future is None:
+                # Never submitted (slot starvation / shutdown) -> fail-open policy.
+                results.append(
+                    None if self.fail_open else self._reject_verdict()
+                )
+                continue
             try:
                 results.append(future.result(timeout=self.timeout_seconds))
+            except FuturesTimeoutError:
+                # With the submit semaphore the future was already executing, so
+                # this is a genuine slow/stuck LM Studio call, not queue wait.
+                # (httpx also bounds the real call to timeout_seconds.)
+                timeouts += 1
+                logger.warning(
+                    "[LLM-JUDGE] verdict timed out after %.0fs (slow LM Studio); "
+                    "%s entity",
+                    self.timeout_seconds,
+                    "keeping" if self.fail_open else "discarding",
+                )
+                results.append(
+                    None if self.fail_open else self._reject_verdict()
+                )
             except Exception:
+                other_failures += 1
                 logger.warning(
                     "[LLM-JUDGE] judge call failed; %s entity",
                     "keeping" if self.fail_open else "discarding",
@@ -831,7 +923,37 @@ class LLMJudgeValidator(PIIPostFilterProtocol):
                 results.append(
                     None if self.fail_open else self._reject_verdict()
                 )
+
+        # Surface saturation and fail-open causes so operators can tell "judge is
+        # the bottleneck" (high sem_wait / slot_starvations) from "LM Studio is
+        # failing" (timeouts) — emitted only when there is something to report so
+        # the happy path stays quiet.
+        if (sem_wait_max_s > 0.5 or slot_starvations or timeouts
+                or other_failures):
+            logger.info(
+                "[LLM-JUDGE] batch done: entities=%d cap=%d sem_wait_max=%.2fs "
+                "slot_starvations=%d timeouts=%d other_failures=%d",
+                len(futures),
+                self.max_workers,
+                sem_wait_max_s,
+                slot_starvations,
+                timeouts,
+                other_failures,
+            )
         return results
+
+    def _release_submit_slot(self, _future: Future) -> None:
+        """Release the submit-semaphore permit when a judge call completes.
+
+        Wired via ``add_done_callback`` so the permit is freed on success,
+        error, or cancellation — keeping the in-flight count accurate.
+        """
+        try:
+            self._submit_semaphore.release()
+        except ValueError:  # pragma: no cover - defensive over-release guard
+            logger.debug(
+                "[LLM-JUDGE] submit semaphore over-released", exc_info=True
+            )
 
     @staticmethod
     def _reject_verdict() -> PiiVerdict:

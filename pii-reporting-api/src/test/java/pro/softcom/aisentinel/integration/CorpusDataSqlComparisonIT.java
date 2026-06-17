@@ -278,7 +278,7 @@ class CorpusDataSqlComparisonIT {
         // Timeout client gRPC bumpe a 2h pour couvrir le cas extreme du corpus :
         // ISO 20022 for Dummies.pdf (8.5 MB binaire, ~1.6 MB de texte extrait) sur
         // lequel OpenMed avec chunking 1024/256 tokens fait ~500 chunks sequentiels
-        // sur CPU. Les Excel volumineux comme Saga-Appareil tournent en ~4 min ;
+        // sur CPU. Les Excel volumineux comme Saga-Appareil tournent en environ 4 minutes,
         // l'objectif ici est de ne pas declencher DEADLINE_EXCEEDED sur le cas pire
         // raisonnable, ce qui est confirme empiriquement par runSingleIso20022Pdf.
         // Le scan complet a observe des req individuelles jusqu'a 4178s (70 min)
@@ -300,9 +300,9 @@ class CorpusDataSqlComparisonIT {
         // Bypass {@code Tika.parseToString}'s implicit {@code
         // BodyContentHandler(100_000)} character cap. We deliberately use the
         // unlimited-buffer handler because both OpenMed (128k-token native
-        // context, then chunked on the detector side for CPU) and GLiNER
-        // (chunked internally) are designed to handle full document bodies;
-        // truncation here would silently mask any PII past 100k chars.
+        // context, then chunked on the detector side for CPU) and GLiNER,
+        // which chunks internally, are designed to handle full document bodies,
+        // so truncation here would silently mask any PII past 100k chars.
         AutoDetectParser parser = new AutoDetectParser();
         BodyContentHandler handler = new BodyContentHandler(-1);
         Metadata metadata = new Metadata();
@@ -1165,7 +1165,7 @@ class CorpusDataSqlComparisonIT {
                     piiDetectorClient.analyzeContent("warmup IBAN CH9300762011623852957");
                     log.info("[{}][recovery] pii-detector ready", variantName);
                 });
-        } catch (ConditionTimeoutException e) {
+        } catch (ConditionTimeoutException _) {
             log.error("[{}][recovery] pii-detector NOT ready within 15min after restart", variantName);
         }
     }

@@ -158,7 +158,8 @@ public class ApplicationUseCasesConfig {
             AttachmentProcessor attachmentProcessor,
             ScanTimeOutConfig scanTimeoutConfig,
             HtmlContentParser htmlContentParser,
-            ScanSpaceStatsCollector scanSpaceStatsCollector) {
+            ScanSpaceStatsCollector scanSpaceStatsCollector,
+            @Value("${scan.page-concurrency:1}") int pageConcurrency) {
         return new ScanPipelineDependencies(
                 confluenceAccessor,
                 piiDetectorClient,
@@ -166,7 +167,8 @@ public class ApplicationUseCasesConfig {
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
-                scanSpaceStatsCollector
+                scanSpaceStatsCollector,
+                pageConcurrency
         );
     }
 
