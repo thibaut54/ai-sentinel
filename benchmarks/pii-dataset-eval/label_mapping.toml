@@ -1,0 +1,354 @@
+# =============================================================================
+# label_mapping.toml — Versioned label normalization table for the PII benchmark
+# =============================================================================
+# Spec: my-files/integratoin-test-with-dataset/spec.md (étape 1)
+#
+# This file is the SINGLE SOURCE OF TRUTH for span-level scoring. It defines:
+#   1. [canonical]      — the canonical concept vocabulary we score against.
+#   2. [datasets.*.map] — dataset_label -> canonical_concept (what the gold
+#                         spans become).
+#   3. [datasets.*.exclude] — dataset labels with NO in-scope equivalent. Their
+#                         spans become "ignore zones": never counted as FN, and
+#                         a detector finding landing on them is NOT a FP either
+#                         (the dataset DID mark them PII, just out of our scope).
+#   4. [detectors.*]    — detector_emitted_pii_type -> canonical_concept. Needed
+#                         because each detector emits a different pii_type for the
+#                         same concept (PRESIDIO=IBAN_CODE, GLINER2=IBAN, ...).
+#
+# `build_datasets.py` consumes this file and emits:
+#   - gold/<dataset>.jsonl                (text + canonical spans + ignore spans)
+#   - mappings/detector_concept_map.json  (flattened [detectors.*], read by Java)
+#
+# RULE (spec §"Points d'attention"): the canonical vocabulary = concepts that AT
+# LEAST ONE in-scope detector (GLINER2/PRESIDIO/REGEX/OPENMED) has an *enabled*
+# pii_type for, in the master seed data-improved-gliner2-presidio-regex.sql.
+# A dataset label whose concept no enabled detector can emit is EXCLUDED, so the
+# benchmark measures the detectors as actually configured, not an idealized one.
+# =============================================================================
+
+schema_version = "1"
+seed_reference = "pii-reporting-api/src/test/resources/sql/data-improved-gliner2-presidio-regex.sql"
+
+# -----------------------------------------------------------------------------
+# [canonical] — the concepts we score. Value = which enabled detectors can emit
+# it (documentation only; the runtime truth is [detectors.*] below).
+# -----------------------------------------------------------------------------
+[canonical]
+# Government / tax IDs
+GOVERNMENT_ID          = "GLINER2"
+NATIONAL_ID_NUMBER     = "GLINER2, REGEX(SOCIALNUM)"
+PASSPORT_NUMBER        = "GLINER2"
+DRIVERS_LICENSE_NUMBER = "GLINER2"
+LICENSE_NUMBER         = "GLINER2"
+TAX_ID                 = "GLINER2"
+TAX_NUMBER             = "GLINER2"
+# Banking / payment
+IBAN                   = "GLINER2, PRESIDIO(IBAN_CODE)"
+BANK_ACCOUNT           = "GLINER2(bank_account/account_number), OPENMED"
+ROUTING_NUMBER         = "GLINER2"
+CARD_NUMBER            = "GLINER2(payment_card/card_number), PRESIDIO(CREDIT_CARD off), REGEX(CREDIT_CARD_NUMBER), OPENMED(CREDIT_CARD)"
+CARD_EXPIRY            = "GLINER2 (synthetic-only gold)"
+CARD_CVV               = "GLINER2(card_cvv), OPENMED(CVV)"
+PIN                    = "OPENMED"
+# Digital identity
+USERNAME               = "GLINER2"
+IP_ADDRESS             = "GLINER2, REGEX"
+ACCOUNT_ID             = "GLINER2"
+SENSITIVE_ACCOUNT_ID   = "GLINER2 (no dataset gold)"
+PHONE_NUMBER           = "REGEX (GLINER2 phone disabled)"
+# Secrets / credentials
+PASSWORD               = "GLINER2, OPENMED"
+SECRET                 = "GLINER2 (synthetic-only gold)"
+API_KEY                = "GLINER2, REGEX"
+ACCESS_TOKEN           = "GLINER2 (synthetic-only gold)"
+RECOVERY_CODE          = "GLINER2 (synthetic-only gold)"
+# Concepts emitted by detectors but absent from gretelai/ai4privacy (measured
+# only if synthetic fixtures add them; listed so detector findings of these
+# types are NOT treated as 'unknown'):
+CRYPTO                 = "PRESIDIO, OPENMED(BTC/ETH/LTC)"
+MAC_ADDRESS            = "PRESIDIO, REGEX"
+MEDICAL_LICENSE        = "PRESIDIO"
+IMEI                   = "OPENMED"
+VIN                    = "OPENMED"
+VEHICLE_REGISTRATION   = "OPENMED"
+ACCOUNT_NAME           = "OPENMED"
+AVS_NUMBER             = "REGEX (Swiss; no dataset gold)"
+NRP                    = "PRESIDIO (out-of-scope concept; findings count as FP unless on an ignore zone)"
+
+# =============================================================================
+# DATASETS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# gretelai/synthetic_pii_finance_multilingual
+#   pii_spans is a JSON *string* (json.loads) -> list of {start,end,label}.
+# -----------------------------------------------------------------------------
+[datasets.gretelai]
+hf_id        = "gretelai/synthetic_pii_finance_multilingual"
+revision     = "7b844d16738527a04264f50214cb426a4cea0897"
+split        = "test"
+text_field   = "generated_text"
+spans_field  = "pii_spans"
+spans_format = "json_string"   # value is a JSON string -> [{start,end,label}]
+languages    = ["English"]      # restrict to keep offsets BMP-safe & runtime bounded
+
+[datasets.gretelai.map]
+iban                       = "IBAN"
+bban                       = "BANK_ACCOUNT"
+bank_routing_number        = "ROUTING_NUMBER"
+credit_card_number         = "CARD_NUMBER"
+credit_card_security_code  = "CARD_CVV"
+account_pin                = "PIN"
+customer_id                = "ACCOUNT_ID"
+employee_id                = "ACCOUNT_ID"
+api_key                    = "API_KEY"
+password                   = "PASSWORD"
+ssn                        = "NATIONAL_ID_NUMBER"
+passport_number            = "PASSPORT_NUMBER"
+driver_license_number      = "DRIVERS_LICENSE_NUMBER"
+ipv4                       = "IP_ADDRESS"
+ipv6                       = "IP_ADDRESS"
+user_name                  = "USERNAME"
+phone_number               = "PHONE_NUMBER"
+
+[datasets.gretelai.exclude]
+swift_bic_code = "BIC_SWIFT is not emitted by any ENABLED detector (GLINER none, PRESIDIO none, OPENMED BIC disabled) -> ignore zone"
+email          = "no enabled detector emits EMAIL in this seed -> ignore zone"
+name           = "person name: all PERSON/NAME types disabled in seed -> ignore zone"
+first_name     = "see name"
+last_name      = "see name"
+company        = "no app concept -> ignore zone"
+street_address = "ADDRESS disabled in seed -> ignore zone"
+date           = "temporal: disabled -> ignore zone"
+date_of_birth  = "temporal: disabled -> ignore zone"
+time           = "temporal: disabled -> ignore zone"
+date_time      = "temporal: disabled -> ignore zone"
+local_latlng   = "geo coordinates: no app concept -> ignore zone"
+
+# -----------------------------------------------------------------------------
+# ai4privacy/pii-masking-300k (OpenPII + FinPII merge, config "default")
+#   privacy_mask is a native list of {value,start,end,label}.
+# -----------------------------------------------------------------------------
+[datasets.ai4privacy]
+hf_id        = "ai4privacy/pii-masking-300k"
+revision     = "c8c77895a005822682b66ab547fc0422579bc1d3"
+split        = "validation"
+text_field   = "source_text"
+spans_field  = "privacy_mask"
+spans_format = "object_list"    # list of {value,start,end,label}
+languages    = ["en"]           # BMP-safe, runtime bounded
+
+[datasets.ai4privacy.map]
+IDCARD        = "GOVERNMENT_ID"
+PASSPORT      = "PASSPORT_NUMBER"
+DRIVERLICENSE = "DRIVERS_LICENSE_NUMBER"
+SOCIALNUMBER  = "NATIONAL_ID_NUMBER"
+USERNAME      = "USERNAME"
+PASS          = "PASSWORD"
+IP            = "IP_ADDRESS"
+TEL           = "PHONE_NUMBER"
+
+[datasets.ai4privacy.exclude]
+EMAIL      = "no enabled detector emits EMAIL -> ignore zone"
+BOD        = "date of birth: temporal disabled -> ignore zone"
+SEX        = "no app concept -> ignore zone"
+TITLE      = "no app concept -> ignore zone"
+GIVENNAME  = "person name disabled -> ignore zone"
+GIVENNAME1 = "person name disabled -> ignore zone"
+GIVENNAME2 = "person name disabled -> ignore zone"
+LASTNAME   = "person name disabled -> ignore zone"
+LASTNAME1  = "person name disabled -> ignore zone"
+LASTNAME2  = "person name disabled -> ignore zone"
+LASTNAME3  = "person name disabled -> ignore zone"
+STREET     = "address disabled -> ignore zone"
+BUILDING   = "address disabled -> ignore zone"
+CITY       = "address disabled -> ignore zone"
+STATE      = "address disabled -> ignore zone"
+COUNTRY    = "no app concept -> ignore zone"
+POSTCODE   = "address disabled -> ignore zone"
+SECADDRESS = "address disabled -> ignore zone"
+GEOCOORD   = "geo coordinates -> ignore zone"
+TIME       = "temporal disabled -> ignore zone"
+DATE       = "temporal disabled -> ignore zone"
+
+# =============================================================================
+# DETECTORS — emitted pii_type -> canonical concept (flattened to JSON for Java)
+# Keys are the UPPER_SNAKE pii_type returned by the detector (== pii_type_config
+# .pii_type seeded in the master seed). Only ENABLED types can actually fire;
+# disabled ones are listed for completeness and are harmless.
+# =============================================================================
+[detectors.GLINER2]
+GOVERNMENT_ID          = "GOVERNMENT_ID"
+NATIONAL_ID_NUMBER     = "NATIONAL_ID_NUMBER"
+PASSPORT_NUMBER        = "PASSPORT_NUMBER"
+DRIVERS_LICENSE_NUMBER = "DRIVERS_LICENSE_NUMBER"
+LICENSE_NUMBER         = "LICENSE_NUMBER"
+TAX_ID                 = "TAX_ID"
+TAX_NUMBER             = "TAX_NUMBER"
+BANK_ACCOUNT           = "BANK_ACCOUNT"
+ACCOUNT_NUMBER         = "BANK_ACCOUNT"
+ROUTING_NUMBER         = "ROUTING_NUMBER"
+IBAN                   = "IBAN"
+PAYMENT_CARD           = "CARD_NUMBER"
+CARD_NUMBER            = "CARD_NUMBER"
+CARD_EXPIRY            = "CARD_EXPIRY"
+CARD_CVV               = "CARD_CVV"
+USERNAME               = "USERNAME"
+IP_ADDRESS             = "IP_ADDRESS"
+ACCOUNT_ID             = "ACCOUNT_ID"
+SENSITIVE_ACCOUNT_ID   = "SENSITIVE_ACCOUNT_ID"
+PASSWORD               = "PASSWORD"
+SECRET                 = "SECRET"
+API_KEY                = "API_KEY"
+ACCESS_TOKEN           = "ACCESS_TOKEN"
+RECOVERY_CODE          = "RECOVERY_CODE"
+
+[detectors.PRESIDIO]
+IBAN_CODE       = "IBAN"
+CRYPTO          = "CRYPTO"
+MAC_ADDRESS     = "MAC_ADDRESS"
+MEDICAL_LICENSE = "MEDICAL_LICENSE"
+NRP             = "NRP"
+CREDIT_CARD     = "CARD_NUMBER"
+
+[detectors.REGEX]
+AVS_NUMBER         = "AVS_NUMBER"
+SOCIALNUM          = "NATIONAL_ID_NUMBER"
+CREDIT_CARD_NUMBER = "CARD_NUMBER"
+PHONE_NUMBER       = "PHONE_NUMBER"
+IP_ADDRESS         = "IP_ADDRESS"
+MAC_ADDRESS        = "MAC_ADDRESS"
+API_KEY            = "API_KEY"
+
+[detectors.OPENMED]
+PASSWORD             = "PASSWORD"
+CVV                  = "CARD_CVV"
+PIN                  = "PIN"
+IMEI                 = "IMEI"
+BITCOIN_ADDRESS      = "CRYPTO"
+ETHEREUM_ADDRESS     = "CRYPTO"
+LITECOIN_ADDRESS     = "CRYPTO"
+VEHICLE_VIN          = "VIN"
+VEHICLE_REGISTRATION = "VEHICLE_REGISTRATION"
+ACCOUNT_NAME         = "ACCOUNT_NAME"
+BANK_ACCOUNT         = "BANK_ACCOUNT"
+CREDIT_CARD          = "CARD_NUMBER"
+
+# =============================================================================
+# EXTRACTORS — generative LLM PII extractors evaluated head-to-head (NOT detectors
+# of the production pipeline). They return {text,label} entities; we map their
+# label -> canonical concept, or "IGNORE" for a concept outside our scoped
+# vocabulary (so the extractor is not penalised for finding real but out-of-scope
+# PII, symmetric to the dataset ignore zones). Any label absent here defaults to
+# IGNORE on the Java side, and unseen labels are logged (no silent drop).
+# [extractors._default] applies to every model; add [extractors.<model>] to
+# override for a specific model id. Emitted to mappings/extractor_concept_map.json.
+# =============================================================================
+[extractors._default]
+# --- in-scope -> canonical ---
+iban                      = "IBAN"
+bban                      = "BANK_ACCOUNT"
+account_number            = "BANK_ACCOUNT"
+bank_account              = "BANK_ACCOUNT"
+bank_account_number       = "BANK_ACCOUNT"
+routing_number            = "ROUTING_NUMBER"
+bank_routing_number       = "ROUTING_NUMBER"
+credit_card               = "CARD_NUMBER"
+credit_card_number        = "CARD_NUMBER"
+card_number               = "CARD_NUMBER"
+payment_card              = "CARD_NUMBER"
+cvv                       = "CARD_CVV"
+card_cvv                  = "CARD_CVV"
+credit_card_security_code = "CARD_CVV"
+card_expiry               = "CARD_EXPIRY"
+expiry_date               = "CARD_EXPIRY"
+pin                       = "PIN"
+account_pin               = "PIN"
+ssn                       = "NATIONAL_ID_NUMBER"
+social_security_number    = "NATIONAL_ID_NUMBER"
+national_id               = "NATIONAL_ID_NUMBER"
+national_id_number        = "NATIONAL_ID_NUMBER"
+id_card                   = "GOVERNMENT_ID"
+government_id             = "GOVERNMENT_ID"
+passport                  = "PASSPORT_NUMBER"
+passport_number           = "PASSPORT_NUMBER"
+driver_license            = "DRIVERS_LICENSE_NUMBER"
+drivers_license           = "DRIVERS_LICENSE_NUMBER"
+driver_license_number     = "DRIVERS_LICENSE_NUMBER"
+drivers_license_number    = "DRIVERS_LICENSE_NUMBER"
+license_number            = "LICENSE_NUMBER"
+tax_id                    = "TAX_ID"
+tax_number                = "TAX_NUMBER"
+username                  = "USERNAME"
+user_name                 = "USERNAME"
+account_id                = "ACCOUNT_ID"
+customer_id               = "ACCOUNT_ID"
+employee_id               = "ACCOUNT_ID"
+ip_address                = "IP_ADDRESS"
+ipv4                      = "IP_ADDRESS"
+ipv6                      = "IP_ADDRESS"
+mac_address               = "MAC_ADDRESS"
+phone_number              = "PHONE_NUMBER"
+phone                     = "PHONE_NUMBER"
+telephone                 = "PHONE_NUMBER"
+password                  = "PASSWORD"
+secret                    = "SECRET"
+client_secret             = "SECRET"
+api_key                   = "API_KEY"
+access_token              = "ACCESS_TOKEN"
+token                     = "ACCESS_TOKEN"
+recovery_code             = "RECOVERY_CODE"
+backup_code               = "RECOVERY_CODE"
+bitcoin_address           = "CRYPTO"
+ethereum_address          = "CRYPTO"
+litecoin_address          = "CRYPTO"
+crypto_wallet             = "CRYPTO"
+imei                      = "IMEI"
+vin                       = "VIN"
+vehicle_identifier        = "VEHICLE_REGISTRATION"
+license_plate             = "VEHICLE_REGISTRATION"
+medical_license           = "MEDICAL_LICENSE"
+account_name              = "ACCOUNT_NAME"
+# --- out-of-scope -> IGNORE (real PII, but no scoped detector concept) ---
+name             = "IGNORE"
+full_name        = "IGNORE"
+first_name       = "IGNORE"
+middle_name      = "IGNORE"
+last_name        = "IGNORE"
+person           = "IGNORE"
+email            = "IGNORE"
+email_address    = "IGNORE"
+url              = "IGNORE"
+address          = "IGNORE"
+street_address   = "IGNORE"
+city             = "IGNORE"
+state            = "IGNORE"
+country          = "IGNORE"
+postcode         = "IGNORE"
+zipcode          = "IGNORE"
+zip_code         = "IGNORE"
+date             = "IGNORE"
+date_of_birth    = "IGNORE"
+time             = "IGNORE"
+age              = "IGNORE"
+gender           = "IGNORE"
+nationality      = "IGNORE"
+company          = "IGNORE"
+organization     = "IGNORE"
+job_title        = "IGNORE"
+swift_bic_code   = "IGNORE"
+bic              = "IGNORE"
+swift            = "IGNORE"
+
+# =============================================================================
+# [ambiguous] — documented non-1:1 decisions (spec étape 1 "documente les choix
+# ambigus"). These are the calls a reviewer should sanity-check.
+# =============================================================================
+[ambiguous]
+account_pin            = "gretelai account_pin -> PIN (OPENMED has a PIN type). Alternative: CARD_CVV. Chose PIN as the literal concept."
+ssn_socialnumber       = "gretelai ssn + ai4privacy SOCIALNUMBER -> NATIONAL_ID_NUMBER, merged with REGEX SOCIALNUM so both GLINER2 and REGEX emissions score against the same gold concept."
+swift_bic_code         = "EXCLUDED: no enabled detector emits a BIC/SWIFT concept in this seed -> ignore zone (not FN)."
+bban                   = "gretelai bban (domestic account no.) -> BANK_ACCOUNT (GLINER2 also emits ACCOUNT_NUMBER, both folded into BANK_ACCOUNT)."
+card_concepts          = "payment_card / card_number / CREDIT_CARD / CREDIT_CARD_NUMBER all -> CARD_NUMBER (single canonical card concept). CARD_EXPIRY and CARD_CVV stay distinct."
+crypto_concepts        = "BITCOIN/ETHEREUM/LITECOIN + PRESIDIO CRYPTO -> CRYPTO (no dataset gold; only via synthetic fixtures)."
+email_person_temporal  = "EMAIL, person names, addresses, dates: EXCLUDED because the master seed disables every detector type for them; counting them would unfairly inflate FN for the as-configured pipeline."

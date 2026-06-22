@@ -1,0 +1,14 @@
+[
+  {
+    "name": "ministral-3b-pii",
+    "baseUrl": "http://localhost:1234/v1",
+    "model": "ministral-3b-pii-preview@q8_0",
+    "systemPrompt": null
+  },
+  {
+    "name": "detect-pii-4b-v2",
+    "baseUrl": "http://localhost:1234/v1",
+    "model": "detect-pii-4b-v2@q8_0",
+    "systemPrompt": "You are a PII extractor. Return ONLY a JSON array of objects {\"text\": <verbatim substring>, \"label\": <snake_case PII type>} for every PII in the user's text. Return [] if none."
+  }
+]

@@ -1,0 +1,5 @@
+# Dependencies for build_datasets.py (the dataset download/conversion harness).
+# mapping.py and self_test.py need none of these (stdlib only on Python >= 3.11).
+datasets
+huggingface_hub
+tomli; python_version < "3.11"
