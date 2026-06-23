@@ -75,6 +75,37 @@ class AttachmentTypeFilterTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"xlsx", "xls", "csv", "ods", "XLSX", "Csv", "ODS"})
+    @DisplayName("Should return true when extension is tabular")
+    void Should_ReturnTrue_When_ExtensionIsTabular(String extension) {
+        // Given
+        AttachmentInfo attachment = createAttachment(extension);
+
+        // When & Then
+        assertThat(AttachmentTypeFilter.isTabular(attachment)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pdf", "docx", "doc", "ppt", "pptx", "rtf", "txt", "odt", "odp", "html", "htm"})
+    @DisplayName("Should return false when extension is extractable but not tabular")
+    void Should_ReturnFalse_When_ExtensionNotTabular(String extension) {
+        // Given
+        AttachmentInfo attachment = createAttachment(extension);
+
+        // When & Then
+        assertThat(AttachmentTypeFilter.isTabular(attachment)).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should return false for isTabular when attachment or extension is null")
+    void Should_ReturnFalse_When_TabularAttachmentOrExtensionNull() {
+        assertThat(AttachmentTypeFilter.isTabular(null)).isFalse();
+        assertThat(AttachmentTypeFilter.isTabular(
+                new AttachmentInfo("doc", null, "mime", "url")
+        )).isFalse();
+    }
+
     private AttachmentInfo createAttachment(String extension) {
         return new AttachmentInfo("file." + extension, extension, "application/octet-stream", "http://test");
     }

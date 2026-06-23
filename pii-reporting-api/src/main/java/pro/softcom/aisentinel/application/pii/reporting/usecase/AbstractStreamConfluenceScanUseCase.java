@@ -8,10 +8,12 @@ import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConf
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentTextExtracted;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
+import pro.softcom.aisentinel.application.pii.reporting.service.DetectionOffsetRemapper;
 import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
+import pro.softcom.aisentinel.domain.confluence.extraction.ExtractedContent;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
@@ -213,11 +215,13 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                                     AttachmentTextExtracted extracted,
                                                                     ScanProgress scanProgress) {
         return Mono.fromCallable(() -> {
-            ContentPiiDetection detection = detectPii(extracted.extractedText());
+            ExtractedContent content = extracted.content();
+            ContentPiiDetection rawDetection = detectPii(content.analysisText());
+            ContentPiiDetection detection = DetectionOffsetRemapper.remap(rawDetection, content.offsetMapping());
             double progress = calculateProgressForAttachment(scanProgress);
 
             return contentScanOrchestrator.createAttachmentItemEvent(
-                scanId, spaceKey, page, extracted.attachment(), extracted.extractedText(), detection,
+                scanId, spaceKey, page, extracted.attachment(), content.contextText(), detection,
                 progress);
         })
         .timeout(scanTimeoutConfig.getPiiDetection())

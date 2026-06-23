@@ -42,6 +42,10 @@
         <mockito-core.version>5.19.0</mockito-core.version>
         <awaitility.version>4.2.0</awaitility.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- Tabular extraction: POI (xlsx/xls) and Commons CSV. POI version aligned with the
+             one Tika 3.2.2 already brings transitively to avoid a classpath split. -->
+        <poi.version>5.4.1</poi.version>
+        <commons-csv.version>1.14.1</commons-csv.version>
 
         <!-- Proto source root - default for local build -->
         <proto.source.root>${project.basedir}/../proto</proto.source.root>
@@ -166,6 +170,28 @@
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parsers-standard-package</artifactId>
             <version>${tika.version}</version>
+        </dependency>
+
+        <!-- Apache POI for tabular extraction: poi-ooxml (xlsx + XSSFReader SAX streaming)
+             transitively brings poi (xls / HSSF). commons-compress is excluded so the version
+             managed by Tika wins (POI pins an older one that breaks Tika's archive detection). -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Apache Commons CSV for .csv tabular extraction -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>${commons-csv.version}</version>
         </dependency>
 
         <!-- gRPC dependencies for PII detection service -->

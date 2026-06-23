@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
+import pro.softcom.aisentinel.domain.confluence.extraction.ExtractedContent;
 import pro.softcom.aisentinel.infrastructure.document.config.TextQualityThresholds;
 import pro.softcom.aisentinel.infrastructure.document.validator.TextQualityValidator;
 
@@ -63,7 +64,7 @@ class TikaAttachmentTextExtractorAdapterTest {
         AttachmentInfo attachment = createAttachment("doc.pdf", "pdf");
 
         // When
-        Optional<String> result = adapter.extract(attachment, null);
+        Optional<ExtractedContent> result = adapter.extract(attachment, null);
 
         // Then
         assertThat(result).isEmpty();
@@ -77,7 +78,7 @@ class TikaAttachmentTextExtractorAdapterTest {
         byte[] emptyBytes = new byte[0];
 
         // When
-        Optional<String> result = adapter.extract(attachment, emptyBytes);
+        Optional<ExtractedContent> result = adapter.extract(attachment, emptyBytes);
 
         // Then
         assertThat(result).isEmpty();
@@ -93,14 +94,15 @@ class TikaAttachmentTextExtractorAdapterTest {
         byte[] bytes = validText.getBytes(StandardCharsets.UTF_8);
 
         // When
-        Optional<String> result = adapter.extract(attachment, bytes);
+        Optional<ExtractedContent> result = adapter.extract(attachment, bytes);
 
         // Then
-        assertThat(result)
-                .isPresent()
-                .get()
-                .asString()
-                .contains("valid text document");
+        assertThat(result).isPresent();
+        ExtractedContent content = result.orElseThrow();
+        assertThat(content.analysisText()).contains("valid text document");
+        // Tika is the non-tabular fallback: analysis and context texts must be identical (identity mapping)
+        assertThat(content.contextText()).isEqualTo(content.analysisText());
+        assertThat(content.isIdentity()).isTrue();
     }
 
     @Test
@@ -112,7 +114,7 @@ class TikaAttachmentTextExtractorAdapterTest {
         byte[] bytes = shortText.getBytes(StandardCharsets.UTF_8);
 
         // When
-        Optional<String> result = adapter.extract(attachment, bytes);
+        Optional<ExtractedContent> result = adapter.extract(attachment, bytes);
 
         // Then - Validation should reject it
         assertThat(result).isEmpty();
@@ -127,7 +129,7 @@ class TikaAttachmentTextExtractorAdapterTest {
         byte[] bytes = corruptedText.getBytes(StandardCharsets.UTF_8);
 
         // When
-        Optional<String> result = adapter.extract(attachment, bytes);
+        Optional<ExtractedContent> result = adapter.extract(attachment, bytes);
 
         // Then - Validation should reject it
         assertThat(result).isEmpty();
@@ -141,7 +143,7 @@ class TikaAttachmentTextExtractorAdapterTest {
         byte[] invalidBytes = "This is not a valid PDF".getBytes(StandardCharsets.UTF_8);
 
         // When
-        Optional<String> result = adapter.extract(attachment, invalidBytes);
+        Optional<ExtractedContent> result = adapter.extract(attachment, invalidBytes);
 
         // Then - Tika should fail to parse and return empty
         assertThat(result).isEmpty();

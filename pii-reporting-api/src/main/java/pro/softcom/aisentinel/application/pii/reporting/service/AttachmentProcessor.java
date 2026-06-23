@@ -6,6 +6,7 @@ import pro.softcom.aisentinel.application.confluence.port.out.AttachmentTextExtr
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentDownloader;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.AttachmentTypeFilter;
+import pro.softcom.aisentinel.domain.confluence.extraction.ExtractedContent;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -42,8 +43,8 @@ public class AttachmentProcessor {
     private Flux<AttachmentTextExtracted> extractAttachmentText(String pageId,
                                                                 AttachmentInfo attachment) {
         return downloadAttachment(pageId, attachment.name())
-            .flatMapMany(bytes -> extractTextFromBytes(attachment, bytes))
-            .map(text -> new AttachmentTextExtracted(attachment, text));
+            .flatMapMany(bytes -> extractContentFromBytes(attachment, bytes))
+            .map(content -> new AttachmentTextExtracted(attachment, content));
     }
 
     private Mono<byte[]> downloadAttachment(String pageId, String attachmentName) {
@@ -52,9 +53,9 @@ public class AttachmentProcessor {
             .flatMap(optional -> optional.map(Mono::just).orElse(Mono.empty()));
     }
 
-    private Mono<String> extractTextFromBytes(AttachmentInfo attachment, byte[] bytes) {
+    private Mono<ExtractedContent> extractContentFromBytes(AttachmentInfo attachment, byte[] bytes) {
         return Mono.fromCallable(
                 () -> attachmentTextExtractionService.extractText(attachment, bytes))
-            .flatMap(textOptional -> textOptional.map(Mono::just).orElse(Mono.empty()));
+            .flatMap(contentOptional -> contentOptional.map(Mono::just).orElse(Mono.empty()));
     }
 }
