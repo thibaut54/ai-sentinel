@@ -91,12 +91,16 @@ public final class OdsSheetReader implements SheetReader {
     }
 
     /**
-     * Builds a SAX parser with external DTD loading disabled.
+     * Builds an XXE-hardened SAX parser: external DTDs and external entities are disabled because
+     * ODS files come from untrusted attachments.
      */
     private SAXParser newSecureParser() throws ParserConfigurationException, SAXException {
         SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(true);
+        factory.setXIncludeAware(false);
         factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         return factory.newSAXParser();
     }
 
