@@ -233,6 +233,33 @@
                             </div>
                         </div>
 
+                        <!-- Ministral-PII -->
+                        <div class="detector-card ministral"
+                             [class.enabled]="configForm.get('ministralEnabled')?.value"
+                             [class.disabled]="!configForm.get('ministralEnabled')?.value">
+                            <div class="detector-avatar ministral"
+                                 [class.disabled-avatar]="!configForm.get('ministralEnabled')?.value">MI</div>
+                            <div class="detector-info">
+                                <div class="detector-name"
+                                     [class.disabled-text]="!configForm.get('ministralEnabled')?.value">
+                                    {{ 'settings.detectors.ministral.label' | transloco }}
+                                </div>
+                                <div class="detector-desc">{{ 'settings.detectors.ministral.description' | transloco }}</div>
+                            </div>
+                            <div class="detector-switches">
+                                <div class="detector-switch">
+                                    <p-toggleswitch
+                                        formControlName="ministralEnabled"
+                                        inputId="toggleMinistralEnabled"
+                                        data-testid="toggleMinistralEnabled"
+                                        (onChange)="onDetectorMasterToggle('MINISTRAL')"
+                                        [ariaLabel]="'settings.detectors.ministral.label' | transloco">
+                                    </p-toggleswitch>
+                                    <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Pré-filtre déterministe -->
                         <div class="detector-card prefilter"
                              [class.enabled]="configForm.get('prefilterEnabled')?.value"
@@ -261,6 +288,64 @@
                             <i class="pi pi-exclamation-circle"></i>
                             {{ 'settings.validation.atLeastOneDetector' | transloco }}
                         </div>
+                    }
+
+                    <!-- Ministral-PII advanced chunking parameters -->
+                    @if (configForm.get('ministralEnabled')?.value) {
+                        <fieldset class="advanced-params">
+                            <legend class="advanced-params-title">{{ 'settings.detectors.ministral.advancedParams' | transloco }}</legend>
+
+                            <!-- Chunk size -->
+                            <div class="advanced-param-field">
+                                <label for="ministralChunkSize" class="advanced-param-label">
+                                    {{ 'settings.detectors.ministral.chunkSize' | transloco }}
+                                </label>
+                                <p-inputNumber
+                                    inputId="ministralChunkSize"
+                                    formControlName="ministralChunkSize"
+                                    [min]="256"
+                                    [max]="4096"
+                                    [step]="128"
+                                    [showButtons]="true"
+                                    buttonLayout="horizontal"
+                                    incrementButtonIcon="pi pi-plus"
+                                    decrementButtonIcon="pi pi-minus"
+                                    [attr.aria-describedby]="'ministralChunkSizeHint'">
+                                </p-inputNumber>
+                                <small id="ministralChunkSizeHint" class="advanced-param-hint">
+                                    {{ 'settings.detectors.ministral.chunkSizeHint' | transloco }}
+                                </small>
+                            </div>
+
+                            <!-- Overlap -->
+                            <div class="advanced-param-field">
+                                <label for="ministralOverlap" class="advanced-param-label">
+                                    {{ 'settings.detectors.ministral.overlap' | transloco }}
+                                </label>
+                                <p-inputNumber
+                                    inputId="ministralOverlap"
+                                    formControlName="ministralOverlap"
+                                    [min]="0"
+                                    [max]="512"
+                                    [step]="32"
+                                    [showButtons]="true"
+                                    buttonLayout="horizontal"
+                                    incrementButtonIcon="pi pi-plus"
+                                    decrementButtonIcon="pi pi-minus"
+                                    [attr.aria-describedby]="'ministralOverlapHint'">
+                                </p-inputNumber>
+                                <small id="ministralOverlapHint" class="advanced-param-hint">
+                                    {{ 'settings.detectors.ministral.overlapHint' | transloco }}
+                                </small>
+                            </div>
+
+                            @if (ministralOverlapError) {
+                                <div class="validation-error" role="alert">
+                                    <i class="pi pi-exclamation-circle"></i>
+                                    {{ 'settings.detectors.ministral.overlapError' | transloco }}
+                                </div>
+                            }
+                        </fieldset>
                     }
                 </form>
             }
@@ -403,7 +488,8 @@
                                       [class.gliner2]="detectorGroup.detector === 'GLINER2'"
                                       [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
                                       [class.regex]="detectorGroup.detector === 'REGEX'"
-                                      [class.openmed]="detectorGroup.detector === 'OPENMED'">
+                                      [class.openmed]="detectorGroup.detector === 'OPENMED'"
+                                      [class.ministral]="detectorGroup.detector === 'MINISTRAL'">
                                     {{ detectorGroup.detector }}
                                 </span>
                                 @if (detectorGroup.detector === 'GLINER') {

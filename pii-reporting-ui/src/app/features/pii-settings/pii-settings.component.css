@@ -1098,6 +1098,73 @@
 }
 
 /* ============================================================
+   Ministral detector styling (card / avatar / badge)
+   ============================================================ */
+.detector-card.ministral.enabled {
+  border-color: var(--sentinel-ministral-border);
+  background: var(--sentinel-ministral-bg);
+}
+
+.detector-card.ministral.disabled {
+  border-color: var(--sentinel-border-default);
+  background: var(--sentinel-bg-surface);
+}
+
+.detector-avatar.ministral {
+  background: var(--sentinel-ministral-avatar-bg);
+  color: var(--sentinel-ministral-fg);
+  border: 1px solid var(--sentinel-ministral-avatar-border);
+}
+
+.detector-avatar.ministral.disabled-avatar {
+  background: var(--sentinel-bg-input-disabled);
+  color: var(--sentinel-text-subtle);
+  border-color: var(--sentinel-border-medium);
+}
+
+.detector-badge.ministral {
+  background: var(--sentinel-ministral-bg);
+  color: var(--sentinel-ministral-fg);
+  border: 1px solid var(--sentinel-ministral-border);
+}
+
+/* ============================================================
+   Ministral advanced chunking parameters
+   ============================================================ */
+.advanced-params {
+  margin-top: 16px;
+  padding: 16px 20px 20px;
+  border: 1px solid var(--sentinel-border-default);
+  border-radius: 10px;
+  background: var(--sentinel-bg-surface);
+}
+
+.advanced-params-title {
+  padding: 0 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sentinel-text-default);
+}
+
+.advanced-param-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.advanced-param-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sentinel-text-default);
+}
+
+.advanced-param-hint {
+  font-size: 0.78rem;
+  color: var(--sentinel-text-subtle);
+}
+
+/* ============================================================
    Per-detector switches: detector activation + LLM-judge toggle
    on a single row, each with a compact caption.
    ============================================================ */

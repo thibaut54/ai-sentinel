@@ -199,7 +199,8 @@ export class PiiSettingsComponent implements OnInit {
     PRESIDIO: 'presidioEnabled',
     REGEX: 'regexEnabled',
     OPENMED: 'openmedEnabled',
-    GLINER2: 'gliner2Enabled'
+    GLINER2: 'gliner2Enabled',
+    MINISTRAL: 'ministralEnabled'
   };
 
   /**
@@ -238,10 +239,13 @@ export class PiiSettingsComponent implements OnInit {
       regexJudgeEnabled: [false],
       openmedJudgeEnabled: [false],
       gliner2JudgeEnabled: [false],
+      ministralEnabled: [false],
+      ministralChunkSize: [1024, [Validators.required, Validators.min(256), Validators.max(4096)]],
+      ministralOverlap: [128, [Validators.required, Validators.min(0), Validators.max(512)]],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {
-      validators: [this.atLeastOneDetectorValidator]
+      validators: [this.atLeastOneDetectorValidator, this.overlapLessThanChunkSizeValidator]
     } as AbstractControlOptions);
   }
 
@@ -385,9 +389,24 @@ export class PiiSettingsComponent implements OnInit {
     const regex = group.get('regexEnabled')?.value;
     const openmed = group.get('openmedEnabled')?.value;
     const gliner2 = group.get('gliner2Enabled')?.value;
+    const ministral = group.get('ministralEnabled')?.value;
 
-    if (!gliner && !presidio && !regex && !openmed && !gliner2) {
+    if (!gliner && !presidio && !regex && !openmed && !gliner2 && !ministral) {
       return {atLeastOneDetector: true};
+    }
+    return null;
+  }
+
+  /**
+   * Cross-field validator: the Ministral overlap must stay strictly below the
+   * chunk size, otherwise consecutive chunks would never advance.
+   */
+  private overlapLessThanChunkSizeValidator(group: FormGroup): {[key: string]: boolean} | null {
+    const chunkSize = group.get('ministralChunkSize')?.value;
+    const overlap = group.get('ministralOverlap')?.value;
+
+    if (chunkSize != null && overlap != null && overlap >= chunkSize) {
+      return {ministralOverlapGteChunkSize: true};
     }
     return null;
   }
@@ -417,6 +436,9 @@ export class PiiSettingsComponent implements OnInit {
           regexJudgeEnabled: detectorConfig.regexJudgeEnabled,
           openmedJudgeEnabled: detectorConfig.openmedJudgeEnabled,
           gliner2JudgeEnabled: detectorConfig.gliner2JudgeEnabled,
+          ministralEnabled: detectorConfig.ministralEnabled,
+          ministralChunkSize: detectorConfig.ministralChunkSize,
+          ministralOverlap: detectorConfig.ministralOverlap,
           defaultThreshold: detectorConfig.defaultThreshold,
           nbOfLabelByPass: detectorConfig.nbOfLabelByPass
         });
@@ -818,6 +840,9 @@ export class PiiSettingsComponent implements OnInit {
         regexJudgeEnabled: this.currentConfig()!.regexJudgeEnabled,
         openmedJudgeEnabled: this.currentConfig()!.openmedJudgeEnabled,
         gliner2JudgeEnabled: this.currentConfig()!.gliner2JudgeEnabled,
+        ministralEnabled: this.currentConfig()!.ministralEnabled,
+        ministralChunkSize: this.currentConfig()!.ministralChunkSize,
+        ministralOverlap: this.currentConfig()!.ministralOverlap,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
       });
@@ -874,6 +899,10 @@ export class PiiSettingsComponent implements OnInit {
 
   get atLeastOneDetectorError(): boolean {
     return this.configForm.hasError('atLeastOneDetector') && this.configForm.touched;
+  }
+
+  get ministralOverlapError(): boolean {
+    return this.configForm.hasError('ministralOverlapGteChunkSize');
   }
 
   /**

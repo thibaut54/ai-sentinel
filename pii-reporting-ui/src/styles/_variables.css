@@ -121,6 +121,13 @@
   --sentinel-gliner2-avatar-bg: #eef2ff;   /* indigo-50 -- avatar background */
   --sentinel-gliner2-avatar-border: #c7d2fe; /* indigo-200 -- avatar border */
 
+  /* Ministral -- amber (distinct from GLiNER2 indigo, OpenMed teal, Presidio blue) */
+  --sentinel-ministral-bg: #fef3c7;          /* amber-100 -- badge/card background */
+  --sentinel-ministral-fg: #78350f;          /* amber-900 -- text color (contrast >= 4.5:1) */
+  --sentinel-ministral-border: #f59e0b;      /* amber-500 -- border */
+  --sentinel-ministral-avatar-bg: #fffbeb;   /* amber-50 -- avatar background */
+  --sentinel-ministral-avatar-border: #fde68a; /* amber-200 -- avatar border */
+
   /* Unknown detector */
   --sentinel-detector-unknown-bg: #f4f4f5;
   --sentinel-detector-unknown-color: #71717a;
@@ -364,6 +371,13 @@
   --sentinel-gliner2-border: #3730a3;      /* indigo-800 -- muted border */
   --sentinel-gliner2-avatar-bg: #1a1f3d;   /* slightly lifted indigo tint */
   --sentinel-gliner2-avatar-border: #4338ca; /* indigo-700 -- mid indigo */
+
+  /* Ministral -- amber (dark theme override, mirrors the light palette) */
+  --sentinel-ministral-bg: #291a08;          /* very dark amber tint */
+  --sentinel-ministral-fg: #fcd34d;          /* amber-300 -- readable on dark (contrast >= 4.5:1) */
+  --sentinel-ministral-border: #92400e;      /* amber-800 -- muted border */
+  --sentinel-ministral-avatar-bg: #3a2710;   /* slightly lifted amber tint */
+  --sentinel-ministral-avatar-border: #b45309; /* amber-700 -- mid amber */
 
   /* Unknown detector */
   --sentinel-detector-unknown-bg: #1e2736; /* neutral dark surface */

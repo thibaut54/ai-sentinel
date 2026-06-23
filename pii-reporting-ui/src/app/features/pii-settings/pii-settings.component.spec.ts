@@ -20,6 +20,9 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   regexJudgeEnabled: false,
   openmedJudgeEnabled: false,
   gliner2JudgeEnabled: false,
+  ministralEnabled: false,
+  ministralChunkSize: 1024,
+  ministralOverlap: 128,
   defaultThreshold: 0.75,
   nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
@@ -47,6 +50,16 @@ const FR_TRANSLATIONS = {
       presidio: { label: 'Presidio', description: 'desc' },
       regex: { label: 'Regex', description: 'desc' },
       openmed: { label: 'OpenMed', description: 'desc' },
+      ministral: {
+        label: 'Ministral-PII',
+        description: 'desc',
+        advancedParams: 'Paramètres avancés',
+        chunkSize: 'Taille de fenêtre',
+        chunkSizeHint: 'hint',
+        overlap: 'Chevauchement',
+        overlapHint: 'hint',
+        overlapError: 'erreur',
+      },
       prefilter: { label: 'Pré-filtre déterministe', description: 'desc' },
       detectorLabel: 'Détecteur',
       judgeLabel: 'Juge LLM',
@@ -180,13 +193,14 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_FailAtLeastOneDetectorValidation_When_AllDetectorsDisabled', () => {
-    // Given - All detectors disabled (including openmed and gliner2)
+    // Given - All detectors disabled (including openmed, gliner2 and ministral)
     component.configForm.patchValue({
       glinerEnabled: false,
       presidioEnabled: false,
       regexEnabled: false,
       openmedEnabled: false,
       gliner2Enabled: false,
+      ministralEnabled: false,
     });
 
     // Then - Form must carry atLeastOneDetector error
@@ -215,6 +229,23 @@ describe('PiiSettingsComponent', () => {
     });
 
     expect(component.configForm.hasError('atLeastOneDetector')).toBe(false);
+  });
+
+  it('Should_FailOverlapValidation_When_OverlapNotLessThanChunkSize', () => {
+    // Given - overlap equal to (>=) chunk size
+    component.configForm.patchValue({ ministralChunkSize: 512, ministralOverlap: 512 });
+
+    // Then - Form must carry the cross-field error and be invalid
+    expect(component.configForm.hasError('ministralOverlapGteChunkSize')).toBe(true);
+    expect(component.configForm.invalid).toBe(true);
+  });
+
+  it('Should_PassOverlapValidation_When_OverlapLessThanChunkSize', () => {
+    // Given - overlap strictly below chunk size
+    component.configForm.patchValue({ ministralChunkSize: 1024, ministralOverlap: 128 });
+
+    // Then - Form must not carry the cross-field error
+    expect(component.configForm.hasError('ministralOverlapGteChunkSize')).toBe(false);
   });
 
   it('Should_TrackDescriptionChange_When_Gliner2RowEdited', () => {
@@ -589,6 +620,7 @@ describe('PiiSettingsComponent', () => {
       regexEnabled: false,
       openmedEnabled: false,
       gliner2Enabled: false,
+      ministralEnabled: false,
     });
     component.configForm.markAllAsTouched();
 

@@ -310,6 +310,16 @@
         "label": "GLiNER2",
         "help": "Détecteur zéro-shot multi-tâches avec descriptions par type pour désambiguïser. Source complémentaire de GLiNER (désactivé par défaut)."
       },
+      "ministral": {
+        "label": "Ministral-PII",
+        "description": "Détecteur LLM génératif (Ministral) qui analyse les longs documents par fenêtres chevauchantes. Source complémentaire des autres détecteurs (désactivé par défaut).",
+        "advancedParams": "Paramètres avancés",
+        "chunkSize": "Taille de fenêtre",
+        "chunkSizeHint": "Nombre de caractères traités par fenêtre (256-4096). Des fenêtres plus grandes offrent plus de contexte mais ralentissent l'inférence.",
+        "overlap": "Chevauchement",
+        "overlapHint": "Nombre de caractères partagés entre deux fenêtres consécutives (0-512). Doit rester inférieur à la taille de fenêtre.",
+        "overlapError": "Le chevauchement doit être inférieur à la taille de fenêtre."
+      },
       "prefilter": {
         "label": "Pré-filtre déterministe",
         "description": "Rejette avant le juge LLM les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
@@ -359,7 +369,8 @@
         "PRESIDIO": "Presidio",
         "REGEX": "Regex",
         "OPENMED": "OpenMed",
-        "GLINER2": "GLiNER2"
+        "GLINER2": "GLiNER2",
+        "MINISTRAL": "Ministral-PII"
       },
       "categoryNames": {
         "TEMPORAL": "Dates sensibles",
