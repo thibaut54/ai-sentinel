@@ -126,12 +126,36 @@ public class TabularContentSerializer {
 
         boolean tryAppend(SerializedRow row) {
             int separatorLength = analysis.isEmpty() ? 0 : LINE_SEPARATOR.length();
-            if (!analysis.isEmpty()
-                && analysis.length() + separatorLength + row.analysisFragment().length() > MAX_ANALYSIS_TEXT_CHARS) {
+            // long arithmetic guards against int overflow on a pathologically large row.
+            long projected = (long) analysis.length() + separatorLength + row.analysisFragment().length();
+            if (projected > MAX_ANALYSIS_TEXT_CHARS) {
+                return appendOverCap(row);
+            }
+            appendRow(row);
+            return true;
+        }
+
+        /**
+         * Handles a row whose addition would exceed the cap. Subsequent records are truncated on a
+         * row boundary. An over-sized FIRST record is still emitted once — a value is never split
+         * (RG7), so dropping it would lose a legitimately wide table — then reading stops. The cap is
+         * always logged (never silently bypassed) and memory stays bounded to at most one record.
+         *
+         * @return always {@code false} so the caller stops feeding further rows
+         */
+        private boolean appendOverCap(SerializedRow row) {
+            if (analysis.isEmpty()) {
+                log.warn("[TABULAR][CAP] first record alone exceeds {} chars; emitting it and stopping",
+                    MAX_ANALYSIS_TEXT_CHARS);
+                appendRow(row);
+            } else {
                 log.warn("[TABULAR][CAP] analysis text reached {} chars, truncating on a row boundary",
                     MAX_ANALYSIS_TEXT_CHARS);
-                return false;
             }
+            return false;
+        }
+
+        private void appendRow(SerializedRow row) {
             if (!analysis.isEmpty()) {
                 analysis.append(LINE_SEPARATOR);
                 context.append(LINE_SEPARATOR);
@@ -146,7 +170,6 @@ public class TabularContentSerializer {
                     relative.length(),
                     relative.contextStart() + contextBase));
             }
-            return true;
         }
 
         Optional<ExtractedContent> toExtractedContent() {

@@ -93,4 +93,24 @@ class TabularContentSerializerTest {
             soft.assertThat(analysisLines).isLessThan(rowCount);
         });
     }
+
+    @Test
+    @DisplayName("Should still emit a single over-cap first record verbatim (value never split) then stop")
+    void Should_EmitFirstRecord_When_FirstRowAloneExceedsCap() {
+        String huge = "v".repeat(TabularContentSerializer.MAX_ANALYSIS_TEXT_CHARS + 10);
+        // One header + one data row whose value alone exceeds the cap, followed by a normal row
+        String csv = "Nom,Note\nDupont," + huge + "\nMartin,ok";
+
+        ExtractedContent content = serializer.serialize("csv", csv.getBytes(StandardCharsets.UTF_8))
+            .orElseThrow();
+
+        assertSoftly(soft -> {
+            // The first (over-sized) record is emitted, not dropped...
+            soft.assertThat(content.contextText().lines().count()).isEqualTo(1L);
+            // ...verbatim (RG7): the huge value survives intact in the context text
+            soft.assertThat(content.contextText()).contains(huge);
+            // ...and reading stopped: the second row ("Martin") was not emitted
+            soft.assertThat(content.contextText()).doesNotContain("Martin");
+        });
+    }
 }
