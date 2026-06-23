@@ -16,3 +16,6 @@ class DetectorSource(Enum):
     # pseudo detector in run-stats so the number of PII it discarded can be
     # measured. Never labels a real entity's source.
     PREFILTER = "PREFILTER"
+    # Specialised LLM PII detector (Ministral-PII). Permanently exempt from the
+    # LLM-as-judge post-filter (same model nature): its entities stay NOT_AUDITED.
+    MINISTRAL = "MINISTRAL"

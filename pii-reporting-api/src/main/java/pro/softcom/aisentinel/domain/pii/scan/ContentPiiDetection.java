@@ -300,7 +300,13 @@ public record ContentPiiDetection(
          * The deterministic format pre-filter, surfaced as a pseudo detector in
          * run-stats only to expose how many PII it discarded.
          */
-        PREFILTER
+        PREFILTER,
+        /**
+         * Specialised LLM PII detector (Ministral-PII). Permanently exempt from
+         * the LLM-as-judge post-filter (same model nature): its findings stay
+         * {@link JudgeStatus#NOT_AUDITED}.
+         */
+        MINISTRAL
     }
 
     /**

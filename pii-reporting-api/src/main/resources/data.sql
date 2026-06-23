@@ -14,8 +14,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- *_judge_enabled default to false: per-detector LLM-judge routing is opt-in
 -- (migration 012). llm_judge_enabled is the derived OR, maintained by the API.
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, gliner_judge_enabled, presidio_judge_enabled, regex_judge_enabled, openmed_judge_enabled, gliner2_judge_enabled, updated_at, updated_by)
-VALUES (1, true, true, true, false, false, 0.30, 35, false, false, false, false, false, false, false, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, gliner_judge_enabled, presidio_judge_enabled, regex_judge_enabled, openmed_judge_enabled, gliner2_judge_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, ministral_judge_enabled, updated_at, updated_by)
+VALUES (1, true, true, true, false, false, 0.30, 35, false, false, false, false, false, false, false, false, 1024, 128, false, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -461,6 +461,129 @@ VALUES
     ('DOCUMENT_DATE',    'GLINER2', false, 0.50, 'TEMPORAL', 'document_date',    'date d''emission ou de redaction d''un document',  'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('EXPIRATION_DATE',  'GLINER2', false, 0.50, 'TEMPORAL', 'expiration_date',  'date d''expiration d''un document ou d''un droit', 'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('TRANSACTION_DATE', 'GLINER2', false, 0.50, 'TEMPORAL', 'transaction_date', 'date d''une transaction',                          'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- ============================================================================
+-- Ministral-PII detector seed (69 entities, 8 categories).
+-- Specialised LLM detector: enabled by default at first install (all types active), threshold 0.50 neutral (no exploitable per-entity score),
+-- llm_judge_enabled=false on EVERY row (permanently exempt from the judge).
+-- ============================================================================
+
+-- Category: IDENTITY (Identity & demographics) -- 17 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('FIRST_NAME',           'MINISTRAL', true, 0.50, 'IDENTITY', 'first_name',           NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LAST_NAME',            'MINISTRAL', true, 0.50, 'IDENTITY', 'last_name',            NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TITLE',                'MINISTRAL', true, 0.50, 'IDENTITY', 'title',                NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_OF_BIRTH',        'MINISTRAL', true, 0.50, 'IDENTITY', 'date_of_birth',        NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('AGE',                  'MINISTRAL', true, 0.50, 'IDENTITY', 'age',                  NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('GENDER',               'MINISTRAL', true, 0.50, 'IDENTITY', 'gender',               NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONALITY',          'MINISTRAL', true, 0.50, 'IDENTITY', 'nationality',          NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RACE',                 'MINISTRAL', true, 0.50, 'IDENTITY', 'race',                 NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ETHNICITY',            'MINISTRAL', true, 0.50, 'IDENTITY', 'ethnicity',            NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RACE_ETHNICITY',       'MINISTRAL', true, 0.50, 'IDENTITY', 'race_ethnicity',       NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RELIGION',             'MINISTRAL', true, 0.50, 'IDENTITY', 'religion',             NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RELIGIOUS_BELIEF',     'MINISTRAL', true, 0.50, 'IDENTITY', 'religious_belief',     NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MARITAL_STATUS',       'MINISTRAL', true, 0.50, 'IDENTITY', 'marital_status',       NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SEXUALITY',            'MINISTRAL', true, 0.50, 'IDENTITY', 'sexuality',            NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('POLITICAL_VIEW',       'MINISTRAL', true, 0.50, 'IDENTITY', 'political_view',       NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LANGUAGE',             'MINISTRAL', true, 0.50, 'IDENTITY', 'language',             NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BIOMETRIC_IDENTIFIER', 'MINISTRAL', true, 0.50, 'IDENTITY', 'biometric_identifier', NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: CONTACT (Contact & address) -- 12 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('EMAIL',           'MINISTRAL', true, 0.50, 'CONTACT', 'email',           NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PHONE_NUMBER',    'MINISTRAL', true, 0.50, 'CONTACT', 'phone_number',    NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('FAX_NUMBER',      'MINISTRAL', true, 0.50, 'CONTACT', 'fax_number',      NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STREET_ADDRESS',  'MINISTRAL', true, 0.50, 'CONTACT', 'street_address',  NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BUILDING_NUMBER', 'MINISTRAL', true, 0.50, 'CONTACT', 'building_number', NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CITY',            'MINISTRAL', true, 0.50, 'CONTACT', 'city',            NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COUNTY',          'MINISTRAL', true, 0.50, 'CONTACT', 'county',          NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STATE',           'MINISTRAL', true, 0.50, 'CONTACT', 'state',           NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('POSTCODE',        'MINISTRAL', true, 0.50, 'CONTACT', 'postcode',        NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ZIP_CODE',        'MINISTRAL', true, 0.50, 'CONTACT', 'zip_code',        NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COUNTRY',         'MINISTRAL', true, 0.50, 'CONTACT', 'country',         NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COORDINATE',      'MINISTRAL', true, 0.50, 'CONTACT', 'coordinate',      NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: GOV_ID (Government & legal IDs) -- 9 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('SOCIAL_SECURITY_NUMBER',     'MINISTRAL', true, 0.50, 'GOV_ID', 'social_security_number',     NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SSN',                        'MINISTRAL', true, 0.50, 'GOV_ID', 'ssn',                        NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONAL_ID',                'MINISTRAL', true, 0.50, 'GOV_ID', 'national_id',                NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DRIVER_LICENSE_NUMBER',      'MINISTRAL', true, 0.50, 'GOV_ID', 'driver_license_number',      NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TAX_ID',                     'MINISTRAL', true, 0.50, 'GOV_ID', 'tax_id',                     NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LICENSE_PLATE',              'MINISTRAL', true, 0.50, 'GOV_ID', 'license_plate',              NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VEHICLE_IDENTIFIER',         'MINISTRAL', true, 0.50, 'GOV_ID', 'vehicle_identifier',         NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CERTIFICATE_LICENSE_NUMBER', 'MINISTRAL', true, 0.50, 'GOV_ID', 'certificate_license_number', NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('UNIQUE_ID',                  'MINISTRAL', true, 0.50, 'GOV_ID', 'unique_id',                  NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: MEDICAL (Healthcare) -- 3 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('MEDICAL_RECORD_NUMBER',          'MINISTRAL', true, 0.50, 'MEDICAL', 'medical_record_number',          NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HEALTH_PLAN_BENEFICIARY_NUMBER', 'MINISTRAL', true, 0.50, 'MEDICAL', 'health_plan_beneficiary_number', NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BLOOD_TYPE',                     'MINISTRAL', true, 0.50, 'MEDICAL', 'blood_type',                     NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: FINANCIAL (Financial) -- 8 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('CREDIT_DEBIT_CARD',   'MINISTRAL', true, 0.50, 'FINANCIAL', 'credit_debit_card',   NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CVV',                 'MINISTRAL', true, 0.50, 'FINANCIAL', 'cvv',                 NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PIN',                 'MINISTRAL', true, 0.50, 'FINANCIAL', 'pin',                 NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_NUMBER',      'MINISTRAL', true, 0.50, 'FINANCIAL', 'account_number',      NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BANK_ROUTING_NUMBER', 'MINISTRAL', true, 0.50, 'FINANCIAL', 'bank_routing_number', NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IBAN',                'MINISTRAL', true, 0.50, 'FINANCIAL', 'iban',                NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SWIFT_BIC',           'MINISTRAL', true, 0.50, 'FINANCIAL', 'swift_bic',           NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SALARY',              'MINISTRAL', true, 0.50, 'FINANCIAL', 'salary',              NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: EMPLOYMENT (Employment & org) -- 7 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('OCCUPATION',        'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'occupation',        NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMPLOYMENT_STATUS', 'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'employment_status', NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMPLOYEE_ID',       'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'employee_id',       NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EDUCATION_LEVEL',   'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'education_level',   NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ORGANIZATION',      'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'organization',      NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COMPANY_NAME',      'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'company_name',      NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CUSTOMER_ID',       'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'customer_id',       NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: DIGITAL (Digital & network) -- 10 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('IP_ADDRESS',        'MINISTRAL', true, 0.50, 'DIGITAL', 'ip_address',        NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IPV4',              'MINISTRAL', true, 0.50, 'DIGITAL', 'ipv4',              NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IPV6',              'MINISTRAL', true, 0.50, 'DIGITAL', 'ipv6',              NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MAC_ADDRESS',       'MINISTRAL', true, 0.50, 'DIGITAL', 'mac_address',       NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('URL',               'MINISTRAL', true, 0.50, 'DIGITAL', 'url',               NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('USER_NAME',         'MINISTRAL', true, 0.50, 'DIGITAL', 'user_name',         NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSWORD',          'MINISTRAL', true, 0.50, 'DIGITAL', 'password',          NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HTTP_COOKIE',       'MINISTRAL', true, 0.50, 'DIGITAL', 'http_cookie',       NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('API_KEY',           'MINISTRAL', true, 0.50, 'DIGITAL', 'api_key',           NULL, false, false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DEVICE_IDENTIFIER', 'MINISTRAL', true, 0.50, 'DIGITAL', 'device_identifier', NULL, false, false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: TEMPORAL (Temporal) -- 3 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, detector_description, llm_judge_enabled, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('DATE',      'MINISTRAL', true, 0.50, 'TEMPORAL', 'date',      NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_TIME', 'MINISTRAL', true, 0.50, 'TEMPORAL', 'date_time', NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TIME',      'MINISTRAL', true, 0.50, 'TEMPORAL', 'time',      NULL, false, false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 COMMIT;
