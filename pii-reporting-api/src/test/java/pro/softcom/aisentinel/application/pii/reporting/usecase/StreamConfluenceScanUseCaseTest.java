@@ -23,6 +23,7 @@ import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.DataOwners;
+import pro.softcom.aisentinel.domain.confluence.extraction.ExtractedContent;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
@@ -301,7 +302,7 @@ class StreamConfluenceScanUseCaseTest {
         AttachmentInfo att = new AttachmentInfo("file.pdf", "pdf", "application/pdf", "http://file");
         when(confluenceAttachmentService.getPageAttachments("p-2")).thenReturn(CompletableFuture.completedFuture(List.of(att)));
         when(confluenceDownloadService.downloadAttachmentContent("p-2", "file.pdf")).thenReturn(CompletableFuture.completedFuture(Optional.of("PDFDATA".getBytes(StandardCharsets.UTF_8))));
-        when(attachmentTextExtractionService.extractText(eq(att), any())).thenReturn(Optional.of("Extracted email test"));
+        when(attachmentTextExtractionService.extractText(eq(att), any())).thenReturn(Optional.of(ExtractedContent.identity("Extracted email test")));
 
         ContentPiiDetection resp = ContentPiiDetection.builder()
                 .statistics(Map.of("EMAIL", 1))

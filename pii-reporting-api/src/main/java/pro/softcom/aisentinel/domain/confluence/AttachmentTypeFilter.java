@@ -33,6 +33,15 @@ public final class AttachmentTypeFilter {
         "html", "htm"
     );
 
+    /**
+     * Natively tabular file extensions.
+     * Business rule: these formats carry rows and columns whose meaning depends on a header,
+     * so they are eligible for the structured "header : value" serialization before analysis.
+     */
+    private static final Set<String> TABULAR_EXTENSIONS = Set.of(
+        "xlsx", "xls", "csv", "ods"
+    );
+
     private AttachmentTypeFilter() {
         // Utility class - private constructor
         throw new AssertionError("AttachmentTypeFilter is a utility class and should not be instantiated");
@@ -56,6 +65,23 @@ public final class AttachmentTypeFilter {
     }
 
     /**
+     * Checks if an attachment is a natively tabular file (xlsx/xls/csv/ods).
+     * Business rule: tabular files are eligible for the structured "header : value" serialization
+     * that keeps each value paired with its column header. Comparison is case-insensitive.
+     *
+     * @param attachment Attachment information to verify
+     * @return true if attachment is tabular, false otherwise
+     */
+    public static boolean isTabular(AttachmentInfo attachment) {
+        if (attachment == null || attachment.extension() == null) {
+            return false;
+        }
+
+        String normalizedExtension = attachment.extension().toLowerCase().trim();
+        return TABULAR_EXTENSIONS.contains(normalizedExtension);
+    }
+
+    /**
      * Returns the list of supported extensions.
      * Useful for logging, debugging, and documentation.
      *
@@ -63,5 +89,14 @@ public final class AttachmentTypeFilter {
      */
     public static Set<String> getSupportedExtensions() {
         return EXTRACTABLE_EXTENSIONS;
+    }
+
+    /**
+     * Returns the set of natively tabular extensions.
+     *
+     * @return Immutable set of tabular extensions
+     */
+    public static Set<String> getTabularExtensions() {
+        return TABULAR_EXTENSIONS;
     }
 }

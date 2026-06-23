@@ -7,9 +7,11 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.AttachmentTypeFilter;
+import pro.softcom.aisentinel.domain.confluence.extraction.ExtractedContent;
 import pro.softcom.aisentinel.infrastructure.document.validator.TextQualityValidator;
 
 import java.io.ByteArrayInputStream;
@@ -18,8 +20,13 @@ import java.util.Optional;
 /**
  * WHAT: Attachment text extractor based on Apache Tika (programmatic API, no XML config).
  * Scope: initial support for PDFs and common office formats; image-only PDFs are skipped (no OCR yet).
+ *
+ * <p>Ordered after the tabular extractor ({@code @Order(1)}): Tika is the fallback for non-tabular
+ * formats and for tabular files without an identifiable header. It returns an identity
+ * {@link ExtractedContent} (analysis text == context text) so the report stays unchanged.
  */
 @Component
+@Order(2)
 public class TikaAttachmentTextExtractorAdapter implements AttachmentTextExtractionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(TikaAttachmentTextExtractorAdapter.class);
@@ -36,7 +43,7 @@ public class TikaAttachmentTextExtractorAdapter implements AttachmentTextExtract
     }
 
     @Override
-    public Optional<String> extract(AttachmentInfo info, byte[] bytes) {
+    public Optional<ExtractedContent> extract(AttachmentInfo info, byte[] bytes) {
         if (bytes == null || bytes.length == 0) return Optional.empty();
         try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
             AutoDetectParser parser = new AutoDetectParser();
@@ -53,7 +60,7 @@ public class TikaAttachmentTextExtractorAdapter implements AttachmentTextExtract
                 return Optional.empty();
             }
 
-            return text.isEmpty() ? Optional.empty() : Optional.of(text);
+            return text.isEmpty() ? Optional.empty() : Optional.of(ExtractedContent.identity(text));
         } catch (Exception e) {
             logger.warn("[ATTACHMENT_TEXT][TIKA][ERROR] name='{}' - {}", info != null ? info.name() : "?", e.getMessage());
             return Optional.empty();
