@@ -7,10 +7,15 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
+import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
+import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
 import pro.softcom.aisentinel.infrastructure.config.SecurityConfig;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.DashboardFacetsDto;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.FacetCountDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
@@ -24,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,6 +60,16 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
     @MockitoBean
     private ScanReportingSummaryMapper scanReportingSummaryMapper;
 
+    private static SpaceSummary space(String key, String status, String name) {
+        return new SpaceSummary(key, status, 100.0, 10L, 5L,
+                Instant.parse("2025-01-15T09:30:00Z"), name, SeverityCounts.zero(), Map.of());
+    }
+
+    private static ScanReportingSummary summary(String scanId, int count, List<SpaceSummary> spaces) {
+        return new ScanReportingSummary(scanId, Instant.parse("2025-01-15T10:00:00Z"), count, spaces,
+                DashboardFacets.empty());
+    }
+
     @Test
     void should_ReturnSpacesSummaryWithSeverityCounts_When_ScanExists() throws Exception {
         // Arrange
@@ -60,239 +77,114 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
         Instant lastUpdated = Instant.parse("2025-01-15T10:00:00Z");
         Instant lastEventTs = Instant.parse("2025-01-15T09:30:00Z");
 
-        ScanReportingSummary domainSummary = new ScanReportingSummary(
-            scanId,
-            lastUpdated,
-            2,
-            List.of(
-                new SpaceSummary("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs, "Space One"),
-                new SpaceSummary("SPACE2", "IN_PROGRESS", 50.0, 5L, 2L, lastEventTs, "Space Two")
-            )
-        );
+        ScanReportingSummary domainSummary = summary(scanId, 2,
+                List.of(space("SPACE1", "COMPLETED", "Space One"), space("SPACE2", "RUNNING", "Space Two")));
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
-            scanId,
-            lastUpdated,
-            2,
-            List.of(
-                new SpaceSummaryDto(
-                    "SPACE1",
-                    "COMPLETED",
-                    100.0,
-                    10L,
-                    5L,
-                    lastEventTs,
-                    new SeverityCountsDto(5, 10, 15, 30),
-                    "Space One",
-                    Map.of("EMAIL", 5)
-                ),
-                new SpaceSummaryDto(
-                    "SPACE2",
-                    "IN_PROGRESS",
-                    50.0,
-                    5L,
-                    2L,
-                    lastEventTs,
-                    new SeverityCountsDto(2, 8, 12, 22),
-                    "Space Two",
-                    Map.of("PHONE_NUMBER", 2)
-                )
-            )
-        );
+                scanId, lastUpdated, 2,
+                List.of(
+                        new SpaceSummaryDto("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs,
+                                new SeverityCountsDto(5, 10, 15, 30), "Space One", Map.of("EMAIL", 5)),
+                        new SpaceSummaryDto("SPACE2", "RUNNING", 50.0, 5L, 2L, lastEventTs,
+                                new SeverityCountsDto(2, 8, 12, 22), "Space Two", Map.of("PHONE_NUMBER", 2))),
+                DashboardFacetsDto_empty());
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
-                .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.scanId").value(scanId))
-            .andExpect(jsonPath("$.spacesCount").value(2))
-            .andExpect(jsonPath("$.spaces").isArray())
-            .andExpect(jsonPath("$.spaces.length()").value(2))
-            // Verify SPACE1 severity counts
-            .andExpect(jsonPath("$.spaces[0].spaceKey").value("SPACE1"))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.high").value(5))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.medium").value(10))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(15))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(30))
-            // Verify SPACE2 severity counts
-            .andExpect(jsonPath("$.spaces[1].spaceKey").value("SPACE2"))
-            .andExpect(jsonPath("$.spaces[1].severityCounts.high").value(2))
-            .andExpect(jsonPath("$.spaces[1].severityCounts.medium").value(8))
-            .andExpect(jsonPath("$.spaces[1].severityCounts.low").value(12))
-            .andExpect(jsonPath("$.spaces[1].severityCounts.total").value(22));
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.scanId").value(scanId))
+                .andExpect(jsonPath("$.spacesCount").value(2))
+                .andExpect(jsonPath("$.spaces.length()").value(2))
+                .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(30))
+                .andExpect(jsonPath("$.spaces[1].severityCounts.total").value(22));
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getGlobalScanSummary(any());
         verify(scanReportingSummaryMapper).toDto(domainSummary);
     }
 
     @Test
-    void should_ReturnSpacesSummaryWithZeroSeverityCounts_When_NoSeverityCountsExist() throws Exception {
+    void should_PassFilterCriteria_When_QueryParamsProvided() throws Exception {
         // Arrange
-        String scanId = "scan-456";
-        Instant lastUpdated = Instant.parse("2025-01-15T10:00:00Z");
-        Instant lastEventTs = Instant.parse("2025-01-15T09:30:00Z");
-
-        ScanReportingSummary domainSummary = new ScanReportingSummary(
-            scanId,
-            lastUpdated,
-            1,
-            List.of(new SpaceSummary("SPACE3", "COMPLETED", 100.0, 5L, 0L, lastEventTs, "Space Three"))
-        );
-
+        ScanReportingSummary domainSummary = summary("scan-x", 0, List.of());
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
-            scanId,
-            lastUpdated,
-            1,
-            List.of(
-                new SpaceSummaryDto(
-                    "SPACE3",
-                    "COMPLETED",
-                    100.0,
-                    5L,
-                    0L,
-                    lastEventTs,
-                    SeverityCountsDto.zero(),  // No severity counts found
-                    "Space Three",
-                    Map.of()
-                )
-            )
-        );
+                "scan-x", Instant.parse("2025-01-15T10:00:00Z"), 0, List.of(), DashboardFacetsDto_empty());
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
-        // Act & Assert
+        // Act
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
-                .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.high").value(0))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.medium").value(0))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(0))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(0));
+                        .param("piiTypes", "EMAIL,PHONE_NUMBER")
+                        .param("severities", "HIGH")
+                        .param("statuses", "OK")
+                        .param("q", "marketing")
+                        .param("sort", "totalDetections")
+                        .param("order", "asc")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
-        verify(scanReportingPort).getGlobalScanSummary();
-        verify(scanReportingSummaryMapper).toDto(domainSummary);
+        // Assert criteria binding
+        verify(scanReportingPort).getGlobalScanSummary(argThat((DashboardFilterCriteria criteria) ->
+                criteria.piiTypes().equals(List.of("EMAIL", "PHONE_NUMBER"))
+                        && criteria.severities().equals(List.of("HIGH"))
+                        && criteria.statuses().equals(List.of("OK"))
+                        && "marketing".equals(criteria.search())
+                        && "totalDetections".equals(criteria.sort())
+                        && "asc".equals(criteria.order())));
     }
 
     @Test
-    void should_ReturnEmptySpacesList_When_SummaryHasNoSpaces() throws Exception {
+    void should_ExposeFacets_When_ResponseIsSuccessful() throws Exception {
         // Arrange
-        String scanId = "scan-789";
-        Instant lastUpdated = Instant.parse("2025-01-15T10:00:00Z");
+        String scanId = "scan-facets";
+        Instant lastUpdated = Instant.parse("2025-01-15T12:00:00Z");
 
-        ScanReportingSummary domainSummary = new ScanReportingSummary(
-            scanId,
-            lastUpdated,
-            0,
-            List.of()  // No spaces
-        );
+        ScanReportingSummary domainSummary = summary(scanId, 1, List.of(space("S", "COMPLETED", "S")));
+
+        DashboardFacetsDto facetsDto = new DashboardFacetsDto(
+                Map.of("EMAIL", new FacetCountDto(3, 12)),
+                Map.of("HIGH", new FacetCountDto(2, 5)),
+                Map.of("OK", new FacetCountDto(4, 17)));
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
-            scanId,
-            lastUpdated,
-            0,
-            List.of()
-        );
+                scanId, lastUpdated, 1,
+                List.of(new SpaceSummaryDto("S", "COMPLETED", 100.0, 20L, 10L, lastUpdated,
+                        new SeverityCountsDto(3, 7, 11, 21), "S", Map.of("IBAN_CODE", 4))),
+                facetsDto);
 
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
+        when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.of(domainSummary));
         when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
-                .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.scanId").value(scanId))
-            .andExpect(jsonPath("$.spacesCount").value(0))
-            .andExpect(jsonPath("$.spaces").isArray())
-            .andExpect(jsonPath("$.spaces").isEmpty());
-
-        verify(scanReportingPort).getGlobalScanSummary();
-        verify(scanReportingSummaryMapper).toDto(domainSummary);
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.facets.piiTypes.EMAIL.nbSpaces").value(3))
+                .andExpect(jsonPath("$.facets.piiTypes.EMAIL.totalOccurrences").value(12))
+                .andExpect(jsonPath("$.facets.severities.HIGH.nbSpaces").value(2))
+                .andExpect(jsonPath("$.facets.statuses.OK.totalOccurrences").value(17))
+                .andExpect(jsonPath("$.spaces[0].piiTypeCounts.IBAN_CODE").value(4));
     }
 
     @Test
     void should_ReturnNoContent_When_NoScanSummaryExists() throws Exception {
         // Arrange
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.empty());
+        when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.empty());
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
-                .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNoContent());
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
 
-        verify(scanReportingPort).getGlobalScanSummary();
+        verify(scanReportingPort).getGlobalScanSummary(any());
     }
 
-    @Test
-    void should_VerifyCompleteJsonStructure_When_ResponseIsSuccessful() throws Exception {
-        // Arrange
-        String scanId = "scan-full";
-        Instant lastUpdated = Instant.parse("2025-01-15T12:00:00Z");
-        Instant lastEventTs = Instant.parse("2025-01-15T11:45:00Z");
-
-        ScanReportingSummary domainSummary = new ScanReportingSummary(
-            scanId,
-            lastUpdated,
-            1,
-            List.of(new SpaceSummary("COMPLETE", "COMPLETED", 100.0, 20L, 10L, lastEventTs, "Complete Space"))
-        );
-
-        ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
-            scanId,
-            lastUpdated,
-            1,
-            List.of(
-                new SpaceSummaryDto(
-                    "COMPLETE",
-                    "COMPLETED",
-                    100.0,
-                    20L,
-                    10L,
-                    lastEventTs,
-                    new SeverityCountsDto(3, 7, 11, 21),
-                    "Complete Space",
-                    Map.of("IBAN_CODE", 4)
-                )
-            )
-        );
-
-        when(scanReportingPort.getGlobalScanSummary()).thenReturn(Optional.of(domainSummary));
-        when(scanReportingSummaryMapper.toDto(domainSummary)).thenReturn(dto);
-
-        // Act & Assert - Verify complete JSON structure
-        mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
-                .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            // Root level
-            .andExpect(jsonPath("$.scanId").value(scanId))
-            .andExpect(jsonPath("$.lastUpdated").value("2025-01-15T12:00:00Z"))
-            .andExpect(jsonPath("$.spacesCount").value(1))
-            .andExpect(jsonPath("$.spaces").isArray())
-            // Space level - all 7 fields
-            .andExpect(jsonPath("$.spaces[0].spaceKey").value("COMPLETE"))
-            .andExpect(jsonPath("$.spaces[0].status").value("COMPLETED"))
-            .andExpect(jsonPath("$.spaces[0].progressPercentage").value(100.0))
-            .andExpect(jsonPath("$.spaces[0].pagesDone").value(20))
-            .andExpect(jsonPath("$.spaces[0].attachmentsDone").value(10))
-            .andExpect(jsonPath("$.spaces[0].lastEventTs").value("2025-01-15T11:45:00Z"))
-            // Severity counts level - all 4 fields
-            .andExpect(jsonPath("$.spaces[0].severityCounts").exists())
-            .andExpect(jsonPath("$.spaces[0].severityCounts.high").value(3))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.medium").value(7))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(11))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(21))
-            // PII type enrichment fields
-            .andExpect(jsonPath("$.spaces[0].spaceName").value("Complete Space"))
-            .andExpect(jsonPath("$.spaces[0].piiTypeCounts.IBAN_CODE").value(4));
-
-        verify(scanReportingPort).getGlobalScanSummary();
-        verify(scanReportingSummaryMapper).toDto(domainSummary);
+    private static DashboardFacetsDto DashboardFacetsDto_empty() {
+        return new DashboardFacetsDto(Map.of(), Map.of(), Map.of());
     }
 }

@@ -8,6 +8,7 @@ import { SpaceFilteringService } from './space-filtering.service';
 import { SpacesDashboardUtils } from '../spaces-dashboard.utils';
 import { SpaceDataManagementService } from './space-data-management.service';
 import { PiiDetectionConfigService } from '../../../core/services/pii-detection-config.service';
+import { SentinelleApiService } from '../../../core/services/sentinelle-api.service';
 
 /**
  * Creates the service under test with a controllable query-param snapshot.
@@ -26,6 +27,7 @@ function setup(queryParams: Record<string, string>): {
       SpacesDashboardUtils,
       { provide: SpaceDataManagementService, useValue: { spacesUpdateInfo: signal([]) } },
       { provide: PiiDetectionConfigService, useValue: { getAllPiiTypeConfigs: () => of([]) } },
+      { provide: SentinelleApiService, useValue: { getDashboardSpacesSummary: () => of(null) } },
       { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: paramMap } } },
       { provide: Router, useValue: { navigate } }
     ]

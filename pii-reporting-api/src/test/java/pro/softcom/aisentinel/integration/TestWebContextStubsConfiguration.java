@@ -70,7 +70,8 @@ public class TestWebContextStubsConfiguration {
             }
 
             @Override
-            public java.util.Optional<ScanReportingSummary> getGlobalScanSummary() {
+            public java.util.Optional<ScanReportingSummary> getGlobalScanSummary(
+                pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria criteria) {
                 return java.util.Optional.empty();
             }
         };

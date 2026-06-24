@@ -1,148 +1,125 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { SpaceFilteringService } from './space-filtering.service';
-import { SpacesDashboardUtils, UISpace } from '../spaces-dashboard.utils';
+import { SpacesDashboardUtils } from '../spaces-dashboard.utils';
 import { SpaceDataManagementService } from './space-data-management.service';
 import { PiiDetectionConfigService } from '../../../core/services/pii-detection-config.service';
+import {
+  DashboardFacets,
+  ScanReportingSummaryDto,
+  SentinelleApiService
+} from '../../../core/services/sentinelle-api.service';
 import { PiiTypeConfig } from '../../../core/models/pii-detection-config.model';
 
-/**
- * Builds a UISpace with sensible defaults for tests.
- */
-function makeSpace(partial: Partial<UISpace> & { key: string }): UISpace {
-  return {
-    name: partial.key,
-    status: 'OK',
-    originalIndex: 0,
-    counts: { total: 0, high: 0, medium: 0, low: 0 },
-    piiTypeCounts: {},
-    ...partial
-  } as UISpace;
-}
-
 const piiConfigs: PiiTypeConfig[] = [
-  { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT', detectorLabel: 'EMAIL' },
-  { id: 2, piiType: 'PHONE_NUMBER', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT', detectorLabel: 'PHONE' },
-  { id: 3, piiType: 'IBAN_CODE', detector: 'REGEX', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'FINANCIAL', detectorLabel: 'IBAN' }
+  { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT' },
+  { id: 2, piiType: 'PHONE_NUMBER', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT' },
+  { id: 3, piiType: 'IBAN_CODE', detector: 'REGEX', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'FINANCIAL' }
 ];
 
-describe('SpaceFilteringService', () => {
-  let service: SpaceFilteringService;
-  let utils: SpacesDashboardUtils;
+/** Resolves after the service's debounced (200ms) server fetch has run. */
+const flushFetch = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 320));
+
+/** Builds a server response with the given ordered keys (+ optional facets/total). */
+function summaryResponse(keys: string[], facets?: DashboardFacets, total?: number): ScanReportingSummaryDto {
+  return {
+    scanId: 'scan-1',
+    lastUpdated: '2026-06-24T00:00:00Z',
+    spacesCount: total ?? keys.length,
+    spaces: keys.map(k => ({
+      spaceKey: k,
+      status: 'OK',
+      progressPercentage: null,
+      pagesDone: 0,
+      attachmentsDone: 0,
+      lastEventTs: '',
+      severityCounts: null
+    })),
+    facets: facets ?? { piiTypes: {}, severities: {}, statuses: {} }
+  };
+}
+
+describe('SpaceFilteringService (server-driven)', () => {
+  const updateInfo = signal<{ spaceKey: string; hasBeenUpdated: boolean }[]>([]);
+  let api: { getDashboardSpacesSummary: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    updateInfo.set([]);
+    api = { getDashboardSpacesSummary: vi.fn(() => of(summaryResponse(['A', 'B', 'C']))) };
     TestBed.configureTestingModule({
       providers: [
         SpaceFilteringService,
         SpacesDashboardUtils,
-        { provide: SpaceDataManagementService, useValue: { spacesUpdateInfo: signal([]) } },
-        { provide: PiiDetectionConfigService, useValue: { getAllPiiTypeConfigs: () => of(piiConfigs) } }
+        { provide: SpaceDataManagementService, useValue: { spacesUpdateInfo: updateInfo } },
+        { provide: PiiDetectionConfigService, useValue: { getAllPiiTypeConfigs: () => of(piiConfigs) } },
+        { provide: SentinelleApiService, useValue: api }
       ]
     });
-    service = TestBed.inject(SpaceFilteringService);
-    utils = TestBed.inject(SpacesDashboardUtils);
   });
 
-  /** Seeds the utils with three spaces covering distinct types/severities/statuses. */
-  function seedSpaces(): void {
+  /** Injects the service and seeds the live store with three spaces. */
+  function setup(): { service: SpaceFilteringService; utils: SpacesDashboardUtils } {
+    const service = TestBed.inject(SpaceFilteringService);
+    const utils = TestBed.inject(SpacesDashboardUtils);
     utils.setSpaces([{ key: 'A', name: 'Alpha' }, { key: 'B', name: 'Bravo' }, { key: 'C', name: 'Charlie' }]);
-    utils.updateSpace('A', {
-      status: 'OK',
-      counts: { total: 3, high: 2, medium: 1, low: 0 },
-      piiTypeCounts: { EMAIL: 2, IBAN_CODE: 1 },
-      lastScanTs: '2026-01-03'
-    });
-    utils.updateSpace('B', {
-      status: 'FAILED',
-      counts: { total: 2, high: 0, medium: 0, low: 2 },
-      piiTypeCounts: { PHONE_NUMBER: 2 },
-      lastScanTs: '2026-01-01'
-    });
-    utils.updateSpace('C', {
-      status: 'RUNNING',
-      counts: { total: 1, high: 0, medium: 1, low: 0 },
-      piiTypeCounts: { EMAIL: 1 },
-      lastScanTs: '2026-01-02'
-    });
+    return { service, utils };
   }
 
-  it('Should_ReturnAllSpaces_When_NoFilterApplied', () => {
-    seedSpaces();
-    expect(service.filteredSpaces().map(s => s.key).sort()).toEqual(['A', 'B', 'C']);
+  it('Should_RenderStoreSpacesInServerOrder_When_ServerReturnsKeys', async () => {
+    const { service } = setup();
+    api.getDashboardSpacesSummary.mockReturnValue(of(summaryResponse(['C', 'A'])));
+    service.piiTypeFilter.set(['EMAIL']); // triggers a criteria change -> fetch
+    await flushFetch();
+    expect(service.sortedSpaces().map(s => s.key)).toEqual(['C', 'A']);
   });
 
-  it('Should_OrWithinPiiTypeAxis_When_MultipleTypesSelected', () => {
-    seedSpaces();
-    // RG-01 OR within category: EMAIL (A, C) OR IBAN_CODE (A) -> A, C
-    service.piiTypeFilter.set(['EMAIL', 'IBAN_CODE']);
-    expect(service.filteredSpaces().map(s => s.key).sort()).toEqual(['A', 'C']);
-  });
-
-  it('Should_AndAcrossAxes_When_TypeAndStatusSelected', () => {
-    seedSpaces();
-    // RG-01 AND across axes: EMAIL (A, C) AND status RUNNING (C) -> C
+  it('Should_SendFilterCriteriaToBackend_When_FiltersAndSortChange', async () => {
+    const { service } = setup();
     service.piiTypeFilter.set(['EMAIL']);
     service.statusFilter.set(['RUNNING']);
-    expect(service.filteredSpaces().map(s => s.key)).toEqual(['C']);
+    service.setSortCriterion('severityScore'); // default order desc
+    await flushFetch();
+    const lastArg = api.getDashboardSpacesSummary.mock.calls.at(-1)?.[0];
+    expect(lastArg.piiTypes).toEqual(['EMAIL']);
+    expect(lastArg.statuses).toEqual(['RUNNING']);
+    expect(lastArg.sort).toBe('severityScore');
+    expect(lastArg.order).toBe('desc');
   });
 
-  it('Should_ApplyInclusionThreshold_When_TypeCountIsZero', () => {
-    seedSpaces();
-    // RG-02 threshold: only spaces with PHONE_NUMBER count > 0 match -> B
-    service.piiTypeFilter.set(['PHONE_NUMBER']);
-    expect(service.filteredSpaces().map(s => s.key)).toEqual(['B']);
-  });
-
-  it('Should_MatchSeverityByBucket_When_SeveritySelected', () => {
-    seedSpaces();
-    // RG-02: HIGH bucket > 0 -> only A
+  it('Should_ExposeServerFacetsAndTotal_When_ResponseHasFacets', async () => {
+    const { service } = setup();
+    const facets: DashboardFacets = {
+      piiTypes: { EMAIL: { nbSpaces: 1, totalOccurrences: 2 } },
+      severities: {},
+      statuses: {}
+    };
+    api.getDashboardSpacesSummary.mockReturnValue(of(summaryResponse(['A'], facets, 3)));
     service.severityFilter.set(['HIGH']);
-    expect(service.filteredSpaces().map(s => s.key)).toEqual(['A']);
+    await flushFetch();
+    expect(service.piiTypeFacetCounts()['EMAIL']).toEqual({ nbSpaces: 1, totalOccurrences: 2 });
+    expect(service.totalSpacesCount()).toBe(3);
   });
 
-  it('Should_ComputeBiLevelPiiTypeFacets_When_OtherAxisActive', () => {
-    seedSpaces();
-    // RG-04: facets reflect the OTHER axes -> filter status RUNNING (only C)
-    service.statusFilter.set(['RUNNING']);
-    const facets = service.piiTypeFacetCounts();
-    expect(facets['EMAIL']).toEqual({ nbSpaces: 1, totalOccurrences: 1 });
-    expect(facets['PHONE_NUMBER']).toEqual({ nbSpaces: 0, totalOccurrences: 0 });
-  });
-
-  it('Should_SortByPiiTypeDescAndHideZeros_When_PiiTypeSortSelected', () => {
-    seedSpaces();
-    // RG-05: piiType:EMAIL sorts by count desc and hides B (no EMAIL)
-    service.setSortCriterion('piiType:EMAIL');
-    expect(service.sortedSpaces().map(s => s.key)).toEqual(['A', 'C']);
-  });
-
-  it('Should_SortBySeverityScore_When_SeverityScoreSelected', () => {
-    seedSpaces();
-    // A (2 high) > C (1 medium) > B (2 low)
-    service.setSortCriterion('severityScore');
-    expect(service.sortedSpaces().map(s => s.key)).toEqual(['A', 'C', 'B']);
-  });
-
-  it('Should_SearchOnFilteredSet_When_SearchAndFilterCombined', () => {
-    seedSpaces();
-    // RG-06: filter EMAIL (A, C) then search "alp" -> A only
-    service.piiTypeFilter.set(['EMAIL']);
-    service.onGlobalChange('alp');
-    expect(service.searchedSpaces().map(s => s.key)).toEqual(['A']);
+  it('Should_ApplyModifiedOnlyOverlay_When_ToggleEnabled', async () => {
+    const { service } = setup();
+    await flushFetch(); // initial fetch -> orderedKeys A,B,C
+    updateInfo.set([{ spaceKey: 'B', hasBeenUpdated: true }]);
+    service.onModifiedOnlyChange(true);
+    expect(service.sortedSpaces().map(s => s.key)).toEqual(['B']);
   });
 
   it('Should_ReportResettable_When_AnyAxisActive', () => {
-    seedSpaces();
+    const { service } = setup();
     expect(service.isResettable()).toBe(false);
     service.severityFilter.set(['HIGH']);
     expect(service.isResettable()).toBe(true);
   });
 
   it('Should_ClearAllState_When_ResetCalled', () => {
-    seedSpaces();
+    const { service } = setup();
     service.piiTypeFilter.set(['EMAIL']);
-    service.severityFilter.set(['HIGH']);
     service.statusFilter.set(['OK']);
     service.onGlobalChange('alp');
     service.setSortCriterion('name');
@@ -150,7 +127,6 @@ describe('SpaceFilteringService', () => {
     service.reset();
 
     expect(service.piiTypeFilter()).toEqual([]);
-    expect(service.severityFilter()).toEqual([]);
     expect(service.statusFilter()).toEqual([]);
     expect(service.globalFilter()).toBe('');
     expect(service.sortCriterion()).toBeNull();
@@ -158,8 +134,8 @@ describe('SpaceFilteringService', () => {
   });
 
   it('Should_GroupPiiTypesByCategory_When_ConfigsLoaded', () => {
-    const groups = service.piiTypeGroups();
-    const contact = groups.find(g => g.category === 'CONTACT');
+    const { service } = setup();
+    const contact = service.piiTypeGroups().find(g => g.category === 'CONTACT');
     expect(contact?.items.map(i => i.code).sort()).toEqual(['EMAIL', 'PHONE_NUMBER']);
   });
 });

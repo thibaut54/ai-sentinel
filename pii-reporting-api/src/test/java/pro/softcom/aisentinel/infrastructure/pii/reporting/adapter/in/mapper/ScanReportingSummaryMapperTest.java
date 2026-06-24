@@ -2,300 +2,157 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
-import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
+import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
+import pro.softcom.aisentinel.domain.pii.reporting.FacetCount;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanReportingSummaryDto;
-import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SeverityCountsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
 
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
- * Tests unitaires pour ScanReportingSummaryMapper.
- * 
- * <p>Vérifie la transformation correcte des objets de domaine en DTOs REST,
- * incluant l'enrichissement avec les données de severity counts.
+ * Unit tests for {@link ScanReportingSummaryMapper}.
+ *
+ * <p>Verifies the transformation of domain objects into REST DTOs, including severity/PII-type
+ * counts (now read from the domain) and the contextual facets.
  */
-@ExtendWith(MockitoExtension.class)
 class ScanReportingSummaryMapperTest {
-
-    @Mock
-    private ScanSeverityCountService severityCountService;
-
-    @Mock
-    private ScanPiiTypeCountService piiTypeCountService;
-
-    @Mock
-    private SeverityCountsMapper severityCountsMapper;
 
     private ScanReportingSummaryMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new ScanReportingSummaryMapper(severityCountService, piiTypeCountService, severityCountsMapper);
+        mapper = new ScanReportingSummaryMapper(new SeverityCountsMapper());
+    }
+
+    private static ScanReportingSummary summaryOf(List<SpaceSummary> spaces, DashboardFacets facets) {
+        return new ScanReportingSummary(
+                "scan-123",
+                Instant.parse("2025-01-15T10:00:00Z"),
+                spaces == null ? 0 : spaces.size(),
+                spaces,
+                facets);
     }
 
     @Test
     void should_MapToDto_When_SummaryIsValid() {
         // Given
-        String scanId = "scan-123";
-        Instant lastUpdated = Instant.parse("2025-01-15T10:00:00Z");
-        
         SpaceSummary space = new SpaceSummary(
-                "SPACE1",
-                "IN_PROGRESS",
-                75.5,
-                100L,
-                50L,
-                Instant.parse("2025-01-15T09:30:00Z"),
-                "Space One"
-        );
+                "SPACE1", "IN_PROGRESS", 75.5, 100L, 50L,
+                Instant.parse("2025-01-15T09:30:00Z"), "Space One",
+                new SeverityCounts(10, 20, 5),
+                Map.of("EMAIL", 7, "IBAN_CODE", 2));
 
-        ScanReportingSummary summary = new ScanReportingSummary(
-                scanId,
-                lastUpdated,
-                1,
-                List.of(space)
-        );
-
-        SeverityCounts severityCounts = new SeverityCounts(10, 20, 5);
-        SeverityCountsDto severityCountsDto = new SeverityCountsDto(10, 20, 5, 35);
-        Map<String, Integer> piiTypeCounts = Map.of("EMAIL", 7, "IBAN_CODE", 2);
-
-        when(severityCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(Optional.of(severityCounts));
-        when(severityCountsMapper.toDto(severityCounts))
-                .thenReturn(severityCountsDto);
-        when(piiTypeCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(piiTypeCounts);
+        ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
 
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.scanId()).isEqualTo(scanId);
-        assertThat(result.lastUpdated()).isEqualTo(lastUpdated);
+        assertThat(result.scanId()).isEqualTo("scan-123");
         assertThat(result.spacesCount()).isEqualTo(1);
         assertThat(result.spaces()).hasSize(1);
 
         SpaceSummaryDto spaceDto = result.spaces().get(0);
         assertThat(spaceDto.spaceKey()).isEqualTo("SPACE1");
         assertThat(spaceDto.status()).isEqualTo("IN_PROGRESS");
-        assertThat(spaceDto.progressPercentage()).isEqualTo(75.5);
-        assertThat(spaceDto.pagesDone()).isEqualTo(100L);
-        assertThat(spaceDto.attachmentsDone()).isEqualTo(50L);
-        assertThat(spaceDto.lastEventTs()).isEqualTo(Instant.parse("2025-01-15T09:30:00Z"));
-        assertThat(spaceDto.severityCounts()).isEqualTo(severityCountsDto);
+        assertThat(spaceDto.severityCounts().high()).isEqualTo(10);
+        assertThat(spaceDto.severityCounts().total()).isEqualTo(35);
         assertThat(spaceDto.spaceName()).isEqualTo("Space One");
-        assertThat(spaceDto.piiTypeCounts()).isEqualTo(piiTypeCounts);
-
-        verify(severityCountService).getCounts(scanId, "SPACE1");
-        verify(severityCountsMapper).toDto(severityCounts);
-        verify(piiTypeCountService).getCounts(scanId, "SPACE1");
+        assertThat(spaceDto.piiTypeCounts()).containsEntry("EMAIL", 7).containsEntry("IBAN_CODE", 2);
     }
 
     @Test
-    void should_MapWithZeroSeverityCounts_When_CountsNotFound() {
+    void should_MapWithZeroSeverityCounts_When_CountsAreZero() {
         // Given
-        String scanId = "scan-123";
-        
         SpaceSummary space = new SpaceSummary(
-                "SPACE1",
-                "COMPLETED",
-                100.0,
-                200L,
-                100L,
-                Instant.parse("2025-01-15T10:00:00Z"),
-                "Space One"
-        );
+                "SPACE1", "COMPLETED", 100.0, 200L, 100L,
+                Instant.parse("2025-01-15T10:00:00Z"), "Space One",
+                SeverityCounts.zero(), Map.of());
 
-        ScanReportingSummary summary = new ScanReportingSummary(
-                scanId,
-                Instant.parse("2025-01-15T10:00:00Z"),
-                1,
-                List.of(space)
-        );
-
-        SeverityCountsDto zeroCountsDto = SeverityCountsDto.zero();
-
-        when(severityCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(Optional.empty());
-        when(severityCountsMapper.toDto(null))
-                .thenReturn(zeroCountsDto);
-        when(piiTypeCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(null);
+        ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
 
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.spaces()).hasSize(1);
-
         SpaceSummaryDto spaceDto = result.spaces().get(0);
-        assertThat(spaceDto.severityCounts()).isEqualTo(zeroCountsDto);
+        assertThat(spaceDto.severityCounts().total()).isZero();
         assertThat(spaceDto.piiTypeCounts())
                 .as("piiTypeCounts must be an empty map, never null")
-                .isNotNull()
-                .isEmpty();
-
-        verify(severityCountService).getCounts(scanId, "SPACE1");
-        verify(severityCountsMapper).toDto(null);
+                .isNotNull().isEmpty();
     }
 
     @Test
-    void should_MapMultipleSpaces_When_SummaryHasMultipleSpaces() {
+    void should_MapFacets_When_FacetsArePresent() {
         // Given
-        String scanId = "scan-456";
-        
-        SpaceSummary space1 = new SpaceSummary(
-                "SPACE1",
-                "COMPLETED",
-                100.0,
-                200L,
-                100L,
-                Instant.parse("2025-01-15T10:00:00Z"),
-                "Space One"
-        );
-
-        SpaceSummary space2 = new SpaceSummary(
-                "SPACE2",
-                "IN_PROGRESS",
-                50.0,
-                100L,
-                50L,
-                Instant.parse("2025-01-15T09:00:00Z"),
-                "Space Two"
-        );
-
-        ScanReportingSummary summary = new ScanReportingSummary(
-                scanId,
-                Instant.parse("2025-01-15T10:00:00Z"),
-                2,
-                List.of(space1, space2)
-        );
-
-        SeverityCounts counts1 = new SeverityCounts(5, 10, 2);
-        SeverityCounts counts2 = new SeverityCounts(3, 7, 1);
-        SeverityCountsDto countsDto1 = new SeverityCountsDto(5, 10, 2, 17);
-        SeverityCountsDto countsDto2 = new SeverityCountsDto(3, 7, 1, 11);
-
-        when(severityCountService.getCounts(scanId, "SPACE1"))
-                .thenReturn(Optional.of(counts1));
-        when(severityCountService.getCounts(scanId, "SPACE2"))
-                .thenReturn(Optional.of(counts2));
-        when(severityCountsMapper.toDto(counts1)).thenReturn(countsDto1);
-        when(severityCountsMapper.toDto(counts2)).thenReturn(countsDto2);
-        when(piiTypeCountService.getCounts(scanId, "SPACE1")).thenReturn(Map.of("EMAIL", 1));
-        when(piiTypeCountService.getCounts(scanId, "SPACE2")).thenReturn(Map.of("PERSON", 4));
+        DashboardFacets facets = new DashboardFacets(
+                Map.of("EMAIL", new FacetCount(3, 12)),
+                Map.of("HIGH", new FacetCount(2, 5)),
+                Map.of("OK", new FacetCount(4, 17)));
+        ScanReportingSummary summary = summaryOf(List.of(), facets);
 
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
 
         // Then
-        assertThat(result.spaces()).hasSize(2);
-        assertThat(result.spaces().get(0).severityCounts()).isEqualTo(countsDto1);
-        assertThat(result.spaces().get(1).severityCounts()).isEqualTo(countsDto2);
-        assertThat(result.spaces().get(0).spaceName()).isEqualTo("Space One");
-        assertThat(result.spaces().get(1).spaceName()).isEqualTo("Space Two");
-        assertThat(result.spaces().get(0).piiTypeCounts()).containsEntry("EMAIL", 1);
-        assertThat(result.spaces().get(1).piiTypeCounts()).containsEntry("PERSON", 4);
-
-        verify(severityCountService).getCounts(scanId, "SPACE1");
-        verify(severityCountService).getCounts(scanId, "SPACE2");
-        verify(severityCountsMapper).toDto(counts1);
-        verify(severityCountsMapper).toDto(counts2);
+        assertThat(result.facets().piiTypes().get("EMAIL").nbSpaces()).isEqualTo(3);
+        assertThat(result.facets().piiTypes().get("EMAIL").totalOccurrences()).isEqualTo(12);
+        assertThat(result.facets().severities().get("HIGH").nbSpaces()).isEqualTo(2);
+        assertThat(result.facets().statuses().get("OK").totalOccurrences()).isEqualTo(17);
     }
 
     @Test
     void should_ReturnNull_When_SummaryIsNull() {
-        // Given
-        ScanReportingSummary summary = null;
-        
-        // When
-        ScanReportingSummaryDto result = mapper.toDto(summary);
-        
-        // Then
-        assertThat(result).isNull();
-        verify(severityCountService, never()).getCounts(any(), any());
-        verify(severityCountsMapper, never()).toDto(any());
+        assertThat(mapper.toDto(null)).isNull();
     }
 
     @Test
     void should_ReturnEmptySpacesList_When_SpacesIsNull() {
-        // Given
-        ScanReportingSummary summary = new ScanReportingSummary(
-                "scan-123",
-                Instant.parse("2025-01-15T10:00:00Z"),
-                0,
-                null
-        );
-        
-        // When
+        ScanReportingSummary summary = summaryOf(null, DashboardFacets.empty());
+
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
-        // Then
+
         assertThat(result).isNotNull();
         assertThat(result.spaces()).isEmpty();
-        verify(severityCountService, never()).getCounts(any(), any());
-        verify(severityCountsMapper, never()).toDto(any());
     }
 
     @Test
     void should_ReturnEmptySpacesList_When_SpacesIsEmpty() {
-        // Given
-        ScanReportingSummary summary = new ScanReportingSummary(
-                "scan-123",
-                Instant.parse("2025-01-15T10:00:00Z"),
-                0,
-                List.of()
-        );
-        
-        // When
+        ScanReportingSummary summary = summaryOf(List.of(), DashboardFacets.empty());
+
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
-        // Then
-        assertThat(result).isNotNull();
+
         assertThat(result.spaces()).isEmpty();
-        verify(severityCountService, never()).getCounts(any(), any());
-        verify(severityCountsMapper, never()).toDto(any());
     }
 
     @Test
     void should_HandleNullSpace_When_SpaceIsNullInList() {
-        // Given
-        ScanReportingSummary summary = new ScanReportingSummary(
-                "scan-123",
-                Instant.parse("2025-01-15T10:00:00Z"),
-                1,
-                Arrays.asList((SpaceSummary) null)
-        );
-        
-        // When
+        ScanReportingSummary summary = summaryOf(Arrays.asList((SpaceSummary) null), DashboardFacets.empty());
+
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
-        // Then
-        assertThat(result).isNotNull();
+
         assertThat(result.spaces()).hasSize(1);
         assertThat(result.spaces().get(0)).isNull();
-        verify(severityCountService, never()).getCounts(any(), any());
-        verify(severityCountsMapper, never()).toDto(any());
+    }
+
+    @Test
+    void should_DefaultEmptyFacets_When_FacetsAreNull() {
+        ScanReportingSummary summary = summaryOf(List.of(), null);
+
+        ScanReportingSummaryDto result = mapper.toDto(summary);
+
+        assertThat(result.facets()).isNotNull();
+        assertThat(result.facets().piiTypes()).isEmpty();
+        assertThat(result.facets().severities()).isEmpty();
+        assertThat(result.facets().statuses()).isEmpty();
     }
 }

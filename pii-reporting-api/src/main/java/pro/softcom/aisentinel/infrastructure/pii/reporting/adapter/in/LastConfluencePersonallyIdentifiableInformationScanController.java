@@ -5,7 +5,9 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ConfluenceContentScanResultEventDto;
@@ -61,14 +63,31 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
     }
 
     /**
-     * Unified endpoint combining authoritative status/progress from scan_checkpoints
-     * with aggregated counters from scan_events.
-     * Provides single source of truth for dashboard to eliminate race conditions
-     * and incorrect progress displays.
+     * Authoritative, fully server-side filtered/sorted/searched dashboard source over ALL spaces,
+     * combining authoritative status/progress from scan_checkpoints with aggregated counters from
+     * scan_events, plus contextual facet counts.
+     *
+     * <p>All query parameters are optional; an absent parameter means "no constraint".
+     *
+     * @param piiTypes   comma-separated PII type codes (e.g. EMAIL,PHONE_NUMBER)
+     * @param severities comma-separated severities (HIGH|MEDIUM|LOW)
+     * @param statuses   comma-separated UI status codes (NOT_STARTED|PENDING|PAUSED|RUNNING|OK|FAILED|INTERRUPTED)
+     * @param q          free-text search on space name or key (case-insensitive)
+     * @param sort       sort criterion (name|totalDetections|severityScore|lastScan|piiType:&lt;CODE&gt;)
+     * @param order      sort direction (asc|desc)
+     * @return the filtered/sorted summary with facets, or 204 when no data exists
      */
     @GetMapping("/dashboard/spaces-summary")
-    public ResponseEntity<@NonNull ScanReportingSummaryDto> getDashboardSpacesSummary() {
-        return scanReportingPort.getGlobalScanSummary()
+    public ResponseEntity<@NonNull ScanReportingSummaryDto> getDashboardSpacesSummary(
+            @RequestParam(required = false) List<String> piiTypes,
+            @RequestParam(required = false) List<String> severities,
+            @RequestParam(required = false) List<String> statuses,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String order) {
+        DashboardFilterCriteria criteria = new DashboardFilterCriteria(
+                piiTypes, severities, statuses, q, sort, order);
+        return scanReportingPort.getGlobalScanSummary(criteria)
                 .map(scanReportingSummaryMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());

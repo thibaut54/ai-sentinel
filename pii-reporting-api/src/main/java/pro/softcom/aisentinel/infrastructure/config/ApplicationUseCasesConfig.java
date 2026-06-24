@@ -79,8 +79,11 @@ public class ApplicationUseCasesConfig {
     @Bean
     public ScanReportingPort scanResultUseCase(ScanResultQuery scanResultQuery,
                                                ScanCheckpointRepository checkpointRepo,
-                                               ConfluenceSpaceRepository spaceRepository) {
-        return new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository);
+                                               ConfluenceSpaceRepository spaceRepository,
+                                               ScanSeverityCountService scanSeverityCountService,
+                                               ScanPiiTypeCountService scanPiiTypeCountService) {
+        return new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository,
+                scanSeverityCountService, scanPiiTypeCountService);
     }
 
     @Bean
