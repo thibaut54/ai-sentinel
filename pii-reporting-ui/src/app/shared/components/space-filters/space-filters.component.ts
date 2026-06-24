@@ -17,22 +17,26 @@ import {
 /** View-model for a single selectable PII type option (with facet + disabled state). */
 interface PiiTypeOptionVm {
   code: string;
-  labelKey: string;
-  detectorLabel: string;
+  /** Pre-translated type label (used by PrimeNG optionLabel, filter and chips). */
+  label: string;
+  /** Detector name shown as a subtitle. */
+  detector: string;
   facet: FacetCount;
   disabled: boolean;
 }
 
 /** View-model for a grouped category of PII type options. */
 interface PiiTypeGroupVm {
-  labelKey: string;
+  /** Pre-translated category label (used by PrimeNG optionGroupLabel). */
+  label: string;
   items: PiiTypeOptionVm[];
 }
 
 /** View-model for a severity or status option (with facet + disabled state). */
 interface SimpleOptionVm {
   value: string;
-  labelKey: string;
+  /** Pre-translated option label (used by PrimeNG optionLabel, filter and chips). */
+  label: string;
   facet: FacetCount;
   disabled: boolean;
 }
@@ -70,33 +74,42 @@ export class SpaceFiltersComponent {
     initialValue: this.transloco.getActiveLang()
   });
 
-  /** PII type groups enriched with facet counts and disabled state. */
+  /** PII type groups enriched with translated labels, facet counts and disabled state. */
   readonly piiTypeGroupVms = computed<PiiTypeGroupVm[]>(() => {
+    this.activeLang(); // re-translate on language change
     const facets = this.filtering.piiTypeFacetCounts();
     return this.filtering.piiTypeGroups().map(group => ({
-      labelKey: group.labelKey,
+      label: this.transloco.translate(group.labelKey),
       items: group.items.map(item => {
         const facet = facets[item.code] ?? { nbSpaces: 0, totalOccurrences: 0 };
-        return { ...item, facet, disabled: facet.nbSpaces === 0 };
+        return {
+          code: item.code,
+          label: this.transloco.translate(item.labelKey),
+          detector: item.detector,
+          facet,
+          disabled: facet.nbSpaces === 0
+        };
       })
     }));
   });
 
-  /** Severity options enriched with facet counts and disabled state. */
+  /** Severity options enriched with translated labels, facet counts and disabled state. */
   readonly severityOptionVms = computed<SimpleOptionVm[]>(() => {
+    this.activeLang(); // re-translate on language change
     const facets = this.filtering.severityFacetCounts();
     return this.filtering.severityOptions.map(o => {
       const facet = facets[o.value] ?? { nbSpaces: 0, totalOccurrences: 0 };
-      return { value: o.value, labelKey: o.labelKey, facet, disabled: facet.nbSpaces === 0 };
+      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.nbSpaces === 0 };
     });
   });
 
-  /** Status options enriched with facet counts and disabled state. */
+  /** Status options enriched with translated labels, facet counts and disabled state. */
   readonly statusOptionVms = computed<SimpleOptionVm[]>(() => {
+    this.activeLang(); // re-translate on language change
     const facets = this.filtering.statusFacetCounts();
     return this.filtering.statusOptions().map(o => {
       const facet = facets[o.value] ?? { nbSpaces: 0, totalOccurrences: 0 };
-      return { value: o.value, labelKey: o.labelKey, facet, disabled: facet.nbSpaces === 0 };
+      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.nbSpaces === 0 };
     });
   });
 
@@ -118,7 +131,7 @@ export class SpaceFiltersComponent {
     ];
     const typeItems: MenuItem[] = this.filtering.piiTypeGroups().flatMap(g =>
       g.items.map(i => ({
-        label: i.detectorLabel,
+        label: this.transloco.translate(i.labelKey),
         command: () => this.filtering.setSortCriterion(`piiType:${i.code}`)
       }))
     );

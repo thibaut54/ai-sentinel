@@ -24,8 +24,8 @@ export interface PiiTypeOption {
   code: string;
   /** i18n key for the type label. */
   labelKey: string;
-  /** Detector label subtitle (e.g. "PRESIDIO · EMAIL"). */
-  detectorLabel: string;
+  /** Detector name shown as subtitle (e.g. "PRESIDIO"). */
+  detector: string;
 }
 
 /** A category group of PII type options for the grouped multi-select. */
@@ -107,7 +107,7 @@ export class SpaceFilteringService {
         group.set(cfg.piiType, {
           code: cfg.piiType,
           labelKey: `settings.piiTypes.typeNames.${cfg.piiType}`,
-          detectorLabel: `${cfg.detector} · ${cfg.detectorLabel ?? cfg.piiType}`
+          detector: cfg.detector
         });
       }
       byCategory.set(category, group);

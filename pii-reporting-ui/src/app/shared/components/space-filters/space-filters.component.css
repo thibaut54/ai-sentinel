@@ -78,14 +78,30 @@
   width: 100%;
   padding: 0.4rem;
   border: none;
-  background: transparent;
+  background: #fff;
   cursor: pointer;
-  color: var(--p-primary-color, #2563eb);
+  color: #111827;
   font-size: 0.85rem;
 }
 
 .filter-clear-btn:hover {
   text-decoration: underline;
+}
+
+/* "Reset all" button: black on white (outlined) */
+:host ::ng-deep .btn-bw {
+  color: #111827 !important;
+  background: #fff !important;
+  border-color: #111827 !important;
+}
+
+:host ::ng-deep .btn-bw:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+:host ::ng-deep .btn-bw .p-button-icon {
+  color: #111827 !important;
 }
 
 /* Responsive adjustments */

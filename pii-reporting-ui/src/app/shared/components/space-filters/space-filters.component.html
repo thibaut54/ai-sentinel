@@ -17,7 +17,8 @@
     <p-multiselect
       [group]="true"
       [options]="piiTypeGroupVms()"
-      optionGroupLabel="labelKey"
+      optionLabel="label"
+      optionGroupLabel="label"
       optionGroupChildren="items"
       optionValue="code"
       optionDisabled="disabled"
@@ -32,13 +33,13 @@
       class="pii-type-multiselect"
       [attr.data-testid]="'pii-type-filter'">
       <ng-template let-group pTemplate="group">
-        <span>{{ t(group.labelKey) }}</span>
+        <span>{{ group.label }}</span>
       </ng-template>
       <ng-template let-option pTemplate="item">
         <div class="filter-option" [class.filter-option--disabled]="option.disabled">
           <div class="filter-option-text">
-            <span class="filter-option-label">{{ t(option.labelKey) }}</span>
-            <span class="filter-option-subtitle">{{ option.detectorLabel }}</span>
+            <span class="filter-option-label">{{ option.label }}</span>
+            <span class="filter-option-subtitle">{{ option.detector }}</span>
           </div>
           <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
         </div>
@@ -55,6 +56,7 @@
   <div class="filter-item">
     <p-multiselect
       [options]="severityOptionVms()"
+      optionLabel="label"
       optionValue="value"
       optionDisabled="disabled"
       [ngModel]="filtering.severityFilter()"
@@ -67,7 +69,7 @@
       [attr.data-testid]="'severity-filter'">
       <ng-template let-option pTemplate="item">
         <div class="filter-option" [class.filter-option--disabled]="option.disabled">
-          <span class="filter-option-label">{{ t(option.labelKey) }}</span>
+          <span class="filter-option-label">{{ option.label }}</span>
           <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
         </div>
       </ng-template>
@@ -83,6 +85,7 @@
   <div class="filter-item">
     <p-multiselect
       [options]="statusOptionVms()"
+      optionLabel="label"
       optionValue="value"
       optionDisabled="disabled"
       [ngModel]="filtering.statusFilter()"
@@ -95,7 +98,7 @@
       [attr.data-testid]="'status-filter'">
       <ng-template let-option pTemplate="item">
         <div class="filter-option" [class.filter-option--disabled]="option.disabled">
-          <span class="filter-option-label">{{ t(option.labelKey) }}</span>
+          <span class="filter-option-label">{{ option.label }}</span>
           <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
         </div>
       </ng-template>
@@ -142,6 +145,7 @@
         [label]="t('dashboard.filters.resetAll')"
         size="small"
         [outlined]="true"
+        styleClass="btn-bw"
         (click)="resetAll()"
         [attr.data-testid]="'reset-all-filters'">
       </p-button>
