@@ -1,0 +1,68 @@
+name: "✨ Feature request (agent-implementable)"
+description: "Describe a feature with a spec detailed enough for an agent to implement it autonomously."
+title: "[Feature] "
+labels: ["feature-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill in all required fields. Once the issue has been reviewed and accepted, add the
+        **`claude:approved`** label: the autonomous pipeline will pick it up on its next run
+        (branch creation, implementation, build/tests, then opening a PR).
+
+  - type: input
+    id: summary
+    attributes:
+      label: Short title
+      description: A single sentence summarizing the feature.
+      placeholder: "Add a detailed /health endpoint exposing the state of the detectors"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / problem (the "why")
+      description: What need or problem does this feature address? What is the expected impact?
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec
+    attributes:
+      label: Detailed specification (the "what")
+      description: |
+        Describe the expected behavior unambiguously. Mention the files / modules /
+        endpoints involved if you know them, the inputs/outputs, and the edge cases.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: |
+        A verifiable list of success conditions. They become the agent's *success criteria*:
+        it loops until they are all satisfied (or reports the failure).
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints / out of scope
+      description: What must NOT be done, technical limits, backward compatibility, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Ready for the agent
+      options:
+        - label: "The spec and acceptance criteria are precise enough for autonomous implementation."
+          required: true
