@@ -34,6 +34,9 @@ public interface ManagePiiDetectionConfigPort {
      * @param regexEnabled     Whether custom regex detector should be enabled
      * @param openmedEnabled   Whether OpenMed detector should be enabled
      * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
+     * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
+     * @param ministralChunkSize  Sliding-window chunk size (characters) for the Ministral-PII detector
+     * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
      * @param nbOfLabelByPass     Maximum labels per detector batch
      * @param llmJudgeEnabled     Derived global LLM-judge guard (OR of the five per-detector flags)
@@ -51,6 +54,9 @@ public interface ManagePiiDetectionConfigPort {
             boolean regexEnabled,
             boolean openmedEnabled,
             boolean gliner2Enabled,
+            boolean ministralEnabled,
+            Integer ministralChunkSize,
+            Integer ministralOverlap,
             BigDecimal defaultThreshold,
             Integer nbOfLabelByPass,
             boolean llmJudgeEnabled,

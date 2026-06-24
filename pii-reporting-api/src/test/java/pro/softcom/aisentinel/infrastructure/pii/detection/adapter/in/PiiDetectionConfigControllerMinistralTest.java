@@ -26,13 +26,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * REST mapping tests for the {@code gliner2Enabled} flag on the singleton
- * detection config (spec §5.2). Verifies GET exposes the flag and PUT persists
- * it through to the use-case command.
+ * REST mapping tests for the {@code ministralEnabled} / {@code ministralChunkSize}
+ * / {@code ministralOverlap} fields on the singleton detection config. Verifies
+ * GET exposes the fields, PUT persists them through to the use-case command, and
+ * PUT rejects an overlap greater than or equal to the chunk size.
  */
 @WebMvcTest(PiiDetectionConfigController.class)
 @Import(SecurityConfig.class)
-class PiiDetectionConfigControllerGliner2Test {
+class PiiDetectionConfigControllerMinistralTest {
 
     private static final String CONFIG_URL = "/api/v1/pii-detection/config";
 
@@ -43,20 +44,22 @@ class PiiDetectionConfigControllerGliner2Test {
     private ManagePiiDetectionConfigPort managePiiDetectionConfigPort;
 
     @Test
-    void Should_ExposeGliner2Enabled_When_GetConfig() throws Exception {
+    void Should_ExposeMinistralFields_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, false, true, false, 1024, 128, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, true, 2048, 256, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.gliner2Enabled").value(true));
+            .andExpect(jsonPath("$.ministralEnabled").value(true))
+            .andExpect(jsonPath("$.ministralChunkSize").value(2048))
+            .andExpect(jsonPath("$.ministralOverlap").value(256));
     }
 
     @Test
-    void Should_DefaultGliner2EnabledFalse_When_GetConfig() throws Exception {
+    void Should_DefaultMinistralEnabledFalse_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
             1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
@@ -65,13 +68,13 @@ class PiiDetectionConfigControllerGliner2Test {
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.gliner2Enabled").value(false));
+            .andExpect(jsonPath("$.ministralEnabled").value(false));
     }
 
     @Test
-    void Should_PersistGliner2Enabled_When_PutConfig() throws Exception {
+    void Should_PersistMinistralFields_When_PutConfig() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, true, false, 1024, 128, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, true, 2048, 256, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -83,13 +86,12 @@ class PiiDetectionConfigControllerGliner2Test {
                   "presidioEnabled": true,
                   "regexEnabled": true,
                   "openmedEnabled": false,
-                  "gliner2Enabled": true,
-                  "ministralEnabled": false,
-                  "ministralChunkSize": 1024,
-                  "ministralOverlap": 128,
+                  "gliner2Enabled": false,
+                  "ministralEnabled": true,
+                  "ministralChunkSize": 2048,
+                  "ministralOverlap": 256,
                   "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 35,
-                  "llmJudgeEnabled": false
+                  "nbOfLabelByPass": 35
                 }
                 """;
 
@@ -97,25 +99,56 @@ class PiiDetectionConfigControllerGliner2Test {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.gliner2Enabled").value(true));
+            .andExpect(jsonPath("$.ministralEnabled").value(true))
+            .andExpect(jsonPath("$.ministralChunkSize").value(2048))
+            .andExpect(jsonPath("$.ministralOverlap").value(256));
 
         ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
             ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
         verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(captor.getValue().gliner2Enabled()).isTrue();
+        softly.assertThat(captor.getValue().ministralEnabled()).isTrue();
+        softly.assertThat(captor.getValue().ministralChunkSize()).isEqualTo(2048);
+        softly.assertThat(captor.getValue().ministralOverlap()).isEqualTo(256);
         softly.assertAll();
     }
 
     @Test
-    void Should_RejectUpdate_When_Gliner2EnabledMissing() throws Exception {
-        // gliner2Enabled is @NotNull on the request DTO.
+    void Should_RejectUpdate_When_MinistralOverlapNotLessThanChunkSize() throws Exception {
+        // ministralOverlap >= ministralChunkSize violates the cross-field rule.
         String body = """
                 {
                   "glinerEnabled": true,
                   "presidioEnabled": true,
                   "regexEnabled": true,
                   "openmedEnabled": false,
+                  "gliner2Enabled": false,
+                  "ministralEnabled": true,
+                  "ministralChunkSize": 256,
+                  "ministralOverlap": 256,
+                  "defaultThreshold": 0.75,
+                  "nbOfLabelByPass": 35
+                }
+                """;
+
+        mockMvc.perform(put(CONFIG_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void Should_RejectUpdate_When_MinistralEnabledMissing() throws Exception {
+        // ministralEnabled is @NotNull on the request DTO.
+        String body = """
+                {
+                  "glinerEnabled": true,
+                  "presidioEnabled": true,
+                  "regexEnabled": true,
+                  "openmedEnabled": false,
+                  "gliner2Enabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 35
                 }

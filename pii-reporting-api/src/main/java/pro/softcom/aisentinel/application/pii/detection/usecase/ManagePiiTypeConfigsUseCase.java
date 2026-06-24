@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * Business rules:
  * - Each PII type + detector combination is unique
  * - Threshold must be between 0.0 and 1.0
- * - Detector must be GLINER, PRESIDIO, REGEX, OPENMED, or GLINER2
+ * - Detector must be GLINER, PRESIDIO, REGEX, OPENMED, GLINER2, or MINISTRAL
  * - Updates are transactional
  */
 public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
@@ -155,9 +155,9 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         }
         if (!detector.equals("GLINER") && !detector.equals("PRESIDIO")
                 && !detector.equals("REGEX") && !detector.equals("OPENMED")
-                && !detector.equals("GLINER2")) {
+                && !detector.equals("GLINER2") && !detector.equals("MINISTRAL")) {
             throw new IllegalArgumentException(
-                    "Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2. Got: " + detector
+                    "Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2, MINISTRAL. Got: " + detector
             );
         }
     }

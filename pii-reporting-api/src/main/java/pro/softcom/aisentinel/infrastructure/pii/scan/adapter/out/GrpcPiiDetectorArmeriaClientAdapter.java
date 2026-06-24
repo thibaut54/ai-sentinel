@@ -268,6 +268,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
             case "PRESIDIO" -> PRESIDIO;
             case "REGEX" -> REGEX;
             case "OPENMED" -> OPENMED;
+            case "MINISTRAL" -> MINISTRAL;
             case "JUDGE" -> JUDGE;
             case "PREFILTER" -> PREFILTER;
             default -> DetectorSource.UNKNOWN_SOURCE;

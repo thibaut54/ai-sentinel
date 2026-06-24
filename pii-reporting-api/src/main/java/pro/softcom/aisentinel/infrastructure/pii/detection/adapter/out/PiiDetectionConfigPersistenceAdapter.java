@@ -21,6 +21,8 @@ import java.time.LocalDateTime;
 public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigRepository {
 
     private static final Integer CONFIG_ID = 1;
+    private static final int DEFAULT_MINISTRAL_CHUNK_SIZE = 1024;
+    private static final int DEFAULT_MINISTRAL_OVERLAP = 128;
 
     private final PiiDetectionConfigJpaRepository jpaRepository;
 
@@ -80,6 +82,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 true,  // regexEnabled
                 false, // openmedEnabled
                 false, // gliner2Enabled (cf. spec D4 — explicit operator opt-in)
+                false, // ministralEnabled (explicit operator opt-in)
+                DEFAULT_MINISTRAL_CHUNK_SIZE, // ministralChunkSize
+                DEFAULT_MINISTRAL_OVERLAP, // ministralOverlap
                 new BigDecimal("0.75"),  // defaultThreshold
                 35, // nbOfLabelByPass
                 false, // llmJudgeEnabled (derived = OR of per-detector judge flags)
@@ -108,6 +113,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getRegexEnabled(),
                 entity.getOpenmedEnabled() != null && entity.getOpenmedEnabled(),
                 entity.getGliner2Enabled() != null && entity.getGliner2Enabled(),
+                entity.getMinistralEnabled() != null && entity.getMinistralEnabled(),
+                entity.getMinistralChunkSize() != null ? entity.getMinistralChunkSize() : DEFAULT_MINISTRAL_CHUNK_SIZE,
+                entity.getMinistralOverlap() != null ? entity.getMinistralOverlap() : DEFAULT_MINISTRAL_OVERLAP,
                 entity.getDefaultThreshold(),
                 entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
                 entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
@@ -133,6 +141,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .regexEnabled(config.regexEnabled())
                 .openmedEnabled(config.openmedEnabled())
                 .gliner2Enabled(config.gliner2Enabled())
+                .ministralEnabled(config.ministralEnabled())
+                .ministralChunkSize(config.ministralChunkSize())
+                .ministralOverlap(config.ministralOverlap())
+                // DB-only column: the specialised model is permanently exempt from the judge.
+                .ministralJudgeEnabled(false)
                 .defaultThreshold(config.defaultThreshold())
                 .nbOfLabelByPass(config.nbOfLabelByPass())
                 .llmJudgeEnabled(config.llmJudgeEnabled())

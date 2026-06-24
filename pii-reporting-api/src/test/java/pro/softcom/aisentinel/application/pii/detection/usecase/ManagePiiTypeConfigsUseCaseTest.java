@@ -261,11 +261,25 @@ class ManagePiiTypeConfigsUseCaseTest {
     }
 
     @Test
+    @DisplayName("Should_AcceptMinistralDetector_When_Validating")
+    void Should_AcceptMinistralDetector_When_Validating() {
+        when(repository.updateAtomically("EMAIL", "MINISTRAL", true, 0.5, "desc", null, "admin"))
+                .thenReturn(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("MINISTRAL").enabled(true).threshold(0.5)
+                        .detectorDescription("desc").build());
+
+        PiiTypeConfig result = useCase.updateConfig("EMAIL", "MINISTRAL", true, 0.5, "desc", null, "admin");
+
+        assertThat(result.getDetector()).isEqualTo("MINISTRAL");
+        verify(repository).updateAtomically("EMAIL", "MINISTRAL", true, 0.5, "desc", null, "admin");
+    }
+
+    @Test
     @DisplayName("Should_RejectUnknownDetector_When_Validating")
     void Should_RejectUnknownDetector_When_Validating() {
         assertThatThrownBy(() -> useCase.updateConfig("EMAIL", "UNKNOWN", true, 0.5, null, null, "admin"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("GLINER2");
+                .hasMessageContaining("MINISTRAL");
     }
 
     // ====== per-type llmJudgeEnabled tests ======

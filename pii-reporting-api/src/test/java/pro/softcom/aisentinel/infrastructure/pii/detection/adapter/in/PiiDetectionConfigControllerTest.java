@@ -44,7 +44,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_ReturnLlmJudgeEnabledInResponse_When_GetConfig() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, true, false, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, true, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -58,7 +58,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultLlmJudgeEnabledToFalse_When_NotProvidedInResponse() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -71,7 +71,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DeriveLlmJudgeEnabledTrue_When_AnyPerDetectorJudgeEnabled() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, true, true, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, true, true, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -84,6 +84,9 @@ class PiiDetectionConfigControllerTest {
                   "regexEnabled": true,
                   "openmedEnabled": false,
                   "gliner2Enabled": false,
+                  "ministralEnabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30,
                   "glinerJudgeEnabled": true
@@ -113,7 +116,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_IgnoreIncomingLlmJudgeEnabled_When_NoPerDetectorJudgeEnabled() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -128,6 +131,9 @@ class PiiDetectionConfigControllerTest {
                   "regexEnabled": true,
                   "openmedEnabled": false,
                   "gliner2Enabled": false,
+                  "ministralEnabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30,
                   "llmJudgeEnabled": true
@@ -150,7 +156,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultLlmJudgeEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -164,6 +170,9 @@ class PiiDetectionConfigControllerTest {
                   "regexEnabled": true,
                   "openmedEnabled": false,
                   "gliner2Enabled": false,
+                  "ministralEnabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30
                 }
@@ -184,7 +193,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_ReturnPrefilterEnabledInResponse_When_GetConfig() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -197,7 +206,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_UpdatePrefilterEnabled_When_PutRequestEnablesFlag() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -210,6 +219,9 @@ class PiiDetectionConfigControllerTest {
                   "regexEnabled": true,
                   "openmedEnabled": false,
                   "gliner2Enabled": false,
+                  "ministralEnabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30,
                   "prefilterEnabled": true
@@ -231,7 +243,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultPrefilterEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
+            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -245,6 +257,9 @@ class PiiDetectionConfigControllerTest {
                   "regexEnabled": true,
                   "openmedEnabled": false,
                   "gliner2Enabled": false,
+                  "ministralEnabled": false,
+                  "ministralChunkSize": 1024,
+                  "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30
                 }

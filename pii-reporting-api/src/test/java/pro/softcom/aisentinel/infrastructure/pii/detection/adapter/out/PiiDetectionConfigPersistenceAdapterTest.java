@@ -106,6 +106,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             existingConfig.presidioEnabled(),
             existingConfig.regexEnabled(),
             existingConfig.openmedEnabled(), false,
+            false, 1024, 128,
             newThreshold,
             30,
             false,
@@ -151,7 +152,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             true,
             true,
             true,
-            false, false, new BigDecimal("0.75"),
+            false, false, false, 1024, 128, new BigDecimal("0.75"),
             30,
             true,
             true, false, false, false, false,
@@ -180,7 +181,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             true,
             true,
             true,
-            false, false, new BigDecimal("0.75"),
+            false, false, false, 1024, 128, new BigDecimal("0.75"),
             30,
             false,
             false, false, false, false, false,
@@ -206,7 +207,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
 
         PiiDetectionConfig config = new PiiDetectionConfig(
             CONFIG_ID,
-            true, true, true, false, false, new BigDecimal("0.75"),
+            true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"),
             30,
             true,
             true, false, true, false, true,
@@ -247,6 +248,38 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(config.openmedJudgeEnabled()).isFalse();
         softly.assertThat(config.gliner2JudgeEnabled()).isFalse();
         softly.assertThat(config.llmJudgeEnabled()).isFalse();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_RoundTripMinistralFields_When_Persisted() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            CONFIG_ID,
+            true, false, false, false, false, true, 2048, 256, new BigDecimal("0.75"),
+            30,
+            false,
+            false, false, false, false, false,
+            false,
+            LocalDateTime.now(),
+            "ministral-enabler"
+        );
+
+        persistenceAdapter.updateConfig(config);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.ministralEnabled()).isTrue();
+        softly.assertThat(reloaded.ministralChunkSize()).isEqualTo(2048);
+        softly.assertThat(reloaded.ministralOverlap()).isEqualTo(256);
+        softly.assertThat(entity.getMinistralEnabled()).isTrue();
+        softly.assertThat(entity.getMinistralChunkSize()).isEqualTo(2048);
+        softly.assertThat(entity.getMinistralOverlap()).isEqualTo(256);
+        // The adapter force-sets the DB-only judge column to false.
+        softly.assertThat(entity.getMinistralJudgeEnabled()).isFalse();
         softly.assertAll();
     }
 }

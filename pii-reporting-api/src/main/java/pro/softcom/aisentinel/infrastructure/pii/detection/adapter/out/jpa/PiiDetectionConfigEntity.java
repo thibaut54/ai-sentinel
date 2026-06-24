@@ -58,6 +58,37 @@ public class PiiDetectionConfigEntity {
     @Column(name = "gliner2_enabled", nullable = false)
     private Boolean gliner2Enabled;
 
+    /**
+     * Activates the Ministral-PII detector (specialised LLM source). Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "ministral_enabled", nullable = false)
+    private Boolean ministralEnabled;
+
+    /**
+     * Sliding-window chunk size (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_chunk_size", nullable = false)
+    private Integer ministralChunkSize;
+
+    /**
+     * Sliding-window overlap (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_overlap", nullable = false)
+    private Integer ministralOverlap;
+
+    /**
+     * Routes the LLM-as-Judge stage for Ministral-PII findings. Persisted as a
+     * database column only; it is force-set to {@code false} by the adapter
+     * because the specialised model is permanently exempt from the judge.
+     */
+    @NotNull
+    @Column(name = "ministral_judge_enabled", nullable = false)
+    private Boolean ministralJudgeEnabled;
+
     @NotNull
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")

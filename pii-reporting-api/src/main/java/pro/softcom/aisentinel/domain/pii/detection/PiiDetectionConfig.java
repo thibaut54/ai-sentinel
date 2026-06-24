@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
  * Domain model for PII detection configuration.
  * Represents the configuration settings for PII detection detectors and thresholds.
  * This is the single source of truth for detection configuration in the system.
- * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2.
+ * Detector must be one of: GLINER, PRESIDIO, REGEX, OPENMED, GLINER2, MINISTRAL.
  *
  * <p>The {@code llmJudgeEnabled} flag is a <strong>derived</strong> global guard:
  * it equals the logical OR of the five per-detector judge flags. The Python
@@ -30,6 +30,9 @@ public record PiiDetectionConfig(
         boolean regexEnabled,
         boolean openmedEnabled,
         boolean gliner2Enabled,
+        boolean ministralEnabled,
+        Integer ministralChunkSize,
+        Integer ministralOverlap,
         BigDecimal defaultThreshold,
         Integer nbOfLabelByPass,
         boolean llmJudgeEnabled,
@@ -44,6 +47,8 @@ public record PiiDetectionConfig(
 
     private static final BigDecimal MIN_THRESHOLD = BigDecimal.ZERO;
     private static final BigDecimal MAX_THRESHOLD = BigDecimal.ONE;
+    private static final int MIN_MINISTRAL_CHUNK_SIZE = 256;
+    private static final int MAX_MINISTRAL_CHUNK_SIZE = 4096;
 
     /**
      * Compact constructor for validation.
@@ -65,7 +70,8 @@ public record PiiDetectionConfig(
                     "Default threshold must be less than or equal to " + MAX_THRESHOLD);
         }
 
-        if (!glinerEnabled && !presidioEnabled && !regexEnabled && !openmedEnabled && !gliner2Enabled) {
+        if (!glinerEnabled && !presidioEnabled && !regexEnabled && !openmedEnabled
+                && !gliner2Enabled && !ministralEnabled) {
             throw new IllegalArgumentException(
                     "At least one detector must be enabled");
         }
@@ -73,6 +79,21 @@ public record PiiDetectionConfig(
         if (nbOfLabelByPass == null || nbOfLabelByPass < 1) {
             throw new IllegalArgumentException(
                     "Number of labels by pass must be at least 1");
+        }
+
+        if (ministralChunkSize == null
+                || ministralChunkSize < MIN_MINISTRAL_CHUNK_SIZE
+                || ministralChunkSize > MAX_MINISTRAL_CHUNK_SIZE) {
+            throw new IllegalArgumentException(
+                    "Ministral chunk size must be between " + MIN_MINISTRAL_CHUNK_SIZE
+                            + " and " + MAX_MINISTRAL_CHUNK_SIZE);
+        }
+
+        if (ministralOverlap == null
+                || ministralOverlap < 0
+                || ministralOverlap >= ministralChunkSize) {
+            throw new IllegalArgumentException(
+                    "Ministral overlap must be between 0 (inclusive) and the chunk size (exclusive)");
         }
     }
 

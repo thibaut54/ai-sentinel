@@ -1,8 +1,11 @@
 package pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -20,6 +23,9 @@ import java.math.BigDecimal;
  * @param regexEnabled     Whether custom regex detector should be enabled
  * @param openmedEnabled   Whether OpenMed detector should be enabled
  * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
+ * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
+ * @param ministralChunkSize  Sliding-window chunk size (characters) for the Ministral-PII detector (256-4096)
+ * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector (0-512, less than the chunk size)
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param nbOfLabelByPass     Maximum labels per detector batch
  * @param llmJudgeEnabled     Deprecated/ignored: the global guard is now derived server-side
@@ -58,6 +64,22 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("gliner2Enabled")
     @NotNull(message = "gliner2Enabled is required")
     Boolean gliner2Enabled,
+
+    @JsonProperty("ministralEnabled")
+    @NotNull(message = "ministralEnabled is required")
+    Boolean ministralEnabled,
+
+    @JsonProperty("ministralChunkSize")
+    @NotNull(message = "ministralChunkSize is required")
+    @Min(value = 256, message = "ministralChunkSize must be at least 256")
+    @Max(value = 4096, message = "ministralChunkSize must be at most 4096")
+    Integer ministralChunkSize,
+
+    @JsonProperty("ministralOverlap")
+    @NotNull(message = "ministralOverlap is required")
+    @Min(value = 0, message = "ministralOverlap must be at least 0")
+    @Max(value = 512, message = "ministralOverlap must be at most 512")
+    Integer ministralOverlap,
 
     @JsonProperty("defaultThreshold")
     @NotNull(message = "defaultThreshold is required")
@@ -103,6 +125,43 @@ public record UpdatePiiDetectionConfigRequestDto(
         if (notAtLeastOneAnalyserEnabled()) {
                 throw new IllegalArgumentException("At least one detector must be enabled");
             }
+    }
+
+    /**
+     * Cross-field rule: the Ministral overlap must be strictly smaller than the
+     * chunk size. Returns {@code true} when either value is {@code null} so the
+     * {@link NotNull} constraints report the missing field instead.
+     */
+    @AssertTrue(message = "ministralOverlap must be less than ministralChunkSize")
+    public boolean isMinistralOverlapLessThanChunkSize() {
+        if (ministralOverlap == null || ministralChunkSize == null) {
+            return true;
+        }
+        return ministralOverlap < ministralChunkSize;
+    }
+
+    /**
+     * Returns the {@code ministralEnabled} flag value with a {@code false} default
+     * when the client omits the field.
+     */
+    public boolean ministralEnabledOrDefault() {
+        return ministralEnabled != null && ministralEnabled;
+    }
+
+    /**
+     * Returns the {@code ministralChunkSize} value with a {@code 1024} default
+     * when the client omits the field.
+     */
+    public int ministralChunkSizeOrDefault() {
+        return ministralChunkSize != null ? ministralChunkSize : 1024;
+    }
+
+    /**
+     * Returns the {@code ministralOverlap} value with a {@code 128} default
+     * when the client omits the field.
+     */
+    public int ministralOverlapOrDefault() {
+        return ministralOverlap != null ? ministralOverlap : 128;
     }
 
     /**
@@ -167,10 +226,12 @@ public record UpdatePiiDetectionConfigRequestDto(
             && regexEnabled != null
             && openmedEnabled != null
             && gliner2Enabled != null
+            && ministralEnabled != null
             && !glinerEnabled
             && !presidioEnabled
             && !regexEnabled
             && !openmedEnabled
-            && !gliner2Enabled;
+            && !gliner2Enabled
+            && !ministralEnabled;
     }
 }
