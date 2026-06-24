@@ -78,19 +78,20 @@ import pro.softcom.aisentinel.integration.bench.LlmExtractorClient.RawEntity;
  *       {@code prefilter_enabled} off ({@link #seedPythonIsolatedGliner2NoJudge}).
  *       Detections carry {@code source = GLINER2} and map through
  *       {@link ConceptMap}.</li>
- *   <li><b>gliner-large (Rust)</b> runs the standalone Rust gRPC service with
- *       <b>only its NER (gliner-large) layer active</b>: the container is started
- *       with {@code --override-path .../overrides/ner-only.toml}, which disables
- *       every regex-layer IPI (the classification tier is already empty), so only
- *       the gliner-large model produces findings. Its pipeline is entirely local —
- *       no DB, no LLM judge. The Rust proto omits the source field, so each
- *       finding's {@code type} is the taxonomy IPI id; it is projected to canonical
- *       concepts by type alone via {@link ExtractorConceptMap} (the
- *       {@code gliner-rust} map), symmetric to the LLM extractor. <b>Note:</b>
- *       gliner-large then only covers its configured NER labels (username,
- *       national id, account id, medical record / health insurance number,
- *       password); regex-typed PII (IBAN, phone, card, IP, AVS) is not in its
- *       scope — that is what "uniquement gliner-large actif" means.</li>
+ *   <li><b>gliner-large (Rust)</b> runs the standalone Rust gRPC service given the
+ *       <b>same in-scope label schema as the GLINER2 arm</b>, for a fair
+ *       model-vs-model comparison: the container is started with
+ *       {@code --override-path .../overrides/gliner2-aligned.toml}, which disables
+ *       every regex-layer IPI and adds the GLINER2 in-scope labels as NER
+ *       (same {@code ner_label} + descriptions + 0.50 threshold as the seed). So
+ *       gliner-large alone — not regex — must detect IBAN/card/IP/government-id/etc.
+ *       Its pipeline is entirely local — no DB, no LLM judge. The Rust proto omits
+ *       the source field, so each finding's {@code type} is the taxonomy IPI id; it
+ *       is projected to canonical concepts by type alone via
+ *       {@link ExtractorConceptMap} (the {@code gliner-rust} map), symmetric to the
+ *       LLM extractor. <b>Note:</b> this drops the regex checksum validators, so
+ *       structured types are detected semantically (expect more FP than regex);
+ *       and {@code account_id} is emitted as USERNAME by the baseline emit_as.</li>
  *   <li><b>ministral</b> is called over an OpenAI-compatible endpoint (LM Studio)
  *       from the host JVM ({@link LlmExtractorClient}); its labels map via
  *       {@link ExtractorConceptMap}, dropping out-of-scope concepts to
@@ -391,7 +392,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
         meta.put("metric", "value-level (canonical concept + normalised value)");
         meta.put("gliner2_scope", "ISOLATED: only GLINER2 (privacy-filter) enabled, no judge, no prefilter");
         meta.put("rust_scope", rustEval == null ? "SKIPPED (model dir absent)"
-            : "ISOLATED: only the gliner-large NER layer (regex+classification disabled), no judge");
+            : "gliner-large NER with the GLINER2 in-scope label schema (regex off, no judge) — model-vs-model");
         meta.put("rust_model_dir", rustModelDir());
         meta.put("ministral_endpoint", MINISTRAL_BASE_URL);
         meta.put("ministral_model", MINISTRAL_MODEL);
@@ -561,7 +562,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
     // ---- Rust evaluation (standalone container) ------------------------------
 
     private ExtractorReport.ModelEval evaluateRust(List<GoldDoc> gold) {
-        log.info("[bench] === gliner-large (Rust NER-only, regex disabled, no judge) over {} docs ===", gold.size());
+        log.info("[bench] === gliner-large (Rust, GLINER2-aligned NER labels, no judge) over {} docs ===", gold.size());
         RustPiiDetectorClient client = ensureRustStarted();
         ExtractorConceptMap rustMap = loadExtractorMap();
         long timeoutMs = rustTimeout().toMillis();
@@ -598,7 +599,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
             score.strictOverall().f1(), score.strictOverall().precision(), score.strictOverall().recall(),
             rawEntities, dropped, httpFailures, rustMap.unknownLabels());
         return new ExtractorReport.ModelEval("gliner-large",
-            "pii-detector-rust gliner-large NER only (regex layer disabled, no judge)", score,
+            "pii-detector-rust gliner-large NER, GLINER2-aligned label set (regex off, no judge)", score,
             gold.size(), rawEntities, dropped, 0, httpFailures, rustMap.unknownLabels());
     }
 
@@ -666,16 +667,18 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
         if (!rustModelPresent()) {
             return null;
         }
-        log.info("[bench] starting Rust detector container (model: {}, NER-only override)", rustModelDir());
-        // Run with the ner-only override so ONLY the gliner-large NER layer is active
-        // (regex layer disabled). The image ENTRYPOINT is /app/grpc_server; these are
-        // its args. The override TOML is baked into the image at /app/config/overrides.
+        log.info("[bench] starting Rust detector container (model: {}, GLINER2-aligned NER schema)", rustModelDir());
+        // Run with the gliner2-aligned override so gliner-large detects the SAME
+        // in-scope label set as the Python GLINER2 arm (regex layer disabled, the
+        // GLINER2 labels added as NER) — a fair model-vs-model comparison. The image
+        // ENTRYPOINT is /app/grpc_server; these are its args. The override TOML is
+        // baked into the image at /app/config/overrides.
         rustDetector = new GenericContainer<>(buildRustImage())
             .withExposedPorts(GRPC_PORT)
             .withFileSystemBind(rustModelDir().toString(), RUST_MODEL_MOUNT, BindMode.READ_ONLY)
             .withCommand(
                 "--taxonomy", "/app/config/nlpd-ipi.toml",
-                "--override-path", "/app/config/overrides/ner-only.toml",
+                "--override-path", "/app/config/overrides/gliner2-aligned.toml",
                 "--model", RUST_MODEL_MOUNT,
                 "--addr", "0.0.0.0:" + GRPC_PORT)
             .withLogConsumer(Gliner2VsGlinerRustVsMinistralBenchmarkIT::routeRustLog)
@@ -689,7 +692,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
 
     // ---- ministral evaluation (endpoint) -------------------------------------
 
-    private ExtractorReport.ModelEval evaluateMinistral(List<GoldDoc> gold) throws IOException {
+    private ExtractorReport.ModelEval evaluateMinistral(List<GoldDoc> gold) {
         ExtractorModel model = ministralModel();
         LlmExtractorClient client = newLlmClient();
         ExtractorConceptMap extractorMap = loadExtractorMap();
@@ -755,7 +758,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
             Set<String> served = client.listModelIds(model.baseUrl(), PREFLIGHT_TIMEOUT);
             log.info("[smoke ministral] endpoint {} reachable, serves {} model(s)", model.baseUrl(), served.size());
             return true;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return false;
         } catch (IOException e) {
@@ -772,7 +775,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
                 log.warn("[bench] model id '{}' NOT in the served list {} — check the @quant suffix; "
                     + "the id must match exactly or the endpoint will time out", model.model(), served);
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {
             log.warn("[bench] endpoint {} preflight FAILED: {}", model.baseUrl(), e.toString());
@@ -787,7 +790,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
             ready = true;
             log.info("[bench] ministral warmup OK in {}s ({} entities, jsonArray={})",
                 Duration.between(t0, Instant.now()).toSeconds(), r.entities().size(), r.jsonArrayFound());
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             ready = false;
         } catch (IOException e) {
@@ -829,7 +832,7 @@ class Gliner2VsGlinerRustVsMinistralBenchmarkIT {
                 if (attempt == 2) {
                     log.warn("[bench] ministral {} failed: {}", label, e.toString());
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
                 return null;
             }

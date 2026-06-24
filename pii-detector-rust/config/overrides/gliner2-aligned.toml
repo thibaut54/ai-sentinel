@@ -1,0 +1,237 @@
+# Benchmark override: align gliner-large's NER label set with the Python
+# GLINER2 (privacy-filter) schema for a fair MODEL-vs-MODEL comparison.
+#
+# - Disables every regex-layer IPI (so detection is the gliner-large model only,
+#   not regex+validators).
+# - Adds one NER IPI per in-scope GLINER2 label NOT already covered by the
+#   baseline NER (username / national_id / password / account_id stay from the
+#   baseline). ner_label + ner_description + threshold mirror the GLINER2 seed
+#   (data-improved-gliner2-presidio-regex.sql) so the ONLY variable between the
+#   two arms is the model (gliner2-large-v1 vs gliner2-privacy-filter-PII-multi).
+#
+# Used by Gliner2VsGlinerRustVsMinistralBenchmarkIT for the gliner-large arm.
+# NOTE: this deliberately drops the regex checksum validators (Luhn, AVS mod11,
+# IBAN, …), so structured types (IBAN/card/IP) are detected semantically — that
+# is the point of the comparison.
+
+[meta]
+name = "gliner2-aligned-bench"
+base = "nlpd-client-aligned"
+description = "Disable regex layer; give gliner-large the GLINER2 in-scope NER label schema"
+
+[[disable]]
+ids = [
+  "AVS_NUMBER", "SOCIALNUM", "IBAN_CODE", "BIC_SWIFT", "CREDIT_CARD_NUMBER",
+  "CREDIT_CARD_ISSUER", "CVV", "PIN", "AMOUNT", "CURRENCY_CODE", "PHONE_NUMBER",
+  "IP_ADDRESS", "MAC_ADDRESS", "IMEI", "VEHICLE_VIN", "VEHICLE_REGISTRATION",
+  "DEVICE_ID", "PASSWORD", "API_KEY", "SESSION_ID", "CRYPTO",
+]
+reason = "Benchmark: model-only detection (regex layer off)"
+
+# --- GLINER2 in-scope labels added as NER (id = canonical concept) -----------
+# identifiant_officiel (government / tax)
+[[custom_ipi]]
+id = "GOVERNMENT_ID"
+display_fr = "Identifiant officiel"
+display_en = "Government ID"
+category = "identifiant_officiel"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "government_id"
+ner_description = "numero d'identification delivre par une autorite publique"
+
+[[custom_ipi]]
+id = "PASSPORT_NUMBER"
+display_fr = "Numero de passeport"
+display_en = "Passport number"
+category = "identifiant_officiel"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "passport_number"
+ner_description = "numero de passeport"
+
+[[custom_ipi]]
+id = "DRIVERS_LICENSE_NUMBER"
+display_fr = "Numero de permis de conduire"
+display_en = "Driver's license number"
+category = "identifiant_officiel"
+severity = "medium"
+layer = "ner"
+threshold = 0.50
+ner_label = "drivers_license_number"
+ner_description = "numero de permis de conduire"
+
+[[custom_ipi]]
+id = "LICENSE_NUMBER"
+display_fr = "Numero de licence"
+display_en = "License number"
+category = "identifiant_officiel"
+severity = "medium"
+layer = "ner"
+threshold = 0.50
+ner_label = "license_number"
+ner_description = "numero de licence ou d'autorisation professionnelle"
+
+[[custom_ipi]]
+id = "TAX_ID"
+display_fr = "Identifiant fiscal"
+display_en = "Tax ID"
+category = "identifiant_officiel"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "tax_id"
+ner_description = "identifiant fiscal d'une personne ou entreprise"
+
+[[custom_ipi]]
+id = "TAX_NUMBER"
+display_fr = "Numero fiscal"
+display_en = "Tax number"
+category = "identifiant_officiel"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "tax_number"
+ner_description = "numero fiscal (ex. numero IDE/TVA suisse)"
+
+# financier
+[[custom_ipi]]
+id = "BANK_ACCOUNT"
+display_fr = "Compte bancaire"
+display_en = "Bank account"
+category = "financier"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "bank_account"
+ner_description = "compte bancaire"
+
+[[custom_ipi]]
+id = "ROUTING_NUMBER"
+display_fr = "Numero d'acheminement bancaire"
+display_en = "Routing number"
+category = "financier"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "routing_number"
+ner_description = "numero d'acheminement bancaire (clearing/ABA)"
+
+[[custom_ipi]]
+id = "IBAN"
+display_fr = "IBAN"
+display_en = "IBAN"
+category = "financier"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "iban"
+ner_description = "numero de compte bancaire international IBAN (commence par CH pour la Suisse)"
+
+[[custom_ipi]]
+id = "CARD_NUMBER"
+display_fr = "Numero de carte"
+display_en = "Card number"
+category = "financier"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "card_number"
+ner_description = "numero de carte de paiement (PAN a 13-19 chiffres)"
+
+[[custom_ipi]]
+id = "CARD_EXPIRY"
+display_fr = "Expiration de carte"
+display_en = "Card expiry"
+category = "financier"
+severity = "medium"
+layer = "ner"
+threshold = 0.50
+ner_label = "card_expiry"
+ner_description = "date d'expiration d'une carte de paiement (MM/AA)"
+
+[[custom_ipi]]
+id = "CARD_CVV"
+display_fr = "CVV"
+display_en = "Card CVV"
+category = "financier"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "card_cvv"
+ner_description = "code de securite d'une carte de paiement (CVV/CVC 3-4 chiffres)"
+
+# identifiant_numerique
+# id suffixed (+ emit_as) because the baseline has a regex IPI "IP_ADDRESS";
+# [[disable]] does not free the id for a custom_ipi, so we surface under emit_as.
+[[custom_ipi]]
+id = "IP_ADDRESS_GL"
+emit_as = "IP_ADDRESS"
+display_fr = "Adresse IP"
+display_en = "IP address"
+category = "identifiant_numerique"
+severity = "low"
+layer = "ner"
+threshold = 0.50
+ner_label = "ip_address"
+ner_description = "adresse IP (IPv4 ou IPv6)"
+
+[[custom_ipi]]
+id = "SENSITIVE_ACCOUNT_ID"
+display_fr = "Identifiant de compte sensible"
+display_en = "Sensitive account ID"
+category = "identifiant_numerique"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "sensitive_account_id"
+ner_description = "identifiant de compte sensible (bancaire, sante, etc.)"
+
+# authentification (secrets / credentials)
+[[custom_ipi]]
+id = "SECRET"
+display_fr = "Secret"
+display_en = "Secret"
+category = "authentification"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "secret"
+ner_description = "valeur secrete ou confidentielle"
+
+# id suffixed (+ emit_as) — baseline has a regex IPI "API_KEY" (see IP_ADDRESS note).
+[[custom_ipi]]
+id = "API_KEY_GL"
+emit_as = "API_KEY"
+display_fr = "Cle d'API"
+display_en = "API key"
+category = "authentification"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "api_key"
+ner_description = "cle d'API ou jeton de service"
+
+[[custom_ipi]]
+id = "ACCESS_TOKEN"
+display_fr = "Jeton d'acces"
+display_en = "Access token"
+category = "authentification"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "access_token"
+ner_description = "jeton d'acces d'authentification"
+
+[[custom_ipi]]
+id = "RECOVERY_CODE"
+display_fr = "Code de recuperation"
+display_en = "Recovery code"
+category = "authentification"
+severity = "high"
+layer = "ner"
+threshold = 0.50
+ner_label = "recovery_code"
+ner_description = "code de recuperation ou de secours d'un compte"

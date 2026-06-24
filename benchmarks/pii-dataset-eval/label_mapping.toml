@@ -382,6 +382,26 @@ amount                    = "IGNORE"
 currency_code             = "IGNORE"
 device_id                 = "IGNORE"
 session_id                = "IGNORE"
+# GLINER2-aligned NER labels (gliner2-aligned.toml override): the custom_ipi ids
+# are the canonical concepts themselves, so the emitted `type` is already the
+# canonical name. (username/national_id/password/ip_address/api_key are mapped
+# above; account_id is emitted as USERNAME via the baseline emit_as.)
+government_id             = "GOVERNMENT_ID"
+passport_number          = "PASSPORT_NUMBER"
+drivers_license_number   = "DRIVERS_LICENSE_NUMBER"
+license_number           = "LICENSE_NUMBER"
+tax_id                   = "TAX_ID"
+tax_number               = "TAX_NUMBER"
+bank_account             = "BANK_ACCOUNT"
+routing_number           = "ROUTING_NUMBER"
+iban                     = "IBAN"
+card_number              = "CARD_NUMBER"
+card_expiry              = "CARD_EXPIRY"
+card_cvv                 = "CARD_CVV"
+sensitive_account_id     = "SENSITIVE_ACCOUNT_ID"
+secret                   = "SECRET"
+access_token             = "ACCESS_TOKEN"
+recovery_code            = "RECOVERY_CODE"
 
 # =============================================================================
 # [ambiguous] — documented non-1:1 decisions (spec étape 1 "documente les choix
