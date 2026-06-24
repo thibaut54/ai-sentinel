@@ -341,6 +341,49 @@ bic              = "IGNORE"
 swift            = "IGNORE"
 
 # =============================================================================
+# [extractors.gliner-rust] — taxonomy IPI ids emitted by the standalone Rust
+# detector (pii-detector-rust). Its proto omits the detector source, so findings
+# are projected to canonical concepts by their IPI id (the `type` field) alone,
+# exactly like an LLM extractor's labels — hence an [extractors.*] table. Used by
+# Gliner2VsGlinerRustVsMinistralBenchmarkIT (model name "gliner-rust"). Covers
+# NER-layer ids (active in the NER-only benchmark) and regex-layer ids (only
+# emitted if the Rust service runs its full pipeline). Out-of-scope ids -> IGNORE
+# (dropped, neither rewarded nor penalised), symmetric to the gold ignore zones.
+# =============================================================================
+[extractors."gliner-rust"]
+# NER layer (gliner-large) — active in the NER-only benchmark
+username                  = "USERNAME"
+national_id               = "NATIONAL_ID_NUMBER"
+account_id                = "ACCOUNT_ID"
+driver_license_number     = "DRIVERS_LICENSE_NUMBER"
+bank_account_number       = "BANK_ACCOUNT"
+password_ner              = "PASSWORD"
+medical_record_number     = "IGNORE"
+health_insurance_number   = "IGNORE"
+# Regex layer — only emitted when the Rust full pipeline runs (regex enabled)
+avs_number                = "AVS_NUMBER"
+socialnum                 = "NATIONAL_ID_NUMBER"
+iban_code                 = "IBAN"
+credit_card_number        = "CARD_NUMBER"
+cvv                       = "CARD_CVV"
+pin                       = "PIN"
+phone_number              = "PHONE_NUMBER"
+ip_address                = "IP_ADDRESS"
+mac_address               = "MAC_ADDRESS"
+imei                      = "IMEI"
+vehicle_vin               = "VIN"
+vehicle_registration      = "VEHICLE_REGISTRATION"
+password                  = "PASSWORD"
+api_key                   = "API_KEY"
+crypto                    = "CRYPTO"
+bic_swift                 = "IGNORE"
+credit_card_issuer        = "IGNORE"
+amount                    = "IGNORE"
+currency_code             = "IGNORE"
+device_id                 = "IGNORE"
+session_id                = "IGNORE"
+
+# =============================================================================
 # [ambiguous] — documented non-1:1 decisions (spec étape 1 "documente les choix
 # ambigus"). These are the calls a reviewer should sanity-check.
 # =============================================================================

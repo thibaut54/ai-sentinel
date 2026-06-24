@@ -146,6 +146,58 @@ Properties: `bench.extractors-config`, `bench.extractor-concept-map`,
 > extractors' labels lives in `[extractors._default]` of `label_mapping.toml`
 > (add `[extractors.<name>]` to override per model).
 
+## GLINER2 vs ministral — can we replace the detector with the LLM?
+
+`Gliner2VsMinistralBenchmarkIT` answers one decision directly: **can the
+production GLINER2 detector be replaced by `ministral-3b-pii-preview@q8_0`?** It
+scores **both models on the same gold with the same value-level metric**
+(`ValueScorer`: canonical concept + normalised value), so their P/R/F1 are
+directly comparable and the report shows the head-to-head Δ (`ministral − GLINER2`,
+i.e. what replacing GLINER2 with ministral gains/loses).
+
+- **GLINER2** runs in isolation inside the same containerised pipeline as
+  production (Postgres + the Python `pii-detector` over gRPC, like
+  `PiiDetectorBenchmarkIT`), with the **judge disabled** so it is measured *raw* —
+  the fair counterpart to the unfiltered LLM. Each detection → `(canonical, value)`.
+  No external judge endpoint is needed for this side.
+- **ministral** is called over the OpenAI-compatible endpoint from the host JVM
+  (reusing `LlmExtractorClient`); its labels map via `extractor_concept_map.json`,
+  dropping out-of-scope concepts (email, names, dates → `IGNORE`). GLINER2 only
+  ever emits in-scope concepts, so out-of-scope PII is neither rewarded nor
+  penalised on either side.
+
+```powershell
+$env:RUN_GLINER2_VS_MINISTRAL_BENCHMARK = "true"
+# Smoke (seconds once warm): proves the container + the endpoint both work on one short text.
+mvn -pl pii-reporting-api -Dtest=Gliner2VsMinistralBenchmarkIT#smokeBothModelsProduceInScopePredictions `
+    "-Dcorpus.bench.hf-cache=C:\hf-cache" `
+    "-Dbench.ministral.base-url=http://localhost:1234/v1" test
+# Full comparison:
+mvn -pl pii-reporting-api -Dtest=Gliner2VsMinistralBenchmarkIT `
+    "-Dcorpus.bench.hf-cache=C:\hf-cache" `
+    "-Dbench.ministral.base-url=http://localhost:1234/v1" test
+```
+
+Output: `pii-reporting-api/target/pii-bench/gliner2-vs-ministral/extractor-comparison.{md,json,csv}`.
+IntelliJ run configs under `.run/`: `Gliner2VsMinistral smoke` / `quick`
+(`-Dcorpus.bench.max-docs=8`) / `Gliner2VsMinistral` (full).
+
+| Property | Default | Purpose |
+|---|---|---|
+| `bench.ministral.base-url` | `http://localhost:1234/v1` | LLM endpoint (host JVM → localhost/LAN, **not** `host.docker.internal`) |
+| `bench.ministral.model` | `ministral-3b-pii-preview@q8_0` | model id as served (mind the `@quant` suffix) |
+| `bench.ministral.system-prompt` | (none) | optional; Ministral bakes its PII instruction into its chat template |
+| `corpus.bench.gold-dir` | `../benchmarks/pii-dataset-eval/gold` | gold JSONL location |
+| `corpus.bench.concept-map` | `…/mappings/detector_concept_map.json` | GLINER2 type→canonical map |
+| `bench.extractor-concept-map` | `…/mappings/extractor_concept_map.json` | LLM label→canonical map |
+| `corpus.bench.max-docs` | (all) | cap docs for a quick run |
+| `corpus.bench.threshold` | (seed defaults) | uniform GLINER2 confidence threshold override |
+| `bench.extractor.request-timeout-s` / `bench.extractor.max-tokens` / `bench.extractor.json-schema` | 120 / 2048 / true | LLM request tuning |
+
+> The smoke test is the guarantee that the harness works without a multi-hour run:
+> it exercises **both** sides on one short text and fails loudly on whichever side
+> is broken (container build/model load/gRPC, or endpoint/model id/label map).
+
 ## Reproducibility
 
 - HF dataset revisions are pinned in `label_mapping.toml`.

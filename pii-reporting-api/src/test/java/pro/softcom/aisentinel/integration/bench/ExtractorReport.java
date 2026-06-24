@@ -82,16 +82,23 @@ final class ExtractorReport {
         }
         sb.append("\n");
 
-        if (evals.size() == 2) {
-            LabelCounts a = evals.get(0).score().strictOverall();
-            LabelCounts b = evals.get(1).score().strictOverall();
-            sb.append("## Head-to-head Δ (").append(evals.get(1).name())
-              .append(" − ").append(evals.get(0).name()).append(")\n\n");
-            sb.append("| ΔPrecision | ΔRecall | ΔF1 |\n|---:|---:|---:|\n");
-            sb.append("| ").append(delta(b.precision() - a.precision()))
-              .append(" | ").append(delta(b.recall() - a.recall()))
-              .append(" | ").append(delta(b.f1() - a.f1()))
-              .append(" |\n\n");
+        if (evals.size() >= 2) {
+            // Pairwise Δ over every model pair (later − earlier), so a 3-way
+            // comparison surfaces every head-to-head, not just the first two.
+            sb.append("## Head-to-head Δ (later − earlier)\n\n");
+            sb.append("| Pair | ΔPrecision | ΔRecall | ΔF1 |\n|---|---:|---:|---:|\n");
+            for (int i = 0; i < evals.size(); i++) {
+                for (int j = i + 1; j < evals.size(); j++) {
+                    LabelCounts a = evals.get(i).score().strictOverall();
+                    LabelCounts b = evals.get(j).score().strictOverall();
+                    sb.append("| ").append(evals.get(j).name()).append(" − ").append(evals.get(i).name())
+                      .append(" | ").append(delta(b.precision() - a.precision()))
+                      .append(" | ").append(delta(b.recall() - a.recall()))
+                      .append(" | ").append(delta(b.f1() - a.f1()))
+                      .append(" |\n");
+                }
+            }
+            sb.append("\n");
         }
 
         for (ModelEval e : evals) {
