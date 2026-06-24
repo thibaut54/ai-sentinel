@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.reporting.port.in;
 
+import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
@@ -28,9 +29,15 @@ public interface ScanReportingPort {
     Optional<ScanReportingSummary> getScanReportingSummary(String scanId);
 
     /**
-     * Returns a complete dashboard summary aggregating the latest state of all spaces across all scans.
+     * Returns a complete dashboard summary over ALL Confluence spaces, left-joined with the latest
+     * scan data, with server-side filtering, search and sorting applied plus contextual facet counts.
      *
-     * @return an Optional containing the dashboard summary, or empty if no data found
+     * <p>Spaces never scanned are included with a backend status that maps to UI {@code NOT_STARTED}
+     * and empty counts. {@code spacesCount} reflects the total number of spaces BEFORE filtering.
+     *
+     * @param criteria the filter, search and sort criteria (never null; use
+     *                 {@link DashboardFilterCriteria#none()} for no constraint)
+     * @return an Optional containing the dashboard summary, or empty if no spaces and no scan data exist
      */
-    Optional<ScanReportingSummary> getGlobalScanSummary();
+    Optional<ScanReportingSummary> getGlobalScanSummary(DashboardFilterCriteria criteria);
 }

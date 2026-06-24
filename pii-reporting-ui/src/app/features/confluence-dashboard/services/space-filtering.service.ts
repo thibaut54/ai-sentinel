@@ -1,20 +1,60 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal, Signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { SortEvent } from 'primeng/api';
-import { SpacesDashboardUtils } from '../spaces-dashboard.utils';
+import { SpacesDashboardUtils, UISpace } from '../spaces-dashboard.utils';
 import { SpaceDataManagementService } from './space-data-management.service';
+import { PiiDetectionConfigService } from '../../../core/services/pii-detection-config.service';
+import { PiiTypeConfig } from '../../../core/models/pii-detection-config.model';
+import {
+  DashboardFacets,
+  DashboardFilterParams,
+  FacetCount,
+  SentinelleApiService
+} from '../../../core/services/sentinelle-api.service';
+
+// Re-exported so existing consumers (e.g. the filter bar) keep importing it from here.
+export type { FacetCount } from '../../../core/services/sentinelle-api.service';
+
+/** Severity filter values. */
+export type SeverityFilterValue = 'HIGH' | 'MEDIUM' | 'LOW';
+
+/** A selectable PII type option grouped under its category. */
+export interface PiiTypeOption {
+  /** PII type code (e.g. "EMAIL"). */
+  code: string;
+  /** i18n key for the type label. */
+  labelKey: string;
+  /** Detector name shown as a subtitle (e.g. "PRESIDIO"). */
+  detector: string;
+}
+
+/** A category group of PII type options for the grouped multi-select. */
+export interface PiiTypeGroup {
+  /** Category code (used to build the i18n label). */
+  category: string;
+  /** i18n key for the category label. */
+  labelKey: string;
+  /** PII type options belonging to this category. */
+  items: PiiTypeOption[];
+}
+
+/** Empty facet set used before the first server response. */
+const EMPTY_FACETS: DashboardFacets = { piiTypes: {}, severities: {}, statuses: {} };
 
 /**
- * Service responsible for filtering and sorting spaces in the dashboard.
+ * Holds the dashboard filter / sort / search state and drives SERVER-SIDE
+ * filtering: every state change triggers a debounced fetch of the dashboard
+ * endpoint with the criteria as query parameters.
  *
- * Business purpose:
- * - Provides reactive filtering by global search term and status
- * - Handles custom sorting by name and PII count
- * - Maintains filter state independently for reusability
+ * The server is authoritative for which spaces match and in what order, plus
+ * the contextual facet counts. The rows themselves are rendered from the live
+ * client store (SpacesDashboardUtils), ordered/filtered by the server result,
+ * so live scan updates keep flowing while filtering/sorting stays server-side.
  *
- * SOLID Principles:
- * - Single Responsibility: Only handles filtering and sorting logic
- * - Open/Closed: Can be extended with new filter types without modification
- * - Dependency Inversion: Depends on SpacesDashboardUtils abstraction
+ * SOLID:
+ * - Single Responsibility: owns the filter state + server query orchestration.
+ * - Dependency Inversion: depends on the API/util/config abstractions.
  */
 @Injectable({
   providedIn: 'root'
@@ -22,138 +62,196 @@ import { SpaceDataManagementService } from './space-data-management.service';
 export class SpaceFilteringService {
   private readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
   private readonly dataManagement = inject(SpaceDataManagementService);
+  private readonly piiConfigService = inject(PiiDetectionConfigService);
+  private readonly apiService = inject(SentinelleApiService);
 
-  // Filter state
+  // ===== Filter state =====
   readonly globalFilter = signal<string>('');
-  readonly statusFilter = signal<string | null>(null);
+  readonly piiTypeFilter = signal<string[]>([]);
+  readonly severityFilter = signal<string[]>([]);
+  readonly statusFilter = signal<string[]>([]);
   readonly modifiedOnlyFilter = signal<boolean>(false);
 
-  // Sort state
+  // ===== Sort state =====
+  /** 'name' | 'totalDetections' | 'severityScore' | 'lastScan' | 'piiType:<CODE>' | null. */
+  readonly sortCriterion = signal<string | null>(null);
+  readonly sortOrder = signal<number>(1); // 1 ascending, -1 descending
+  /** Legacy field kept for PrimeNG header sort compatibility. */
   readonly sortField = signal<string | null>(null);
-  readonly sortOrder = signal<number>(1); // 1 for ascending, -1 for descending
 
-  /**
-   * Filtered spaces based on current filter criteria.
-   * Delegates to SpacesDashboardUtils to ensure consistent decoration logic.
-   * Applies "Modified Only" filter if enabled.
-   */
-  readonly filteredSpaces = computed(() => {
-    let spaces = this.spacesDashboardUtils.filteredSpaces();
+  // ===== Server-driven results =====
+  private readonly orderedKeys = signal<string[]>([]);
+  private readonly facets = signal<DashboardFacets>(EMPTY_FACETS);
+  private readonly serverTotalCount = signal<number>(0);
+  readonly loading = signal<boolean>(false);
+
+  // ===== PII type universe (option list), loaded from backend config =====
+  private readonly piiTypeConfigs: Signal<PiiTypeConfig[]> = toSignal(
+    this.piiConfigService.getAllPiiTypeConfigs().pipe(catchError(() => of([] as PiiTypeConfig[]))),
+    { initialValue: [] as PiiTypeConfig[] }
+  );
+
+  /** PII type options grouped by category for the multi-select. */
+  readonly piiTypeGroups = computed<PiiTypeGroup[]>(() => {
+    const byCategory = new Map<string, Map<string, PiiTypeOption>>();
+    for (const cfg of this.piiTypeConfigs()) {
+      const category = cfg.category || 'CUSTOM';
+      const group = byCategory.get(category) ?? new Map<string, PiiTypeOption>();
+      if (!group.has(cfg.piiType)) {
+        group.set(cfg.piiType, {
+          code: cfg.piiType,
+          labelKey: `settings.piiTypes.typeNames.${cfg.piiType}`,
+          detector: cfg.detector
+        });
+      }
+      byCategory.set(category, group);
+    }
+    return Array.from(byCategory.entries()).map(([category, items]) => ({
+      category,
+      labelKey: `settings.piiTypes.categoryNames.${category}`,
+      items: Array.from(items.values())
+    }));
+  });
+
+  /** Available status options for filtering (delegates to utils). */
+  readonly statusOptions = computed(() => this.spacesDashboardUtils.statusOptions());
+
+  /** Severity filter options (Critique / Modéré / Faible). */
+  readonly severityOptions: ReadonlyArray<{ labelKey: string; value: SeverityFilterValue }> = [
+    { labelKey: 'dashboard.filters.severityCritical', value: 'HIGH' },
+    { labelKey: 'dashboard.filters.severityModerate', value: 'MEDIUM' },
+    { labelKey: 'dashboard.filters.severityLow', value: 'LOW' }
+  ];
+
+  /** Criteria sent to the backend; recomputed whenever any filter/sort signal changes. */
+  private readonly criteria = computed<DashboardFilterParams>(() => ({
+    piiTypes: this.piiTypeFilter(),
+    severities: this.severityFilter(),
+    statuses: this.statusFilter(),
+    q: (this.globalFilter() ?? '').trim() || undefined,
+    sort: this.sortCriterion() ?? undefined,
+    order: this.sortOrder() === 1 ? 'asc' : 'desc'
+  }));
+
+  constructor() {
+    // Debounced server fetch: the criteria drive filtering/sorting/search server-side.
+    toObservable(this.criteria)
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+        switchMap(params => {
+          this.loading.set(true);
+          return this.apiService.getDashboardSpacesSummary(params).pipe(catchError(() => of(null)));
+        })
+      )
+      .subscribe(response => {
+        this.loading.set(false);
+        if (!response) {
+          return;
+        }
+        this.orderedKeys.set(response.spaces.map(s => s.spaceKey));
+        this.facets.set(response.facets ?? EMPTY_FACETS);
+        this.serverTotalCount.set(response.spacesCount ?? response.spaces.length);
+      });
+  }
+
+  // ===== Table source: live store rows, ordered/filtered by the server =====
+
+  /** Final list bound to the table: store spaces in the server-decided order. */
+  readonly sortedSpaces = computed<UISpace[]>(() => {
+    const order = this.orderedKeys();
+    const byKey = new Map(this.spacesDashboardUtils.allSpaces().map(s => [s.key, s] as const));
+    let result = order
+      .map(key => byKey.get(key))
+      .filter((s): s is UISpace => s != null);
 
     if (this.modifiedOnlyFilter()) {
       const updateInfos = this.dataManagement.spacesUpdateInfo();
-      spaces = spaces.filter(s => {
-        const info = updateInfos.find(i => i.spaceKey === s.key);
-        return info?.hasBeenUpdated ?? false;
-      });
+      result = result.filter(s =>
+        updateInfos.find(i => i.spaceKey === s.key)?.hasBeenUpdated ?? false
+      );
     }
-
-    return spaces;
+    return result;
   });
 
-  /**
-   * Sorted spaces based on current sort field and order.
-   * Supports sorting by:
-   * - name: alphabetical order
-   * - piiCount: by priority - high first, then medium, then low
-   */
-  readonly sortedSpaces = computed(() => {
-    const spaces = [...this.filteredSpaces()];
-    const field = this.sortField();
-    const order = this.sortOrder();
+  /** Total number of spaces available (server-reported, before filtering). */
+  readonly totalSpacesCount = computed<number>(() => this.serverTotalCount());
 
-    if (!field) {
-      return spaces;
-    }
+  // ===== Facets (server-computed, contextual) =====
+  readonly piiTypeFacetCounts = computed<Record<string, FacetCount>>(() => this.facets().piiTypes ?? {});
+  readonly severityFacetCounts = computed<Record<string, FacetCount>>(() => this.facets().severities ?? {});
+  readonly statusFacetCounts = computed<Record<string, FacetCount>>(() => this.facets().statuses ?? {});
 
-    return spaces.sort((a, b) => {
-      let compareValue = 0;
+  /** True when any filter, search or sort is active. */
+  readonly isResettable = computed<boolean>(() =>
+    (this.globalFilter() ?? '').trim().length > 0
+    || this.piiTypeFilter().length > 0
+    || this.severityFilter().length > 0
+    || this.statusFilter().length > 0
+    || this.sortCriterion() != null
+    || this.modifiedOnlyFilter()
+  );
 
-      if (field === 'name') {
-        // Aligner le tri "par nom" avec l'ordre Confluence (ordre backend)
-        // en s'appuyant sur l'index d'origine fourni par le backend.
-        // Cela garantit que le tri par défaut reflète exactement l'ordre Confluence.
-        const idxA = (a as any).originalIndex ?? 0;
-        const idxB = (b as any).originalIndex ?? 0;
-        compareValue = idxA - idxB;
-      } else if (field === 'piiCount') {
-        // Sort by priority: high > medium > low (descending for each)
-        const priorities = ['high', 'medium', 'low'] as const;
+  // ===== Public API =====
 
-        for (const priority of priorities) {
-          const countA = a.counts?.[priority] ?? 0;
-          const countB = b.counts?.[priority] ?? 0;
-
-          if (countA !== countB) {
-            compareValue = countB - countA;
-            break;
-          }
-        }
-      }
-
-      return compareValue * order;
-    });
-  });
-
-  /**
-   * Available status options for filtering.
-   */
-  readonly statusOptions = computed(() => {
-    return this.spacesDashboardUtils.statusOptions();
-  });
-
-  /**
-   * Updates the global search filter.
-   * Also synchronizes with SpacesDashboardUtils for consistency.
-   */
+  /** Updates the global search filter and keeps SpacesDashboardUtils in sync. */
   onGlobalChange(value: string): void {
     this.globalFilter.set(value);
     this.spacesDashboardUtils.globalFilter.set(value);
   }
 
-  /**
-   * Updates a specific filter field.
-   * Delegates to SpacesDashboardUtils for the actual filtering logic.
-   */
+  /** Updates a single legacy filter field (status migrates to multi). */
   onFilter(field: 'name' | 'status', value: string | null | undefined): void {
     if (field === 'status') {
-      this.statusFilter.set(value ?? null);
+      this.statusFilter.set(value ? [value] : []);
     }
     this.spacesDashboardUtils.onFilter(field, value);
   }
 
-  /**
-   * Toggles the "Modified Only" filter.
-   */
+  /** Toggles the "Modified Only" filter (client-side overlay). */
   onModifiedOnlyChange(value: boolean): void {
     this.modifiedOnlyFilter.set(value);
   }
 
   /**
-   * Handles custom sort event from PrimeNG table.
-   * Updates sort field and order signals to trigger sortedSpaces() recomputation.
+   * Handles a PrimeNG header sort event by mapping its field to a criterion.
+   * Maps the legacy 'piiCount' header to the 'severityScore' criterion.
    */
   onCustomSort(event: SortEvent): void {
     if (!event.field) {
+      this.sortCriterion.set(null);
       this.sortField.set(null);
       this.sortOrder.set(1);
       return;
     }
-
     this.sortField.set(event.field);
     this.sortOrder.set(event.order ?? 1);
+    this.sortCriterion.set(event.field === 'piiCount' ? 'severityScore' : event.field);
   }
 
-  /**
-   * Resets all filters and sorting to their default state.
-   */
+  /** Sets the active sort criterion (and resets the legacy field). */
+  setSortCriterion(criterion: string | null, order: number = -1): void {
+    this.sortCriterion.set(criterion);
+    this.sortOrder.set(order);
+    this.sortField.set(null);
+  }
+
+  /** Toggles the ascending/descending order. */
+  toggleSortOrder(): void {
+    this.sortOrder.update(o => (o === 1 ? -1 : 1));
+  }
+
+  /** Resets all filter, search and sort state (triggers a fresh server fetch). */
   reset(): void {
     this.globalFilter.set('');
-    this.statusFilter.set(null);
+    this.piiTypeFilter.set([]);
+    this.severityFilter.set([]);
+    this.statusFilter.set([]);
+    this.modifiedOnlyFilter.set(false);
+    this.sortCriterion.set(null);
     this.sortField.set(null);
     this.sortOrder.set(1);
-    this.modifiedOnlyFilter.set(false);
     this.spacesDashboardUtils.globalFilter.set('');
-    this.onFilter('status', null);
+    this.spacesDashboardUtils.onFilter('status', null);
   }
 }

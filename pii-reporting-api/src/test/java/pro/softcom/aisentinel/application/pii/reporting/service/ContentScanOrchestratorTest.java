@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
@@ -17,6 +18,7 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -47,6 +49,9 @@ class ContentScanOrchestratorTest {
     @Mock
     private ScanSeverityCountService scanSeverityCountService;
 
+    @Mock
+    private ScanPiiTypeCountService scanPiiTypeCountService;
+
     private ContentScanOrchestrator orchestrator;
 
     @BeforeEach
@@ -58,7 +63,8 @@ class ContentScanOrchestratorTest {
                 scanEventStore,
                 scanEventDispatcher,
                 severityCalculationService,
-                scanSeverityCountService
+                scanSeverityCountService,
+                scanPiiTypeCountService
         );
     }
 
@@ -147,6 +153,50 @@ class ContentScanOrchestratorTest {
             verify(severityCalculationService).aggregateCounts(detectedEntities);
             verify(scanSeverityCountService).incrementCounts(scanId, spaceKey, calculatedCounts);
             verify(scanEventStore).append(event);
+        }
+
+        @Test
+        @DisplayName("Should_PersistPiiTypeCounts_When_EventHasTypeCounts")
+        void Should_PersistPiiTypeCounts_When_EventHasTypeCounts() {
+            // Given
+            String scanId = "scan-type";
+            String spaceKey = "TYPE";
+            Map<String, Integer> typeCounts = Map.of("EMAIL", 2, "IBAN_CODE", 1);
+
+            ConfluenceContentScanResult event = ConfluenceContentScanResult.builder()
+                    .scanId(scanId)
+                    .spaceKey(spaceKey)
+                    .eventType("item")
+                    .pageId("page-1")
+                    .nbOfDetectedPIIByType(typeCounts)
+                    .analysisProgressPercentage(50.0)
+                    .build();
+
+            // When
+            orchestrator.persistEventAsyncOperations(event);
+
+            // Then
+            verify(scanPiiTypeCountService).incrementCounts(scanId, spaceKey, typeCounts);
+        }
+
+        @Test
+        @DisplayName("Should_NotPersistPiiTypeCounts_When_TypeCountsEmpty")
+        void Should_NotPersistPiiTypeCounts_When_TypeCountsEmpty() {
+            // Given
+            ConfluenceContentScanResult event = ConfluenceContentScanResult.builder()
+                    .scanId("scan-empty")
+                    .spaceKey("EMPTY")
+                    .eventType("item")
+                    .pageId("page-1")
+                    .nbOfDetectedPIIByType(Map.of())
+                    .analysisProgressPercentage(50.0)
+                    .build();
+
+            // When
+            orchestrator.persistEventAsyncOperations(event);
+
+            // Then
+            verifyNoInteractions(scanPiiTypeCountService);
         }
 
         @Test

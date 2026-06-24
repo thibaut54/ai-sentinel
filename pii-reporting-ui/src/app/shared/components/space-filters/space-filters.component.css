@@ -1,29 +1,125 @@
 .space-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  margin-bottom: 0.75rem;
 }
 
 .filter-item {
   min-width: 0;
 }
 
+.filter-search {
+  flex: 1 1 12rem;
+  max-width: 18rem;
+}
+
 .search-global {
   width: 100%;
 }
 
-.filter-item p-select {
+.filter-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.filter-summary {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spaces-counter {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* Item template inside the dropdown overlays */
+.filter-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   width: 100%;
+}
+
+.filter-option--disabled {
+  opacity: 0.5;
+}
+
+.filter-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.filter-option-label {
+  font-weight: 500;
+}
+
+.filter-option-subtitle {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.filter-option-badge {
+  font-size: 0.72rem;
+  border-radius: 0.75rem;
+  padding: 0.05rem 0.5rem;
+  background: var(--p-surface-200, #e9ecef);
+  white-space: nowrap;
+}
+
+.filter-clear-btn {
+  width: 100%;
+  padding: 0.4rem;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  color: #111827;
+  font-size: 0.85rem;
+}
+
+.filter-clear-btn:hover {
+  text-decoration: underline;
+}
+
+/* "Reset all" button: black on white (outlined) */
+:host ::ng-deep .btn-bw {
+  color: #111827 !important;
+  background: #fff !important;
+  border-color: #111827 !important;
+}
+
+:host ::ng-deep .btn-bw:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+:host ::ng-deep .btn-bw .p-button-icon {
+  color: #111827 !important;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .space-filters {
     flex-direction: column;
+    align-items: stretch;
     gap: 0.75rem;
   }
 
-  .filter-item {
+  .filter-item,
+  .filter-search {
     width: 100%;
+    max-width: none;
+  }
+
+  .filter-summary {
+    margin-left: 0;
+    justify-content: space-between;
   }
 }

@@ -75,7 +75,36 @@
     },
     "filters": {
       "modifiedOnly": "Show only modified spaces",
-      "modifiedOnlyLabel": "Spaces to rescan"
+      "modifiedOnlyLabel": "Spaces to rescan",
+      "piiType": {
+        "placeholder": "PII type"
+      },
+      "severity": {
+        "placeholder": "Severity"
+      },
+      "status": {
+        "placeholder": "Status"
+      },
+      "severityCritical": "Critical",
+      "severityModerate": "Moderate",
+      "severityLow": "Low",
+      "selectedItems": "{0} selected",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "resetAll": "Reset all",
+      "spacesCounter": "{{shown}} / {{total}} spaces",
+      "occUnit": "occurrences",
+      "emptyState": "No space matches the selected filters.",
+      "sort": {
+        "trigger": "Sort",
+        "byAttribute": "Space attributes",
+        "byType": "By PII type",
+        "totalDetections": "Total detections",
+        "severityScore": "Severity score",
+        "lastScan": "Last scan",
+        "name": "Name",
+        "toggleOrder": "Toggle sort order"
+      }
     },
     "notifications": {
       "confluenceConfig": {

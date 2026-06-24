@@ -1,5 +1,5 @@
 import { Injectable, NgZone, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { Space } from '../models/space';
@@ -33,13 +33,48 @@ export interface SpaceSummaryDto {
   attachmentsDone: number;
   lastEventTs: string;
   severityCounts: { high: number; medium: number; low: number; total: number; } | null;
+  /** Human-readable space name as known by the backend (optional, additive). */
+  spaceName?: string;
+  /**
+   * PII type code -> occurrence count for this space in the latest scan.
+   * Always an empty object (never null) when there are no detections.
+   */
+  piiTypeCounts?: Record<string, number>;
+}
+
+/** Bi-level facet counter for one filter option (server-computed, contextual). */
+export interface FacetCount {
+  nbSpaces: number;
+  totalOccurrences: number;
+}
+
+/** Server-computed facet counts for each filter axis. */
+export interface DashboardFacets {
+  piiTypes: Record<string, FacetCount>;
+  severities: Record<string, FacetCount>;
+  statuses: Record<string, FacetCount>;
 }
 
 export interface ScanReportingSummaryDto {
   scanId: string;
   lastUpdated: string;
+  /** Total number of spaces BEFORE filtering (for the "X / Y" counter). */
   spacesCount: number;
+  /** Spaces after server-side filter + search + sort. */
   spaces: SpaceSummaryDto[];
+  /** Contextual facet counts; absent on legacy/unfiltered responses. */
+  facets?: DashboardFacets;
+}
+
+/** Query parameters for server-side dashboard filtering / sorting / search. */
+export interface DashboardFilterParams {
+  piiTypes?: string[];
+  severities?: string[];
+  statuses?: string[];
+  q?: string;
+  /** name | totalDetections | severityScore | lastScan | piiType:<CODE> */
+  sort?: string;
+  order?: 'asc' | 'desc';
 }
 
 export interface ScanFailedItemDto {
@@ -188,20 +223,45 @@ export class SentinelleApiService {
    * with aggregated counters from events. Replaces separate getLastScanSpaceStatuses()
    * and getLastScanItems() calls to avoid race conditions.
    */
-  getDashboardSpacesSummary(): Observable<ScanReportingSummaryDto | null> {
+  getDashboardSpacesSummary(filter?: DashboardFilterParams): Observable<ScanReportingSummaryDto | null> {
+    const params = this.buildDashboardFilterParams(filter);
     return new Observable<ScanReportingSummaryDto | null>((observer) => {
-      const sub = this.http.get<ScanReportingSummaryDto>('/api/v1/scans/dashboard/spaces-summary').subscribe({
-        next: (summary) => {
-          observer.next(summary ?? null);
-          observer.complete();
-        },
-        error: () => {
-          observer.next(null);
-          observer.complete();
-        }
-      });
+      const sub = this.http
+        .get<ScanReportingSummaryDto>('/api/v1/scans/dashboard/spaces-summary', { params })
+        .subscribe({
+          next: (summary) => {
+            observer.next(summary ?? null);
+            observer.complete();
+          },
+          error: () => {
+            observer.next(null);
+            observer.complete();
+          }
+        });
       return () => sub.unsubscribe();
     });
+  }
+
+  /** Builds the query params for the dashboard endpoint; empty axes are omitted. */
+  private buildDashboardFilterParams(filter?: DashboardFilterParams): HttpParams {
+    let params = new HttpParams();
+    if (!filter) {
+      return params;
+    }
+    const csv = (values?: string[]): string | null =>
+      values && values.length > 0 ? values.join(',') : null;
+    const piiTypes = csv(filter.piiTypes);
+    const severities = csv(filter.severities);
+    const statuses = csv(filter.statuses);
+    if (piiTypes) params = params.set('piiTypes', piiTypes);
+    if (severities) params = params.set('severities', severities);
+    if (statuses) params = params.set('statuses', statuses);
+    if (filter.q) params = params.set('q', filter.q);
+    if (filter.sort) {
+      params = params.set('sort', filter.sort);
+      params = params.set('order', filter.order ?? 'desc');
+    }
+    return params;
   }
 
   /**

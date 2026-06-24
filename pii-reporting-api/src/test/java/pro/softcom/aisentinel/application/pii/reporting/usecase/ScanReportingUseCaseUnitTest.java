@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
+import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
+import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -36,11 +40,21 @@ class ScanReportingUseCaseUnitTest {
     @Mock
     private ScanCheckpointRepository checkpointRepo;
 
+    @Mock
+    private ConfluenceSpaceRepository spaceRepository;
+
+    @Mock
+    private ScanSeverityCountService severityCountService;
+
+    @Mock
+    private ScanPiiTypeCountService piiTypeCountService;
+
     private ScanReportingUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new ScanReportingUseCase(scanResultQuery, checkpointRepo);
+        useCase = new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository,
+                severityCountService, piiTypeCountService);
     }
 
     @Nested
@@ -180,13 +194,14 @@ class ScanReportingUseCaseUnitTest {
     class GetGlobalScanSummary {
 
         @Test
-        @DisplayName("Should_ReturnEmpty_When_NoLatestCheckpoints")
-        void Should_ReturnEmpty_When_NoLatestCheckpoints() {
+        @DisplayName("Should_ReturnEmpty_When_NoCheckpointsAndNoSpaces")
+        void Should_ReturnEmpty_When_NoCheckpointsAndNoSpaces() {
             // Arrange
             when(checkpointRepo.findAllLatestCheckpoints()).thenReturn(List.of());
+            when(spaceRepository.findAll()).thenReturn(List.of());
 
             // Act
-            var result = useCase.getGlobalScanSummary();
+            var result = useCase.getGlobalScanSummary(DashboardFilterCriteria.none());
 
             // Assert
             assertThat(result).isEmpty();

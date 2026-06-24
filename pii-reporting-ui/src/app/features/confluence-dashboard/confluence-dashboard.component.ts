@@ -7,8 +7,6 @@ import { PiiPageCardComponent } from '../pii-page-card/pii-page-card.component';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ToggleButtonModule } from 'primeng/togglebutton';
 import { BadgeModule } from 'primeng/badge';
-import { InputTextModule } from 'primeng/inputtext';
-import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { SpacesDashboardUtils } from './spaces-dashboard.utils';
@@ -30,6 +28,8 @@ import { ScanControlService } from './services/scan-control.service';
 import { SeverityCardsComponent } from '../severity-cards/severity-cards.component';
 import { SeverityCounts } from '../../core/models/severity-counts';
 import { SpaceScanStatsPopoverComponent } from './components/space-scan-stats-popover/space-scan-stats-popover.component';
+import { SpaceFiltersComponent } from '../../shared/components/space-filters/space-filters.component';
+import { FilterUrlStateService } from './services/filter-url-state.service';
 
 /**
  * Confluence source dashboard - displays spaces table with PII scan results.
@@ -48,8 +48,6 @@ import { SpaceScanStatsPopoverComponent } from './components/space-scan-stats-po
         ToggleButtonModule,
         PiiPageCardComponent,
         BadgeModule,
-        InputTextModule,
-        SelectModule,
         TableModule,
         TagModule,
         Ripple,
@@ -61,7 +59,8 @@ import { SpaceScanStatsPopoverComponent } from './components/space-scan-stats-po
         ConfluenceConfigBannerComponent,
         ScanProgressBarComponent,
         SeverityCardsComponent,
-        SpaceScanStatsPopoverComponent
+        SpaceScanStatsPopoverComponent,
+        SpaceFiltersComponent
     ],
   templateUrl: './confluence-dashboard.component.html',
   styleUrl: './confluence-dashboard.component.css',
@@ -75,6 +74,8 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   private readonly dataManagement = inject(SpaceDataManagementService);
   private readonly scanControl = inject(ScanControlService);
   private readonly confluenceConfigService = inject(ConfluenceConnectionConfigService);
+  // Activates URL <-> filter-state synchronization for the dashboard.
+  private readonly filterUrlState = inject(FilterUrlStateService);
 
   // Utility services
   readonly spacesDashboardUtils = inject(SpacesDashboardUtils);
@@ -101,11 +102,9 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
   // ===== Computed signals exposing service state to template =====
 
   // Filtering & Sorting
-  readonly globalFilter = computed(() => this.filteringService.globalFilter());
-  readonly statusFilter = computed(() => this.filteringService.statusFilter());
   readonly modifiedOnlyFilter = computed(() => this.filteringService.modifiedOnlyFilter());
   readonly sortedSpaces = computed(() => this.filteringService.sortedSpaces());
-  readonly statusOptions = computed(() => this.filteringService.statusOptions());
+  readonly isResettable = computed(() => this.filteringService.isResettable());
 
   // UI State
   readonly expandedRowKeys = computed(() => this.uiStateService.expandedRowKeys());
@@ -223,12 +222,9 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
     this.scanControl.purgeAllData();
   }
 
-  onGlobalChange(value: string): void {
-    this.filteringService.onGlobalChange(value);
-  }
-
-  onFilter(field: 'name' | 'status', value: string | null | undefined): void {
-    this.filteringService.onFilter(field, value);
+  /** Resets all filters, search and sort (used by the empty-state invite). */
+  resetFilters(): void {
+    this.filteringService.reset();
   }
 
   onModifiedOnlyChange(value: boolean): void {

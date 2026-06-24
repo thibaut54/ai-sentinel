@@ -75,7 +75,36 @@
     },
     "filters": {
       "modifiedOnly": "Afficher uniquement les espaces modifiés depuis le dernier scan",
-      "modifiedOnlyLabel": "Espaces à rescanner"
+      "modifiedOnlyLabel": "Espaces à rescanner",
+      "piiType": {
+        "placeholder": "Type d'IPI"
+      },
+      "severity": {
+        "placeholder": "Sévérité"
+      },
+      "status": {
+        "placeholder": "Statut"
+      },
+      "severityCritical": "Critique",
+      "severityModerate": "Modéré",
+      "severityLow": "Faible",
+      "selectedItems": "{0} sélectionné(s)",
+      "selectAll": "Tout sélectionner",
+      "clear": "Effacer",
+      "resetAll": "Réinitialiser tout",
+      "spacesCounter": "{{shown}} / {{total}} espaces",
+      "occUnit": "occurrences",
+      "emptyState": "Aucun espace ne correspond aux filtres sélectionnés.",
+      "sort": {
+        "trigger": "Trier",
+        "byAttribute": "Attributs de l'espace",
+        "byType": "Par type de PII",
+        "totalDetections": "Total détections",
+        "severityScore": "Score de sévérité",
+        "lastScan": "Dernier scan",
+        "name": "Nom",
+        "toggleOrder": "Inverser l'ordre de tri"
+      }
     },
     "notifications": {
       "confluenceConfig": {

@@ -16,8 +16,13 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
+import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
+import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
@@ -28,8 +33,12 @@ import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionMetadata;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import pro.softcom.aisentinel.domain.pii.security.PiiAuditRecord;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanPiiTypeCountRepository;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.JpaScanResultQueryAdapter;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.ScanCheckpointPersistenceAdapter;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.ScanPiiTypeCountPersistenceAdapter;
+import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.ScanSeverityCountPersistenceAdapter;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionCheckpointRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.DetectionEventRepository;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entity.ScanEventEntity;
@@ -37,6 +46,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entit
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,6 +56,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import({
     JpaScanResultQueryAdapter.class,
     ScanCheckpointPersistenceAdapter.class,
+    ScanSeverityCountPersistenceAdapter.class,
+    ScanPiiTypeCountPersistenceAdapter.class,
     ScanReportingUseCaseTest.TestEncryptionConfig.class
 })
 class ScanReportingUseCaseTest {
@@ -77,9 +89,35 @@ class ScanReportingUseCaseTest {
     @Autowired
     private ScanCheckpointRepository scanCheckpointRepository;
 
+    @Autowired
+    private ScanSeverityCountRepository scanSeverityCountRepository;
+
+    @Autowired
+    private ScanPiiTypeCountRepository scanPiiTypeCountRepository;
+
     private ScanReportingUseCase scanReportingUseCase;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * In-test stub returning no spaces; space-name enrichment is exercised in unit tests.
+     */
+    private final ConfluenceSpaceRepository spaceRepository = new ConfluenceSpaceRepository() {
+        @Override
+        public List<ConfluenceSpace> findAll() {
+            return List.of();
+        }
+
+        @Override
+        public Optional<ConfluenceSpace> findByKey(String key) {
+            return Optional.empty();
+        }
+
+        @Override
+        public void saveAll(List<ConfluenceSpace> spaces) {
+            // no-op for tests
+        }
+    };
 
     @TestConfiguration
     static class TestEncryptionConfig {
@@ -134,7 +172,11 @@ class ScanReportingUseCaseTest {
 
     @BeforeEach
     void cleanDb() {
-        scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository);
+        ScanSeverityCountService severityCountService = new ScanSeverityCountService(scanSeverityCountRepository);
+        ScanPiiTypeCountService piiTypeCountService = new ScanPiiTypeCountService(scanPiiTypeCountRepository);
+        scanReportingUseCase = new ScanReportingUseCase(
+            scanResultQuery, scanCheckpointRepository, spaceRepository,
+            severityCountService, piiTypeCountService);
         detectionCheckpointRepository.deleteAll();
         detectionEventRepository.deleteAll();
     }
@@ -418,7 +460,7 @@ class ScanReportingUseCaseTest {
         scanCheckpointRepository.save(cp2);
 
         // Act
-        var summary = scanReportingUseCase.getGlobalScanSummary();
+        var summary = scanReportingUseCase.getGlobalScanSummary(DashboardFilterCriteria.none());
 
         // Assert
         assertThat(summary).isPresent();
