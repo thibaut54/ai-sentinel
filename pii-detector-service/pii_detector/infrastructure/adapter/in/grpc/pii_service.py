@@ -779,6 +779,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'regex_enabled': db_config.get('regex_enabled', False),
                 'openmed_enabled': db_config.get('openmed_enabled', False),
                 'gliner2_enabled': db_config.get('gliner2_enabled', False),
+                'ministral_enabled': db_config.get('ministral_enabled', False),
+                # Ministral-PII chunking knobs (forwarded to the detector's
+                # detect_pii via _build_detection_kwargs when supported).
+                'ministral_chunk_size': db_config.get('ministral_chunk_size'),
+                'ministral_overlap': db_config.get('ministral_overlap'),
+                # Structural only: Ministral-PII is permanently exempt from the
+                # LLM-as-judge (same model nature); read for completeness but it
+                # never routes the judge (absent from _JUDGE_FLAG_TO_SOURCE).
+                'ministral_judge_enabled': db_config.get('ministral_judge_enabled', False),
                 'llm_judge_enabled': db_config.get('llm_judge_enabled', False),
                 'prefilter_enabled': db_config.get('prefilter_enabled', False),
                 # Per-detector LLM-judge routing: which detector sources the
@@ -799,6 +808,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"regex={detector_flags['regex_enabled']}, "
                 f"openmed={detector_flags['openmed_enabled']}, "
                 f"gliner2={detector_flags['gliner2_enabled']}, "
+                f"ministral={detector_flags['ministral_enabled']}, "
                 f"llm_judge={detector_flags['llm_judge_enabled']}, "
                 f"prefilter={detector_flags['prefilter_enabled']}, "
                 f"chunk_size={chunk_size}"
@@ -948,6 +958,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 kwargs['enable_openmed'] = detector_flags.get('openmed_enabled')
             if 'enable_gliner2' in sig.parameters:
                 kwargs['enable_gliner2'] = detector_flags.get('gliner2_enabled')
+            if 'enable_ministral' in sig.parameters:
+                kwargs['enable_ministral'] = detector_flags.get('ministral_enabled')
 
         return kwargs
     

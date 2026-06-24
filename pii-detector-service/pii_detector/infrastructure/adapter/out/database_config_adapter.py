@@ -77,6 +77,10 @@ class DatabaseConfigAdapter:
                     regex_enabled,
                     COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
                     COALESCE(gliner2_enabled, FALSE) AS gliner2_enabled,
+                    COALESCE(ministral_enabled, FALSE) AS ministral_enabled,
+                    COALESCE(ministral_chunk_size, 1024) AS ministral_chunk_size,
+                    COALESCE(ministral_overlap, 128) AS ministral_overlap,
+                    COALESCE(ministral_judge_enabled, FALSE) AS ministral_judge_enabled,
                     default_threshold,
                     nb_of_label_by_pass,
                     llm_judge_enabled,
@@ -100,9 +104,10 @@ class DatabaseConfigAdapter:
                 # stays usable on a freshly-pulled environment before Hibernate
                 # DDL update.
                 logger.warning(
-                    "openmed_enabled / gliner2_enabled / llm_judge_enabled / "
-                    "prefilter_enabled column missing in pii_detection_config; "
-                    "falling back on defaults (false). Apply migration to enable."
+                    "openmed_enabled / gliner2_enabled / ministral_enabled / "
+                    "llm_judge_enabled / prefilter_enabled column missing in "
+                    "pii_detection_config; falling back on defaults (false). "
+                    "Apply migration to enable."
                 )
                 connection.rollback()
                 cursor.execute(
@@ -113,6 +118,9 @@ class DatabaseConfigAdapter:
                         regex_enabled,
                         FALSE AS openmed_enabled,
                         FALSE AS gliner2_enabled,
+                        FALSE AS ministral_enabled,
+                        1024 AS ministral_chunk_size,
+                        128 AS ministral_overlap,
                         default_threshold,
                         nb_of_label_by_pass
                     FROM pii_detection_config
@@ -140,6 +148,24 @@ class DatabaseConfigAdapter:
             config.setdefault("gliner2_enabled", False)
             if config["gliner2_enabled"] is None:
                 config["gliner2_enabled"] = False
+            # Ministral-PII detector flag + chunking knobs (added by migration
+            # 013). Absent / NULL -> the documented defaults so a pre-migration
+            # DB stays usable and the detector stays a no-op until opted in.
+            config.setdefault("ministral_enabled", False)
+            if config["ministral_enabled"] is None:
+                config["ministral_enabled"] = False
+            config.setdefault("ministral_chunk_size", 1024)
+            if config["ministral_chunk_size"] is None:
+                config["ministral_chunk_size"] = 1024
+            config.setdefault("ministral_overlap", 128)
+            if config["ministral_overlap"] is None:
+                config["ministral_overlap"] = 128
+            # Structural column: Ministral-PII is permanently exempt from the
+            # LLM-as-judge (same model nature), so this flag is read for
+            # completeness but never routes the judge.
+            config.setdefault("ministral_judge_enabled", False)
+            if config["ministral_judge_enabled"] is None:
+                config["ministral_judge_enabled"] = False
             # Per-detector LLM-judge routing flags (added by migration 012).
             # Absent / NULL -> False so a pre-migration DB audits nothing extra
             # and the judge stays a no-op until an operator opts a detector in.
@@ -160,6 +186,7 @@ class DatabaseConfigAdapter:
                 f"regex={config['regex_enabled']}, "
                 f"openmed={config['openmed_enabled']}, "
                 f"gliner2={config['gliner2_enabled']}, "
+                f"ministral={config['ministral_enabled']}, "
                 f"threshold={config['default_threshold']}, "
                 f"llm_judge={config['llm_judge_enabled']}, "
                 f"prefilter={config['prefilter_enabled']}"

@@ -61,11 +61,13 @@ class CompositePIIDetector:
         presidio_detector: Optional[PresidioDetector] = None,
         openmed_detector: Optional[PIIDetectorProtocol] = None,
         gliner2_detector: Optional[PIIDetectorProtocol] = None,
+        ministral_detector: Optional[PIIDetectorProtocol] = None,
         merger: Optional[DetectionMerger] = None,
         enable_regex: bool = True,
         enable_presidio: bool = True,
         enable_openmed: bool = False,
-        enable_gliner2: bool = False
+        enable_gliner2: bool = False,
+        enable_ministral: bool = False
     ):
         """
         Initialize composite detector.
@@ -76,11 +78,13 @@ class CompositePIIDetector:
             presidio_detector: Presidio-based detector
             openmed_detector: OpenMed Privacy Filter Multilingual detector (optional, opt-in)
             gliner2_detector: GLiNER2 detector (optional, opt-in ensemble source)
+            ministral_detector: Ministral-PII LLM detector (optional, opt-in ensemble source)
             merger: Detection merger for result fusion
             enable_regex: Enable regex detection (default: True)
             enable_presidio: Enable Presidio detection (default: True)
             enable_openmed: Enable OpenMed detection (default: False, opt-in per DB flag)
             enable_gliner2: Enable GLiNER2 detection (default: False, opt-in per DB flag)
+            enable_ministral: Enable Ministral-PII detection (default: False, opt-in per DB flag)
         """
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -108,6 +112,11 @@ class CompositePIIDetector:
         self.gliner2_detector = gliner2_detector
         self.enable_gliner2 = enable_gliner2 and self.gliner2_detector is not None
 
+        # Initialize Ministral-PII detector slot (opt-in, ensemble source —
+        # specialised LLM extractor, disabled by default per DB flag)
+        self.ministral_detector = ministral_detector
+        self.enable_ministral = enable_ministral and self.ministral_detector is not None
+
         # Initialize merger
         self._merger = merger or DetectionMerger(log_provenance=True)
 
@@ -117,7 +126,8 @@ class CompositePIIDetector:
             f"Regex={'enabled' if self.enable_regex else 'disabled'}, "
             f"Presidio={'enabled' if self.enable_presidio else 'disabled'}, "
             f"OpenMed={'enabled' if self.enable_openmed else 'disabled'}, "
-            f"GLiNER2={'enabled' if self.enable_gliner2 else 'disabled'}"
+            f"GLiNER2={'enabled' if self.enable_gliner2 else 'disabled'}, "
+            f"Ministral={'enabled' if self.enable_ministral else 'disabled'}"
         )
     
     def _init_regex_detector(
@@ -187,6 +197,12 @@ class CompositePIIDetector:
             except Exception as e:
                 self.logger.warning(f"GLiNER2 detector download failed: {e}")
 
+        if self.ministral_detector and self.enable_ministral:
+            try:
+                self.ministral_detector.download_model()  # No-op for remote endpoint
+            except Exception as e:
+                self.logger.warning(f"Ministral detector download failed: {e}")
+
     def load_model(self) -> None:
         """Load models for all underlying detectors."""
         if self.ml_detector:
@@ -220,7 +236,16 @@ class CompositePIIDetector:
                 # (e.g. gliner2 lib absent). It will be skipped at request time.
                 self.logger.error(f"GLiNER2 detector load failed: {e}")
                 self.enable_gliner2 = False
-    
+
+        if self.ministral_detector and self.enable_ministral:
+            try:
+                self.ministral_detector.load_model()  # No-op for remote endpoint
+            except Exception as e:
+                # Do not block other detectors if Ministral fails to load.
+                # It will be skipped at request time.
+                self.logger.error(f"Ministral detector load failed: {e}")
+                self.enable_ministral = False
+
     def detect_pii(
         self,
         text: str,
@@ -230,6 +255,7 @@ class CompositePIIDetector:
         enable_presidio: Optional[bool] = None,
         enable_openmed: Optional[bool] = None,
         enable_gliner2: Optional[bool] = None,
+        enable_ministral: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None
     ) -> List[PIIEntity]:
@@ -260,7 +286,7 @@ class CompositePIIDetector:
         """
         entities, _stats = self.detect_pii_with_stats(
             text, threshold, enable_ml, enable_regex, enable_presidio,
-            enable_openmed, enable_gliner2, pii_type_configs, chunk_size,
+            enable_openmed, enable_gliner2, enable_ministral, pii_type_configs, chunk_size,
         )
         return entities
 
@@ -273,6 +299,7 @@ class CompositePIIDetector:
         enable_presidio: Optional[bool] = None,
         enable_openmed: Optional[bool] = None,
         enable_gliner2: Optional[bool] = None,
+        enable_ministral: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None,
     ) -> Tuple[List[PIIEntity], List[Dict]]:
@@ -294,14 +321,16 @@ class CompositePIIDetector:
         if not text:
             return [], []
 
-        use_ml, use_regex, use_presidio, use_openmed, use_gliner2 = self._resolve_detector_flags(
-            enable_ml, enable_regex, enable_presidio, enable_openmed, enable_gliner2
+        use_ml, use_regex, use_presidio, use_openmed, use_gliner2, use_ministral = self._resolve_detector_flags(
+            enable_ml, enable_regex, enable_presidio, enable_openmed, enable_gliner2, enable_ministral
         )
-        self._log_active_detectors(use_ml, use_regex, use_presidio, use_openmed, use_gliner2)
+        self._log_active_detectors(
+            use_ml, use_regex, use_presidio, use_openmed, use_gliner2, use_ministral
+        )
 
         results_per_detector, stats = self._collect_detection_results(
             text, threshold, use_ml, use_regex, use_presidio, use_openmed, use_gliner2,
-            pii_type_configs, chunk_size
+            use_ministral, pii_type_configs, chunk_size
         )
 
         if not results_per_detector:
@@ -319,18 +348,21 @@ class CompositePIIDetector:
         enable_presidio: Optional[bool],
         enable_openmed: Optional[bool] = None,
         enable_gliner2: Optional[bool] = None,
-    ) -> Tuple[bool, bool, bool, bool, bool]:
+        enable_ministral: Optional[bool] = None,
+    ) -> Tuple[bool, bool, bool, bool, bool, bool]:
         """Resolve runtime overrides into concrete detector activation flags."""
         use_ml = enable_ml if enable_ml is not None else (self.ml_detector is not None)
         use_regex = enable_regex if enable_regex is not None else self.enable_regex
         use_presidio = enable_presidio if enable_presidio is not None else self.enable_presidio
         use_openmed = enable_openmed if enable_openmed is not None else self.enable_openmed
         use_gliner2 = enable_gliner2 if enable_gliner2 is not None else self.enable_gliner2
-        return use_ml, use_regex, use_presidio, use_openmed, use_gliner2
+        use_ministral = enable_ministral if enable_ministral is not None else self.enable_ministral
+        return use_ml, use_regex, use_presidio, use_openmed, use_gliner2, use_ministral
 
     def _log_active_detectors(
         self, use_ml: bool, use_regex: bool, use_presidio: bool,
-        use_openmed: bool = False, use_gliner2: bool = False
+        use_openmed: bool = False, use_gliner2: bool = False,
+        use_ministral: bool = False
     ) -> None:
         """Log which detectors are active for debugging."""
         if not self.logger.isEnabledFor(logging.DEBUG):
@@ -342,6 +374,7 @@ class CompositePIIDetector:
                 (use_presidio, "Presidio"),
                 (use_openmed, "OpenMed"),
                 (use_gliner2, "GLiNER2"),
+                (use_ministral, "Ministral"),
             ] if flag
         ]
         self.logger.debug("Detecting PII with active detectors: %s", ', '.join(names) or 'NONE')
@@ -355,6 +388,7 @@ class CompositePIIDetector:
         use_presidio: bool,
         use_openmed: bool,
         use_gliner2: bool,
+        use_ministral: bool,
         pii_type_configs: Optional[dict],
         chunk_size: Optional[int],
     ) -> Tuple[List[Tuple[PIIDetectorProtocol, List[PIIEntity]]], List[Dict]]:
@@ -394,6 +428,9 @@ class CompositePIIDetector:
         if use_gliner2 and self.gliner2_detector:
             _run(self.gliner2_detector, DetectorSource.GLINER2,
                  lambda: self._run_gliner2_detection(text, threshold, pii_type_configs))
+        if use_ministral and self.ministral_detector:
+            _run(self.ministral_detector, DetectorSource.MINISTRAL,
+                 lambda: self._run_ministral_detection(text, threshold, pii_type_configs, chunk_size))
         return results, stats
 
     def _log_detection_summary(
@@ -418,6 +455,8 @@ class CompositePIIDetector:
             return "OpenMed"
         if detector is self.gliner2_detector:
             return "GLiNER2"
+        if detector is self.ministral_detector:
+            return "Ministral"
         return "Unknown"
 
     def _log_per_detector_counts(
@@ -431,6 +470,7 @@ class CompositePIIDetector:
             self.presidio_detector: 0,
             self.openmed_detector: 0,
             self.gliner2_detector: 0,
+            self.ministral_detector: 0,
         }
         for detector, entities in results_per_detector:
             if detector in counts:
@@ -440,7 +480,8 @@ class CompositePIIDetector:
             f"(ML: {counts[self.ml_detector]}, Regex: {counts[self.regex_detector]}, "
             f"Presidio: {counts[self.presidio_detector]}, "
             f"OpenMed: {counts[self.openmed_detector]}, "
-            f"GLiNER2: {counts[self.gliner2_detector]})"
+            f"GLiNER2: {counts[self.gliner2_detector]}, "
+            f"Ministral: {counts[self.ministral_detector]})"
         )
 
     def _log_parity_debug(
@@ -657,6 +698,37 @@ class CompositePIIDetector:
         )
         self.gliner2_detector.load_model()
 
+    def _run_ministral_detection(
+        self,
+        text: str,
+        threshold: Optional[float],
+        pii_type_configs: Optional[dict] = None,
+        chunk_size: Optional[int] = None,
+    ) -> List[PIIEntity]:
+        """Run Ministral-PII detection with graceful degradation.
+
+        Returns an empty list (never raises) so a Ministral failure (e.g. the
+        remote LM Studio endpoint being unreachable) does not bring down the
+        whole request. ``pii_type_configs`` and ``chunk_size`` are forwarded only
+        when the detector's ``detect_pii`` declares them (signature inspection).
+        """
+        try:
+            import inspect
+            sig = inspect.signature(self.ministral_detector.detect_pii)
+            kwargs: dict = {}
+            if 'pii_type_configs' in sig.parameters:
+                kwargs['pii_type_configs'] = pii_type_configs
+            if 'chunk_size' in sig.parameters and chunk_size is not None:
+                kwargs['chunk_size'] = chunk_size
+            return self.ministral_detector.detect_pii(text, threshold, **kwargs)
+        except Exception as e:
+            self.logger.error(
+                "MINISTRAL_DETECTION_FAILED text_len=%d threshold=%s: %s",
+                len(text) if text else 0, threshold, e,
+                exc_info=True,
+            )
+            return []
+
     def _run_presidio_detection(
         self, text: str, threshold: Optional[float]
     ) -> List[PIIEntity]:
@@ -862,6 +934,25 @@ def _create_gliner2_detector_if_available() -> Optional[PIIDetectorProtocol]:
         return None
 
 
+def _create_ministral_detector_if_available() -> Optional[PIIDetectorProtocol]:
+    """
+    Create a ``MinistralDetector`` instance. Always instantiated so it can be
+    toggled on at runtime via the ``ministral_enabled`` DB flag. Ministral-PII
+    is served by a remote OpenAI-compatible endpoint, so there is no local model
+    to load (``download_model`` / ``load_model`` are no-ops). Returns ``None`` if
+    instantiation fails, keeping startup resilient.
+    """
+    try:
+        from pii_detector.infrastructure.detector.ministral_detector import MinistralDetector
+
+        detector = MinistralDetector()
+        logger.debug("Created MinistralDetector instance (remote endpoint)")
+        return detector
+    except Exception as exc:
+        logger.warning(f"Failed to create MinistralDetector: {exc}")
+        return None
+
+
 def _load_gliner2_enabled_from_db() -> bool:
     """Read the ``gliner2_enabled`` kill-switch from the DB at startup.
 
@@ -899,6 +990,7 @@ def create_composite_detector(
     presidio_detector = _create_presidio_detector_if_enabled(presidio_enabled)
     openmed_detector = _create_openmed_detector_if_available()
     gliner2_detector = _create_gliner2_detector_if_available()
+    ministral_detector = _create_ministral_detector_if_available()
 
     # GLiNER2: load the model eagerly at startup when the DB kill-switch is
     # already ON, so the first request isn't penalised by a cold model load.
@@ -918,6 +1010,7 @@ def create_composite_detector(
         presidio_detector=presidio_detector,
         openmed_detector=openmed_detector,
         gliner2_detector=gliner2_detector,
+        ministral_detector=ministral_detector,
         merger=merger,
         enable_regex=regex_enabled and regex_detector is not None,
         enable_presidio=presidio_enabled and presidio_detector is not None,
@@ -926,6 +1019,9 @@ def create_composite_detector(
         # GLiNER2: enabled at startup only when the DB flag is already ON (eager
         # load); otherwise lazy on first use after a runtime toggle (D4 / RG6).
         enable_gliner2=gliner2_enabled_at_startup,
+        # Ministral-PII: disabled at startup, activated at request time via DB
+        # flag (remote endpoint, nothing to load eagerly).
+        enable_ministral=False,
     )
 
     return composite
