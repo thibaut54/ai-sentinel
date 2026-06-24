@@ -24,8 +24,8 @@ import java.math.BigDecimal;
  * @param openmedEnabled   Whether OpenMed detector should be enabled
  * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
  * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
- * @param ministralChunkSize  Sliding-window chunk size (characters) for the Ministral-PII detector (256-4096)
- * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector (0-512, less than the chunk size)
+ * @param ministralChunkSize  Sliding-window chunk size (tokens) for the Ministral-PII detector (256-4096)
+ * @param ministralOverlap    Sliding-window overlap (tokens) for the Ministral-PII detector (0-512, less than the chunk size)
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param nbOfLabelByPass     Maximum labels per detector batch
  * @param llmJudgeEnabled     Deprecated/ignored: the global guard is now derived server-side

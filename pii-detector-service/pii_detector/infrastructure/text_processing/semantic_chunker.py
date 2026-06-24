@@ -185,6 +185,20 @@ class FallbackChunker:
             chars_per_token: Approximate characters per token (default: 3 for safety)
             logger: Optional logger instance
         """
+        # Guard against a silently pathological configuration (overlap >= chunk
+        # would make windows re-scan more than they advance). Mirrors the guards
+        # in SemanticTextChunker / WhitespaceWordWindowChunker so a bad value
+        # fails loudly instead of producing degenerate, infinitely-overlapping
+        # chunks.
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
+        if overlap < 0:
+            raise ValueError(f"overlap ({overlap}) must be >= 0")
+        if overlap >= chunk_size:
+            raise ValueError(
+                f"chunk_size ({chunk_size}) must be greater than overlap ({overlap})"
+            )
+
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.chars_per_token = chars_per_token

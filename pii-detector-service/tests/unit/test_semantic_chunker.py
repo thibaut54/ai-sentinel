@@ -347,9 +347,24 @@ class TestFallbackChunker:
     def test_should_use_custom_chars_per_token(self):
         """Should use custom chars_per_token when provided."""
         chunker = FallbackChunker(chunk_size=768, overlap=100, chars_per_token=5)
-        
+
         assert chunker.chars_per_token == 5
         assert chunker.chunk_chars == 768 * 5
+
+    def test_should_raise_when_overlap_greater_or_equal_chunk_size(self):
+        """Should reject a pathological overlap >= chunk_size configuration."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=35, overlap=128)
+
+    def test_should_raise_when_chunk_size_not_positive(self):
+        """Should reject a non-positive chunk_size."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=0, overlap=0)
+
+    def test_should_raise_when_overlap_negative(self):
+        """Should reject a negative overlap."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=100, overlap=-1)
 
     def test_should_use_custom_logger_in_fallback(self, logger_mock):
         """Should use custom logger when provided."""

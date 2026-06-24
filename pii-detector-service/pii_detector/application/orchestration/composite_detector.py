@@ -257,7 +257,9 @@ class CompositePIIDetector:
         enable_gliner2: Optional[bool] = None,
         enable_ministral: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
-        chunk_size: Optional[int] = None
+        chunk_size: Optional[int] = None,
+        ministral_chunk_size: Optional[int] = None,
+        ministral_overlap: Optional[int] = None
     ) -> List[PIIEntity]:
         """
         Detect PII using both ML and regex detectors.
@@ -287,6 +289,7 @@ class CompositePIIDetector:
         entities, _stats = self.detect_pii_with_stats(
             text, threshold, enable_ml, enable_regex, enable_presidio,
             enable_openmed, enable_gliner2, enable_ministral, pii_type_configs, chunk_size,
+            ministral_chunk_size, ministral_overlap,
         )
         return entities
 
@@ -302,6 +305,8 @@ class CompositePIIDetector:
         enable_ministral: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None,
+        ministral_chunk_size: Optional[int] = None,
+        ministral_overlap: Optional[int] = None,
     ) -> Tuple[List[PIIEntity], List[Dict]]:
         """Detect PII and return per-detector execution stats alongside results.
 
@@ -330,7 +335,7 @@ class CompositePIIDetector:
 
         results_per_detector, stats = self._collect_detection_results(
             text, threshold, use_ml, use_regex, use_presidio, use_openmed, use_gliner2,
-            use_ministral, pii_type_configs, chunk_size
+            use_ministral, pii_type_configs, chunk_size, ministral_chunk_size, ministral_overlap
         )
 
         if not results_per_detector:
@@ -391,6 +396,8 @@ class CompositePIIDetector:
         use_ministral: bool,
         pii_type_configs: Optional[dict],
         chunk_size: Optional[int],
+        ministral_chunk_size: Optional[int] = None,
+        ministral_overlap: Optional[int] = None,
     ) -> Tuple[List[Tuple[PIIDetectorProtocol, List[PIIEntity]]], List[Dict]]:
         """Run each enabled detector, collect results and per-detector stats.
 
@@ -430,7 +437,8 @@ class CompositePIIDetector:
                  lambda: self._run_gliner2_detection(text, threshold, pii_type_configs))
         if use_ministral and self.ministral_detector:
             _run(self.ministral_detector, DetectorSource.MINISTRAL,
-                 lambda: self._run_ministral_detection(text, threshold, pii_type_configs, chunk_size))
+                 lambda: self._run_ministral_detection(
+                     text, threshold, pii_type_configs, ministral_chunk_size, ministral_overlap))
         return results, stats
 
     def _log_detection_summary(
@@ -704,13 +712,17 @@ class CompositePIIDetector:
         threshold: Optional[float],
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
     ) -> List[PIIEntity]:
         """Run Ministral-PII detection with graceful degradation.
 
         Returns an empty list (never raises) so a Ministral failure (e.g. the
         remote LM Studio endpoint being unreachable) does not bring down the
-        whole request. ``pii_type_configs`` and ``chunk_size`` are forwarded only
-        when the detector's ``detect_pii`` declares them (signature inspection).
+        whole request. ``chunk_size``/``overlap`` here are the Ministral-specific
+        chunking knobs (DB columns ministral_chunk_size / ministral_overlap),
+        distinct from the GLiNER multi-pass labels-per-pass. They and
+        ``pii_type_configs`` are forwarded only when the detector's
+        ``detect_pii`` declares them (signature inspection).
         """
         try:
             import inspect
@@ -720,6 +732,8 @@ class CompositePIIDetector:
                 kwargs['pii_type_configs'] = pii_type_configs
             if 'chunk_size' in sig.parameters and chunk_size is not None:
                 kwargs['chunk_size'] = chunk_size
+            if 'overlap' in sig.parameters and overlap is not None:
+                kwargs['overlap'] = overlap
             return self.ministral_detector.detect_pii(text, threshold, **kwargs)
         except Exception as e:
             self.logger.error(

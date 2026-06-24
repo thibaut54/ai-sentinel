@@ -780,8 +780,10 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'openmed_enabled': db_config.get('openmed_enabled', False),
                 'gliner2_enabled': db_config.get('gliner2_enabled', False),
                 'ministral_enabled': db_config.get('ministral_enabled', False),
-                # Ministral-PII chunking knobs (forwarded to the detector's
-                # detect_pii via _build_detection_kwargs when supported).
+                # Ministral-PII chunking knobs, threaded by _build_detection_kwargs
+                # into the composite's detect_pii_with_stats and routed on to the
+                # Ministral detector's detect_pii (distinct from the GLiNER
+                # multi-pass chunk_size = nb_of_label_by_pass).
                 'ministral_chunk_size': db_config.get('ministral_chunk_size'),
                 'ministral_overlap': db_config.get('ministral_overlap'),
                 # Structural only: Ministral-PII is permanently exempt from the
@@ -960,6 +962,15 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 kwargs['enable_gliner2'] = detector_flags.get('gliner2_enabled')
             if 'enable_ministral' in sig.parameters:
                 kwargs['enable_ministral'] = detector_flags.get('ministral_enabled')
+            # Ministral-PII has its OWN chunking knobs (DB columns
+            # ministral_chunk_size / ministral_overlap), distinct from the GLiNER
+            # multi-pass labels-per-pass carried by chunk_size above. Thread them
+            # separately so the operator-configured values actually reach the
+            # detector instead of the GLiNER nb_of_label_by_pass.
+            if 'ministral_chunk_size' in sig.parameters:
+                kwargs['ministral_chunk_size'] = detector_flags.get('ministral_chunk_size')
+            if 'ministral_overlap' in sig.parameters:
+                kwargs['ministral_overlap'] = detector_flags.get('ministral_overlap')
 
         return kwargs
     
