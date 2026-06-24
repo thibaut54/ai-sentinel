@@ -1,0 +1,39 @@
+# Example tenant override.
+#
+# Demonstrates the three override mechanisms:
+#   - [[disable]]    : turn off baseline IPIs (with audit reason)
+#   - [[override]]   : tweak fields on a baseline IPI without redefining it
+#   - [[custom_ipi]] : add tenant-specific IPIs that aren't in the baseline
+
+[meta]
+name = "example-tenant"
+base = "nlpd-client-aligned"
+description = "Demonstrates disable / override / custom_ipi"
+
+# Bump CREDIT_CARD_NUMBER priority above IBAN so the resolver prefers it
+# on overlapping spans.
+[[override]]
+id = "CREDIT_CARD_NUMBER"
+priority = 100
+
+# This tenant is Swiss — disable US-only SOCIALNUM patterns.
+[[disable]]
+ids = ["SOCIALNUM"]
+reason = "Swiss tenant; no US SSN expected"
+
+# Tenant-specific IPI: internal project codenames that must be redacted
+# from public-facing exports.
+[[custom_ipi]]
+id = "INTERNAL_PROJECT_CODENAME"
+display_fr = "Nom de code projet interne"
+display_en = "Internal project codename"
+category = "identifiant_officiel"
+sensitive = false
+severity = "medium"
+priority = 110
+layer = "regex"
+threshold = 1.0
+patterns = [
+  '(?i)\bproject\s+(?:aurora|helix|falcon|nimbus)\b',
+  '\b(?:AUR|HLX|FLC|NMB)-?\d{4}\b',
+]

@@ -1,0 +1,14 @@
+# Exclude heavy / irrelevant paths from the Docker build context.
+# Models are mounted at runtime, not bundled.
+models/
+target/
+labeled_corpus/
+gliner2-onnx/
+examples/
+prompts/
+tests/
+.git/
+*.log
+*.csv
+*.jsonl
+.run/

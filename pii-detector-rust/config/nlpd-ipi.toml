@@ -1,0 +1,540 @@
+# Client-aligned IPI taxonomy — Swiss nLPD + client data.sql defaults.
+#
+# Out of scope (vs nLPD baseline): person names, dates of birth, addresses,
+# cities, emails, organisations, job titles, marital status, gender, usernames.
+# The client considers these "commonly accepted PII" in professional documents
+# and disables them by default. Reintroduce per-tenant via overrides if needed.
+
+[meta]
+name = "nlpd-client-aligned"
+version = "0.2.0"
+description = "Client-aligned PII taxonomy: identifiers, credentials, financial, vehicle, medical IDs"
+
+# ============================================================================
+# Categories
+# ============================================================================
+
+[[category]]
+id = "identifiant_officiel"
+display_fr = "Identifiant officiel"
+display_en = "Official identifier"
+
+[[category]]
+id = "coordonnees"
+display_fr = "Coordonnées"
+display_en = "Contact details"
+
+[[category]]
+id = "identifiant_numerique"
+display_fr = "Identifiant numérique"
+display_en = "Digital identifier"
+
+[[category]]
+id = "authentification"
+display_fr = "Authentification"
+display_en = "Authentication secrets"
+
+[[category]]
+id = "financier"
+display_fr = "Financier"
+display_en = "Financial"
+
+[[category]]
+id = "medical"
+display_fr = "Médical"
+display_en = "Medical"
+
+[[category]]
+id = "vehicule"
+display_fr = "Véhicule"
+display_en = "Vehicle"
+
+[[category]]
+id = "sensible_origine"
+display_fr = "Sensible — Origine / opinions"
+display_en = "Sensitive — Origin / opinions"
+
+# ============================================================================
+# Tier A — REGEX (hard patterns, validated)
+# ============================================================================
+
+[[ipi]]
+id = "AVS_NUMBER"
+display_fr = "Numéro AVS (NAVS13)"
+display_en = "Swiss AVS number"
+category = "identifiant_officiel"
+sensitive = false
+severity = "high"
+country = "CH"
+priority = 100
+layer = "regex"
+threshold = 0.95
+patterns = [
+  '\b756\.\d{4}\.\d{4}\.\d{2}\b',
+  '\b756 \d{4} \d{4} \d{2}\b',
+  '\b756\d{10}\b',
+]
+validators = ["swiss_avs"]
+
+[[ipi]]
+id = "SOCIALNUM"
+display_fr = "Numéro de sécurité sociale (générique)"
+display_en = "Social security number (generic)"
+category = "identifiant_officiel"
+sensitive = false
+severity = "high"
+priority = 95
+layer = "regex"
+threshold = 0.85
+# US SSN format. Add more countries as we encounter them.
+patterns = [
+  '\b\d{3}-\d{2}-\d{4}\b',
+]
+
+[[ipi]]
+id = "IBAN_CODE"
+display_fr = "IBAN"
+display_en = "IBAN"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 90
+layer = "regex"
+threshold = 0.95
+patterns = [
+  '\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){2,7}(?:[ ]?[A-Z0-9]{1,3})?\b',
+]
+validators = ["iban_checksum"]
+
+[[ipi]]
+id = "BIC_SWIFT"
+display_fr = "Code BIC/SWIFT"
+display_en = "BIC/SWIFT code"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 85
+layer = "regex"
+threshold = 0.9
+# ISO 9362 BIC: 4 letters (bank) + 2 letters (country, ISO 3166) + 1 char
+# location-1 (not `0`) + 1 char location-2 (alphanum) + optional 3-char branch.
+#
+# To kill dictionary-word FPs like `FINANCES` and `PAIEMENT` (8-letter words
+# that happen to contain a valid ISO country substring), we anchor on an
+# inline `BIC`/`SWIFT`/`Code BIC` keyword before the candidate. The bic_country
+# validator scans the matched string for a valid BIC window rather than
+# requiring an exact match (since the regex includes the keyword prefix).
+patterns = [
+  '''(?i)\b(?:BIC|SWIFT|SWIFT[ /-]?BIC|BIC[ /-]?SWIFT|Code\s+BIC)\b[\s:=]+\b[A-Z]{4}[A-Z]{2}[A-NP-Z1-9][A-Z0-9](?:[A-Z0-9]{3})?\b''',
+]
+validators = ["bic_country"]
+
+[[ipi]]
+id = "CREDIT_CARD_NUMBER"
+display_fr = "Numéro de carte de crédit"
+display_en = "Credit card number"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 90
+layer = "regex"
+threshold = 0.95
+patterns = [
+  '\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{1,7}\b',
+  '\b\d{4}[ -]?\d{6}[ -]?\d{4,5}\b',
+]
+validators = ["luhn"]
+
+[[ipi]]
+id = "CREDIT_CARD_ISSUER"
+display_fr = "Émetteur de carte"
+display_en = "Credit card brand"
+category = "financier"
+sensitive = false
+severity = "low"
+priority = 30
+layer = "regex"
+threshold = 0.85
+# Brand names typically appearing in payment / credit-card context.
+patterns = [
+  '\b(?i)(?:Visa|MasterCard|Master Card|American Express|Amex|Diners(?: Club)?|Discover|JCB|UnionPay|Maestro|Twint)\b',
+]
+
+[[ipi]]
+id = "CVV"
+display_fr = "Code CVV/CVC"
+display_en = "Card verification value"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 90
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '(?i)\b(?:cvv|cvc|cvv2|cvc2|cid)\s*[:=]?\s*(\d{3,4})\b',
+]
+
+[[ipi]]
+id = "PIN"
+display_fr = "Code PIN"
+display_en = "Personal identification number"
+category = "authentification"
+sensitive = false
+severity = "high"
+priority = 90
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '(?i)\bpin\s*(?:code)?\s*[:=]\s*(\d{4,8})\b',
+]
+
+[[ipi]]
+id = "AMOUNT"
+display_fr = "Montant monétaire"
+display_en = "Monetary amount"
+category = "financier"
+sensitive = false
+severity = "low"
+priority = 25
+layer = "regex"
+threshold = 0.85
+# Currency-prefixed or -suffixed amounts. Apostrophe is the Swiss thousand separator.
+patterns = [
+  "\\b(?:CHF|EUR|USD|GBP|JPY)\\s+[\\d'’,.]+(?:\\.\\d{1,2})?\\b",
+  "\\b[\\d'’,.]+(?:\\.\\d{1,2})?\\s+(?:CHF|EUR|USD|GBP|JPY)\\b",
+  '[$€£¥]\\s?[\\d,.]+(?:\\.\\d{1,2})?',
+]
+
+[[ipi]]
+id = "CURRENCY_CODE"
+display_fr = "Code devise (ISO 4217)"
+display_en = "Currency code (ISO 4217)"
+category = "financier"
+sensitive = false
+severity = "low"
+priority = 20
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '\b(?:CHF|EUR|USD|GBP|JPY|AUD|CAD|CNY|HKD|NZD|SEK|NOK|DKK|SGD|MXN|INR|RUB|BRL|ZAR|KRW|TWD|TRY)\b',
+]
+
+[[ipi]]
+id = "PHONE_NUMBER"
+display_fr = "Numéro de téléphone"
+display_en = "Phone number"
+category = "coordonnees"
+sensitive = false
+severity = "low"
+country = "CH"
+priority = 70
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '\+41[ ]?\d{2}[ ]?\d{3}[ ]?\d{2}[ ]?\d{2}',
+  '\+41\d{9}',
+  '\b0\d{2}[ ]?\d{3}[ ]?\d{2}[ ]?\d{2}\b',
+]
+
+[[ipi]]
+id = "IP_ADDRESS"
+display_fr = "Adresse IP"
+display_en = "IP address"
+category = "identifiant_numerique"
+sensitive = false
+severity = "low"
+priority = 60
+layer = "regex"
+threshold = 0.95
+patterns = [
+  '\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b',
+]
+
+[[ipi]]
+id = "MAC_ADDRESS"
+display_fr = "Adresse MAC"
+display_en = "MAC address"
+category = "identifiant_numerique"
+sensitive = false
+severity = "low"
+priority = 60
+layer = "regex"
+threshold = 0.98
+patterns = [
+  '\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b',
+]
+
+[[ipi]]
+id = "IMEI"
+display_fr = "Numéro IMEI"
+display_en = "IMEI"
+category = "identifiant_numerique"
+sensitive = false
+severity = "medium"
+priority = 70
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '\b\d{15}\b',
+]
+validators = ["luhn"]
+
+[[ipi]]
+id = "VEHICLE_VIN"
+display_fr = "Numéro VIN véhicule"
+display_en = "Vehicle identification number"
+category = "vehicule"
+sensitive = false
+severity = "medium"
+priority = 75
+layer = "regex"
+threshold = 0.9
+# 17 alphanumeric chars, no I/O/Q. Real VINs always contain letters
+# (manufacturer code in positions 1-3) — has_alpha kills pure-digit Excel
+# cells that pass the checksum by coincidence. vin_checksum enforces the
+# ISO 3779 mod-11 check digit at position 9.
+patterns = [
+  '\b[A-HJ-NPR-Z0-9]{17}\b',
+]
+validators = ["has_alpha", "vin_checksum"]
+
+[[ipi]]
+id = "VEHICLE_REGISTRATION"
+display_fr = "Plaque d'immatriculation (CH)"
+display_en = "Swiss vehicle plate"
+category = "vehicule"
+sensitive = false
+severity = "medium"
+country = "CH"
+priority = 70
+layer = "regex"
+threshold = 0.9
+# Swiss canton code (2 letters) + space or hyphen + 1-6 digits.
+# Tightened from `\s?` to `[ -]?` to stop matching across Excel tab separators
+# (corpus had 6000+ FPs on `VD\t1`/`VD\t2` tabular cells).
+patterns = [
+  '\b(?:VD|GE|VS|FR|NE|JU|BE|ZH|BS|BL|SO|AG|LU|SG|TG|AR|AI|GR|SH|TI|UR|SZ|OW|NW|GL|ZG)[ -]?\d{1,6}\b',
+]
+
+# LICENSE_PLATE removed — duplicate of VEHICLE_REGISTRATION (same Swiss plate
+# regex shape). The client schema lists both as separate types but they map
+# to the same entity in practice; keeping one IPI prevents double-emission.
+
+[[ipi]]
+id = "DEVICE_ID"
+display_fr = "Identifiant d'appareil"
+display_en = "Device identifier"
+category = "identifiant_numerique"
+sensitive = false
+severity = "medium"
+priority = 55
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '\bT[XCLMP]?\d{5,7}\b',
+  '\bPCV-\d{4,6}\b',
+]
+
+[[ipi]]
+id = "PASSWORD"
+display_fr = "Mot de passe"
+display_en = "Password"
+category = "authentification"
+sensitive = false
+severity = "high"
+priority = 90
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '''(?i)\b(?:mot[\s-]?de[\s-]?passe|password|passphrase|pwd|pin|mdp|credentials?|secret)\s*[:=]\s*["']?(\S{4,40})''',
+  '''(?im)^\s*(?:mot[\s-]?de[\s-]?passe|password|pwd|mdp)\s*\r?\n\s*(\S{4,40})''',
+]
+validators = ["entropy:1.5"]
+
+[[ipi]]
+id = "API_KEY"
+display_fr = "Clé API / token / secret"
+display_en = "API key / token / secret"
+category = "authentification"
+sensitive = false
+severity = "high"
+priority = 95
+layer = "regex"
+threshold = 0.9
+patterns = [
+  '''(?i)\b(?:api[_\-]?key|token|secret|bearer)\s*[:=]\s*["']?([A-Za-z0-9_\-]{20,})["']?''',
+  '\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b',
+  '\bAKIA[0-9A-Z]{16}\b',
+  '\bAIza[0-9A-Za-z_\-]{35}\b',
+]
+validators = ["entropy:3.5"]
+
+[[ipi]]
+id = "SESSION_ID"
+display_fr = "Identifiant de session"
+display_en = "Session identifier"
+category = "authentification"
+sensitive = false
+severity = "high"
+priority = 80
+layer = "regex"
+threshold = 0.85
+# Typical session/cookie shapes: long hex or token after keyword.
+patterns = [
+  '''(?i)\b(?:session[_\-]?id|sessionid|sid|jsessionid|phpsessid)\s*[:=]\s*["']?([A-Za-z0-9_\-]{16,})''',
+]
+
+[[ipi]]
+id = "CRYPTO"
+display_fr = "Adresse crypto-monnaie"
+display_en = "Cryptocurrency address"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 80
+layer = "regex"
+threshold = 0.95
+# Bitcoin (P2PKH 1..., P2SH 3..., Bech32 bc1...), Ethereum (0x + 40 hex), Litecoin (L/M.., ltc1..).
+patterns = [
+  '\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b',
+  '\bbc1[ac-hj-np-z02-9]{39,87}\b',
+  '\b0x[a-fA-F0-9]{40}\b',
+  '\b[LM][a-km-zA-HJ-NP-Z1-9]{25,34}\b',
+  '\bltc1[ac-hj-np-z02-9]{39,87}\b',
+]
+
+# ============================================================================
+# Tier B — NER (model-driven, semantic)
+# ============================================================================
+
+# PASSWORD has a regex sibling above (keyword: value). This NER pass covers
+# the table/list cases where the password value sits a few lines after the
+# `Mot de passe` column header. emit_as="PASSWORD" so both detectors surface
+# under one canonical IPI (clean for eval scoring + downstream).
+[[ipi]]
+id = "PASSWORD_NER"
+display_fr = "Mot de passe (NER)"
+display_en = "Password (NER)"
+category = "authentification"
+sensitive = false
+severity = "high"
+priority = 90
+emit_as = "PASSWORD"
+layer = "ner"
+threshold = 0.6
+ner_label = "password"
+ner_description = "Authentication password, credential, or secret value used to log in to a system or unlock an account. Commonly appears near keywords like 'mot de passe', 'password', 'pwd', 'mdp', 'pin', or 'credentials', including in table or column-row contexts."
+validators = ["min_length:4"]
+
+[[ipi]]
+id = "USERNAME"
+display_fr = "Identifiant utilisateur / compte"
+display_en = "Username or account identifier"
+category = "identifiant_officiel"
+sensitive = false
+severity = "low"
+priority = 50
+layer = "ner"
+threshold = 0.55
+ner_label = "username"
+ner_description = "Login name used by a person to authenticate to a system."
+# single_token kills the `Lausanne 14`, `ServiceAccount\ttemplate-...` leaks —
+# real handles are single tokens with no whitespace.
+validators = ["min_length:3", "not_all_uppercase", "single_token"]
+
+[[ipi]]
+id = "NATIONAL_ID"
+display_fr = "Identifiant national (étranger)"
+display_en = "National identifier"
+category = "identifiant_officiel"
+sensitive = false
+severity = "medium"
+priority = 80
+layer = "ner"
+threshold = 0.6
+ner_label = "national_id"
+ner_description = "Foreign national identity number, citizen ID, or government-issued personal identifier assigned to an individual person."
+
+[[ipi]]
+id = "DRIVER_LICENSE_NUMBER"
+display_fr = "Numéro de permis de conduire"
+display_en = "Driver's license number"
+category = "identifiant_officiel"
+sensitive = false
+severity = "medium"
+priority = 75
+# Disabled — Swiss driver's license numbers have no canonical regex shape;
+# the NER label "driver_license_number" has a weak prior in GLiNER2 and
+# fires on tabular junk (~95% FP on the Vaud corpus). Re-enable per tenant
+# with a country-specific regex when a real DL number format is in scope.
+enabled = false
+layer = "ner"
+threshold = 0.6
+ner_label = "driver_license_number"
+ner_description = "Driver's license number or driving permit identifier issued by a government authority."
+
+# ACCOUNT_ID kept as a separate NER label (model fires on `account_id` for
+# Vaud-style handles where `username` doesn't), with emit_as="USERNAME" so
+# both detections feed one canonical IPI for downstream and eval.
+[[ipi]]
+id = "ACCOUNT_ID"
+display_fr = "Identifiant de compte / client"
+display_en = "Customer or account identifier"
+category = "identifiant_officiel"
+sensitive = false
+severity = "low"
+priority = 50
+emit_as = "USERNAME"
+layer = "ner"
+threshold = 0.6
+ner_label = "account_id"
+ner_description = "User account login ID for authentication."
+validators = ["min_length:3", "not_all_uppercase", "single_token"]
+
+# Disabled: no Vaud gold for non-IBAN bank accounts, and the model's
+# "bank_account_number" prior fires on almost any financial-looking code.
+[[ipi]]
+id = "BANK_ACCOUNT_NUMBER"
+display_fr = "Numéro de compte bancaire"
+display_en = "Bank account number"
+category = "financier"
+sensitive = false
+severity = "high"
+priority = 85
+enabled = false
+layer = "ner"
+threshold = 0.6
+ner_label = "bank_account_number"
+ner_description = "Domestic bank account identifier used to receive or send funds within a national banking system, distinct from the international IBAN format."
+
+[[ipi]]
+id = "MEDICAL_RECORD_NUMBER"
+display_fr = "Numéro de dossier médical"
+display_en = "Medical record number"
+category = "medical"
+sensitive = true
+severity = "medium"
+priority = 75
+layer = "ner"
+threshold = 0.6
+ner_label = "medical_record_number"
+ner_description = "Patient medical record number, hospital file number, or clinical chart identifier assigned to a specific patient."
+
+[[ipi]]
+id = "HEALTH_INSURANCE_NUMBER"
+display_fr = "Numéro d'assurance maladie"
+display_en = "Health insurance number"
+category = "medical"
+sensitive = true
+severity = "medium"
+priority = 75
+layer = "ner"
+threshold = 0.6
+ner_label = "health_insurance_number"
+ner_description = "Health insurance policy number or beneficiary identifier issued by a health insurance provider."
+
+# Tier C — Classification (whole-section) removed for now.
+# NRP (nationality/religion/political) was too permissive on admin docs:
+# the classifier triggered on ~4600 chunks across the corpus, almost all
+# false positives. Re-add as a per-tenant override if needed, with a much
+# tighter threshold (>=0.8) and additional content-length gating.
