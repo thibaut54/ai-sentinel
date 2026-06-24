@@ -41,3 +41,4 @@ ${PROJECT_DIR}/
 # Top-level coverage / benchmark scratch artefacts produced by test runs
 /coverage.xml
 /bench-pii-scan.tsv
+pii-detector-rust/models
