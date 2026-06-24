@@ -21,6 +21,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper.Spa
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.Mockito.verify;
@@ -64,8 +65,8 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             lastUpdated,
             2,
             List.of(
-                new SpaceSummary("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs),
-                new SpaceSummary("SPACE2", "IN_PROGRESS", 50.0, 5L, 2L, lastEventTs)
+                new SpaceSummary("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs, "Space One"),
+                new SpaceSummary("SPACE2", "IN_PROGRESS", 50.0, 5L, 2L, lastEventTs, "Space Two")
             )
         );
 
@@ -81,7 +82,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     10L,
                     5L,
                     lastEventTs,
-                    new SeverityCountsDto(5, 10, 15, 30)
+                    new SeverityCountsDto(5, 10, 15, 30),
+                    "Space One",
+                    Map.of("EMAIL", 5)
                 ),
                 new SpaceSummaryDto(
                     "SPACE2",
@@ -90,7 +93,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     5L,
                     2L,
                     lastEventTs,
-                    new SeverityCountsDto(2, 8, 12, 22)
+                    new SeverityCountsDto(2, 8, 12, 22),
+                    "Space Two",
+                    Map.of("PHONE_NUMBER", 2)
                 )
             )
         );
@@ -135,7 +140,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             scanId,
             lastUpdated,
             1,
-            List.of(new SpaceSummary("SPACE3", "COMPLETED", 100.0, 5L, 0L, lastEventTs))
+            List.of(new SpaceSummary("SPACE3", "COMPLETED", 100.0, 5L, 0L, lastEventTs, "Space Three"))
         );
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
@@ -150,7 +155,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     5L,
                     0L,
                     lastEventTs,
-                    SeverityCountsDto.zero()  // No severity counts found
+                    SeverityCountsDto.zero(),  // No severity counts found
+                    "Space Three",
+                    Map.of()
                 )
             )
         );
@@ -233,7 +240,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             scanId,
             lastUpdated,
             1,
-            List.of(new SpaceSummary("COMPLETE", "COMPLETED", 100.0, 20L, 10L, lastEventTs))
+            List.of(new SpaceSummary("COMPLETE", "COMPLETED", 100.0, 20L, 10L, lastEventTs, "Complete Space"))
         );
 
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
@@ -248,7 +255,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                     20L,
                     10L,
                     lastEventTs,
-                    new SeverityCountsDto(3, 7, 11, 21)
+                    new SeverityCountsDto(3, 7, 11, 21),
+                    "Complete Space",
+                    Map.of("IBAN_CODE", 4)
                 )
             )
         );
@@ -278,7 +287,10 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
             .andExpect(jsonPath("$.spaces[0].severityCounts.high").value(3))
             .andExpect(jsonPath("$.spaces[0].severityCounts.medium").value(7))
             .andExpect(jsonPath("$.spaces[0].severityCounts.low").value(11))
-            .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(21));
+            .andExpect(jsonPath("$.spaces[0].severityCounts.total").value(21))
+            // PII type enrichment fields
+            .andExpect(jsonPath("$.spaces[0].spaceName").value("Complete Space"))
+            .andExpect(jsonPath("$.spaces[0].piiTypeCounts.IBAN_CODE").value(4));
 
         verify(scanReportingPort).getGlobalScanSummary();
         verify(scanReportingSummaryMapper).toDto(domainSummary);

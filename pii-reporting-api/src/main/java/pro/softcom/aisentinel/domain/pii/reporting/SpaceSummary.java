@@ -12,6 +12,7 @@ public record SpaceSummary(
     Double progressPercentage,
     long pagesDone,
     long attachmentsDone,
-    Instant lastEventTs
+    Instant lastEventTs,
+    String spaceName
 ) {
 }

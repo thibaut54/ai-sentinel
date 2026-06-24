@@ -1,31 +1,150 @@
-<div class="space-filters">
-  <div class="filter-item">
+<div class="space-filters" *transloco="let t">
+  <!-- Global text search -->
+  <div class="filter-item filter-search">
     <input
       class="search-global"
       pInputText
       type="text"
-      [placeholder]="'common.search' | transloco"
-      [ngModel]="globalFilter"
-      (ngModelChange)="onGlobalFilterChange($event)"
-      [attr.aria-label]="'common.searchGlobally' | transloco"
+      [placeholder]="t('common.search')"
+      [ngModel]="filtering.globalFilter()"
+      (ngModelChange)="onSearchChange($event)"
+      [attr.aria-label]="t('common.searchGlobally')"
       [attr.data-testid]="'global-filter-input'" />
   </div>
 
+  <!-- PII type filter (grouped by category) -->
   <div class="filter-item">
-    <p-select
-      [options]="statusOptions"
-      optionLabel="labelKey"
-      optionValue="value"
-      [ngModel]="statusFilter"
-      (ngModelChange)="onStatusFilterChange($event)"
+    <p-multiselect
+      [group]="true"
+      [options]="piiTypeGroupVms()"
+      optionGroupLabel="labelKey"
+      optionGroupChildren="items"
+      optionValue="code"
+      optionDisabled="disabled"
+      [ngModel]="filtering.piiTypeFilter()"
+      (ngModelChange)="onPiiTypeChange($event)"
+      [filter]="true"
       [showClear]="true"
-      [attr.data-testid]="'status-filter-select'">
-      <ng-template pTemplate="item" let-option>
-        {{ option.labelKey | transloco }}
+      [placeholder]="t('dashboard.filters.piiType.placeholder')"
+      [selectedItemsLabel]="t('dashboard.filters.selectedItems')"
+      [maxSelectedLabels]="1"
+      appendTo="body"
+      class="pii-type-multiselect"
+      [attr.data-testid]="'pii-type-filter'">
+      <ng-template let-group pTemplate="group">
+        <span>{{ t(group.labelKey) }}</span>
       </ng-template>
-      <ng-template pTemplate="selectedItem" let-option>
-        {{ option.labelKey | transloco }}
+      <ng-template let-option pTemplate="item">
+        <div class="filter-option" [class.filter-option--disabled]="option.disabled">
+          <div class="filter-option-text">
+            <span class="filter-option-label">{{ t(option.labelKey) }}</span>
+            <span class="filter-option-subtitle">{{ option.detectorLabel }}</span>
+          </div>
+          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+        </div>
       </ng-template>
-    </p-select>
+      <ng-template pTemplate="footer">
+        <button type="button" class="filter-clear-btn" (click)="clearPiiType()">
+          {{ t('dashboard.filters.clear') }}
+        </button>
+      </ng-template>
+    </p-multiselect>
+  </div>
+
+  <!-- Severity filter -->
+  <div class="filter-item">
+    <p-multiselect
+      [options]="severityOptionVms()"
+      optionValue="value"
+      optionDisabled="disabled"
+      [ngModel]="filtering.severityFilter()"
+      (ngModelChange)="onSeverityChange($event)"
+      [showClear]="true"
+      [placeholder]="t('dashboard.filters.severity.placeholder')"
+      [selectedItemsLabel]="t('dashboard.filters.selectedItems')"
+      [maxSelectedLabels]="1"
+      appendTo="body"
+      [attr.data-testid]="'severity-filter'">
+      <ng-template let-option pTemplate="item">
+        <div class="filter-option" [class.filter-option--disabled]="option.disabled">
+          <span class="filter-option-label">{{ t(option.labelKey) }}</span>
+          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <button type="button" class="filter-clear-btn" (click)="clearSeverity()">
+          {{ t('dashboard.filters.clear') }}
+        </button>
+      </ng-template>
+    </p-multiselect>
+  </div>
+
+  <!-- Status filter -->
+  <div class="filter-item">
+    <p-multiselect
+      [options]="statusOptionVms()"
+      optionValue="value"
+      optionDisabled="disabled"
+      [ngModel]="filtering.statusFilter()"
+      (ngModelChange)="onStatusChange($event)"
+      [showClear]="true"
+      [placeholder]="t('dashboard.filters.status.placeholder')"
+      [selectedItemsLabel]="t('dashboard.filters.selectedItems')"
+      [maxSelectedLabels]="1"
+      appendTo="body"
+      [attr.data-testid]="'status-filter'">
+      <ng-template let-option pTemplate="item">
+        <div class="filter-option" [class.filter-option--disabled]="option.disabled">
+          <span class="filter-option-label">{{ t(option.labelKey) }}</span>
+          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <button type="button" class="filter-clear-btn" (click)="clearStatus()">
+          {{ t('dashboard.filters.clear') }}
+        </button>
+      </ng-template>
+    </p-multiselect>
+  </div>
+
+  <!-- Sort menu + order toggle -->
+  <div class="filter-item filter-sort">
+    <p-button
+      type="button"
+      icon="pi pi-sort-alt"
+      [label]="t('dashboard.filters.sort.trigger')"
+      size="small"
+      [text]="true"
+      (click)="sortMenu.toggle($event)"
+      [attr.data-testid]="'sort-menu-trigger'">
+    </p-button>
+    <p-menu #sortMenu [popup]="true" [model]="sortMenuItems()" appendTo="body"></p-menu>
+    <p-button
+      type="button"
+      [icon]="filtering.sortOrder() === 1 ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"
+      size="small"
+      [text]="true"
+      (click)="toggleSortOrder()"
+      [ariaLabel]="t('dashboard.filters.sort.toggleOrder')"
+      [attr.data-testid]="'sort-order-toggle'">
+    </p-button>
+  </div>
+
+  <!-- Global counter + reset -->
+  <div class="filter-item filter-summary">
+    <span class="spaces-counter" [attr.data-testid]="'spaces-counter'">
+      {{ t('dashboard.filters.spacesCounter', { shown: shownCount(), total: totalCount() }) }}
+    </span>
+    @if (filtering.isResettable()) {
+      <p-button
+        type="button"
+        icon="pi pi-filter-slash"
+        [label]="t('dashboard.filters.resetAll')"
+        size="small"
+        [outlined]="true"
+        (click)="resetAll()"
+        [attr.data-testid]="'reset-all-filters'">
+      </p-button>
+    }
   </div>
 </div>

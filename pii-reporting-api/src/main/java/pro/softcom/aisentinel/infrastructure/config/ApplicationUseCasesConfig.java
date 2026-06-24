@@ -35,6 +35,7 @@ import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextP
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
@@ -77,8 +78,9 @@ public class ApplicationUseCasesConfig {
 
     @Bean
     public ScanReportingPort scanResultUseCase(ScanResultQuery scanResultQuery,
-                                               ScanCheckpointRepository checkpointRepo) {
-        return new ScanReportingUseCase(scanResultQuery, checkpointRepo);
+                                               ScanCheckpointRepository checkpointRepo,
+                                               ConfluenceSpaceRepository spaceRepository) {
+        return new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository);
     }
 
     @Bean
@@ -118,15 +120,17 @@ public class ApplicationUseCasesConfig {
                                                     ScanEventStore scanEventStore,
                                                     ScanEventDispatcher scanEventDispatcher,
                                                     SeverityCalculationService severityCalculationService,
-                                                    ScanSeverityCountService scanSeverityCountService) {
+                                                    ScanSeverityCountService scanSeverityCountService,
+                                                    ScanPiiTypeCountService scanPiiTypeCountService) {
         return new ContentScanOrchestrator(
-                scanEventFactory, 
-                scanProgressCalculator, 
-                scanCheckpointService, 
-                scanEventStore, 
+                scanEventFactory,
+                scanProgressCalculator,
+                scanCheckpointService,
+                scanEventStore,
                 scanEventDispatcher,
                 severityCalculationService,
-                scanSeverityCountService
+                scanSeverityCountService,
+                scanPiiTypeCountService
         );
     }
 

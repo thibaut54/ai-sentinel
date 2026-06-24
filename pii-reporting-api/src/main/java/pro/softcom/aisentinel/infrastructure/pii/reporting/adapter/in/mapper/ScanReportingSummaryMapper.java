@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
@@ -11,6 +12,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.Severi
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceSummaryDto;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -22,6 +24,7 @@ import java.util.Optional;
 public class ScanReportingSummaryMapper {
 
     private final ScanSeverityCountService severityCountService;
+    private final ScanPiiTypeCountService piiTypeCountService;
     private final SeverityCountsMapper severityCountsMapper;
 
     public ScanReportingSummaryDto toDto(ScanReportingSummary summary) {
@@ -52,7 +55,12 @@ public class ScanReportingSummaryMapper {
         Optional<SeverityCounts> countsOpt = severityCountService.getCounts(scanId, space.spaceKey());
         SeverityCounts counts = countsOpt.orElse(null);
         SeverityCountsDto severityCountsDto = severityCountsMapper.toDto(counts);
-        
+
+        Map<String, Integer> piiTypeCounts = piiTypeCountService.getCounts(scanId, space.spaceKey());
+        if (piiTypeCounts == null) {
+            piiTypeCounts = Map.of();
+        }
+
         return new SpaceSummaryDto(
                 space.spaceKey(),
                 space.status(),
@@ -60,7 +68,9 @@ public class ScanReportingSummaryMapper {
                 space.pagesDone(),
                 space.attachmentsDone(),
                 space.lastEventTs(),
-                severityCountsDto
+                severityCountsDto,
+                space.spaceName(),
+                piiTypeCounts
         );
     }
 }

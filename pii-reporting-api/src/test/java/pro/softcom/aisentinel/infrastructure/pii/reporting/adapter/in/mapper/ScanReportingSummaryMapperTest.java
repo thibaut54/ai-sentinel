@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
@@ -16,6 +17,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.SpaceS
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,13 +39,16 @@ class ScanReportingSummaryMapperTest {
     private ScanSeverityCountService severityCountService;
 
     @Mock
+    private ScanPiiTypeCountService piiTypeCountService;
+
+    @Mock
     private SeverityCountsMapper severityCountsMapper;
 
     private ScanReportingSummaryMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new ScanReportingSummaryMapper(severityCountService, severityCountsMapper);
+        mapper = new ScanReportingSummaryMapper(severityCountService, piiTypeCountService, severityCountsMapper);
     }
 
     @Test
@@ -58,34 +63,38 @@ class ScanReportingSummaryMapperTest {
                 75.5,
                 100L,
                 50L,
-                Instant.parse("2025-01-15T09:30:00Z")
+                Instant.parse("2025-01-15T09:30:00Z"),
+                "Space One"
         );
-        
+
         ScanReportingSummary summary = new ScanReportingSummary(
                 scanId,
                 lastUpdated,
                 1,
                 List.of(space)
         );
-        
+
         SeverityCounts severityCounts = new SeverityCounts(10, 20, 5);
         SeverityCountsDto severityCountsDto = new SeverityCountsDto(10, 20, 5, 35);
-        
+        Map<String, Integer> piiTypeCounts = Map.of("EMAIL", 7, "IBAN_CODE", 2);
+
         when(severityCountService.getCounts(scanId, "SPACE1"))
                 .thenReturn(Optional.of(severityCounts));
         when(severityCountsMapper.toDto(severityCounts))
                 .thenReturn(severityCountsDto);
-        
+        when(piiTypeCountService.getCounts(scanId, "SPACE1"))
+                .thenReturn(piiTypeCounts);
+
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
+
         // Then
         assertThat(result).isNotNull();
         assertThat(result.scanId()).isEqualTo(scanId);
         assertThat(result.lastUpdated()).isEqualTo(lastUpdated);
         assertThat(result.spacesCount()).isEqualTo(1);
         assertThat(result.spaces()).hasSize(1);
-        
+
         SpaceSummaryDto spaceDto = result.spaces().get(0);
         assertThat(spaceDto.spaceKey()).isEqualTo("SPACE1");
         assertThat(spaceDto.status()).isEqualTo("IN_PROGRESS");
@@ -94,9 +103,12 @@ class ScanReportingSummaryMapperTest {
         assertThat(spaceDto.attachmentsDone()).isEqualTo(50L);
         assertThat(spaceDto.lastEventTs()).isEqualTo(Instant.parse("2025-01-15T09:30:00Z"));
         assertThat(spaceDto.severityCounts()).isEqualTo(severityCountsDto);
-        
+        assertThat(spaceDto.spaceName()).isEqualTo("Space One");
+        assertThat(spaceDto.piiTypeCounts()).isEqualTo(piiTypeCounts);
+
         verify(severityCountService).getCounts(scanId, "SPACE1");
         verify(severityCountsMapper).toDto(severityCounts);
+        verify(piiTypeCountService).getCounts(scanId, "SPACE1");
     }
 
     @Test
@@ -110,33 +122,40 @@ class ScanReportingSummaryMapperTest {
                 100.0,
                 200L,
                 100L,
-                Instant.parse("2025-01-15T10:00:00Z")
+                Instant.parse("2025-01-15T10:00:00Z"),
+                "Space One"
         );
-        
+
         ScanReportingSummary summary = new ScanReportingSummary(
                 scanId,
                 Instant.parse("2025-01-15T10:00:00Z"),
                 1,
                 List.of(space)
         );
-        
+
         SeverityCountsDto zeroCountsDto = SeverityCountsDto.zero();
-        
+
         when(severityCountService.getCounts(scanId, "SPACE1"))
                 .thenReturn(Optional.empty());
         when(severityCountsMapper.toDto(null))
                 .thenReturn(zeroCountsDto);
-        
+        when(piiTypeCountService.getCounts(scanId, "SPACE1"))
+                .thenReturn(null);
+
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
+
         // Then
         assertThat(result).isNotNull();
         assertThat(result.spaces()).hasSize(1);
-        
+
         SpaceSummaryDto spaceDto = result.spaces().get(0);
         assertThat(spaceDto.severityCounts()).isEqualTo(zeroCountsDto);
-        
+        assertThat(spaceDto.piiTypeCounts())
+                .as("piiTypeCounts must be an empty map, never null")
+                .isNotNull()
+                .isEmpty();
+
         verify(severityCountService).getCounts(scanId, "SPACE1");
         verify(severityCountsMapper).toDto(null);
     }
@@ -152,45 +171,53 @@ class ScanReportingSummaryMapperTest {
                 100.0,
                 200L,
                 100L,
-                Instant.parse("2025-01-15T10:00:00Z")
+                Instant.parse("2025-01-15T10:00:00Z"),
+                "Space One"
         );
-        
+
         SpaceSummary space2 = new SpaceSummary(
                 "SPACE2",
                 "IN_PROGRESS",
                 50.0,
                 100L,
                 50L,
-                Instant.parse("2025-01-15T09:00:00Z")
+                Instant.parse("2025-01-15T09:00:00Z"),
+                "Space Two"
         );
-        
+
         ScanReportingSummary summary = new ScanReportingSummary(
                 scanId,
                 Instant.parse("2025-01-15T10:00:00Z"),
                 2,
                 List.of(space1, space2)
         );
-        
+
         SeverityCounts counts1 = new SeverityCounts(5, 10, 2);
         SeverityCounts counts2 = new SeverityCounts(3, 7, 1);
         SeverityCountsDto countsDto1 = new SeverityCountsDto(5, 10, 2, 17);
         SeverityCountsDto countsDto2 = new SeverityCountsDto(3, 7, 1, 11);
-        
+
         when(severityCountService.getCounts(scanId, "SPACE1"))
                 .thenReturn(Optional.of(counts1));
         when(severityCountService.getCounts(scanId, "SPACE2"))
                 .thenReturn(Optional.of(counts2));
         when(severityCountsMapper.toDto(counts1)).thenReturn(countsDto1);
         when(severityCountsMapper.toDto(counts2)).thenReturn(countsDto2);
-        
+        when(piiTypeCountService.getCounts(scanId, "SPACE1")).thenReturn(Map.of("EMAIL", 1));
+        when(piiTypeCountService.getCounts(scanId, "SPACE2")).thenReturn(Map.of("PERSON", 4));
+
         // When
         ScanReportingSummaryDto result = mapper.toDto(summary);
-        
+
         // Then
         assertThat(result.spaces()).hasSize(2);
         assertThat(result.spaces().get(0).severityCounts()).isEqualTo(countsDto1);
         assertThat(result.spaces().get(1).severityCounts()).isEqualTo(countsDto2);
-        
+        assertThat(result.spaces().get(0).spaceName()).isEqualTo("Space One");
+        assertThat(result.spaces().get(1).spaceName()).isEqualTo("Space Two");
+        assertThat(result.spaces().get(0).piiTypeCounts()).containsEntry("EMAIL", 1);
+        assertThat(result.spaces().get(1).piiTypeCounts()).containsEntry("PERSON", 4);
+
         verify(severityCountService).getCounts(scanId, "SPACE1");
         verify(severityCountService).getCounts(scanId, "SPACE2");
         verify(severityCountsMapper).toDto(counts1);

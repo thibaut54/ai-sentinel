@@ -2,15 +2,18 @@ package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.*;
 import pro.softcom.aisentinel.domain.pii.scan.ConfluenceSpaceScanState;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -18,6 +21,27 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
     private final ScanResultQuery scanResultQuery;
     private final ScanCheckpointRepository checkpointRepo;
+    private final ConfluenceSpaceRepository spaceRepository;
+
+    /**
+     * Builds a lookup map of space key to space name from the cached Confluence spaces.
+     *
+     * <p>Built once per call to avoid N+1 lookups when enriching space summaries.
+     *
+     * @return Map of space key to space name (never null, may be empty)
+     */
+    private Map<String, String> buildSpaceNameMap() {
+        try {
+            return spaceRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                    ConfluenceSpace::key,
+                    ConfluenceSpace::name,
+                    (existing, replacement) -> existing));
+        } catch (Exception ex) {
+            log.warn("[SCAN] Failed to load space names: {}", ex.getMessage());
+            return Map.of();
+        }
+    }
 
     @Override
     public Optional<LastScanMeta> getLatestScan() {
@@ -115,7 +139,10 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 progressPercentages.put(cp.spaceKey(), cp.progressPercentage());
             }
 
-            // 2) Load counters from events per space
+            // 2) Build space name lookup once to avoid N+1 lookups
+            Map<String, String> spaceNames = buildSpaceNameMap();
+
+            // 3) Load counters from events per space
             List<SpaceSummary> spaces = scanResultQuery.getSpaceCounters(scanId).stream()
                 .map(c -> new SpaceSummary(
                     c.spaceKey(),
@@ -123,18 +150,19 @@ public class ScanReportingUseCase implements ScanReportingPort {
                     progressPercentages.get(c.spaceKey()),
                     c.pagesDone(),
                     c.attachmentsDone(),
-                    c.lastEventTs()
+                    c.lastEventTs(),
+                    spaceNames.get(c.spaceKey())
                 ))
                 .toList();
 
-            // 3) Find most recent timestamp
+            // 4) Find most recent timestamp
             Instant lastUpdated = spaces.stream()
                 .map(SpaceSummary::lastEventTs)
                 .filter(Objects::nonNull)
                 .max(Instant::compareTo)
                 .orElse(Instant.now());
 
-            // 4) Build ScanReportingSummary
+            // 5) Build ScanReportingSummary
             return Optional.of(new ScanReportingSummary(
                 scanId,
                 lastUpdated,
@@ -169,6 +197,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
             }
 
             // 4) Build space summaries
+            Map<String, String> spaceNames = buildSpaceNameMap();
             List<SpaceSummary> spaces = new ArrayList<>();
             for (ScanCheckpoint cp : latestCheckpoints) {
                 List<ScanResultQuery.SpaceCounter> scanCounters = countersByScan.get(cp.scanId());
@@ -194,7 +223,8 @@ public class ScanReportingUseCase implements ScanReportingPort {
                     cp.progressPercentage(),
                     pagesDone,
                     attachmentsDone,
-                    lastEventTs
+                    lastEventTs,
+                    spaceNames.get(cp.spaceKey())
                 ));
             }
 

@@ -15,6 +15,11 @@ export interface UISpace extends Space {
   counts?: { total: number; high: number; medium: number; low: number };
   url?: string;
   /**
+   * PII type code -> occurrence count for this space in the latest scan.
+   * Defaults to an empty object so consumers never deal with null/undefined.
+   */
+  piiTypeCounts?: Record<string, number>;
+  /**
    * Index de l'ordre d'origine tel que fourni par le backend (Confluence).
    * Sert de repli pour stabiliser les tris afin de refléter exactement l'ordre Confluence quand requis.
    */
@@ -26,6 +31,12 @@ export class SpacesDashboardUtils {
 
   // raw ui list populated from backend spaces with safe defaults for display fields
   private readonly uiSpaces = signal<UISpace[]>([]);
+
+  /**
+   * Unfiltered, UI-decorated list of all spaces.
+   * Exposed so the filtering pipeline can operate on the raw source of truth.
+   */
+  readonly allSpaces = this.uiSpaces.asReadonly();
 
   // filters
   readonly globalFilter = signal<string>('');
@@ -66,6 +77,8 @@ export class SpacesDashboardUtils {
       status: 'NOT_STARTED',
       lastScanTs: undefined,
       counts: { total: 0, high: 0, medium: 0, low: 0 },
+      // Default PII type counts to an empty object (never null)
+      piiTypeCounts: {},
       // Preserve backend-provided URL when present
       url: s.url,
       // Conserver l'ordre backend (Confluence) pour des tris cohérents

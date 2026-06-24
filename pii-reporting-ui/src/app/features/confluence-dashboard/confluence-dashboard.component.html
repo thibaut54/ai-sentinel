@@ -17,6 +17,9 @@
   <!-- Severity cards -->
   <app-severity-cards [counts]="globalSeverityCounts()" />
 
+  <!-- Filter / sort bar (3 axes + search + sort), 100% client-side -->
+  <app-space-filters></app-space-filters>
+
   <p-table #dt [value]="sortedSpaces()"
            [(selection)]="selectedSpaces"
            dataKey="key"
@@ -154,44 +157,6 @@
             [attr.data-testid]="testIds.headers.actions">{{ 'dashboard.table.headers.actions' | transloco }}
         </th>
       </tr>
-      <tr>
-        <th id="col-select-filter"></th>
-        <th id="col-toggle-value"></th>
-        <th id="col-space-value">
-          <input
-            class="search-global"
-            pInputText
-            type="text"
-            [placeholder]="'common.search' | transloco"
-            [ngModel]="globalFilter()"
-            (ngModelChange)="onGlobalChange($event)"
-            [attr.aria-label]="'common.searchGlobally' | transloco"
-            [attr.data-testid]="'global-filter-input'" />
-        </th>
-        <th id="col-status-value">
-          <p-select
-            [options]="statusOptions()"
-            optionLabel="labelKey"
-            optionValue="value"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="onFilter('status', $event)"
-            [showClear]="true"
-            appendTo="body"
-            [attr.data-testid]="'status-filter-select'">
-            <ng-template pTemplate="item" let-option>
-              {{ option.labelKey | transloco }}
-            </ng-template>
-            <ng-template pTemplate="selectedItem" let-option>
-              {{ option.labelKey | transloco }}
-            </ng-template>
-          </p-select>
-        </th>
-        <th id="col-progress-value"></th>
-        <th id="col-last-scan-value"></th>
-        <th id="col-risk-score-value"></th>
-        <th id="col-pii-value"></th>
-        <th id="col-actions-value"></th>
-      </tr>
     </ng-template>
     <ng-template #body let-space let-expanded="expanded">
       <tr [attr.data-testid]="testIds.spaceRow">
@@ -259,6 +224,27 @@
                       (keydown.space)="$event.preventDefault(); $event.stopPropagation(); openConfluence(space)"
                       [ariaLabel]="'dashboard.actions.openInConfluence' | transloco"></p-button>
           </span>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="9">
+          <div class="filters-empty-state" [attr.data-testid]="'filters-empty-state'">
+            <i class="pi pi-filter-slash" aria-hidden="true"></i>
+            <p class="filters-empty-message">{{ 'dashboard.filters.emptyState' | transloco }}</p>
+            @if (isResettable()) {
+              <p-button type="button"
+                        icon="pi pi-filter-slash"
+                        [label]="'dashboard.filters.resetAll' | transloco"
+                        size="small"
+                        [outlined]="true"
+                        (click)="resetFilters()"
+                        [attr.data-testid]="'empty-state-reset'">
+              </p-button>
+            }
+          </div>
         </td>
       </tr>
     </ng-template>

@@ -16,8 +16,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
@@ -37,6 +39,7 @@ import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.jpa.entit
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,6 +83,26 @@ class ScanReportingUseCaseTest {
     private ScanReportingUseCase scanReportingUseCase;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * In-test stub returning no spaces; space-name enrichment is exercised in unit tests.
+     */
+    private final ConfluenceSpaceRepository spaceRepository = new ConfluenceSpaceRepository() {
+        @Override
+        public List<ConfluenceSpace> findAll() {
+            return List.of();
+        }
+
+        @Override
+        public Optional<ConfluenceSpace> findByKey(String key) {
+            return Optional.empty();
+        }
+
+        @Override
+        public void saveAll(List<ConfluenceSpace> spaces) {
+            // no-op for tests
+        }
+    };
 
     @TestConfiguration
     static class TestEncryptionConfig {
@@ -134,7 +157,7 @@ class ScanReportingUseCaseTest {
 
     @BeforeEach
     void cleanDb() {
-        scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository);
+        scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository, spaceRepository);
         detectionCheckpointRepository.deleteAll();
         detectionEventRepository.deleteAll();
     }

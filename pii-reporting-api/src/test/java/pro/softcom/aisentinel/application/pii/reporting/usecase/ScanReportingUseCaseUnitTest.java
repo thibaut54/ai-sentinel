@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -36,11 +37,14 @@ class ScanReportingUseCaseUnitTest {
     @Mock
     private ScanCheckpointRepository checkpointRepo;
 
+    @Mock
+    private ConfluenceSpaceRepository spaceRepository;
+
     private ScanReportingUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new ScanReportingUseCase(scanResultQuery, checkpointRepo);
+        useCase = new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository);
     }
 
     @Nested

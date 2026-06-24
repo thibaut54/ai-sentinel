@@ -33,6 +33,13 @@ export interface SpaceSummaryDto {
   attachmentsDone: number;
   lastEventTs: string;
   severityCounts: { high: number; medium: number; low: number; total: number; } | null;
+  /** Human-readable space name as known by the backend (optional, additive). */
+  spaceName?: string;
+  /**
+   * PII type code -> occurrence count for this space in the latest scan.
+   * Always an empty object (never null) when there are no detections.
+   */
+  piiTypeCounts?: Record<string, number>;
 }
 
 export interface ScanReportingSummaryDto {
