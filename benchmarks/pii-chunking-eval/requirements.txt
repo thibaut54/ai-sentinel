@@ -1,0 +1,5 @@
+# Real Mistral tokenizer for exact token budgets (no torch/transformers needed).
+tokenizers>=0.15
+huggingface_hub>=0.20
+# tomllib is in the stdlib on Python >= 3.11; add tomli only for older runtimes.
+tomli>=2.0 ; python_version < "3.11"

@@ -1,0 +1,6 @@
+# Regenerable run artifacts (results, failures, cache, reports).
+out/
+out-smoke/
+out-*/
+__pycache__/
+*.pyc
