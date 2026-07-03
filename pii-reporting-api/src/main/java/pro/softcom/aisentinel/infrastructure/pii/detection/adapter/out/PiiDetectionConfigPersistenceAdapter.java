@@ -11,6 +11,7 @@ import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDe
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Persistence adapter for PII detection configuration.
@@ -21,8 +22,8 @@ import java.time.LocalDateTime;
 public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigRepository {
 
     private static final Integer CONFIG_ID = 1;
-    private static final int DEFAULT_MINISTRAL_CHUNK_SIZE = 1024;
-    private static final int DEFAULT_MINISTRAL_OVERLAP = 128;
+    private static final int DEFAULT_MINISTRAL_CHUNK_SIZE = 2048;
+    private static final int DEFAULT_MINISTRAL_OVERLAP = 410;
 
     private final PiiDetectionConfigJpaRepository jpaRepository;
 
@@ -94,7 +95,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 false, // openmedJudgeEnabled
                 false, // gliner2JudgeEnabled
                 false, // prefilterEnabled (zero-effect rollout default)
-                LocalDateTime.now(),
+                LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
         );
 
@@ -155,7 +156,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .openmedJudgeEnabled(config.openmedJudgeEnabled())
                 .gliner2JudgeEnabled(config.gliner2JudgeEnabled())
                 .prefilterEnabled(config.prefilterEnabled())
-                .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
+                .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())
                 .build();
     }

@@ -12,13 +12,23 @@ endpoints must never be routed through a corporate proxy. We therefore build the
 ``httpx.Client`` with ``http2=False`` and ``trust_env=False`` (mirrors the Java
 ``LlmExtractorClient`` ``HTTP_1_1`` / ``NO_PROXY`` reference).
 
-Chunking: long documents are split with :class:`FallbackChunker`; each chunk is
-extracted independently and entity offsets are rebased to **global** coordinates
-via ``chunk.start``. A per-chunk failure (timeout / HTTP error) is logged and
-skipped (fail-open partial) so one bad chunk never sinks the whole detection.
+Chunking: long documents are split into windows measured in **real tokens** by
+:class:`MinistralTokenChunker` (Ministral's HF tokenizer), degrading to the
+char-ratio :class:`FallbackChunker` only when the tokenizer cannot be loaded
+(offline / no HF cache). Either way each chunk carries exact character offsets,
+so per-chunk entity offsets are rebased to **global** coordinates via
+``chunk.start``. A per-chunk failure (timeout / HTTP error) is logged and skipped
+(fail-open partial) so one bad chunk never sinks the whole detection.
 
 Per-type thresholds and the Ministral label -> canonical ``pii_type`` mapping are
-resolved from the ``pii_type_config`` DB rows (detector='MINISTRAL').
+resolved from the ``pii_type_config`` DB rows (detector='MINISTRAL'). Because the
+model emits an **open, free-cased vocabulary**, label resolution is layered
+(:class:`_LabelResolver`): exact ``detector_label`` match, then a case/format-
+insensitive match, then an open-vocabulary **passthrough** that surfaces any
+still-unmapped label as its normalized ``UPPER_SNAKE`` form. Nothing is dropped
+here: the downstream gRPC type-config gate keeps entities with no config row and
+drops the ones an operator disabled, so passthrough never resurrects a disabled
+type.
 
 This detector is permanently exempt from the LLM-as-judge post-filter (same
 model nature): its entities stay ``NOT_AUDITED``. It never sets ``judge_status``.
@@ -31,6 +41,8 @@ import logging
 import os
 import re
 import time
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -39,22 +51,45 @@ from pii_detector.application.config.detection_policy import DetectionConfig
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.exception.exceptions import PIIDetectionError
-from pii_detector.infrastructure.text_processing.semantic_chunker import FallbackChunker
+from pii_detector.infrastructure.text_processing.semantic_chunker import (
+    FallbackChunker,
+    MinistralTokenChunker,
+)
 
 DETECTOR_NAMESPACE = "MINISTRAL"
 MINISTRAL_DEFAULT_MODEL_ID = "ministral-3b-pii-preview@q8_0"
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
-# Permissive global threshold at this layer; the LLM does not emit a confidence,
-# so detected entities carry this score unless a request threshold overrides it.
+# Permissive global threshold at this layer (the detector's own default when no
+# request threshold is supplied).
 DEFAULT_GLOBAL_THRESHOLD = 0.5
+# Fixed confidence assigned to every Ministral extraction. The generative model
+# emits binary decisions (a span either IS or ISN'T PII) with no probabilistic
+# score, so it asserts maximum confidence. Deriving the score from the request
+# threshold (as before) was a bug: with a request threshold of 0.30 below the
+# per-type thresholds (0.50 in the seed), every well-mapped detection was
+# silently dropped by _apply_per_type_thresholds and by the gRPC type-config
+# gate. A fixed 1.0 keeps them; per-type thresholds thus never suppress a
+# Ministral finding — disable the type instead. Ministral is judge-exempt.
+MINISTRAL_CONFIDENCE = 1.0
 
-# Default chunking parameters (tokens). Mirrors the DB defaults in
-# init-script 013 (ministral_chunk_size / ministral_overlap).
-DEFAULT_CHUNK_SIZE_TOKENS = 1024
-DEFAULT_CHUNK_OVERLAP_TOKENS = 128
+# Default chunking parameters (real tokens). Mirrors the DB defaults in
+# init-script 013 (ministral_chunk_size / ministral_overlap). 2048 sits below
+# the recall cliff the chunking benchmark observed between 2048 and 8192 tokens;
+# the overlap is ~20% of the window so a boundary-straddling entity is recovered
+# whole by the adjacent chunk.
+DEFAULT_CHUNK_SIZE_TOKENS = 2048
+DEFAULT_CHUNK_OVERLAP_TOKENS = 410
 # Conservative chars/token used to translate token limits into char windows
-# for the LLM context (multilingual-safe upper bound).
+# for the LLM context, ONLY on the degraded FallbackChunker path (multilingual-
+# safe upper bound). The primary path measures windows in real tokens.
 CHARS_PER_TOKEN = 4
+
+# HF tokenizer used for token-faithful chunking — the same repo the chunking
+# benchmark uses, so the production token budget reproduces the bench. Loaded
+# lazily via the lightweight ``tokenizers`` library; any load failure (offline /
+# no HF cache) degrades to the char-ratio FallbackChunker. Override with
+# LLM_MINISTRAL_TOKENIZER (HF repo id, tokenizer.json path, or a directory).
+MINISTRAL_TOKENIZER_REPO = "OpenMed/Ministral-3B-PII-Preview"
 
 # HTTP timeout (seconds) for one chat/completions call.
 HTTP_TIMEOUT_SECONDS = 120.0
@@ -85,6 +120,60 @@ _SYSTEM_PROMPT = (
 )
 
 
+# camelCase / PascalCase boundary (lower|digit -> Upper), split so
+# "TrackingNumber" -> "tracking_number". A digit->letter boundary is NOT split,
+# so trained labels like ``ipv4`` / ``ipv6`` survive intact.
+_CAMEL_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+_NON_ALNUM_RUN = re.compile(r"[^a-z0-9]+")
+
+
+def _normalize_label(label: str) -> str:
+    """Normalise a free-form model label to a canonical ``snake_case`` key.
+
+    Splits camelCase/PascalCase boundaries, lower-cases, and collapses any run of
+    non-alphanumerics to a single ``_`` — e.g. ``"Ip Address" -> "ip_address"``,
+    ``"TrackingNumber" -> "tracking_number"``, ``"ZIP+4" -> "zip_4"``.
+    """
+    spaced = _CAMEL_CASE_BOUNDARY.sub("_", label.strip())
+    return _NON_ALNUM_RUN.sub("_", spaced.lower()).strip("_")
+
+
+@dataclass(frozen=True)
+class _LabelResolver:
+    """Resolve a model label to a canonical ``pii_type`` without ever dropping.
+
+    Layered resolution over the DB ``detector_label -> pii_type`` mapping:
+
+    1. **exact** — the label matches a configured ``detector_label`` verbatim;
+    2. **normalized** — case/format-insensitive match (``"Ip Address"`` resolves
+       to the same ``pii_type`` as the configured ``ip_address``);
+    3. **passthrough** — any still-unmapped label surfaces as its normalized
+       ``UPPER_SNAKE`` form so open-vocabulary detections are never silently
+       dropped. The gRPC type-config gate keeps no-config types and drops
+       disabled ones, so this never resurrects a type an operator turned off.
+    """
+
+    exact: Dict[str, str]
+    normalized: Dict[str, str]
+
+    @classmethod
+    def from_mapping(cls, label_mapping: Dict[str, str]) -> _LabelResolver:
+        normalized: Dict[str, str] = {}
+        for detector_label, pii_type in label_mapping.items():
+            # First configured label wins on a normalized collision.
+            normalized.setdefault(_normalize_label(detector_label), pii_type)
+        return cls(exact=dict(label_mapping), normalized=normalized)
+
+    def resolve(self, label: str) -> Optional[str]:
+        """Return the canonical ``pii_type``, or ``None`` only for an empty label."""
+        if label in self.exact:
+            return self.exact[label]
+        norm = _normalize_label(label)
+        if not norm:
+            return None
+        return self.normalized.get(norm) or norm.upper()
+
+
 class MinistralDetector:
     """PII detector backed by the Ministral-PII LLM (OpenAI-compatible endpoint).
 
@@ -107,6 +196,14 @@ class MinistralDetector:
 
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._client: Optional[httpx.Client] = None
+
+        # Lazily-loaded HF tokenizer for token-faithful chunking (cached on the
+        # instance; the service holds one detector, so loaded once per process).
+        self._tokenizer_repo = os.environ.get(
+            "LLM_MINISTRAL_TOKENIZER", MINISTRAL_TOKENIZER_REPO
+        )
+        self._tokenizer: Optional[Any] = None
+        self._tokenizer_loaded = False
 
     # ------------------------------------------------------------------
     # PIIDetectorProtocol
@@ -149,10 +246,15 @@ class MinistralDetector:
             if not label_mapping:
                 return []
 
+            resolver = _LabelResolver.from_mapping(label_mapping)
             entities = self._extract_over_chunks(
-                text, effective_threshold, label_mapping, type_labels, chunk_size, overlap
+                text, resolver, type_labels, chunk_size, overlap
             )
             entities = self._apply_per_type_thresholds(entities, scoring_overrides)
+            # Global confidence floor, for parity with the other detectors. The
+            # generative extractor emits a fixed max confidence, so this only
+            # drops in the degenerate case of a request threshold above 1.0.
+            entities = [e for e in entities if e.score >= effective_threshold]
 
             self.logger.info(
                 "[%s] Ministral detection complete: %d kept",
@@ -181,8 +283,7 @@ class MinistralDetector:
     def _extract_over_chunks(
         self,
         text: str,
-        threshold: float,
-        label_mapping: Dict[str, str],
+        resolver: _LabelResolver,
         type_labels: Dict[str, str],
         chunk_size: Optional[int],
         overlap: Optional[int],
@@ -195,11 +296,9 @@ class MinistralDetector:
         character offsets. A per-chunk HTTP/timeout failure is logged and skipped
         (fail-open partial).
         """
-        chunker = FallbackChunker(
-            chunk_size=chunk_size if chunk_size is not None else DEFAULT_CHUNK_SIZE_TOKENS,
-            overlap=overlap if overlap is not None else DEFAULT_CHUNK_OVERLAP_TOKENS,
-            chars_per_token=CHARS_PER_TOKEN,
-            logger=self.logger,
+        chunker = self._build_chunker(
+            chunk_size if chunk_size is not None else DEFAULT_CHUNK_SIZE_TOKENS,
+            overlap if overlap is not None else DEFAULT_CHUNK_OVERLAP_TOKENS,
         )
         chunks = chunker.chunk_text(text)
         entities: List[PIIEntity] = []
@@ -214,26 +313,86 @@ class MinistralDetector:
                 continue
             entities.extend(
                 self._pairs_to_entities(
-                    raw_pairs, chunk.text, chunk.start, threshold,
-                    label_mapping, type_labels,
+                    raw_pairs, chunk.text, chunk.start, resolver, type_labels,
                 )
             )
         return entities
+
+    # ------------------------------------------------------------------
+    # Chunker selection + lazy tokenizer
+    # ------------------------------------------------------------------
+
+    def _build_chunker(self, chunk_size: int, overlap: int) -> Any:
+        """Token-window chunker when the HF tokenizer loads, else char-ratio.
+
+        The token chunker measures the window in the unit the 3B model is bounded
+        by (real tokens) and returns exact char offsets; the FallbackChunker is
+        the offline/degraded char×N approximation of the same budget.
+        """
+        tokenizer = self._get_tokenizer()
+        if tokenizer is not None:
+            return MinistralTokenChunker(
+                tokenizer=tokenizer,
+                chunk_size=chunk_size,
+                overlap=overlap,
+                logger=self.logger,
+            )
+        return FallbackChunker(
+            chunk_size=chunk_size,
+            overlap=overlap,
+            chars_per_token=CHARS_PER_TOKEN,
+            logger=self.logger,
+        )
+
+    def _get_tokenizer(self) -> Optional[Any]:
+        """Lazily load + cache the Ministral HF tokenizer (per instance).
+
+        Returns ``None`` (and logs once) when the tokenizer cannot be loaded, so
+        the detector degrades to the char-ratio FallbackChunker instead of
+        failing. Failures are not memoised, so a transient load error is retried
+        on the next request.
+        """
+        if self._tokenizer_loaded:
+            return self._tokenizer
+        if self._tokenizer_repo:
+            try:
+                self._tokenizer = self._load_tokenizer(self._tokenizer_repo)
+            except Exception as exc:
+                self.logger.warning(
+                    "MINISTRAL_TOKENIZER_LOAD_FAILED repo=%s: %s — "
+                    "using char-ratio FallbackChunker",
+                    self._tokenizer_repo, exc,
+                )
+                return None
+        self._tokenizer_loaded = True
+        return self._tokenizer
+
+    @staticmethod
+    def _load_tokenizer(repo: str) -> Any:
+        """Load a ``tokenizers.Tokenizer`` from an HF repo id, a tokenizer.json
+        file, or a directory containing one (mirrors the chunking benchmark)."""
+        from tokenizers import Tokenizer
+
+        path = Path(repo)
+        if path.is_file():
+            return Tokenizer.from_file(str(path))
+        if path.is_dir():
+            return Tokenizer.from_file(str(path / "tokenizer.json"))
+        return Tokenizer.from_pretrained(repo)
 
     def _pairs_to_entities(
         self,
         raw_pairs: List[Dict[str, Any]],
         chunk_text: str,
         chunk_start: int,
-        threshold: float,
-        label_mapping: Dict[str, str],
+        resolver: _LabelResolver,
         type_labels: Dict[str, str],
     ) -> List[PIIEntity]:
         """Map ``{text, label}`` pairs to ``PIIEntity`` with global offsets."""
         results: List[PIIEntity] = []
         for pair in raw_pairs:
             entity = self._pair_to_entity(
-                pair, chunk_text, chunk_start, threshold, label_mapping, type_labels
+                pair, chunk_text, chunk_start, resolver, type_labels
             )
             if entity is not None:
                 results.append(entity)
@@ -244,14 +403,16 @@ class MinistralDetector:
         pair: Dict[str, Any],
         chunk_text: str,
         chunk_start: int,
-        threshold: float,
-        label_mapping: Dict[str, str],
+        resolver: _LabelResolver,
         type_labels: Dict[str, str],
     ) -> Optional[PIIEntity]:
         """Build a single ``PIIEntity`` from one ``{text, label}`` pair.
 
-        Returns ``None`` when the label is unknown (skip) or the text cannot be
-        located in the chunk (case-sensitive find; skip on miss).
+        The label is resolved to a canonical ``pii_type`` by :class:`_LabelResolver`
+        (exact -> normalized -> open-vocabulary passthrough), so an unrecognised
+        label is surfaced rather than dropped. Returns ``None`` only when the pair
+        is malformed or the text cannot be located in the chunk (case-sensitive
+        find; skip on miss).
         """
         if not isinstance(pair, dict):
             return None
@@ -259,7 +420,7 @@ class MinistralDetector:
         label = pair.get("label")
         if not span_text or not label:
             return None
-        pii_type = label_mapping.get(str(label))
+        pii_type = resolver.resolve(str(label))
         if not pii_type:
             return None
         local_start = chunk_text.find(str(span_text))
@@ -273,7 +434,7 @@ class MinistralDetector:
             type_label=type_labels.get(pii_type, pii_type),
             start=global_start,
             end=global_end,
-            score=float(threshold) if threshold is not None else DEFAULT_GLOBAL_THRESHOLD,
+            score=MINISTRAL_CONFIDENCE,
             source=DetectorSource.MINISTRAL,
         )
 

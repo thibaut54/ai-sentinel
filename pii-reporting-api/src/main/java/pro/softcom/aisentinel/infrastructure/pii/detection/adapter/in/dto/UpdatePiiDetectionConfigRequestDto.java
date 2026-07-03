@@ -149,19 +149,19 @@ public record UpdatePiiDetectionConfigRequestDto(
     }
 
     /**
-     * Returns the {@code ministralChunkSize} value with a {@code 1024} default
+     * Returns the {@code ministralChunkSize} value with a {@code 2048} default
      * when the client omits the field.
      */
     public int ministralChunkSizeOrDefault() {
-        return ministralChunkSize != null ? ministralChunkSize : 1024;
+        return ministralChunkSize != null ? ministralChunkSize : 2048;
     }
 
     /**
-     * Returns the {@code ministralOverlap} value with a {@code 128} default
+     * Returns the {@code ministralOverlap} value with a {@code 410} default
      * when the client omits the field.
      */
     public int ministralOverlapOrDefault() {
-        return ministralOverlap != null ? ministralOverlap : 128;
+        return ministralOverlap != null ? ministralOverlap : 410;
     }
 
     /**

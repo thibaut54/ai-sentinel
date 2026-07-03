@@ -16,18 +16,18 @@
 ALTER TABLE pii_detection_config
     ADD COLUMN IF NOT EXISTS ministral_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE pii_detection_config
-    ADD COLUMN IF NOT EXISTS ministral_chunk_size INTEGER NOT NULL DEFAULT 1024;
+    ADD COLUMN IF NOT EXISTS ministral_chunk_size INTEGER NOT NULL DEFAULT 2048;
 ALTER TABLE pii_detection_config
-    ADD COLUMN IF NOT EXISTS ministral_overlap INTEGER NOT NULL DEFAULT 128;
+    ADD COLUMN IF NOT EXISTS ministral_overlap INTEGER NOT NULL DEFAULT 410;
 ALTER TABLE pii_detection_config
     ADD COLUMN IF NOT EXISTS ministral_judge_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 COMMENT ON COLUMN pii_detection_config.ministral_enabled IS
     'Enables the Ministral-PII detector (specialised LLM, +24 F1 vs GLiNER2). Default: false (explicit operator opt-in).';
 COMMENT ON COLUMN pii_detection_config.ministral_chunk_size IS
-    'Ministral-PII chunk size in tokens (range 256-4096). Default: 1024.';
+    'Ministral-PII chunk size in tokens (range 256-4096). Default: 2048.';
 COMMENT ON COLUMN pii_detection_config.ministral_overlap IS
-    'Ministral-PII chunk overlap in tokens (range 0-512, strictly < ministral_chunk_size). Default: 128.';
+    'Ministral-PII chunk overlap in tokens (range 0-512, strictly < ministral_chunk_size). Default: 410.';
 COMMENT ON COLUMN pii_detection_config.ministral_judge_enabled IS
     'Structural column kept FALSE: Ministral-PII is permanently exempt from the LLM-as-judge (same model nature). Never exposed in the UI/domain.';
 

@@ -12,9 +12,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import re
+
 from pii_detector.infrastructure.text_processing.semantic_chunker import (
     ChunkResult,
     GlinerSubwordChunker,
+    MinistralTokenChunker,
     SemanticTextChunker,
     FallbackChunker,
     create_chunker,
@@ -831,3 +834,137 @@ class TestGlinerSubwordChunker:
                 GlinerSubwordChunker(
                     tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
                 )
+
+
+# ============================================================================
+# MinistralTokenChunker Tests
+# ============================================================================
+
+class _FakeEncoding:
+    """Minimal stand-in for ``tokenizers.Encoding`` (only ``offsets`` is read)."""
+
+    def __init__(self, offsets):
+        self.offsets = offsets
+
+
+class _WhitespaceFakeTokenizer:
+    """Whitespace tokenizer exposing the ``tokenizers.Tokenizer`` surface used.
+
+    Each maximal run of non-space characters is one token; ``offsets`` are the
+    exact char spans into the input — letting tests assert the char-offset
+    invariant against a tokenizer whose boundaries are fully deterministic. The
+    ``add_special_tokens`` kwarg is recorded so a test can assert the chunker
+    asks for content tokens only (faithful token budget).
+    """
+
+    def __init__(self):
+        self.last_add_special_tokens = None
+
+    def encode(self, text, add_special_tokens=True):
+        self.last_add_special_tokens = add_special_tokens
+        offsets = [(m.start(), m.end()) for m in re.finditer(r"\S+", text)]
+        return _FakeEncoding(offsets)
+
+
+class TestMinistralTokenChunker:
+    """Token-window chunker driven by the Ministral HF tokenizer offsets."""
+
+    def test_Should_RaiseValueError_When_ChunkSizeIsZero(self):
+        with pytest.raises(ValueError, match="chunk_size"):
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=0, overlap=0
+            )
+
+    def test_Should_RaiseValueError_When_OverlapNegative(self):
+        with pytest.raises(ValueError, match="overlap"):
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2048, overlap=-1
+            )
+
+    def test_Should_RaiseValueError_When_OverlapGreaterOrEqualChunkSize(self):
+        with pytest.raises(ValueError, match="overlap"):
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=100, overlap=100
+            )
+
+    def test_Should_ReturnEmptyList_When_TextIsEmpty(self):
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=8, overlap=2
+        )
+        assert chunker.chunk_text("") == []
+
+    def test_Should_ReturnSingleChunkCoveringWholeText_When_TokensWithinChunkSize(self):
+        text = "Jean habite a Geneve"  # 4 whitespace tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=8, overlap=2
+        )
+        results = chunker.chunk_text(text)
+        assert len(results) == 1
+        assert results[0].start == 0
+        assert results[0].end == len(text)
+        assert results[0].text == text
+        assert results[0].token_count == 4
+
+    def test_Should_PreserveCharOffsetInvariant_When_MultipleChunks(self):
+        # The contract the detector relies on: text[chunk.start:chunk.end] is
+        # EXACTLY chunk.text for every chunk, so chunk-local find() + chunk.start
+        # rebases entities to correct global coordinates.
+        text = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda"
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=3, overlap=1
+        )
+        results = chunker.chunk_text(text)
+        assert len(results) > 1
+        for chunk in results:
+            assert text[chunk.start:chunk.end] == chunk.text
+
+    def test_Should_SplitOnTokenBoundaries_When_TextExceedsChunkSize(self):
+        text = "one two three four five six seven"  # 7 tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=3, overlap=0
+        )
+        results = chunker.chunk_text(text)
+        # stride 3, 7 tokens -> windows [0:3], [3:6], [6:7]
+        assert len(results) == 3
+        assert [c.token_count for c in results] == [3, 3, 1]
+
+    def test_Should_OverlapTokens_When_OverlapPositive(self):
+        text = "one two three four five six seven eight"  # 8 tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=4, overlap=2
+        )
+        results = chunker.chunk_text(text)
+        assert len(results) >= 2
+        # Consecutive windows share tokens -> the next chunk starts before the
+        # previous one ends (char space), guaranteeing no boundary-split entity.
+        assert results[1].start < results[0].end
+
+    def test_Should_CoverEntireText_When_Chunking(self):
+        text = "  alpha beta gamma delta epsilon zeta  "  # leading/trailing space
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2, overlap=0
+        )
+        results = chunker.chunk_text(text)
+        # First chunk anchored at 0 and last chunk reaches len(text): no content
+        # at the document edges can be silently dropped.
+        assert results[0].start == 0
+        assert results[-1].end == len(text)
+
+    def test_Should_EncodeWithoutSpecialTokens_When_ComputingOffsets(self):
+        # Token budgets must be measured on content tokens only (no BOS/EOS),
+        # otherwise the configured size drifts from what the model consumes.
+        tokenizer = _WhitespaceFakeTokenizer()
+        chunker = MinistralTokenChunker(tokenizer=tokenizer, chunk_size=4, overlap=0)
+        chunker.chunk_text("one two three four five")
+        assert tokenizer.last_add_special_tokens is False
+
+    def test_Should_ReportConfiguration_When_GetChunkInfoCalled(self):
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2048, overlap=410
+        )
+        info = chunker.get_chunk_info()
+        assert info["chunk_size"] == 2048
+        assert info["overlap"] == 410
+        assert info["library"] == "tokenizers"
+        assert info["available"] is True
+        assert "tokenizer" in info

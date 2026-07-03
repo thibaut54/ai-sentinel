@@ -240,8 +240,8 @@ export class PiiSettingsComponent implements OnInit {
       openmedJudgeEnabled: [false],
       gliner2JudgeEnabled: [false],
       ministralEnabled: [false],
-      ministralChunkSize: [1024, [Validators.required, Validators.min(256), Validators.max(4096)]],
-      ministralOverlap: [128, [Validators.required, Validators.min(0), Validators.max(512)]],
+      ministralChunkSize: [2048, [Validators.required, Validators.min(256), Validators.max(4096)]],
+      ministralOverlap: [410, [Validators.required, Validators.min(0), Validators.max(512)]],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
     }, {

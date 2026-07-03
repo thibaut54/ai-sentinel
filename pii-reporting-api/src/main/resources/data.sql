@@ -15,7 +15,7 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- (migration 012). llm_judge_enabled is the derived OR, maintained by the API.
 -- ============================================================================
 INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, openmed_enabled, gliner2_enabled, default_threshold, nb_of_label_by_pass, llm_judge_enabled, prefilter_enabled, gliner_judge_enabled, presidio_judge_enabled, regex_judge_enabled, openmed_judge_enabled, gliner2_judge_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, ministral_judge_enabled, updated_at, updated_by)
-VALUES (1, true, true, true, false, false, 0.30, 35, false, false, false, false, false, false, false, false, 1024, 128, false, CURRENT_TIMESTAMP, 'system')
+VALUES (1, true, true, true, false, false, 0.30, 35, false, false, false, false, false, false, false, false, 2048, 410, false, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
