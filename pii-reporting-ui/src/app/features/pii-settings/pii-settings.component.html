@@ -262,22 +262,22 @@
 
                         <!-- Pré-filtre déterministe -->
                         <div class="detector-card prefilter"
-                             [class.enabled]="configForm.get('prefilterEnabled')?.value"
-                             [class.disabled]="!configForm.get('prefilterEnabled')?.value">
+                             [class.enabled]="configForm.get('postfilterEnabled')?.value"
+                             [class.disabled]="!configForm.get('postfilterEnabled')?.value">
                             <div class="detector-avatar prefilter"
-                                 [class.disabled-avatar]="!configForm.get('prefilterEnabled')?.value">PF</div>
+                                 [class.disabled-avatar]="!configForm.get('postfilterEnabled')?.value">PF</div>
                             <div class="detector-info">
                                 <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('prefilterEnabled')?.value">
-                                    {{ 'settings.detectors.prefilter.label' | transloco }}
+                                     [class.disabled-text]="!configForm.get('postfilterEnabled')?.value">
+                                    {{ 'settings.detectors.postfilter.label' | transloco }}
                                 </div>
-                                <div class="detector-desc">{{ 'settings.detectors.prefilter.description' | transloco }}</div>
+                                <div class="detector-desc">{{ 'settings.detectors.postfilter.description' | transloco }}</div>
                             </div>
                             <p-toggleswitch
-                                formControlName="prefilterEnabled"
-                                inputId="togglePrefilterEnabled"
-                                data-testid="togglePrefilterEnabled"
-                                [ariaLabel]="'settings.detectors.prefilter.label' | transloco">
+                                formControlName="postfilterEnabled"
+                                inputId="togglepostfilterEnabled"
+                                data-testid="togglepostfilterEnabled"
+                                [ariaLabel]="'settings.detectors.postfilter.label' | transloco">
                             </p-toggleswitch>
                         </div>
                     </div>

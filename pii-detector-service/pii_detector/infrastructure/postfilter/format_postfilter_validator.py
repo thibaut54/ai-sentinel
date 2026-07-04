@@ -1,10 +1,18 @@
-"""Deterministic format pre-filter post-detection validator (Stage B).
+"""Deterministic precision post-filter applied after detection.
 
 This module exposes :class:`FormatPrefilterValidator`, an implementation of
 the :class:`~pii_detector.domain.port.pii_post_filter_protocol.PIIPostFilterProtocol`
-that runs **before** the LLM judge and rejects only the
-mechanically-impossible findings (positive checksum / parse failures) per
-``pii_type``, via the GO strategies in :mod:`registry`.
+that runs as the **final precision stage** of the detection pipeline (the
+LLM-as-judge is retired now that the primary detector is itself an LLM). It
+rejects only deterministic false positives, in two passes:
+
+1. a **cross-label technical-artifact denylist**
+   (:mod:`technical_artifact_denylist`) that drops spans whose text is a
+   recognisable machine artefact (UUID, ObjectId, digests, traceparent,
+   version strings, base64 images), whatever passthrough label Ministral
+   attached to them;
+2. the **per-``pii_type`` strategies** in :mod:`registry` that drop
+   mechanically-impossible findings (positive checksum / parse failures).
 
 Key design points (mirrors :mod:`llm_validator` so the gRPC plumbing is
 reused unchanged):
@@ -15,14 +23,15 @@ reused unchanged):
 - **Shared discard channel**: :meth:`filter_with_verdicts` returns the same
   ``(kept, rejections)`` shape as
   :meth:`LLMJudgeValidator.filter_with_verdicts`, so
-  ``_add_discarded_entities_to_response`` serialises pre-filter rejections
+  ``_add_discarded_entities_to_response`` serialises post-filter rejections
   without any change. Each rejection carries a :class:`_PrefilterVerdict`
   duck-typed on :class:`PiiVerdict` (``.verdict`` / ``.confidence`` /
   ``.reason``).
 - **No HTTP / no model**: the filter is purely deterministic, so there is no
   network call, no thread-pool, and no lifecycle to shut down.
 
-References: ``my-files/prefilter-work/PLAN.md`` sections 1.5-1.6.
+References: ``my-files/prefilter-work/PLAN.md`` sections 1.5-1.6 and
+``my-files/fable5-postfilter-task.md``.
 """
 
 from __future__ import annotations
@@ -36,7 +45,8 @@ from pii_detector.domain.entity.pii_entity import PIIEntity
 from pii_detector.domain.port.pii_post_filter_protocol import (
     PIIPostFilterProtocol,
 )
-from pii_detector.infrastructure.prefilter.registry import STRATEGIES
+from pii_detector.infrastructure.postfilter import technical_artifact_denylist
+from pii_detector.infrastructure.postfilter.registry import STRATEGIES
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class _PrefilterVerdict:
+class _PostfilterVerdict:
     """Duck-typed verdict matching :class:`PiiVerdict` (.verdict/.confidence/.reason).
 
     ``_add_discarded_entities_to_response`` reads these three attributes via
@@ -82,11 +92,11 @@ def _normalize_pii_type(pii_type) -> str:
 # ---------------------------------------------------------------------------
 
 
-_INSTANCE: Optional["FormatPrefilterValidator"] = None
+_INSTANCE: Optional["FormatPostfilterValidator"] = None
 _INSTANCE_LOCK = threading.Lock()
 
 
-def get_instance() -> "FormatPrefilterValidator":
+def get_instance() -> FormatPostfilterValidator | None:
     """Return the process-wide :class:`FormatPrefilterValidator` singleton.
 
     Built lazily (no I/O at import time) so the no-prefilter path never
@@ -96,7 +106,7 @@ def get_instance() -> "FormatPrefilterValidator":
     if _INSTANCE is None:
         with _INSTANCE_LOCK:
             if _INSTANCE is None:
-                _INSTANCE = FormatPrefilterValidator()
+                _INSTANCE = FormatPostfilterValidator()
     return _INSTANCE
 
 
@@ -112,21 +122,24 @@ def _reset_singleton_for_tests() -> None:
 # ---------------------------------------------------------------------------
 
 
-class FormatPrefilterValidator(PIIPostFilterProtocol):
-    """Deterministic format pre-filter post-filter (Stage B, before the judge).
+class FormatPostfilterValidator(PIIPostFilterProtocol):
+    """Deterministic precision post-filter (final stage after detection).
 
     Behaviour summary:
 
-    - For each entity, the ``pii_type`` is normalised and looked up in
+    - Each entity first goes through the label-agnostic
+      :func:`technical_artifact_denylist.evaluate` pass: spans whose text is
+      a recognisable technical artefact are discarded whatever their label.
+    - Then the ``pii_type`` is normalised and looked up in
       :data:`registry.STRATEGIES`. Unmapped types pass through unchanged.
     - The matched strategy's :meth:`evaluate` decides keep / reject. A
       ``keep=False`` verdict (positive checksum / parse failure) discards the
       entity with a synthetic ``FALSE_POSITIVE`` verdict (confidence 1.0).
-    - Any exception raised by a strategy keeps the entity (defensive
-      fail-open).
+    - Any exception raised by the denylist or a strategy keeps the entity
+      (defensive fail-open).
     """
 
-    SOURCE_NAME = "format-prefilter"
+    SOURCE_NAME = "format-postfilter"
 
     # -- PIIPostFilterProtocol -----------------------------------------------
 
@@ -143,7 +156,7 @@ class FormatPrefilterValidator(PIIPostFilterProtocol):
 
     def filter_with_verdicts(
         self, text: str, entities: List[PIIEntity]
-    ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, _PrefilterVerdict]]]:
+    ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, _PostfilterVerdict]]]:
         """Filter entities and also return the rejected ones with verdicts.
 
         Same ``(kept, rejections)`` contract as
@@ -153,9 +166,27 @@ class FormatPrefilterValidator(PIIPostFilterProtocol):
         kept by fail-open never appear in ``rejections``.
         """
         kept: List[PIIEntity] = []
-        rejections: List[Tuple[PIIEntity, _PrefilterVerdict]] = []
+        rejections: List[Tuple[PIIEntity, _PostfilterVerdict]] = []
         for entity in entities:
             pii_type = _normalize_pii_type(entity.pii_type)
+            try:
+                deny = technical_artifact_denylist.evaluate(
+                    entity.text, pii_type
+                )
+            except Exception:  # defensive fail-open
+                deny = None
+            if deny is not None and not deny.keep:
+                rejections.append(
+                    (
+                        entity,
+                        _PostfilterVerdict(
+                            verdict="FALSE_POSITIVE",
+                            confidence=1.0,
+                            reason=deny.reason,
+                        ),
+                    )
+                )
+                continue
             strategy = STRATEGIES.get(pii_type)
             if strategy is None:  # type not in scope -> keep
                 kept.append(entity)
@@ -171,7 +202,7 @@ class FormatPrefilterValidator(PIIPostFilterProtocol):
                 rejections.append(
                     (
                         entity,
-                        _PrefilterVerdict(
+                        _PostfilterVerdict(
                             verdict="FALSE_POSITIVE",
                             confidence=1.0,
                             reason=verdict.reason,
@@ -182,6 +213,6 @@ class FormatPrefilterValidator(PIIPostFilterProtocol):
 
 
 __all__ = [
-    "FormatPrefilterValidator",
+    "FormatPostfilterValidator",
     "get_instance",
 ]

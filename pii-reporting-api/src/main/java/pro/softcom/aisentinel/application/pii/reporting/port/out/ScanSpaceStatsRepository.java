@@ -83,7 +83,7 @@ public interface ScanSpaceStatsRepository {
      * @param busyMs    busy time of this detector for the request, in milliseconds
      * @param chars     characters submitted to this detector for the request
      * @param detections raw entities found by this detector for the request (or examined
-     *                   count for the JUDGE/PREFILTER post-filters)
+     *                   count for the JUDGE/postfilter post-filters)
      * @param discarded  PII discarded by this stage for the request (0 for real detectors)
      */
     void accumulateDetectorStat(String scanId, String spaceKey, String detector,

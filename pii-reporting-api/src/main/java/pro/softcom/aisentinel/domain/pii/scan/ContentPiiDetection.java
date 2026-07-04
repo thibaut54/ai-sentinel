@@ -300,7 +300,7 @@ public record ContentPiiDetection(
          * The deterministic format pre-filter, surfaced as a pseudo detector in
          * run-stats only to expose how many PII it discarded.
          */
-        PREFILTER,
+        POSTFILTER,
         /**
          * Specialised LLM PII detector (Ministral-PII). Permanently exempt from
          * the LLM-as-judge post-filter (same model nature): its findings stay
@@ -382,7 +382,7 @@ public record ContentPiiDetection(
      * @param source the detector these stats belong to
      * @param durationMs wall-clock duration of this detector's execution, in milliseconds
      * @param entitiesFound for real detectors, raw entities found (pre-merge); for the
-     *                      JUDGE/PREFILTER post-filters, the number of PII examined
+     *                      JUDGE/postfilter post-filters, the number of PII examined
      * @param entitiesDiscarded number of PII the stage discarded (0 for real detectors)
      */
     public record DetectorRunStat(

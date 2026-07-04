@@ -19,9 +19,9 @@ import re
 from stdnum import iban as _iban
 from stdnum.exceptions import ValidationError
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 _IBAN_SHAPE = re.compile(r"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$")
@@ -32,7 +32,7 @@ class IbanStrategy:
 
     pii_type = "IBAN"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):
             return PASS
         s = value.strip().replace(" ", "").upper()
@@ -41,6 +41,6 @@ class IbanStrategy:
         try:
             if _iban.is_valid(s):  # country length + mod-97
                 return PASS
-            return PrefilterVerdict(False, "iban mod-97 / length failed")
+            return PostfilterVerdict(False, "iban mod-97 / length failed")
         except (ValidationError, Exception):  # fail-open absolute
             return PASS

@@ -95,13 +95,13 @@ class TestAddDetectorStatsToResponse:
 
         assert len(response.detector_stats) == 0
 
-    def test_Should_MapJudgeAndPrefilterPseudoDetectors_When_PostFilterStatsGiven(self):
+    def test_Should_MapJudgeAndPostfilterPseudoDetectors_When_PostFilterStatsGiven(self):
         """The judge and pre-filter are surfaced as pseudo-detectors carrying the
         examined count (entities_found) and the discarded count (entities_discarded)."""
         response = pii_detection_pb2.PIIDetectionResponse()
         stats = [
             {"source": DetectorSource.GLINER2, "duration_ms": 4200, "entities_found": 5},
-            {"source": DetectorSource.PREFILTER, "duration_ms": 2, "entities_found": 8, "entities_discarded": 3},
+            {"source": DetectorSource.POSTFILTER, "duration_ms": 2, "entities_found": 8, "entities_discarded": 3},
             {"source": DetectorSource.JUDGE, "duration_ms": 1400, "entities_found": 5, "entities_discarded": 1},
         ]
 
@@ -114,7 +114,7 @@ class TestAddDetectorStatsToResponse:
         assert judge.duration_ms == 1400
         assert judge.entities_found == 5
         assert judge.entities_discarded == 1
-        prefilter = by_source[pii_detection_pb2.DetectorSource.PREFILTER]
-        assert prefilter.entities_discarded == 3
+        postfilter = by_source[pii_detection_pb2.DetectorSource.POSTFILTER]
+        assert postfilter.entities_discarded == 3
         # Real detectors carry no discards.
         assert by_source[pii_detection_pb2.DetectorSource.GLINER2].entities_discarded == 0

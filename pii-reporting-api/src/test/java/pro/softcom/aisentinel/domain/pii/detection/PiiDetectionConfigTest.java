@@ -44,7 +44,7 @@ class PiiDetectionConfigTest {
         softly.assertThat(config.defaultThreshold()).isEqualByComparingTo(threshold);
         softly.assertThat(config.nbOfLabelByPass()).isEqualTo(30);
         softly.assertThat(config.llmJudgeEnabled()).isFalse();
-        softly.assertThat(config.prefilterEnabled()).isFalse();
+        softly.assertThat(config.postfilterEnabled()).isFalse();
         softly.assertThat(config.updatedAt()).isEqualTo(updatedAt);
         softly.assertThat(config.updatedBy()).isEqualTo(updatedBy);
         softly.assertAll();
@@ -62,14 +62,14 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void Should_ExposePrefilterEnabledFlag_When_Enabled() {
+    void Should_ExposePostfilterEnabledFlag_When_Enabled() {
         // Arrange & Act
         PiiDetectionConfig config = new PiiDetectionConfig(
             1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,LocalDateTime.now(), "system"
         );
 
         // Assert
-        assertThat(config.prefilterEnabled()).isTrue();
+        assertThat(config.postfilterEnabled()).isTrue();
     }
 
     @Test
@@ -323,7 +323,7 @@ class PiiDetectionConfigTest {
     }
 
     @Test
-    void Should_NotBeEqual_When_PrefilterEnabledDiffers() {
+    void Should_NotBeEqual_When_PostfilterEnabledDiffers() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         PiiDetectionConfig configOff = new PiiDetectionConfig(
@@ -373,7 +373,7 @@ class PiiDetectionConfigTest {
         softly.assertThat(result).contains("ministralEnabled=false");
         softly.assertThat(result).contains("defaultThreshold=0.75");
         softly.assertThat(result).contains("llmJudgeEnabled=true");
-        softly.assertThat(result).contains("prefilterEnabled=false");
+        softly.assertThat(result).contains("postfilterEnabled=false");
         softly.assertThat(result).contains("updatedBy=testuser");
         softly.assertAll();
     }

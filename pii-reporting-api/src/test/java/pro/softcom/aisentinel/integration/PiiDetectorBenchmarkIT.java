@@ -74,7 +74,7 @@ import java.util.stream.Collectors;
  * over gRPC) and the DB config to enable detectors and route the judge.
  *
  * <h2>Judge ON/OFF in a single scan</h2>
- * With {@code prefilter_enabled=false} and the judge being drop-only, one
+ * With {@code postfilter_enabled=false} and the judge being drop-only, one
  * judge-on scan yields both states from the same response:
  * <ul>
  *   <li>judge ON  = {@code sensitiveDataFound()} (kept after the judge);</li>
@@ -105,7 +105,7 @@ import java.util.stream.Collectors;
  * <pre>
  *   $env:RUN_PII_BENCHMARK = "true"
  *   mvn -Dtest=PiiDetectorBenchmarkIT "-Dcorpus.bench.hf-cache=C:\hf-cache" \
- *       "-Dcorpus.bench.llm-judge-url=http://host.docker.internal:1234/v1" test
+ *       "-Dcorpus.bench.llm-judge-url=<a href="http://host.docker.internal:1234/v1">...</a>" test
  * </pre>
  * Useful system properties: {@code corpus.bench.gold-dir}, {@code corpus.bench.concept-map},
  * {@code corpus.bench.max-docs} (smoke), {@code corpus.bench.threshold},

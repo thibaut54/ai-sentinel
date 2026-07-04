@@ -8,20 +8,23 @@ ROUTING_NUMBER, USERNAME, ...) are intentionally absent so an unmapped type
 always falls open in :mod:`format_prefilter_validator`.
 """
 
-from pii_detector.infrastructure.prefilter.strategies.avs_number import (
+from pii_detector.infrastructure.postfilter.strategies.avs_number import (
     AvsNumberStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.card_number import (
+from pii_detector.infrastructure.postfilter.strategies.card_number import (
     CardNumberStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.iban import IbanStrategy
-from pii_detector.infrastructure.prefilter.strategies.ip_address import (
+from pii_detector.infrastructure.postfilter.strategies.iban import IbanStrategy
+from pii_detector.infrastructure.postfilter.strategies.ip_address import (
     IpAddressStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.mac_address import (
+from pii_detector.infrastructure.postfilter.strategies.mac_address import (
     MacAddressStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.swiss_uid import (
+from pii_detector.infrastructure.postfilter.strategies.swift_bic import (
+    SwiftBicStrategy,
+)
+from pii_detector.infrastructure.postfilter.strategies.swiss_uid import (
     SwissUidStrategy,
 )
 
@@ -54,3 +57,14 @@ STRATEGIES["TAX_ID"] = _swiss_uid
 STRATEGIES["TAX_NUMBER"] = _swiss_uid  # Swiss UID under its other GLiNER2 label
 STRATEGIES["PAYMENT_CARD"] = _card_number  # alias of CARD_NUMBER (Luhn 13-19)
 STRATEGIES["NATIONAL_ID_NUMBER"] = _avs_number  # alias of AVS_NUMBER (756/EAN-13)
+
+# Tier C (fable5-postfilter-task.md): structural SWIFT/BIC validation, keyed
+# under the label variants Ministral emits in passthrough. NIR (INSEE) and
+# FR VAT/SIRET checksum validators were evaluated and deliberately dropped:
+# the reference gold corpus carries synthetically-invalid keys, so they would
+# reject true positives (recall rule wins over precision).
+_swift_bic = SwiftBicStrategy()
+STRATEGIES["SWIFT_BIC"] = _swift_bic
+STRATEGIES["BIC"] = _swift_bic
+STRATEGIES["SWIFT_CODE"] = _swift_bic
+STRATEGIES["SWIFT"] = _swift_bic

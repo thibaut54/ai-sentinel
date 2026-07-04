@@ -31,9 +31,9 @@ import re
 
 from stdnum.ch import uid
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 # Tolerated VAT register suffixes (TVA / MWST / IVA), stripped before matching
@@ -50,7 +50,7 @@ class SwissUidStrategy:
 
     pii_type = "TAX_ID"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):  # type barrier (research §5)
             return PASS
         cleaned = value.strip().upper()
@@ -64,6 +64,6 @@ class SwissUidStrategy:
         try:
             if uid.is_valid(cleaned):  # CHE + 9 digits + mod-11 check digit
                 return PASS
-            return PrefilterVerdict(False, "swiss_uid mod-11 check digit failed")
+            return PostfilterVerdict(False, "swiss_uid mod-11 check digit failed")
         except Exception:  # fail-open absolute
             return PASS

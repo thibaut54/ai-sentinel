@@ -19,7 +19,7 @@ INSERT INTO pii_detection_config (
     default_threshold,
     nb_of_label_by_pass,
     llm_judge_enabled,
-    prefilter_enabled,
+    postfilter_enabled,
     updated_at,
     updated_by
 )
@@ -31,7 +31,7 @@ VALUES (1, false, true, true, 0.30, 35, true, false, CURRENT_TIMESTAMP, 'test-op
             default_threshold   = EXCLUDED.default_threshold,
             nb_of_label_by_pass = EXCLUDED.nb_of_label_by_pass,
             llm_judge_enabled   = EXCLUDED.llm_judge_enabled,
-            prefilter_enabled   = EXCLUDED.prefilter_enabled,
+            postfilter_enabled   = EXCLUDED.postfilter_enabled,
             updated_at          = EXCLUDED.updated_at,
             updated_by          = EXCLUDED.updated_by;
 

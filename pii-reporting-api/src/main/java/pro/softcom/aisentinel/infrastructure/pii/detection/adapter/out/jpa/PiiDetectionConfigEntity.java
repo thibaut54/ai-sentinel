@@ -153,14 +153,14 @@ public class PiiDetectionConfigEntity {
      * runs before the LLM judge. Defaults to {@code false} for a zero-effect rollout.
      */
     @NotNull
-    @Column(name = "prefilter_enabled", nullable = false)
-    private Boolean prefilterEnabled;
+    @Column(name = "postfilter_enabled", nullable = false)
+    private Boolean postfilterEnabled;
 
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "updated_by", length = 255)
+    @Column(name = "updated_by")
     private String updatedBy;
 
     protected PiiDetectionConfigEntity() {

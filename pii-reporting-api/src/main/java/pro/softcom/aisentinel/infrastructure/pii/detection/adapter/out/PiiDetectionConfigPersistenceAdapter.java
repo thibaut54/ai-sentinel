@@ -56,11 +56,11 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
         }
         
         log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, prefilterEnabled={}, updatedBy={}",
+                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, postfilterEnabled={}, updatedBy={}",
                 config.glinerEnabled(), config.presidioEnabled(),
                 config.regexEnabled(), config.openmedEnabled(), config.gliner2Enabled(),
                 config.defaultThreshold(), config.nbOfLabelByPass(), config.llmJudgeEnabled(),
-                config.prefilterEnabled(), config.updatedBy());
+                config.postfilterEnabled(), config.updatedBy());
 
 
         PiiDetectionConfigEntity entity = toEntity(config);
@@ -94,7 +94,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 false, // regexJudgeEnabled
                 false, // openmedJudgeEnabled
                 false, // gliner2JudgeEnabled
-                false, // prefilterEnabled (zero-effect rollout default)
+                false, // postfilterEnabled (zero-effect rollout default)
                 LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
         );
@@ -125,7 +125,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getRegexJudgeEnabled() != null && entity.getRegexJudgeEnabled(),
                 entity.getOpenmedJudgeEnabled() != null && entity.getOpenmedJudgeEnabled(),
                 entity.getGliner2JudgeEnabled() != null && entity.getGliner2JudgeEnabled(),
-                entity.getPrefilterEnabled() != null && entity.getPrefilterEnabled(),
+                entity.getPostfilterEnabled() != null && entity.getPostfilterEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -155,7 +155,7 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .regexJudgeEnabled(config.regexJudgeEnabled())
                 .openmedJudgeEnabled(config.openmedJudgeEnabled())
                 .gliner2JudgeEnabled(config.gliner2JudgeEnabled())
-                .prefilterEnabled(config.prefilterEnabled())
+                .postfilterEnabled(config.postfilterEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())
                 .build();

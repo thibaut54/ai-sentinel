@@ -134,7 +134,7 @@
       "rateUnit": "car/s",
       "busy": "Temps cumulé",
       "judgeLabel": "LLM Juge",
-      "prefilterLabel": "Pré-filtre",
+      "postfilterLabel": "Post-filtre",
       "judgeUnit": "s/PII",
       "busyNote": "Le temps par détecteur est un temps de calcul cumulé ; il peut dépasser la durée totale du scan en raison du parallélisme. Le débit est exprimé en caractères par seconde, sauf pour le LLM Juge (secondes par PII jugé)."
     },
@@ -320,8 +320,8 @@
         "overlapHint": "Nombre de tokens partagés entre deux fenêtres consécutives (0-512). Doit rester inférieur à la taille de fenêtre.",
         "overlapError": "Le chevauchement doit être inférieur à la taille de fenêtre."
       },
-      "prefilter": {
-        "label": "Pré-filtre déterministe",
+      "postfilter": {
+        "label": "Post-filtre déterministe",
         "description": "Rejette avant le juge LLM les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
       },
       "detectorLabel": "Détecteur",

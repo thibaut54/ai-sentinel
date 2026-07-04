@@ -10,24 +10,27 @@ from __future__ import annotations
 
 import pytest
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
-    PrefilterStrategy,
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
+    PostfilterStrategy,
 )
-from pii_detector.infrastructure.prefilter.registry import STRATEGIES
-from pii_detector.infrastructure.prefilter.strategies.avs_number import (
+from pii_detector.infrastructure.postfilter.registry import STRATEGIES
+from pii_detector.infrastructure.postfilter.strategies.avs_number import (
     AvsNumberStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.card_number import (
+from pii_detector.infrastructure.postfilter.strategies.card_number import (
     CardNumberStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.iban import IbanStrategy
-from pii_detector.infrastructure.prefilter.strategies.ip_address import (
+from pii_detector.infrastructure.postfilter.strategies.iban import IbanStrategy
+from pii_detector.infrastructure.postfilter.strategies.ip_address import (
     IpAddressStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.mac_address import (
+from pii_detector.infrastructure.postfilter.strategies.mac_address import (
     MacAddressStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.swiss_uid import (
+from pii_detector.infrastructure.postfilter.strategies.swift_bic import (
+    SwiftBicStrategy,
+)
+from pii_detector.infrastructure.postfilter.strategies.swiss_uid import (
     SwissUidStrategy,
 )
 
@@ -241,6 +244,57 @@ class TestSwissUidStrategy:
 
 
 # ---------------------------------------------------------------------------
+# SWIFT_BIC (Tier C)
+# ---------------------------------------------------------------------------
+
+
+class TestSwiftBicStrategy:
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "DEUTDEFF",  # valid 8-char BIC
+            "UBSWCHZH80A",  # valid 11-char BIC
+            "POFICHBEXXX",  # valid 11-char BIC with XXX branch
+            "ubswchzh80a",  # lowercase input -> normalised before check
+        ],
+    )
+    def test_should_keep_valid_bic(self, value: str) -> None:
+        assert SwiftBicStrategy().evaluate(value).keep is True
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "12345678",  # 8 chars but digits in the bank code
+            "DEUT12FF",  # digits in the country code
+            "DEUTZZFF",  # unknown ISO country
+        ],
+    )
+    def test_should_reject_full_length_value_failing_structure(
+        self, value: str
+    ) -> None:
+        verdict = SwiftBicStrategy().evaluate(value)
+        assert verdict.keep is False
+        assert "structure" in verdict.reason
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "DEUTDEFF5",  # 9 chars: neither 8 nor 11 -> truncated -> keep
+            "DEUTDE",  # 6 chars fragment -> keep
+            "DEUT DEFF",  # embedded space -> not a canonical claim -> keep
+        ],
+    )
+    def test_should_fail_open_when_not_a_full_bic_claim(
+        self, value: str
+    ) -> None:
+        assert SwiftBicStrategy().evaluate(value).keep is True
+
+    @pytest.mark.parametrize("value", [None, 42, ""])
+    def test_should_fail_open_on_non_str_or_empty(self, value) -> None:
+        assert SwiftBicStrategy().evaluate(value).keep is True
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -257,11 +311,15 @@ class TestRegistry:
             "NATIONAL_ID_NUMBER",
             "TAX_ID",
             "TAX_NUMBER",
+            "SWIFT_BIC",
+            "BIC",
+            "SWIFT_CODE",
+            "SWIFT",
         }
 
     def test_should_register_strategies_satisfying_the_protocol(self) -> None:
         for strategy in STRATEGIES.values():
-            assert isinstance(strategy, PrefilterStrategy)
+            assert isinstance(strategy, PostfilterStrategy)
 
     def test_should_alias_payment_card_to_card_number_instance(self) -> None:
         # PAYMENT_CARD is a pure alias: the SAME instance, not a copy.

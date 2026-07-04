@@ -13,9 +13,9 @@ prove the trap is reproducible; it is never registered in the prod registry.
 
 import re
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 _SIX_HEX_OCTETS = re.compile(r"^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$")
@@ -26,7 +26,7 @@ class MacSixOctetHexStrategy:
 
     pii_type = "MAC_ADDRESS"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):
             return PASS
         s = value.strip()
@@ -34,6 +34,6 @@ class MacSixOctetHexStrategy:
             # Looks like 6 hex octets -> "valid MAC" -> keep. This is exactly
             # how the time ranges slip through.
             return PASS
-        return PrefilterVerdict(
+        return PostfilterVerdict(
             False, "does not match 6-hex-octet MAC shape"
         )

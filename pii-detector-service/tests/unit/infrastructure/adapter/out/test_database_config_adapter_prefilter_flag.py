@@ -1,4 +1,4 @@
-"""Tests for the ``prefilter_enabled`` flag in
+"""Tests for the ``postfilter_enabled`` flag in
 :class:`DatabaseConfigAdapter.fetch_config`.
 
 These tests focus narrowly on the new column added for the deterministic
@@ -39,7 +39,7 @@ def _row(
     threshold: float = 0.5,
     chunk_size: int = 10,
     llm_judge: Any = False,
-    prefilter: Any = False,
+    postfilter: Any = False,
 ) -> Dict[str, Any]:
     # Mirrors what a RealDictCursor returns for the main SELECT (openmed /
     # gliner2 are COALESCEd to FALSE there, so they are always present).
@@ -52,7 +52,7 @@ def _row(
         "default_threshold": threshold,
         "nb_of_label_by_pass": chunk_size,
         "llm_judge_enabled": llm_judge,
-        "prefilter_enabled": prefilter,
+        "postfilter_enabled": postfilter,
     }
 
 
@@ -83,33 +83,33 @@ def _patched_adapter(
 
 
 class TestFetchConfigPrefilterFlag:
-    def test_should_return_prefilter_enabled_true_when_db_sets_it(self) -> None:
-        with _patched_adapter([_row(prefilter=True)]) as adapter:
+    def test_should_return_postfilter_enabled_true_when_db_sets_it(self) -> None:
+        with _patched_adapter([_row(postfilter=True)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["prefilter_enabled"] is True
+        assert config["postfilter_enabled"] is True
 
     def test_should_return_false_when_db_sets_false(self) -> None:
-        with _patched_adapter([_row(prefilter=False)]) as adapter:
+        with _patched_adapter([_row(postfilter=False)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["prefilter_enabled"] is False
+        assert config["postfilter_enabled"] is False
 
     def test_should_default_to_false_when_value_is_none(self) -> None:
-        with _patched_adapter([_row(prefilter=None)]) as adapter:
+        with _patched_adapter([_row(postfilter=None)]) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["prefilter_enabled"] is False
+        assert config["postfilter_enabled"] is False
 
     def test_should_default_to_false_when_column_missing(self) -> None:
-        """The pre-migration schema lacks ``prefilter_enabled``.
+        """The pre-migration schema lacks ``postfilter_enabled``.
 
         The adapter must execute a fallback query without the column and
         normalise the flag to ``False`` so downstream code stays
         compatible with deployments that have not migrated yet.
         """
         missing_column_error = psycopg2.errors.UndefinedColumn(
-            "column prefilter_enabled does not exist"
+            "column postfilter_enabled does not exist"
         )
         fallback_row = {
             "gliner_enabled": True,
@@ -126,4 +126,4 @@ class TestFetchConfigPrefilterFlag:
         ) as adapter:
             config = adapter.fetch_config()
         assert config is not None
-        assert config["prefilter_enabled"] is False
+        assert config["postfilter_enabled"] is False

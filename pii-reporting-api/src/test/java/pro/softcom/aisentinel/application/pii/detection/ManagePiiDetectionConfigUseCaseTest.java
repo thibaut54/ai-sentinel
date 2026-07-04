@@ -112,10 +112,10 @@ class ManagePiiDetectionConfigUseCaseTest {
     }
 
     @Test
-    void Should_PersistPrefilterEnabled_When_UpdateRequested() {
+    void Should_PersistPostfilterEnabled_When_UpdateRequested() {
         // Arrange — enable the flag
         UpdatePiiDetectionConfigCommand enableCommand = new UpdatePiiDetectionConfigCommand(
-            true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true, "prefilter-enabler"
+            true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true, "postfilter-enabler"
         );
 
         // Act
@@ -124,12 +124,12 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Assert
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(enabled.prefilterEnabled()).isTrue();
-        softly.assertThat(reloadedEnabled.prefilterEnabled()).isTrue();
+        softly.assertThat(enabled.postfilterEnabled()).isTrue();
+        softly.assertThat(reloadedEnabled.postfilterEnabled()).isTrue();
 
         // Arrange — toggle back to disabled
         UpdatePiiDetectionConfigCommand disableCommand = new UpdatePiiDetectionConfigCommand(
-            true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false, "prefilter-disabler"
+            true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false, "postfilter-disabler"
         );
 
         // Act
@@ -137,8 +137,8 @@ class ManagePiiDetectionConfigUseCaseTest {
         PiiDetectionConfig reloadedDisabled = managePiiDetectionConfigPort.getConfig();
 
         // Assert
-        softly.assertThat(disabled.prefilterEnabled()).isFalse();
-        softly.assertThat(reloadedDisabled.prefilterEnabled()).isFalse();
+        softly.assertThat(disabled.postfilterEnabled()).isFalse();
+        softly.assertThat(reloadedDisabled.postfilterEnabled()).isFalse();
         softly.assertAll();
     }
 
@@ -158,7 +158,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Assert
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(updated.id()).isEqualTo(1);
+        softly.assertThat(updated.id()).isOne();
         softly.assertThat(updated.glinerEnabled()).isFalse();
         softly.assertThat(updated.presidioEnabled()).isTrue();
         softly.assertThat(updated.regexEnabled()).isTrue();
@@ -167,7 +167,7 @@ class ManagePiiDetectionConfigUseCaseTest {
         softly.assertAll();
 
         // Verify single row in database
-        assertThat(jpaRepository.count()).isEqualTo(1);
+        assertThat(jpaRepository.count()).isOne();
     }
 
     @Test
@@ -182,7 +182,7 @@ class ManagePiiDetectionConfigUseCaseTest {
         }
 
         // Assert - Only one row in database
-        assertThat(jpaRepository.count()).isEqualTo(1);
+        assertThat(jpaRepository.count()).isOne();
 
         // Verify latest update
         PiiDetectionConfig config = managePiiDetectionConfigPort.getConfig();

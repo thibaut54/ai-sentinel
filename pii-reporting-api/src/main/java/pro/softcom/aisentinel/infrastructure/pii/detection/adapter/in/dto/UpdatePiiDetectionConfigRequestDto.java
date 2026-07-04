@@ -41,7 +41,7 @@ import java.math.BigDecimal;
  *                            Optional: when omitted, defaults to {@code false}.
  * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings.
  *                            Optional: when omitted, defaults to {@code false}.
- * @param prefilterEnabled    Whether the deterministic format pre-filter stage is enabled.
+ * @param postfilterEnabled    Whether the deterministic format pre-filter stage is enabled.
  *                            Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
@@ -110,8 +110,8 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("gliner2JudgeEnabled")
     Boolean gliner2JudgeEnabled,
 
-    @JsonProperty("prefilterEnabled")
-    Boolean prefilterEnabled
+    @JsonProperty("postfilterEnabled")
+    Boolean postfilterEnabled
 ) {
     /**
      * Validates business rules for the configuration request.
@@ -141,14 +141,6 @@ public record UpdatePiiDetectionConfigRequestDto(
     }
 
     /**
-     * Returns the {@code ministralEnabled} flag value with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean ministralEnabledOrDefault() {
-        return ministralEnabled != null && ministralEnabled;
-    }
-
-    /**
      * Returns the {@code ministralChunkSize} value with a {@code 2048} default
      * when the client omits the field.
      */
@@ -162,14 +154,6 @@ public record UpdatePiiDetectionConfigRequestDto(
      */
     public int ministralOverlapOrDefault() {
         return ministralOverlap != null ? ministralOverlap : 410;
-    }
-
-    /**
-     * Returns the {@code llmJudgeEnabled} flag value with a {@code false} default
-     * when the client omits the field. Keeps the MVP rollout zero-effect.
-     */
-    public boolean llmJudgeEnabledOrDefault() {
-        return llmJudgeEnabled != null && llmJudgeEnabled;
     }
 
     /**
@@ -213,11 +197,11 @@ public record UpdatePiiDetectionConfigRequestDto(
     }
 
     /**
-     * Returns the {@code prefilterEnabled} flag value with a {@code false} default
+     * Returns the {@code postfilterEnabled} flag value with a {@code false} default
      * when the client omits the field. Keeps the rollout zero-effect.
      */
-    public boolean prefilterEnabledOrDefault() {
-        return prefilterEnabled != null && prefilterEnabled;
+    public boolean postfilterEnabledOrDefault() {
+        return postfilterEnabled != null && postfilterEnabled;
     }
 
     private boolean notAtLeastOneAnalyserEnabled(){

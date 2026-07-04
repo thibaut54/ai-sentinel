@@ -191,7 +191,7 @@ class PiiDetectionConfigControllerTest {
     }
 
     @Test
-    void Should_ReturnPrefilterEnabledInResponse_When_GetConfig() throws Exception {
+    void Should_ReturnPostfilterEnabledInResponse_When_GetConfig() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
             1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
             LocalDateTime.now(), "admin"
@@ -200,11 +200,11 @@ class PiiDetectionConfigControllerTest {
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.prefilterEnabled").value(true));
+            .andExpect(jsonPath("$.postfilterEnabled").value(true));
     }
 
     @Test
-    void Should_UpdatePrefilterEnabled_When_PutRequestEnablesFlag() throws Exception {
+    void Should_UpdatePostfilterEnabled_When_PutRequestEnablesFlag() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
             1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, true,
             LocalDateTime.now(), "admin"
@@ -224,7 +224,7 @@ class PiiDetectionConfigControllerTest {
                   "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
                   "nbOfLabelByPass": 30,
-                  "prefilterEnabled": true
+                  "postfilterEnabled": true
                 }
                 """;
 
@@ -232,16 +232,16 @@ class PiiDetectionConfigControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.prefilterEnabled").value(true));
+            .andExpect(jsonPath("$.postfilterEnabled").value(true));
 
         ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
             ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
         verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().prefilterEnabled()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().postfilterEnabled()).isTrue();
     }
 
     @Test
-    void Should_DefaultPrefilterEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
+    void Should_DefaultPostfilterEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
             1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false,
             LocalDateTime.now(), "admin"
@@ -249,7 +249,7 @@ class PiiDetectionConfigControllerTest {
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
             .thenReturn(persisted);
 
-        // No prefilterEnabled field in payload → must default to false at command-build time.
+        // No postfilterEnabled field in payload → must default to false at command-build time.
         String body = """
                 {
                   "glinerEnabled": true,
@@ -269,11 +269,11 @@ class PiiDetectionConfigControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.prefilterEnabled").value(false));
+            .andExpect(jsonPath("$.postfilterEnabled").value(false));
 
         ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
             ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
         verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
-        org.assertj.core.api.Assertions.assertThat(captor.getValue().prefilterEnabled()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().postfilterEnabled()).isFalse();
     }
 }

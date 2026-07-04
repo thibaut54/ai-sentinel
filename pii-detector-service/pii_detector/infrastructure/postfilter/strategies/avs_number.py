@@ -28,9 +28,9 @@ import re
 from stdnum.ch import ssn
 from stdnum.exceptions import InvalidChecksum
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 _NON_DIGITS = re.compile(r"\D")
@@ -41,7 +41,7 @@ class AvsNumberStrategy:
 
     pii_type = "AVS_NUMBER"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):  # type barrier (research §5)
             return PASS
         digits = _NON_DIGITS.sub("", value)  # strip dots / spaces / noise
@@ -49,6 +49,6 @@ class AvsNumberStrategy:
             ssn.validate(digits)  # 13 digits + 756 prefix + EAN-13
             return PASS
         except InvalidChecksum:  # 13 digits, 756, wrong key -> reject
-            return PrefilterVerdict(False, "avs_number ean-13 checksum failed")
+            return PostfilterVerdict(False, "avs_number ean-13 checksum failed")
         except Exception:  # InvalidLength / InvalidComponent / ... -> keep
             return PASS

@@ -48,12 +48,12 @@ class DatabaseConfigAdapter:
         Returns:
             Dictionary with config keys: gliner_enabled, presidio_enabled,
             regex_enabled, default_threshold, llm_judge_enabled,
-            prefilter_enabled.
+            postfilter_enabled.
             Returns None if fetch fails.
 
         Business Rule: Single-row configuration table with id=1.
 
-        Note on ``llm_judge_enabled`` / ``prefilter_enabled``: both columns are
+        Note on ``llm_judge_enabled`` / ``postfilter_enabled``: both columns are
         fetched defensively via ``COALESCE`` so the adapter remains compatible
         with deployments that have not yet applied the migration adding these
         columns (see spec section 2.6).
@@ -66,46 +66,45 @@ class DatabaseConfigAdapter:
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
             # Query the single-row configuration table.
-            # ``openmed_enabled``, ``llm_judge_enabled`` and ``prefilter_enabled``
+            # ``openmed_enabled``, ``llm_judge_enabled`` and ``postfilter_enabled``
             # are read defensively: ``COALESCE`` / a UndefinedColumn fallback keep
             # existing rows readable even if the columns have not been added yet by
             # Hibernate DDL update on a freshly-pulled environment.
             query = """
-                SELECT
-                    gliner_enabled,
-                    presidio_enabled,
-                    regex_enabled,
-                    COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
-                    COALESCE(gliner2_enabled, FALSE) AS gliner2_enabled,
-                    COALESCE(ministral_enabled, FALSE) AS ministral_enabled,
-                    COALESCE(ministral_chunk_size, 2048) AS ministral_chunk_size,
-                    COALESCE(ministral_overlap, 410) AS ministral_overlap,
-                    COALESCE(ministral_judge_enabled, FALSE) AS ministral_judge_enabled,
-                    default_threshold,
-                    nb_of_label_by_pass,
-                    llm_judge_enabled,
-                    prefilter_enabled,
-                    COALESCE(gliner_judge_enabled, FALSE) AS gliner_judge_enabled,
-                    COALESCE(presidio_judge_enabled, FALSE) AS presidio_judge_enabled,
-                    COALESCE(regex_judge_enabled, FALSE) AS regex_judge_enabled,
-                    COALESCE(openmed_judge_enabled, FALSE) AS openmed_judge_enabled,
-                    COALESCE(gliner2_judge_enabled, FALSE) AS gliner2_judge_enabled
-                FROM pii_detection_config
-                WHERE id = 1
-            """
+                    SELECT gliner_enabled,
+                        presidio_enabled,
+                        regex_enabled,
+                        openmed_enabled AS openmed_enabled,
+                        gliner2_enabled AS gliner2_enabled,
+                        ministral_enabled AS ministral_enabled,
+                        ministral_chunk_size AS ministral_chunk_size,
+                        ministral_overlap AS ministral_overlap,
+                        ministral_judge_enabled AS ministral_judge_enabled,
+                        default_threshold,
+                        nb_of_label_by_pass,
+                        llm_judge_enabled,
+                        postfilter_enabled,
+                        gliner_judge_enabled AS gliner_judge_enabled,
+                        presidio_judge_enabled AS presidio_judge_enabled,
+                        regex_judge_enabled AS regex_judge_enabled,
+                        openmed_judge_enabled AS openmed_judge_enabled,
+                        gliner2_judge_enabled AS gliner2_judge_enabled
+                    FROM pii_detection_config
+                    WHERE id = 1 \
+                    """
 
             try:
                 cursor.execute(query)
                 result = cursor.fetchone()
             except psycopg2.errors.UndefinedColumn:
                 # Migration not yet applied for openmed_enabled, gliner2_enabled,
-                # llm_judge_enabled or prefilter_enabled -- retry without the new
+                # llm_judge_enabled or postfilter_enabled -- retry without the new
                 # columns. They all default to FALSE downstream so the service
                 # stays usable on a freshly-pulled environment before Hibernate
                 # DDL update.
                 logger.warning(
                     "openmed_enabled / gliner2_enabled / ministral_enabled / "
-                    "llm_judge_enabled / prefilter_enabled column missing in "
+                    "llm_judge_enabled / postfilter_enabled column missing in "
                     "pii_detection_config; falling back on defaults (false). "
                     "Apply migration to enable."
                 )
@@ -142,9 +141,9 @@ class DatabaseConfigAdapter:
             config.setdefault("llm_judge_enabled", False)
             if config["llm_judge_enabled"] is None:
                 config["llm_judge_enabled"] = False
-            config.setdefault("prefilter_enabled", False)
-            if config["prefilter_enabled"] is None:
-                config["prefilter_enabled"] = False
+            config.setdefault("postfilter_enabled", False)
+            if config["postfilter_enabled"] is None:
+                config["postfilter_enabled"] = False
             config.setdefault("gliner2_enabled", False)
             if config["gliner2_enabled"] is None:
                 config["gliner2_enabled"] = False
@@ -189,7 +188,7 @@ class DatabaseConfigAdapter:
                 f"ministral={config['ministral_enabled']}, "
                 f"threshold={config['default_threshold']}, "
                 f"llm_judge={config['llm_judge_enabled']}, "
-                f"prefilter={config['prefilter_enabled']}"
+                f"postfilter={config['postfilter_enabled']}"
             )
             return config
 

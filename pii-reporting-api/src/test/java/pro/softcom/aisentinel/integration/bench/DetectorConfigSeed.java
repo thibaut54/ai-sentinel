@@ -18,7 +18,7 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource
  *   <li>{@code <det>_enabled} — true only for the config's detectors;</li>
  *   <li>{@code <det>_judge_enabled} — true for the config's detectors iff the
  *       judge is on (the global {@code llm_judge_enabled} gate is the OR);</li>
- *   <li>{@code prefilter_enabled = false} — so the only post-detection drops are
+ *   <li>{@code postfilter_enabled = false} — so the only post-detection drops are
  *       the LLM-judge's, which lets a single judge-on scan yield both the
  *       judge-off set (kept ∪ discarded) and the judge-on set (kept).</li>
  * </ul>
@@ -61,7 +61,7 @@ public final class DetectorConfigSeed {
         // Global judge gate is the OR maintained by the API; with the judge on
         // for every active detector it must be true or the validator never runs.
         sql.append(", llm_judge_enabled = ").append(anyJudge);
-        sql.append(", prefilter_enabled = false");
+        sql.append(", postfilter_enabled = false");
         if (thresholdOverride != null) {
             sql.append(", default_threshold = ")
                .append(String.format(Locale.ROOT, "%.2f", thresholdOverride));

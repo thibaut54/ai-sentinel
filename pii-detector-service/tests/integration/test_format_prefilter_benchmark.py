@@ -1,7 +1,7 @@
 """Benchmark / anti-regression TI for the deterministic format pre-filter (T4).
 
 In-process, no gRPC, no model: this test replays the production GO strategies
-(:mod:`pii_detector.infrastructure.prefilter.registry`) over two datasets and
+(:mod:`pii_detector.infrastructure.postfilter.registry`) over two datasets and
 asserts the recall-safety invariants documented in
 ``my-files/prefilter-work/PLAN.md`` 4 and ``data-analysis.md``.
 
@@ -41,14 +41,14 @@ from pathlib import Path
 
 import pytest
 
-from pii_detector.infrastructure.prefilter.format_prefilter_validator import (
+from pii_detector.infrastructure.postfilter.format_postfilter_validator import (
     _normalize_pii_type,
 )
-from pii_detector.infrastructure.prefilter.registry import STRATEGIES
-from pii_detector.infrastructure.prefilter.strategies._experiments.mac_six_octet_hex import (  # noqa: E501
+from pii_detector.infrastructure.postfilter.registry import STRATEGIES
+from pii_detector.infrastructure.postfilter.strategies._experiments.mac_six_octet_hex import (  # noqa: E501
     MacSixOctetHexStrategy,
 )
-from pii_detector.infrastructure.prefilter.strategies.mac_address import (
+from pii_detector.infrastructure.postfilter.strategies.mac_address import (
     MacAddressStrategy,
 )
 
@@ -503,7 +503,7 @@ def test_corpus_v2b_alias_keys_coverage_and_collisions():
 
 def test_golden_credit_card_card_number_strategy():
     """CardNumberStrategy never rejects a golden CREDIT_CARD TP (Luhn ground truth)."""
-    from pii_detector.infrastructure.prefilter.strategies.card_number import (
+    from pii_detector.infrastructure.postfilter.strategies.card_number import (
         CardNumberStrategy,
     )
 

@@ -5,15 +5,12 @@ This module implements the gRPC service for PII detection with optimizations
 for memory usage when processing large volumes of data.
 """
 
-import atexit
 import gc
 import logging
 import os
 import threading
 import time
 from concurrent import futures
-from logging.handlers import QueueHandler, QueueListener
-from queue import Queue
 from typing import Dict, List, Optional, Set, Tuple
 
 import grpc
@@ -103,41 +100,6 @@ try:
     del _torch_for_threads
 except Exception as _torch_thread_err:
     logger.warning("Failed to configure PyTorch threading: %s", _torch_thread_err)
-
-# Asynchronous PII logging infrastructure
-_pii_log_queue: Queue = Queue(maxsize=10_000)
-_pii_queue_handler = QueueHandler(_pii_log_queue)
-_pii_logger = logging.getLogger("pii_detector.pii_log")
-_pii_logger.setLevel(logging.INFO)
-_pii_logger.addHandler(logging.StreamHandler())
-_pii_log_listener = QueueListener(_pii_log_queue, _pii_logger.handlers[0])
-_pii_log_listener.start()
-
-
-def _shutdown_pii_log_listener():
-    """
-    Safely stop the PII log listener and flush remaining records.
-    
-    This function is idempotent and safe to call multiple times.
-    It ensures that any queued log records are properly flushed before
-    the process exits, preventing loss of PII detection logs.
-    
-    Business rule: All detected PII must be logged for audit purposes.
-    This shutdown hook ensures logs are not lost during process termination.
-    """
-    global _pii_log_listener
-    if _pii_log_listener is not None:
-        try:
-            _pii_log_listener.stop()
-            logger.debug("PII log listener stopped successfully")
-        except Exception as e:
-            logger.warning(f"Error stopping PII log listener: {e}")
-        finally:
-            _pii_log_listener = None
-
-
-# Register shutdown hook to flush PII logs on process exit
-atexit.register(_shutdown_pii_log_listener)
 
 # Singleton instance for the PII detector
 _detector_instance = None
@@ -566,16 +528,19 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 entities_before_type_filter - len(entities),
             )
 
-            # Phase 1bis: deterministic format pre-filter (Stage B). Runs
-            # before the judge and rejects only the mechanically-impossible
-            # findings (IP/MAC/IBAN checksum / parse failures) per pii_type.
-            # Only invoked when the DB flag is ON (zero-overhead path
-            # otherwise). Rejections share the LLM-judge discard channel.
+            # Phase 1bis: deterministic precision post-filter, the final
+            # filtering stage of the pipeline (the LLM-as-judge below is
+            # retired now that the primary detector is itself an LLM). It
+            # rejects technical artefacts cross-label (UUID, ObjectId,
+            # digests, versions...) plus the mechanically-impossible findings
+            # per pii_type (checksum / parse failures). Only invoked when the
+            # DB flag is ON (zero-overhead path otherwise). Rejections share
+            # the discarded_entities channel.
             discarded_by_prefilter = []
-            if self._is_prefilter_enabled(detector_flags):
+            if self._is_postfilter_enabled(detector_flags):
                 entities_before_prefilter = len(entities)
                 prefilter_start = time.monotonic()
-                entities, discarded_by_prefilter = self._apply_format_prefilter(
+                entities, discarded_by_prefilter = self._apply_format_postfilter(
                     entities, content, request_id
                 )
                 prefilter_elapsed = time.monotonic() - prefilter_start
@@ -593,13 +558,16 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 # entities_discarded = rejected count. Only when it examined > 0.
                 if entities_before_prefilter > 0:
                     detector_stats.append({
-                        "source": DetectorSource.PREFILTER,
+                        "source": DetectorSource.POSTFILTER,
                         "duration_ms": int(prefilter_elapsed * 1000),
                         "entities_found": entities_before_prefilter,
                         "entities_discarded": len(discarded_by_prefilter),
                     })
 
             # Phase 2: LLM-as-Judge post-filter (spec section 2.1, 2.5).
+            # Conceptually retired (judging an LLM detector with another LLM
+            # adds nothing): kept inert behind its DB flag, default OFF, and
+            # never applied to MINISTRAL (absent from _JUDGE_FLAG_TO_SOURCE).
             # Only invoked when the DB flag is ON; otherwise no judge
             # import / thread / metric is triggered (zero overhead path).
             # Rejected entities are kept aside (with their verdicts) so the
@@ -717,11 +685,6 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         logger.debug(f"[{request_id}] Received DetectPII request #{self.request_counter}")
         logger.debug(f"[{request_id}] Client: {peer_info}")
         logger.info(f"[{request_id}] gRPC content length: {len(content)} chars, threshold={threshold}")
-        
-        if len(content) > 100:
-            logger.debug(f"[{request_id}] Content preview: {content[:100]}...")
-        else:
-            logger.debug(f"[{request_id}] Content: {content}")
 
     def _fetch_and_apply_config(self, default_threshold: float, request_id: str) -> tuple[float, Optional[dict], Optional[dict], Optional[int]]:
         """
@@ -791,7 +754,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 # never routes the judge (absent from _JUDGE_FLAG_TO_SOURCE).
                 'ministral_judge_enabled': db_config.get('ministral_judge_enabled', False),
                 'llm_judge_enabled': db_config.get('llm_judge_enabled', False),
-                'prefilter_enabled': db_config.get('prefilter_enabled', False),
+                'postfilter_enabled': db_config.get('postfilter_enabled', False),
                 # Per-detector LLM-judge routing: which detector sources the
                 # judge audits. ``llm_judge_enabled`` (above) stays the global
                 # on/off gate (kept as the OR of these by the API); these flags
@@ -812,7 +775,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"gliner2={detector_flags['gliner2_enabled']}, "
                 f"ministral={detector_flags['ministral_enabled']}, "
                 f"llm_judge={detector_flags['llm_judge_enabled']}, "
-                f"prefilter={detector_flags['prefilter_enabled']}, "
+                f"postfilter={detector_flags['postfilter_enabled']}, "
                 f"chunk_size={chunk_size}"
             )
             
@@ -1060,32 +1023,24 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             len(entities),
         )
 
-        # Always enqueue detailed PII logs asynchronously to avoid
-        # impacting request latency.
-        self._log_pii_entities_async(request_id, entities)
-
     def _log_detected_entities(self, request_id: str, entities: List) -> None:
-        """Log nbOfDetectedPIIBySeverity and sample of detected entities for debugging.
-        
+        """Log the per-type breakdown of detected entities for debugging.
+
+        Only aggregate counts are logged; raw PII values are never emitted.
+
         Args:
             request_id: Request identifier
             entities: Detected PII entities
         """
         if not entities:
             return
-        
+
         entity_types = {}
         for entity in entities:
             entity_type = entity['type_label']
             entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
-        
+
         logger.debug(f"[{request_id}] Entity types found: {dict(entity_types)}")
-        
-        for i, entity in enumerate(entities[:3]):
-            logger.debug(
-                f"[{request_id}] Entity {i+1}: {entity['type_label']} - "
-                f"'{entity['text']}' (score: {entity['score']:.3f})"
-            )
 
     @staticmethod
     def _log_throughput(
@@ -1284,26 +1239,29 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             return entities, []
 
     @staticmethod
-    def _is_prefilter_enabled(detector_flags: Optional[dict]) -> bool:
-        """Return True iff the database flag activates the format pre-filter.
+    def _is_postfilter_enabled(detector_flags: Optional[dict]) -> bool:
+        """Return True iff the database flag activates the precision post-filter.
 
-        Defaults to False so the pre-filter stays disabled when the DB
-        config is unavailable or pre-migration (PLAN.md section 1.6).
+        Defaults to False so the post-filter stays disabled when the DB
+        config is unavailable or pre-migration (PLAN.md section 1.6). The
+        flag keeps its historical ``postfilter_enabled`` name (no DB
+        migration): it now gates the final precision post-filter.
         """
         if detector_flags is None:
             return False
-        return bool(detector_flags.get("prefilter_enabled", False))
+        return bool(detector_flags.get("postfilter_enabled", False))
 
-    def _apply_format_prefilter(
+    def _apply_format_postfilter(
         self, entities: List, content: str, request_id: str
     ) -> tuple:
-        """Run the deterministic format pre-filter on the merged entity list.
+        """Run the deterministic precision post-filter on the merged entity list.
 
         The validator is built lazily via the singleton accessor so that
-        when ``prefilter_enabled=false`` the module is never imported and
-        nothing is allocated (zero overhead). Only entities whose
-        normalised ``pii_type`` has a GO strategy (IP/MAC/IBAN) can be
-        rejected; the rest passes through untouched (PLAN.md section 1.5).
+        when ``postfilter_enabled=false`` the module is never imported and
+        nothing is allocated (zero overhead). An entity is rejected either
+        by the cross-label technical-artifact denylist (whatever its label)
+        or by the per-``pii_type`` checksum/parse strategy registered for
+        its normalised type; everything else passes through untouched.
 
         Returns:
             ``(kept_entities, rejections)`` where ``rejections`` is a list
@@ -1314,9 +1272,9 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if not entities:
             return entities, []
         try:
-            # Lazy import so the no-prefilter path never pulls the strategies
+            # Lazy import so the no-postfilter path never pulls the strategies
             # / stdnum into hot code.
-            from pii_detector.infrastructure.prefilter.format_prefilter_validator import (
+            from pii_detector.infrastructure.postfilter.format_postfilter_validator import (
                 get_instance as get_format_prefilter,
             )
 
@@ -1431,7 +1389,6 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         entity_type_raw = entity.get('type')
         entity_type = _normalize_pii_type_for_grpc(entity_type_raw)
         entity_type_upper = entity_type.upper()
-        entity_text_preview = entity.get('text', '')[:30]
         entity_score = float(entity.get('score', 0.0))
         raw_source = entity.get('source', 'UNKNOWN')
         entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
@@ -1439,7 +1396,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         logger.debug(
             f"[{request_id}] Entity #{idx+1}: raw_type='{entity_type_raw}' → "
             f"normalized='{entity_type}' → uppercase='{entity_type_upper}' | "
-            f"text='{entity_text_preview}' | score={entity_score:.3f}"
+            f"score={entity_score:.3f}"
         )
 
         # Prefer detector-specific composite key (e.g. "REGEX:IP_ADDRESS"),
@@ -1474,7 +1431,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if not type_config.get('enabled', True):
             logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
-                f"(disabled in config for detector={config_detector}) | text='{entity_text_preview}'"
+                f"(disabled in config for detector={config_detector})"
             )
             return False, f"{entity_type_upper}:disabled"
 
@@ -1482,8 +1439,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if entity_score < type_threshold:
             logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
-                f"(score {entity_score:.3f} < threshold {type_threshold:.3f}) | "
-                f"text='{entity_text_preview}'"
+                f"(score {entity_score:.3f} < threshold {type_threshold:.3f})"
             )
             return False, f"{entity_type_upper}:below_threshold"
 
@@ -1492,47 +1448,6 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             f"(enabled=true, score {entity_score:.3f} >= threshold {type_threshold:.3f})"
         )
         return True, None
-
-    def _log_pii_entities_async(self, request_id: str, entities: List) -> None:
-        """Log each detected PII entity asynchronously.
-
-        Business rule: every PII detected must be logged with:
-        - raw value (text)
-        - normalized PII type
-        - confidence score when available
-        - detection source: GLINER, PRESIDIO, REGEX or UNKNOWN
-
-        Logging is enqueued in a background Queue handled by a QueueListener
-        to avoid slowing down the gRPC request flow.
-        """
-        if not entities:
-            return
-
-        for entity in entities:
-            try:
-                text = str(entity.get("text", ""))
-                pii_type = _normalize_pii_type_for_grpc(entity.get("type"))
-                score = entity.get("score")
-                source = entity.get("source") or entity.get("detector") or "UNKNOWN"
-
-                # Best-effort non-blocking enqueue: drop if queue is full
-                if not _pii_log_queue.full():
-                    record = _pii_logger.makeRecord(
-                        _pii_logger.name,
-                        logging.INFO,
-                        fn="pii_service.py",
-                        lno=0,
-                        msg=(
-                            "[PII-DETECTED] request_id=%s source=%s "
-                            "type=%s score=%s value=%s"
-                        ),
-                        args=(request_id, source, pii_type, score, text),
-                        exc_info=None,
-                    )
-                    _pii_queue_handler.enqueue(record)
-            except Exception:
-                # Never impact detection flow due to logging issues
-                logger.debug("[%s] Failed to enqueue PII log", request_id, exc_info=True)
 
     def _build_detection_response(
         self, content: str, entities: List, request_id: str,
@@ -1635,8 +1550,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 self._populate_proto_entity(response.entities.add(), entity)
             except (ValueError, TypeError) as e:
                 logger.error(
-                    f"[{request_id}] Failed to convert entity to protobuf: {e}. "
-                    f"Entity: {entity}"
+                    f"[{request_id}] Failed to convert entity to protobuf: {e} "
+                    f"(type={entity.get('type')})"
                 )
                 raise
 
@@ -1677,7 +1592,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         # ``judge_status`` dynamic attribute) so callers can tell a validated
         # finding apart from one kept unjudged or by the fail-open policy. Any
         # entity reaching here untagged was not judge-validated as a keep
-        # (judge disabled, exempt by type, prefilter-only path) -> NOT_AUDITED.
+        # (judge disabled, exempt by type, postfilter-only path) -> NOT_AUDITED.
         judge_status = entity.get('judge_status')
         if isinstance(judge_status, JudgeStatus):
             pii_entity.judge_status = getattr(
@@ -1718,7 +1633,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 # because one rejected entity cannot be serialized.
                 logger.warning(
                     f"[{request_id}] Failed to convert discarded entity to "
-                    f"protobuf: {e}. Entity: {entity}"
+                    f"protobuf: {e} (type={entity.get('type')})"
                 )
         if len(discarded_by_judge) > 1000:
             logger.warning(
@@ -2078,11 +1993,8 @@ class MemoryLimitedServer:
     
     def stop(self, grace: int = 5):
         """
-        Stop the gRPC server gracefully and flush PII logs.
-        
-        Ensures that all queued PII detection logs are flushed before
-        the server fully shuts down, preventing loss of audit records.
-        
+        Stop the gRPC server gracefully.
+
         Args:
             grace: Grace period in seconds for pending requests to complete.
         """
@@ -2094,10 +2006,7 @@ class MemoryLimitedServer:
             logger.info("Shutting down thread pool executor...")
             self.executor.shutdown(wait=True)
             logger.info("Thread pool executor shut down")
-        
-        # Flush remaining PII logs before final shutdown
-        _shutdown_pii_log_listener()
-    
+
     def serve(self):
         """Start the gRPC server with memory limits."""
         # Create a custom thread pool executor with bounded queue

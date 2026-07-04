@@ -42,7 +42,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 
 /**
- * Smoke test de bout en bout du <b>pré-filtre déterministe de format</b>
+ * Smoke test de bout en bout du <b>post-filtre déterministe de format</b>
  * (Stage B, exécuté avant le LLM-judge dans {@code pii-detector-service}) :
  * vérifie que les entités au format mécaniquement impossible (échec
  * checksum/parse) remontent dans la réponse gRPC avec un verdict
@@ -54,7 +54,7 @@ import java.time.Duration;
  * {@link JudgeDiscardedEntitiesSmokeIT}, ce test ne lance pas de mock LM Studio
  * et n'expose aucune variable {@code LLM_JUDGE_*}. Le pré-filtre n'appelle
  * jamais de réseau. Le détecteur (GLINER2 + PRESIDIO + REGEX, seed standard +
- * flag {@code prefilter_enabled} forcé à {@code true}, {@code llm_judge_enabled}
+ * flag {@code postfilter_enabled} forcé à {@code true}, {@code llm_judge_enabled}
  * forcé à {@code false}) écarte les valeurs au format impossible et conserve
  * les vrais positifs bien formés.
  *
@@ -68,14 +68,14 @@ import java.time.Duration;
  *       {@code CH9300762011623852957} qui doivent RESTER détectés.</li>
  * </ul>
  *
- * <pre>mvn -Dtest=FormatPrefilterDiscardSmokeIT test</pre>
+ * <pre>mvn -Dtest=FormatpostfilterDiscardSmokeIT test</pre>
  */
 @Testcontainers
 @SpringBootTest(classes = AiSentinelApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-class FormatPrefilterDiscardSmokeIT {
+class FormatPostfilterDiscardSmokeIT {
 
-    private static final Logger log = LoggerFactory.getLogger(FormatPrefilterDiscardSmokeIT.class);
+    private static final Logger log = LoggerFactory.getLogger(FormatPostfilterDiscardSmokeIT.class);
 
     private static final String SQL_SEED = "classpath:sql/data-improved-gliner2-presidio-regex.sql";
     private static final int GRPC_PORT = 50051;
@@ -137,7 +137,7 @@ class FormatPrefilterDiscardSmokeIT {
         .withEnv("DB_NAME", DB_NAME)
         .withEnv("DB_USER", DB_USER)
         .withEnv("DB_PASSWORD", DB_PASSWORD)
-        .withLogConsumer(FormatPrefilterDiscardSmokeIT::routeContainerLog)
+        .withLogConsumer(FormatPostfilterDiscardSmokeIT::routeContainerLog)
         .waitingFor(Wait.forLogMessage(".*Server started on port.*", 1))
         .withStartupTimeout(Duration.ofMinutes(10));
 
@@ -167,27 +167,27 @@ class FormatPrefilterDiscardSmokeIT {
     @Autowired private PiiDetectorClient piiDetectorClient;
 
     @Test
-    void smokeFormatPrefilterDiscardEndToEnd() throws Exception {
-        log.info("[prefilter-smoke] === START ===");
-        resetAndReseedDbWithPrefilterEnabled();
+    void smokeFormatPostfilterDiscardEndToEnd() throws Exception {
+        log.info("[postfilter-smoke] === START ===");
+        resetAndReseedDbWithPostfilterEnabled();
 
         ContentPiiDetection detection = piiDetectorClient.analyzeContent(SAMPLE_TEXT);
 
-        log.info("[prefilter-smoke] kept={} discarded={}",
+        log.info("[postfilter-smoke] kept={} discarded={}",
             detection.sensitiveDataFound().size(), detection.discardedByJudge().size());
         detection.discardedByJudge().forEach(d -> log.info(
-            "[prefilter-smoke] [PREFILTER-FP] type={} detector={} value={} verdict={} confidence={} reason={}",
+            "[postfilter-smoke] [postfilter-FP] type={} detector={} value={} verdict={} confidence={} reason={}",
             d.data().type(), d.data().source(), d.data().value(),
             d.judgeVerdict(), d.judgeConfidence(), d.judgeReason()));
         detection.sensitiveDataFound().forEach(s -> log.info(
-            "[prefilter-smoke] [KEPT] type={} detector={} value={}",
+            "[postfilter-smoke] [KEPT] type={} detector={} value={}",
             s.type(), s.source(), s.value()));
 
         Assertions.assertFalse(detection.discardedByJudge().isEmpty(),
             "Le pré-filtre doit écarter au moins une valeur au format impossible "
             + "(faux IP / plage horaire / faux IBAN). Si vide, le canal "
             + "discarded_entities (proto/python/java) est cassé, le flag "
-            + "prefilter_enabled n'est pas pris en compte, ou le détecteur n'a "
+            + "postfilter_enabled n'est pas pris en compte, ou le détecteur n'a "
             + "rien remonté sur ces valeurs.");
 
         for (DiscardedSensitiveData discarded : detection.discardedByJudge()) {
@@ -222,7 +222,7 @@ class FormatPrefilterDiscardSmokeIT {
             + ") doit rester dans sensitiveDataFound, trouvé : "
             + detection.sensitiveDataFound());
 
-        log.info("[prefilter-smoke] === DONE — pré-filtre opérationnel via le canal partagé ===");
+        log.info("[postfilter-smoke] === DONE — pré-filtre opérationnel via le canal partagé ===");
     }
 
     private static boolean containsExpectedReason(String reason) {
@@ -248,7 +248,7 @@ class FormatPrefilterDiscardSmokeIT {
             .anyMatch(v -> v != null && v.contains(value));
     }
 
-    private void resetAndReseedDbWithPrefilterEnabled() throws SQLException {
+    private void resetAndReseedDbWithPostfilterEnabled() throws SQLException {
         jdbcTemplate.execute("DELETE FROM pii_type_config");
         jdbcTemplate.execute("DELETE FROM pii_detection_config");
         Resource resource = new DefaultResourceLoader().getResource(SQL_SEED);
@@ -256,8 +256,8 @@ class FormatPrefilterDiscardSmokeIT {
             ScriptUtils.executeSqlScript(conn, new EncodedResource(resource, StandardCharsets.UTF_8));
         }
         jdbcTemplate.execute(
-            "UPDATE pii_detection_config SET prefilter_enabled = true, llm_judge_enabled = false WHERE id = 1");
-        log.info("[prefilter-smoke] DB reseed depuis {} + prefilter_enabled=true, llm_judge_enabled=false",
+            "UPDATE pii_detection_config SET postfilter_enabled = true, llm_judge_enabled = false WHERE id = 1");
+        log.info("[postfilter-smoke] DB reseed depuis {} + postfilter_enabled=true, llm_judge_enabled=false",
             SQL_SEED);
     }
 

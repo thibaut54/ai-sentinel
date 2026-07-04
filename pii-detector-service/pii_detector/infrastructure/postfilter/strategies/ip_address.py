@@ -11,9 +11,9 @@ mis-typed AVS numbers and log dates, not addresses).
 
 import ipaddress
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 
@@ -22,7 +22,7 @@ class IpAddressStrategy:
 
     pii_type = "IP_ADDRESS"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):  # type barrier (research §5)
             return PASS
         s = value.strip()
@@ -34,4 +34,4 @@ class IpAddressStrategy:
             ipaddress.ip_address(s)
             return PASS
         except ValueError:
-            return PrefilterVerdict(False, "ip_address parse failed")
+            return PostfilterVerdict(False, "ip_address parse failed")

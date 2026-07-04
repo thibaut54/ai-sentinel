@@ -79,10 +79,10 @@ public class PiiDetectionConfigController {
                 request.gliner2JudgeEnabledOrDefault());
 
         log.info("PUT /api/v1/pii-detection/config - Updating configuration: gliner={}, " +
-                "presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, llmJudgeEnabled={}, prefilterEnabled={}",
+                "presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, llmJudgeEnabled={}, postfilterEnabled={}",
                 request.glinerEnabled(), request.presidioEnabled(),
                 request.regexEnabled(), request.openmedEnabled(), request.gliner2Enabled(),
-                request.defaultThreshold(), derivedLlmJudgeEnabled, request.prefilterEnabledOrDefault());
+                request.defaultThreshold(), derivedLlmJudgeEnabled, request.postfilterEnabledOrDefault());
 
         try {
             String updatedBy = ADMIN_USERNAME;
@@ -104,7 +104,7 @@ public class PiiDetectionConfigController {
                 request.regexJudgeEnabledOrDefault(),
                 request.openmedJudgeEnabledOrDefault(),
                 request.gliner2JudgeEnabledOrDefault(),
-                request.prefilterEnabledOrDefault(),
+                request.postfilterEnabledOrDefault(),
                 updatedBy
             );
             
@@ -145,7 +145,7 @@ public class PiiDetectionConfigController {
             config.regexJudgeEnabled(),
             config.openmedJudgeEnabled(),
             config.gliner2JudgeEnabled(),
-            config.prefilterEnabled(),
+            config.postfilterEnabled(),
             config.updatedAt(),
             config.updatedBy()
         );

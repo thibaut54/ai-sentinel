@@ -23,9 +23,9 @@ import re
 from stdnum import luhn
 from stdnum.exceptions import ValidationError
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 _CARD_SEPARATORS = re.compile(r"[\s\-./]")
@@ -36,7 +36,7 @@ class CardNumberStrategy:
 
     pii_type = "CARD_NUMBER"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):  # type barrier (research §5)
             return PASS
         digits = _CARD_SEPARATORS.sub("", value.strip())
@@ -47,6 +47,6 @@ class CardNumberStrategy:
         try:
             if luhn.is_valid(digits):  # mod-10; test cards pass -> keep
                 return PASS
-            return PrefilterVerdict(False, "card_number luhn failed")
+            return PostfilterVerdict(False, "card_number luhn failed")
         except (ValidationError, Exception):  # fail-open absolute
             return PASS

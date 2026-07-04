@@ -108,7 +108,7 @@
                         @if (isJudge(detector.detector)) {
                           {{ 'dashboard.scanStats.judgeLabel' | transloco }}
                         } @else if (isPrefilter(detector.detector)) {
-                          {{ 'dashboard.scanStats.prefilterLabel' | transloco }}
+                          {{ 'dashboard.scanStats.postfilterLabel' | transloco }}
                         } @else {
                           {{ detector.detector }}
                         }

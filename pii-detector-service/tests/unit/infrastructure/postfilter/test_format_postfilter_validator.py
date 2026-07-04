@@ -14,8 +14,8 @@ from unittest.mock import patch
 
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
-from pii_detector.infrastructure.prefilter.format_prefilter_validator import (
-    FormatPrefilterValidator,
+from pii_detector.infrastructure.postfilter.format_postfilter_validator import (
+    FormatPostfilterValidator,
     _reset_singleton_for_tests,
     get_instance,
 )
@@ -45,14 +45,14 @@ def _entity(text: str, pii_type: str) -> PIIEntity:
 
 class TestFilterWithVerdicts:
     def test_should_keep_unmapped_type_unchanged(self) -> None:
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         entity = _entity("alice@example.com", "EMAIL")
         kept, rejections = validator.filter_with_verdicts("text", [entity])
         assert kept == [entity]
         assert rejections == []
 
     def test_should_keep_real_ip_and_reject_fake_ip(self) -> None:
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         real_ip = _entity("10.217.4.11", "IP_ADDRESS")
         fake_ip = _entity("0.244.999.7", "IP_ADDRESS")
         kept, rejections = validator.filter_with_verdicts(
@@ -64,7 +64,7 @@ class TestFilterWithVerdicts:
         assert rejected_entity is fake_ip
 
     def test_should_expose_duck_typed_verdict_fields(self) -> None:
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         fake_ip = _entity("0.244.999.7", "IP_ADDRESS")
         _kept, rejections = validator.filter_with_verdicts("text", [fake_ip])
         _entity_out, verdict = rejections[0]
@@ -76,14 +76,14 @@ class TestFilterWithVerdicts:
 
     def test_should_normalise_freetext_label_to_registry_key(self) -> None:
         # GLiNER2 free-text label "ip address" -> normalised "IP_ADDRESS".
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         fake_ip = _entity("0.244.999.7", "ip address")
         kept, rejections = validator.filter_with_verdicts("text", [fake_ip])
         assert kept == []
         assert len(rejections) == 1
 
     def test_should_fail_open_when_strategy_raises(self) -> None:
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         entity = _entity("0.244.999.7", "IP_ADDRESS")
 
         class _BoomStrategy:
@@ -93,7 +93,7 @@ class TestFilterWithVerdicts:
                 raise RuntimeError("strategy blew up")
 
         with patch.dict(
-            "pii_detector.infrastructure.prefilter.format_prefilter_validator.STRATEGIES",
+            "pii_detector.infrastructure.postfilter.format_postfilter_validator.STRATEGIES",
             {"IP_ADDRESS": _BoomStrategy()},
             clear=True,
         ):
@@ -103,10 +103,50 @@ class TestFilterWithVerdicts:
         assert rejections == []
 
     def test_filter_should_return_only_kept_entities(self) -> None:
-        validator = FormatPrefilterValidator()
+        validator = FormatPostfilterValidator()
         real_ip = _entity("10.217.4.11", "IP_ADDRESS")
         fake_ip = _entity("0.244.999.7", "IP_ADDRESS")
         assert validator.filter("text", [real_ip, fake_ip]) == [real_ip]
+
+
+# ---------------------------------------------------------------------------
+# Cross-label technical-artifact denylist pass
+# ---------------------------------------------------------------------------
+
+
+class TestTechnicalArtifactPass:
+    def test_should_reject_artifact_even_when_type_is_unmapped(self) -> None:
+        # Ministral passthrough labels (OBJECT_ID, GUID...) are not in
+        # STRATEGIES: the label-agnostic pass must still reject the span.
+        validator = FormatPostfilterValidator()
+        entity = _entity("507f1f77bcf86cd799439011", "OBJECT_ID")
+        kept, rejections = validator.filter_with_verdicts("text", [entity])
+        assert kept == []
+        assert len(rejections) == 1
+        _rejected, verdict = rejections[0]
+        assert verdict.verdict == "FALSE_POSITIVE"
+        assert "technical artifact" in verdict.reason
+
+    def test_should_run_denylist_before_per_type_strategy(self) -> None:
+        # A UUID labelled IP_ADDRESS is rejected by the denylist (uuid
+        # motif), not by the IP strategy (parse failure) -> pinned by reason.
+        validator = FormatPostfilterValidator()
+        entity = _entity("3f2504e0-4f89-41d3-9a0c-0305e82c3301", "IP_ADDRESS")
+        _kept, rejections = validator.filter_with_verdicts("text", [entity])
+        assert len(rejections) == 1
+        assert "uuid" in rejections[0][1].reason
+
+    def test_should_fail_open_when_denylist_raises(self) -> None:
+        validator = FormatPostfilterValidator()
+        entity = _entity("507f1f77bcf86cd799439011", "OBJECT_ID")
+        with patch(
+            "pii_detector.infrastructure.postfilter.format_postfilter_validator"
+            ".technical_artifact_denylist.evaluate",
+            side_effect=RuntimeError("denylist blew up"),
+        ):
+            kept, rejections = validator.filter_with_verdicts("text", [entity])
+        assert kept == [entity]
+        assert rejections == []
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +160,7 @@ class TestSingleton:
         first = get_instance()
         second = get_instance()
         assert first is second
-        assert first.name == "format-prefilter"
+        assert first.name == "format-postfilter"
         _reset_singleton_for_tests()
 
     def test_should_rebuild_after_reset(self) -> None:

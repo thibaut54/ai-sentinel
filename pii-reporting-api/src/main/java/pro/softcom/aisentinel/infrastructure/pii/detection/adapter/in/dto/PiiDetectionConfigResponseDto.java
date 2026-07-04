@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
  * @param regexJudgeEnabled   Whether the LLM-as-Judge stage runs on regex findings
  * @param openmedJudgeEnabled Whether the LLM-as-Judge stage runs on OpenMed findings
  * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings
- * @param prefilterEnabled    Whether the deterministic format pre-filter stage is enabled
+ * @param postfilterEnabled    Whether the deterministic format pre-filter stage is enabled
  * @param updatedAt           Timestamp of last configuration update
  * @param updatedBy           User who last updated the configuration
  */
@@ -46,7 +46,7 @@ public record PiiDetectionConfigResponseDto(
     boolean regexJudgeEnabled,
     boolean openmedJudgeEnabled,
     boolean gliner2JudgeEnabled,
-    boolean prefilterEnabled,
+    boolean postfilterEnabled,
     LocalDateTime updatedAt,
     String updatedBy
 ) {

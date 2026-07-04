@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -159,7 +160,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .pageId(pageId)
                 .pageTitle(pageTitle)
                 .spaceKey(spaceKey)
-                .analysisDate(LocalDateTime.now())
+                .analysisDate(LocalDateTime.now(ZoneId.systemDefault()))
                 .sensitiveDataFound(sensitiveDataList)
                 .statistics(statistics)
                 .discardedByJudge(discardedByJudge)
@@ -270,7 +271,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
             case "OPENMED" -> OPENMED;
             case "MINISTRAL" -> MINISTRAL;
             case "JUDGE" -> JUDGE;
-            case "PREFILTER" -> PREFILTER;
+            case "POSTFILTER" -> POSTFILTER;
             default -> DetectorSource.UNKNOWN_SOURCE;
         };
     }

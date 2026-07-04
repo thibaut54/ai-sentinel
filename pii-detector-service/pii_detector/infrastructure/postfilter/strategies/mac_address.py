@@ -12,9 +12,9 @@ time ranges slip through (measured 0/12 caught). Measured here: 12/12 false
 positives caught, 0/226 finding collisions (``data-analysis.md``).
 """
 
-from pii_detector.infrastructure.prefilter.prefilter_strategy import (
+from pii_detector.infrastructure.postfilter.postfilter_strategy import (
     PASS,
-    PrefilterVerdict,
+    PostfilterVerdict,
 )
 
 
@@ -23,14 +23,14 @@ class MacAddressStrategy:
 
     pii_type = "MAC_ADDRESS"
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         if not isinstance(value, str):
             return PASS
         s = value.strip()
         # A canonical MAC uses ONE separator type. Mixing ':' AND '-' is
         # impossible for a MAC -> it is a time range HH:MM:SS-HH:MM:SS.
         if ":" in s and "-" in s:
-            return PrefilterVerdict(
+            return PostfilterVerdict(
                 False, "mixed ':' and '-' separators (not a MAC)"
             )
         return PASS

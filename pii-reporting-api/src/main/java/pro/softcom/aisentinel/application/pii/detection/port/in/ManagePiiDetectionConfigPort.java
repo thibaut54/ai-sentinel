@@ -45,7 +45,7 @@ public interface ManagePiiDetectionConfigPort {
      * @param regexJudgeEnabled   Whether the LLM-as-Judge stage runs on regex findings
      * @param openmedJudgeEnabled Whether the LLM-as-Judge stage runs on OpenMed findings
      * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings
-     * @param prefilterEnabled    Whether the deterministic format pre-filter stage is enabled
+     * @param postfilterEnabled    Whether the deterministic format pre-filter stage is enabled
      * @param updatedBy           User identifier who is updating the configuration
      */
     record UpdatePiiDetectionConfigCommand(
@@ -65,7 +65,7 @@ public interface ManagePiiDetectionConfigPort {
             boolean regexJudgeEnabled,
             boolean openmedJudgeEnabled,
             boolean gliner2JudgeEnabled,
-            boolean prefilterEnabled,
+            boolean postfilterEnabled,
             String updatedBy
     ) {
     }

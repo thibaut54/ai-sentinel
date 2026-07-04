@@ -13,6 +13,7 @@ import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,7 +38,8 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ReturnConfig_When_GetConfigCalled() {
         // Arrange
         PiiDetectionConfig expectedConfig = new PiiDetectionConfig(
-            1, true, true, false, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false, LocalDateTime.now(), "system"
+            1, true, true, false, false, false, false, 1024, 128, new BigDecimal("0.75"), 30, false, false, false, false, false, false, false, LocalDateTime.now(
+                ZoneId.systemDefault()), "system"
         );
         when(repository.findConfig()).thenReturn(expectedConfig);
 
@@ -65,7 +67,7 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         PiiDetectionConfig savedConfig = captor.getValue();
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(savedConfig.id()).isEqualTo(1);
+        softly.assertThat(savedConfig.id()).isOne();
         softly.assertThat(savedConfig.glinerEnabled()).isTrue();
         softly.assertThat(savedConfig.presidioEnabled()).isFalse();
         softly.assertThat(savedConfig.regexEnabled()).isTrue();
@@ -74,14 +76,14 @@ class ManagePiiDetectionConfigUseCaseTest {
         softly.assertThat(savedConfig.updatedBy()).isEqualTo("testuser");
         softly.assertThat(savedConfig.updatedAt()).isNotNull();
         softly.assertThat(savedConfig.llmJudgeEnabled()).isFalse();
-        softly.assertThat(savedConfig.prefilterEnabled()).isFalse();
+        softly.assertThat(savedConfig.postfilterEnabled()).isFalse();
         softly.assertAll();
 
         assertThat(result).isEqualTo(savedConfig);
     }
 
     @Test
-    void Should_PassPrefilterEnabledFlagThroughUseCase_When_CommandEnablesIt() {
+    void Should_PassPostfilterEnabledFlagThroughUseCase_When_CommandEnablesIt() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
             true, false, true, false, false, false, 1024, 128, new BigDecimal("0.80"), 30, false, false, false, false, false, false, true, "testuser"
@@ -94,8 +96,8 @@ class ManagePiiDetectionConfigUseCaseTest {
         ArgumentCaptor<PiiDetectionConfig> captor = ArgumentCaptor.forClass(PiiDetectionConfig.class);
         verify(repository).updateConfig(captor.capture());
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(captor.getValue().prefilterEnabled()).isTrue();
-        softly.assertThat(result.prefilterEnabled()).isTrue();
+        softly.assertThat(captor.getValue().postfilterEnabled()).isTrue();
+        softly.assertThat(result.postfilterEnabled()).isTrue();
         softly.assertAll();
     }
 
@@ -297,7 +299,7 @@ class ManagePiiDetectionConfigUseCaseTest {
         // Assert
         ArgumentCaptor<PiiDetectionConfig> captor = ArgumentCaptor.forClass(PiiDetectionConfig.class);
         verify(repository).updateConfig(captor.capture());
-        assertThat(captor.getValue().id()).isEqualTo(1);
+        assertThat(captor.getValue().id()).isOne();
     }
 
     @Test

@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionCon
 import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Use case for managing PII detection configuration.
@@ -31,10 +32,10 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
 
     @Override
     public PiiDetectionConfig updateConfig(UpdatePiiDetectionConfigCommand command) {
-        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, prefilterEnabled={}",
+        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, postfilterEnabled={}",
                 command.glinerEnabled(), command.presidioEnabled(), command.regexEnabled(),
                 command.openmedEnabled(), command.gliner2Enabled(), command.defaultThreshold(),
-                command.nbOfLabelByPass(), command.llmJudgeEnabled(), command.prefilterEnabled());
+                command.nbOfLabelByPass(), command.llmJudgeEnabled(), command.postfilterEnabled());
 
         PiiDetectionConfig newConfig = new PiiDetectionConfig(
                 CONFIG_ID,
@@ -54,8 +55,8 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
                 command.regexJudgeEnabled(),
                 command.openmedJudgeEnabled(),
                 command.gliner2JudgeEnabled(),
-                command.prefilterEnabled(),
-                LocalDateTime.now(),
+                command.postfilterEnabled(),
+                LocalDateTime.now(ZoneId.systemDefault()),
                 command.updatedBy()
         );
 

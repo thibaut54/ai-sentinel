@@ -9,7 +9,7 @@ export interface PiiDetectionConfig {
   regexEnabled: boolean;
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
-  prefilterEnabled: boolean;
+  postfilterEnabled: boolean;
   /**
    * Read-only derived flag: true when at least one per-detector judge toggle is on.
    * Computed by the backend (OR of the five `*JudgeEnabled` flags); not sent on update.
@@ -38,7 +38,7 @@ export interface UpdatePiiDetectionConfigRequest {
   regexEnabled: boolean;
   openmedEnabled: boolean;
   gliner2Enabled: boolean;
-  prefilterEnabled: boolean;
+  postfilterEnabled: boolean;
   glinerJudgeEnabled: boolean;
   presidioJudgeEnabled: boolean;
   regexJudgeEnabled: boolean;

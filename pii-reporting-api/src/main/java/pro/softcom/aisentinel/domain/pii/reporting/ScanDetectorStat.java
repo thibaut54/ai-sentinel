@@ -10,9 +10,9 @@ import java.math.RoundingMode;
  * (characters processed per second of busy time) and detection volume.
  *
  * @param detector       detector identifier (e.g. GLINER2, PRESIDIO, REGEX); also the
- *                       JUDGE/PREFILTER post-filters, surfaced as pseudo detectors
+ *                       JUDGE/postfilter post-filters, surfaced as pseudo detectors
  * @param detections     total raw entities found by this detector (or examined count
- *                       for the JUDGE/PREFILTER post-filters)
+ *                       for the JUDGE/postfilter post-filters)
  * @param charsProcessed total characters submitted to this detector
  * @param busyMs         cumulated busy time of this detector in milliseconds
  * @param discarded      total PII discarded by this stage (0 for real detectors)

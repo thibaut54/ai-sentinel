@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  * {@code openmedJudgeEnabled}, {@code gliner2JudgeEnabled}) route the LLM-as-Judge
  * post-filtering stage on a per-detector basis. They default to {@code false}.
  *
- * <p>The {@code prefilterEnabled} flag activates the deterministic format
+ * <p>The {@code postfilterEnabled} flag activates the deterministic format
  * pre-filter (IP/MAC/IBAN checksum) that runs before the LLM judge.
  */
 public record PiiDetectionConfig(
@@ -41,7 +41,7 @@ public record PiiDetectionConfig(
         boolean regexJudgeEnabled,
         boolean openmedJudgeEnabled,
         boolean gliner2JudgeEnabled,
-        boolean prefilterEnabled,
+        boolean postfilterEnabled,
         LocalDateTime updatedAt,
         String updatedBy) {
 

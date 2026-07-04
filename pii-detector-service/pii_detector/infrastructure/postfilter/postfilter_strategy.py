@@ -1,7 +1,8 @@
-"""Strategy contract for the deterministic format pre-filter.
+"""Strategy contract for the deterministic precision post-filter.
 
 This module defines the building blocks shared by every per-``pii_type``
-pre-filter strategy executed **before** the LLM judge (Stage B):
+strategy of the post-detection precision filter (the final filtering stage
+now that the LLM-as-judge is retired):
 
 - :class:`PrefilterVerdict` -- the immutable result of evaluating one value
   (``keep`` plus a deterministic ``reason``).
@@ -22,7 +23,7 @@ from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
-class PrefilterVerdict:
+class PostfilterVerdict:
     """Immutable verdict produced by a :class:`PrefilterStrategy`.
 
     Attributes:
@@ -38,11 +39,11 @@ class PrefilterVerdict:
 
 # Canonical "keep" verdict. Reused by every strategy on the fail-open path so
 # no allocation / message is needed when a value is simply not in scope.
-PASS = PrefilterVerdict(keep=True, reason="")
+PASS = PostfilterVerdict(keep=True, reason="")
 
 
 @runtime_checkable
-class PrefilterStrategy(Protocol):
+class PostfilterStrategy(Protocol):
     """Structural contract for a single per-``pii_type`` pre-filter rule.
 
     Implementations expose:
@@ -54,6 +55,6 @@ class PrefilterStrategy(Protocol):
 
     pii_type: str
 
-    def evaluate(self, value: str) -> PrefilterVerdict:
+    def evaluate(self, value: str) -> PostfilterVerdict:
         """Return the deterministic keep/reject verdict for ``value``."""
         ...

@@ -13,7 +13,7 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   regexEnabled: true,
   openmedEnabled: false,
   gliner2Enabled: false,
-  prefilterEnabled: false,
+  postfilterEnabled: false,
   llmJudgeEnabled: true,
   glinerJudgeEnabled: true,
   presidioJudgeEnabled: false,
@@ -60,7 +60,7 @@ const FR_TRANSLATIONS = {
         overlapHint: 'hint',
         overlapError: 'erreur',
       },
-      prefilter: { label: 'Pré-filtre déterministe', description: 'desc' },
+      postfilter: { label: 'Post-filtre déterministe', description: 'desc' },
       detectorLabel: 'Détecteur',
       judgeLabel: 'Juge LLM',
       judgeAriaLabel: 'Activer le juge LLM pour {{detector}}',
@@ -213,8 +213,8 @@ describe('PiiSettingsComponent', () => {
     expect(gliner2Control?.value).toBe(false);
   });
 
-  it('Should_CreatePrefilterEnabledControl_When_FormInitialized', () => {
-    const prefilterControl = component.configForm.get('prefilterEnabled');
+  it('Should_CreatePostfilterEnabledControl_When_FormInitialized', () => {
+    const prefilterControl = component.configForm.get('postfilterEnabled');
     expect(prefilterControl).toBeTruthy();
     expect(prefilterControl?.value).toBe(false);
   });
