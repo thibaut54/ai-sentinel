@@ -199,7 +199,7 @@ def test_presidio_detector_with_text_file(mock_get_db_adapter):
 
     This test:
     1. Loads the Presidio detector (Microsoft's rule-based PII detection)
-    2. Reads text from tests/resources/text-for-gliner.txt
+    2. Reads text from tests/resources/raw_text_confluence.txt
     3. Detects PII entities
     4. Logs comprehensive results grouped by PII type
     5. Asserts that results are not empty

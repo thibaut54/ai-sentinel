@@ -44,7 +44,7 @@ class PiiTypeConfigPersistenceAdapterTest {
 
     @Test
     void Should_ReturnMappedList_When_FindAll() {
-        when(jpaRepository.findAll()).thenReturn(List.of(buildEntity("EMAIL", "GLINER")));
+        when(jpaRepository.findAll()).thenReturn(List.of(buildEntity("EMAIL", "MINISTRAL")));
 
         List<PiiTypeConfig> result = adapter.findAll();
 
@@ -74,10 +74,10 @@ class PiiTypeConfigPersistenceAdapterTest {
 
     @Test
     void Should_ReturnPresent_When_FindByPiiTypeAndDetectorExists() {
-        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "GLINER"))
-                .thenReturn(Optional.of(buildEntity("EMAIL", "GLINER")));
+        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "MINISTRAL"))
+                .thenReturn(Optional.of(buildEntity("EMAIL", "MINISTRAL")));
 
-        Optional<PiiTypeConfig> result = adapter.findByPiiTypeAndDetector("EMAIL", "GLINER");
+        Optional<PiiTypeConfig> result = adapter.findByPiiTypeAndDetector("EMAIL", "MINISTRAL");
 
         assertThat(result).isPresent();
         assertThat(result.get().getPiiType()).isEqualTo("EMAIL");
@@ -85,10 +85,10 @@ class PiiTypeConfigPersistenceAdapterTest {
 
     @Test
     void Should_ReturnEmpty_When_FindByPiiTypeAndDetectorNotFound() {
-        when(jpaRepository.findByPiiTypeAndDetector("UNKNOWN", "GLINER"))
+        when(jpaRepository.findByPiiTypeAndDetector("UNKNOWN", "MINISTRAL"))
                 .thenReturn(Optional.empty());
 
-        Optional<PiiTypeConfig> result = adapter.findByPiiTypeAndDetector("UNKNOWN", "GLINER");
+        Optional<PiiTypeConfig> result = adapter.findByPiiTypeAndDetector("UNKNOWN", "MINISTRAL");
 
         assertThat(result).isEmpty();
     }
@@ -96,9 +96,9 @@ class PiiTypeConfigPersistenceAdapterTest {
     @Test
     void Should_SaveAndReturnDomain_When_Save() {
         PiiTypeConfig config = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
-        PiiTypeConfigEntity savedEntity = buildEntity("EMAIL", "GLINER");
+        PiiTypeConfigEntity savedEntity = buildEntity("EMAIL", "MINISTRAL");
         when(jpaRepository.save(any())).thenReturn(savedEntity);
 
         PiiTypeConfig result = adapter.save(config);
@@ -126,56 +126,43 @@ class PiiTypeConfigPersistenceAdapterTest {
 
     @Test
     void Should_CallDeleteRepository_When_DeleteByPiiTypeAndDetector() {
-        adapter.deleteByPiiTypeAndDetector("EMAIL", "GLINER");
+        adapter.deleteByPiiTypeAndDetector("EMAIL", "MINISTRAL");
 
-        verify(jpaRepository).deleteByPiiTypeAndDetector("EMAIL", "GLINER");
+        verify(jpaRepository).deleteByPiiTypeAndDetector("EMAIL", "MINISTRAL");
     }
 
     @Test
     void Should_ThrowIllegalArgument_When_UpdateAtomicallyNotFound() {
-        when(jpaRepository.findByPiiTypeAndDetector("UNKNOWN", "GLINER"))
+        when(jpaRepository.findByPiiTypeAndDetector("UNKNOWN", "MINISTRAL"))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adapter.updateAtomically(
-                "UNKNOWN", "GLINER", true, 0.80, "admin"))
+                "UNKNOWN", "MINISTRAL", true, 0.80, "admin"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Configuration not found");
     }
 
     @Test
     void Should_ReturnUpdated_When_UpdateAtomicallySucceeds() {
-        PiiTypeConfigEntity entity = buildEntity("EMAIL", "GLINER");
-        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "GLINER"))
+        PiiTypeConfigEntity entity = buildEntity("EMAIL", "MINISTRAL");
+        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "MINISTRAL"))
                 .thenReturn(Optional.of(entity));
         when(jpaRepository.save(entity)).thenReturn(entity);
 
-        PiiTypeConfig result = adapter.updateAtomically("EMAIL", "GLINER", false, 0.90, "admin");
-
-        assertThat(result).isNotNull();
-    }
-
-    @Test
-    void Should_ReturnUpdated_When_UpdateAtomicallyWithDescriptionSucceeds() {
-        PiiTypeConfigEntity entity = buildEntity("EMAIL", "GLINER");
-        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "GLINER"))
-                .thenReturn(Optional.of(entity));
-        when(jpaRepository.save(entity)).thenReturn(entity);
-
-        PiiTypeConfig result = adapter.updateAtomically(
-                "EMAIL", "GLINER", false, 0.90, "new description", true, "admin");
+        PiiTypeConfig result = adapter.updateAtomically("EMAIL", "MINISTRAL", false, 0.90, "admin");
 
         assertThat(result).isNotNull();
     }
 
     @Test
     void Should_ReturnBulkUpdated_When_BulkUpdateAtomically() {
-        PiiTypeConfigEntity entity = buildEntity("EMAIL", "GLINER");
-        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "GLINER"))
+        PiiTypeConfigEntity entity = buildEntity("EMAIL", "MINISTRAL");
+        when(jpaRepository.findByPiiTypeAndDetector("EMAIL", "MINISTRAL"))
                 .thenReturn(Optional.of(entity));
         when(jpaRepository.saveAll(anyList())).thenReturn(List.of(entity));
 
         List<PiiTypeConfigUpdate> updates = List.of(
-                new PiiTypeConfigUpdate("EMAIL", "GLINER", true, 0.85, null, null)
+                new PiiTypeConfigUpdate("EMAIL", "MINISTRAL", true, 0.85)
         );
 
         List<PiiTypeConfig> result = adapter.bulkUpdateAtomically(updates, "admin");
@@ -186,9 +173,9 @@ class PiiTypeConfigPersistenceAdapterTest {
     @Test
     void Should_SaveAll_When_SaveAllCalled() {
         PiiTypeConfig config = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
-        PiiTypeConfigEntity savedEntity = buildEntity("EMAIL", "GLINER");
+        PiiTypeConfigEntity savedEntity = buildEntity("EMAIL", "MINISTRAL");
         when(jpaRepository.saveAll(anyList())).thenReturn(List.of(savedEntity));
 
         List<PiiTypeConfig> result = adapter.saveAll(List.of(config));

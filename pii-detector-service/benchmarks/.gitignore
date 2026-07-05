@@ -1,4 +1,0 @@
-# Benchmark outputs and corpus-derived samples (large, regenerable, may contain PII excerpts)
-out*/
-.sample-*/
-__pycache__/

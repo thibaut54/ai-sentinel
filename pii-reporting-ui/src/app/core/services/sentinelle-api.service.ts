@@ -53,7 +53,7 @@ export interface ScanDetectorStatDto {
   charsProcessed: number;
   busyMs: number;
   charsPerSecond: number | null;
-  /** PII discarded by this stage (0 for real detectors; >0 for JUDGE/PREFILTER). */
+  /** PII discarded by this stage (0 for real detectors; >0 for the PREFILTER post-filter). */
   discarded: number;
 }
 

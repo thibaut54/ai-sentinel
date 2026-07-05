@@ -22,7 +22,7 @@ class DetectionMerger:
     - Track entity provenance for debugging (optional)
     
     This class implements the core fusion logic for the Composite pattern
-    in MultiModelPIIDetector, separating concerns and reducing complexity.
+    in CompositePIIDetector, separating concerns and reducing complexity.
     """
 
     def __init__(self, log_provenance: bool = False):

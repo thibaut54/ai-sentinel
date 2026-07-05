@@ -29,37 +29,23 @@ public interface ManagePiiDetectionConfigPort {
     /**
      * Command to update PII detection configuration.
      *
-     * @param glinerEnabled    Whether GLiNER detector should be enabled
      * @param presidioEnabled  Whether Presidio detector should be enabled
      * @param regexEnabled     Whether custom regex detector should be enabled
-     * @param openmedEnabled   Whether OpenMed detector should be enabled
-     * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
+     * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
+     * @param ministralChunkSize  Sliding-window chunk size (characters) for the Ministral-PII detector
+     * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
-     * @param nbOfLabelByPass     Maximum labels per detector batch
-     * @param llmJudgeEnabled     Derived global LLM-judge guard (OR of the five per-detector flags)
-     * @param glinerJudgeEnabled  Whether the LLM-as-Judge stage runs on GLiNER findings
-     * @param presidioJudgeEnabled Whether the LLM-as-Judge stage runs on Presidio findings
-     * @param regexJudgeEnabled   Whether the LLM-as-Judge stage runs on regex findings
-     * @param openmedJudgeEnabled Whether the LLM-as-Judge stage runs on OpenMed findings
-     * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings
-     * @param prefilterEnabled    Whether the deterministic format pre-filter stage is enabled
+     * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled
      * @param updatedBy           User identifier who is updating the configuration
      */
     record UpdatePiiDetectionConfigCommand(
-            boolean glinerEnabled,
             boolean presidioEnabled,
             boolean regexEnabled,
-            boolean openmedEnabled,
-            boolean gliner2Enabled,
+            boolean ministralEnabled,
+            Integer ministralChunkSize,
+            Integer ministralOverlap,
             BigDecimal defaultThreshold,
-            Integer nbOfLabelByPass,
-            boolean llmJudgeEnabled,
-            boolean glinerJudgeEnabled,
-            boolean presidioJudgeEnabled,
-            boolean regexJudgeEnabled,
-            boolean openmedJudgeEnabled,
-            boolean gliner2JudgeEnabled,
-            boolean prefilterEnabled,
+            boolean postfilterEnabled,
             String updatedBy
     ) {
     }

@@ -64,39 +64,6 @@
                     <h3 class="section-title">{{ 'settings.sections.detectors' | transloco }}</h3>
 
                     <div class="detector-cards">
-                        <!-- GLiNER -->
-                        <div class="detector-card gliner"
-                             [class.enabled]="configForm.get('glinerEnabled')?.value"
-                             [class.disabled]="!configForm.get('glinerEnabled')?.value">
-                            <div class="detector-avatar gliner"
-                                 [class.disabled-avatar]="!configForm.get('glinerEnabled')?.value">GL</div>
-                            <div class="detector-info">
-                                <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('glinerEnabled')?.value">
-                                    {{ 'settings.detectors.gliner.label' | transloco }}
-                                </div>
-                                <div class="detector-desc">{{ 'settings.detectors.gliner.description' | transloco }}</div>
-                            </div>
-                            <div class="detector-switches">
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="glinerEnabled"
-                                        (onChange)="onDetectorMasterToggle('GLINER')"
-                                        [ariaLabel]="'settings.detectors.gliner.label' | transloco">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
-                                </div>
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="glinerJudgeEnabled"
-                                        [disabled]="!configForm.get('glinerEnabled')?.value"
-                                        [ariaLabel]="'settings.detectors.judgeAriaLabel' | transloco: {detector: ('settings.detectors.gliner.label' | transloco)}">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.judgeLabel' | transloco }}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Presidio -->
                         <div class="detector-card presidio"
                              [class.enabled]="configForm.get('presidioEnabled')?.value"
@@ -118,14 +85,6 @@
                                         [ariaLabel]="'settings.detectors.presidio.label' | transloco">
                                     </p-toggleswitch>
                                     <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
-                                </div>
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="presidioJudgeEnabled"
-                                        [disabled]="!configForm.get('presidioEnabled')?.value"
-                                        [ariaLabel]="'settings.detectors.judgeAriaLabel' | transloco: {detector: ('settings.detectors.presidio.label' | transloco)}">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.judgeLabel' | transloco }}</span>
                                 </div>
                             </div>
                         </div>
@@ -152,105 +111,54 @@
                                     </p-toggleswitch>
                                     <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
                                 </div>
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="regexJudgeEnabled"
-                                        [disabled]="!configForm.get('regexEnabled')?.value"
-                                        [ariaLabel]="'settings.detectors.judgeAriaLabel' | transloco: {detector: ('settings.detectors.regex.label' | transloco)}">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.judgeLabel' | transloco }}</span>
-                                </div>
                             </div>
                         </div>
 
-                        <!-- OpenMed -->
-                        <div class="detector-card openmed"
-                             [class.enabled]="configForm.get('openmedEnabled')?.value"
-                             [class.disabled]="!configForm.get('openmedEnabled')?.value">
-                            <div class="detector-avatar openmed"
-                                 [class.disabled-avatar]="!configForm.get('openmedEnabled')?.value">OM</div>
+                        <!-- Ministral-PII -->
+                        <div class="detector-card ministral"
+                             [class.enabled]="configForm.get('ministralEnabled')?.value"
+                             [class.disabled]="!configForm.get('ministralEnabled')?.value">
+                            <div class="detector-avatar ministral"
+                                 [class.disabled-avatar]="!configForm.get('ministralEnabled')?.value">MI</div>
                             <div class="detector-info">
                                 <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('openmedEnabled')?.value">
-                                    {{ 'settings.detectors.openmed.label' | transloco }}
+                                     [class.disabled-text]="!configForm.get('ministralEnabled')?.value">
+                                    {{ 'settings.detectors.ministral.label' | transloco }}
                                 </div>
-                                <div class="detector-desc">{{ 'settings.detectors.openmed.description' | transloco }}</div>
+                                <div class="detector-desc">{{ 'settings.detectors.ministral.description' | transloco }}</div>
                             </div>
                             <div class="detector-switches">
                                 <div class="detector-switch">
                                     <p-toggleswitch
-                                        formControlName="openmedEnabled"
-                                        (onChange)="onDetectorMasterToggle('OPENMED')"
-                                        [ariaLabel]="'settings.detectors.openmed.label' | transloco">
+                                        formControlName="ministralEnabled"
+                                        inputId="toggleMinistralEnabled"
+                                        data-testid="toggleMinistralEnabled"
+                                        (onChange)="onDetectorMasterToggle('MINISTRAL')"
+                                        [ariaLabel]="'settings.detectors.ministral.label' | transloco">
                                     </p-toggleswitch>
                                     <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
-                                </div>
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="openmedJudgeEnabled"
-                                        [disabled]="!configForm.get('openmedEnabled')?.value"
-                                        [ariaLabel]="'settings.detectors.judgeAriaLabel' | transloco: {detector: ('settings.detectors.openmed.label' | transloco)}">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.judgeLabel' | transloco }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- GLiNER2 -->
-                        <div class="detector-card gliner2"
-                             [class.enabled]="configForm.get('gliner2Enabled')?.value"
-                             [class.disabled]="!configForm.get('gliner2Enabled')?.value">
-                            <div class="detector-avatar gliner2"
-                                 [class.disabled-avatar]="!configForm.get('gliner2Enabled')?.value">G2</div>
-                            <div class="detector-info">
-                                <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('gliner2Enabled')?.value">
-                                    {{ 'settings.detectors.gliner2.label' | transloco }}
-                                </div>
-                                <div class="detector-desc">{{ 'settings.detectors.gliner2.help' | transloco }}</div>
-                            </div>
-                            <div class="detector-switches">
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="gliner2Enabled"
-                                        inputId="toggleGliner2Enabled"
-                                        data-testid="toggleGliner2Enabled"
-                                        (onChange)="onDetectorMasterToggle('GLINER2')"
-                                        [ariaLabel]="'settings.detectors.gliner2.label' | transloco">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
-                                </div>
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="gliner2JudgeEnabled"
-                                        inputId="toggleGliner2JudgeEnabled"
-                                        data-testid="toggleGliner2JudgeEnabled"
-                                        [disabled]="!configForm.get('gliner2Enabled')?.value"
-                                        [ariaLabel]="'settings.detectors.judgeAriaLabel' | transloco: {detector: ('settings.detectors.gliner2.label' | transloco)}">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.judgeLabel' | transloco }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Pré-filtre déterministe -->
                         <div class="detector-card prefilter"
-                             [class.enabled]="configForm.get('prefilterEnabled')?.value"
-                             [class.disabled]="!configForm.get('prefilterEnabled')?.value">
+                             [class.enabled]="configForm.get('postfilterEnabled')?.value"
+                             [class.disabled]="!configForm.get('postfilterEnabled')?.value">
                             <div class="detector-avatar prefilter"
-                                 [class.disabled-avatar]="!configForm.get('prefilterEnabled')?.value">PF</div>
+                                 [class.disabled-avatar]="!configForm.get('postfilterEnabled')?.value">PF</div>
                             <div class="detector-info">
                                 <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('prefilterEnabled')?.value">
-                                    {{ 'settings.detectors.prefilter.label' | transloco }}
+                                     [class.disabled-text]="!configForm.get('postfilterEnabled')?.value">
+                                    {{ 'settings.detectors.postfilter.label' | transloco }}
                                 </div>
-                                <div class="detector-desc">{{ 'settings.detectors.prefilter.description' | transloco }}</div>
+                                <div class="detector-desc">{{ 'settings.detectors.postfilter.description' | transloco }}</div>
                             </div>
                             <p-toggleswitch
-                                formControlName="prefilterEnabled"
-                                inputId="togglePrefilterEnabled"
-                                data-testid="togglePrefilterEnabled"
-                                [ariaLabel]="'settings.detectors.prefilter.label' | transloco">
+                                formControlName="postfilterEnabled"
+                                inputId="togglepostfilterEnabled"
+                                data-testid="togglepostfilterEnabled"
+                                [ariaLabel]="'settings.detectors.postfilter.label' | transloco">
                             </p-toggleswitch>
                         </div>
                     </div>
@@ -261,6 +169,64 @@
                             <i class="pi pi-exclamation-circle"></i>
                             {{ 'settings.validation.atLeastOneDetector' | transloco }}
                         </div>
+                    }
+
+                    <!-- Ministral-PII advanced chunking parameters -->
+                    @if (configForm.get('ministralEnabled')?.value) {
+                        <fieldset class="advanced-params">
+                            <legend class="advanced-params-title">{{ 'settings.detectors.ministral.advancedParams' | transloco }}</legend>
+
+                            <!-- Chunk size -->
+                            <div class="advanced-param-field">
+                                <label for="ministralChunkSize" class="advanced-param-label">
+                                    {{ 'settings.detectors.ministral.chunkSize' | transloco }}
+                                </label>
+                                <p-inputNumber
+                                    inputId="ministralChunkSize"
+                                    formControlName="ministralChunkSize"
+                                    [min]="256"
+                                    [max]="4096"
+                                    [step]="128"
+                                    [showButtons]="true"
+                                    buttonLayout="horizontal"
+                                    incrementButtonIcon="pi pi-plus"
+                                    decrementButtonIcon="pi pi-minus"
+                                    [attr.aria-describedby]="'ministralChunkSizeHint'">
+                                </p-inputNumber>
+                                <small id="ministralChunkSizeHint" class="advanced-param-hint">
+                                    {{ 'settings.detectors.ministral.chunkSizeHint' | transloco }}
+                                </small>
+                            </div>
+
+                            <!-- Overlap -->
+                            <div class="advanced-param-field">
+                                <label for="ministralOverlap" class="advanced-param-label">
+                                    {{ 'settings.detectors.ministral.overlap' | transloco }}
+                                </label>
+                                <p-inputNumber
+                                    inputId="ministralOverlap"
+                                    formControlName="ministralOverlap"
+                                    [min]="0"
+                                    [max]="512"
+                                    [step]="32"
+                                    [showButtons]="true"
+                                    buttonLayout="horizontal"
+                                    incrementButtonIcon="pi pi-plus"
+                                    decrementButtonIcon="pi pi-minus"
+                                    [attr.aria-describedby]="'ministralOverlapHint'">
+                                </p-inputNumber>
+                                <small id="ministralOverlapHint" class="advanced-param-hint">
+                                    {{ 'settings.detectors.ministral.overlapHint' | transloco }}
+                                </small>
+                            </div>
+
+                            @if (ministralOverlapError) {
+                                <div class="validation-error" role="alert">
+                                    <i class="pi pi-exclamation-circle"></i>
+                                    {{ 'settings.detectors.ministral.overlapError' | transloco }}
+                                </div>
+                            }
+                        </fieldset>
                     }
                 </form>
             }
@@ -297,25 +263,6 @@
                         <div class="threshold-labels">
                             <span>{{ 'settings.sections.detectors' | transloco }}</span>
                             <span>{{ 'settings.sections.performance' | transloco }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Labels per Pass Card -->
-                    <div class="threshold-card">
-                        <div class="threshold-label">{{ 'settings.nbLabels.label' | transloco }}</div>
-                        <div class="threshold-desc">{{ 'settings.nbLabels.description' | transloco }}</div>
-                        <div class="threshold-controls">
-                            <p-inputNumber
-                                inputId="nbOfLabelByPass"
-                                formControlName="nbOfLabelByPass"
-                                [min]="1"
-                                [max]="100"
-                                [step]="1"
-                                [showButtons]="true"
-                                buttonLayout="horizontal"
-                                incrementButtonIcon="pi pi-plus"
-                                decrementButtonIcon="pi pi-minus">
-                            </p-inputNumber>
                         </div>
                     </div>
 
@@ -399,14 +346,12 @@
                                        [class.pi-chevron-right]="isDetectorCollapsed(detectorGroup.detector)"></i>
                                 </button>
                                 <span class="detector-badge"
-                                      [class.gliner]="detectorGroup.detector === 'GLINER'"
-                                      [class.gliner2]="detectorGroup.detector === 'GLINER2'"
                                       [class.presidio]="detectorGroup.detector === 'PRESIDIO'"
                                       [class.regex]="detectorGroup.detector === 'REGEX'"
-                                      [class.openmed]="detectorGroup.detector === 'OPENMED'">
+                                      [class.ministral]="detectorGroup.detector === 'MINISTRAL'">
                                     {{ detectorGroup.detector }}
                                 </span>
-                                @if (detectorGroup.detector === 'GLINER') {
+                                @if (detectorGroup.detector === 'MINISTRAL') {
                                     <p-button
                                         type="button"
                                         icon="pi pi-plus"
@@ -463,15 +408,6 @@
                                                     [disabled]="!isDetectorEnabled(detectorGroup.detector)"
                                                     [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
                                                 </p-toggleswitch>
-                                                <div class="pii-type-judge-row">
-                                                    <p-toggleswitch
-                                                        [ngModel]="isDetectorJudgeEnabled(detectorGroup.detector) && type.llmJudgeEnabled"
-                                                        (ngModelChange)="onPiiTypeJudgeToggleChange(type, $event)"
-                                                        [disabled]="!type.enabled || !isDetectorJudgeEnabled(detectorGroup.detector) || !isDetectorEnabled(detectorGroup.detector)"
-                                                        [ariaLabel]="'settings.piiTypes.llmJudgeToggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
-                                                    </p-toggleswitch>
-                                                    <span class="pii-type-judge-label">{{ 'settings.piiTypes.llmJudge' | transloco }}</span>
-                                                </div>
                                             </div>
                                             @if (type.enabled) {
                                                 <p-inputNumber
@@ -501,30 +437,6 @@
                                                 </p-button>
                                             }
                                         </div>
-
-                                        @if (detectorGroup.detector === 'GLINER2') {
-                                            <div class="pii-type-description">
-                                                <label class="sr-only"
-                                                       [attr.for]="'piiTypeDescriptionInput-' + type.piiType">
-                                                    {{ 'settings.piiTypes.descriptionLabel' | transloco }}
-                                                    ({{ ('settings.piiTypes.typeNames.' + type.piiType) | transloco }})
-                                                </label>
-                                                <input pInputText
-                                                       #descInput
-                                                       type="text"
-                                                       class="description-input"
-                                                       [id]="'piiTypeDescriptionInput-' + type.piiType"
-                                                       [attr.data-testid]="'piiTypeDescriptionInput-' + type.piiType"
-                                                       [value]="type.detectorDescription || ''"
-                                                       [attr.aria-describedby]="'piiTypeDescriptionHelp-' + type.piiType"
-                                                       [placeholder]="'settings.piiTypes.descriptionLabel' | transloco"
-                                                       (change)="onPiiTypeDescriptionChange(type, descInput.value)"/>
-                                                <small class="description-help"
-                                                       [id]="'piiTypeDescriptionHelp-' + type.piiType">
-                                                    {{ 'settings.piiTypes.descriptionHelp' | transloco }}
-                                                </small>
-                                            </div>
-                                        }
                                     </div>
                                 }
                             }

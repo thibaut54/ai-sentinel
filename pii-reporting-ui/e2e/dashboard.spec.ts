@@ -31,10 +31,10 @@ test.describe('Spaces Dashboard', () => {
     await expect(table).toBeVisible();
 
     // Verify essential table headers are present
-    await expect(page.getByTestId(testIds.headers.space)).toHaveText('Space');
+    await expect(page.getByTestId(testIds.headers.space)).toHaveText('Espace');
     await expect(page.getByTestId(testIds.headers.status)).toHaveText('Statut');
     await expect(page.getByTestId(testIds.headers.progress)).toHaveText('Progression');
-    await expect(page.getByTestId(testIds.headers.pii)).toHaveText('PII');
+    await expect(page.getByTestId(testIds.headers.pii)).toHaveText("Sévérité des détections d'IPI");
   });
 
   test('should display space name in datatable', async ({ page }) => {

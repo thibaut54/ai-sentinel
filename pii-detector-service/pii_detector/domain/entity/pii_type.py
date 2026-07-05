@@ -11,7 +11,7 @@ from enum import Enum
 class PIIType(Enum):
     """Enumeration of supported PII types with French labels."""
 
-    # Existing types (from original ML detector)
+    # Core PII types
     ACCOUNTNUM = "Numéro de compte"
     BUILDINGNUM = "Numéro de bâtiment"
     CITY = "Ville"
@@ -116,7 +116,7 @@ class PIIType(Enum):
     SECRET_KEY = "Clé secrète"
     CONNECTION_STRING = "Chaîne de connexion"
 
-    # New GLiNER types (underscore variants)
+    # Additional types (underscore variants)
     DATE_OF_BIRTH = "Date de naissance"
     BANK_ACCOUNT = "Compte bancaire"
     ROUTING_NUMBER = "Numéro de routage"
@@ -128,7 +128,7 @@ class PIIType(Enum):
     COUNTRY = "Pays"
     AVS_NUMBER = "Numéro AVS"
 
-    # Healthcare (new GLiNER types)
+    # Healthcare types
     MEDICAL_RECORD = "Dossier médical"
     HEALTH_INSURANCE = "Assurance maladie"
     MEDICAL_CONDITION = "Condition médicale"

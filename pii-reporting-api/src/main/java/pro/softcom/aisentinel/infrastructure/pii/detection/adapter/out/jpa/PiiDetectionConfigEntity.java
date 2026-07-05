@@ -6,7 +6,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,10 +34,6 @@ public class PiiDetectionConfigEntity {
     private Integer id;
 
     @NotNull
-    @Column(name = "gliner_enabled", nullable = false)
-    private Boolean glinerEnabled;
-
-    @NotNull
     @Column(name = "presidio_enabled", nullable = false)
     private Boolean presidioEnabled;
 
@@ -46,17 +41,27 @@ public class PiiDetectionConfigEntity {
     @Column(name = "regex_enabled", nullable = false)
     private Boolean regexEnabled;
 
-    @NotNull
-    @Column(name = "openmed_enabled", nullable = false)
-    private Boolean openmedEnabled;
-
     /**
-     * Activates the GLiNER2 detector (ensemble source). Defaults to
-     * {@code false} for an explicit operator opt-in (spec D4).
+     * Activates the Ministral-PII detector (specialised LLM source). Defaults to
+     * {@code false} for an explicit operator opt-in.
      */
     @NotNull
-    @Column(name = "gliner2_enabled", nullable = false)
-    private Boolean gliner2Enabled;
+    @Column(name = "ministral_enabled", nullable = false)
+    private Boolean ministralEnabled;
+
+    /**
+     * Sliding-window chunk size (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_chunk_size", nullable = false)
+    private Integer ministralChunkSize;
+
+    /**
+     * Sliding-window overlap (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_overlap", nullable = false)
+    private Integer ministralOverlap;
 
     @NotNull
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
@@ -64,72 +69,20 @@ public class PiiDetectionConfigEntity {
     @Column(name = "default_threshold", nullable = false, precision = 3, scale = 2)
     private BigDecimal defaultThreshold;
 
-    @Column(name = "nb_of_label_by_pass", nullable = false)
-    @NotNull
-    @Min(value = 1, message = "nbOfLabelByPass must be >= 1")
-    private Integer nbOfLabelByPass;
-
     /**
-     * Activates the LLM-as-Judge post-filtering stage (cf. spec §1.4).
-     * Defaults to {@code false} for a zero-effect MVP rollout.
+     * Activates the deterministic format precision post-filter (IP/MAC/IBAN
+     * checksum) that runs after detection. Defaults to {@code false} for a
+     * zero-effect rollout.
      */
     @NotNull
-    @Column(name = "llm_judge_enabled", nullable = false)
-    private Boolean llmJudgeEnabled;
-
-    /**
-     * Routes the LLM-as-Judge stage for GLiNER findings. Defaults to
-     * {@code false} for an explicit operator opt-in.
-     */
-    @NotNull
-    @Column(name = "gliner_judge_enabled", nullable = false)
-    private Boolean glinerJudgeEnabled;
-
-    /**
-     * Routes the LLM-as-Judge stage for Presidio findings. Defaults to
-     * {@code false} for an explicit operator opt-in.
-     */
-    @NotNull
-    @Column(name = "presidio_judge_enabled", nullable = false)
-    private Boolean presidioJudgeEnabled;
-
-    /**
-     * Routes the LLM-as-Judge stage for regex findings. Defaults to
-     * {@code false} for an explicit operator opt-in.
-     */
-    @NotNull
-    @Column(name = "regex_judge_enabled", nullable = false)
-    private Boolean regexJudgeEnabled;
-
-    /**
-     * Routes the LLM-as-Judge stage for OpenMed findings. Defaults to
-     * {@code false} for an explicit operator opt-in.
-     */
-    @NotNull
-    @Column(name = "openmed_judge_enabled", nullable = false)
-    private Boolean openmedJudgeEnabled;
-
-    /**
-     * Routes the LLM-as-Judge stage for GLiNER2 findings. Defaults to
-     * {@code false} for an explicit operator opt-in.
-     */
-    @NotNull
-    @Column(name = "gliner2_judge_enabled", nullable = false)
-    private Boolean gliner2JudgeEnabled;
-
-    /**
-     * Activates the deterministic format pre-filter (IP/MAC/IBAN checksum) that
-     * runs before the LLM judge. Defaults to {@code false} for a zero-effect rollout.
-     */
-    @NotNull
-    @Column(name = "prefilter_enabled", nullable = false)
-    private Boolean prefilterEnabled;
+    @Column(name = "postfilter_enabled", nullable = false)
+    private Boolean postfilterEnabled;
 
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "updated_by", length = 255)
+    @Column(name = "updated_by")
     private String updatedBy;
 
     protected PiiDetectionConfigEntity() {

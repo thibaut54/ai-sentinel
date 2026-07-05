@@ -17,7 +17,6 @@ def test_global_config_is_applied_from_database(postgres_container):
     cfg = adapter.fetch_config()
 
     assert cfg is not None, "Global config should be fetched from DB"
-    assert cfg["gliner_enabled"] is True
     assert cfg["presidio_enabled"] is True
     assert cfg["regex_enabled"] is True
 

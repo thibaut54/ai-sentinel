@@ -304,10 +304,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
     @Test
     @DisplayName("Should_MapProtoDetectorSourceToDomain_When_EntitiesCarrySource")
     void Should_MapProtoDetectorSourceToDomain_When_EntitiesCarrySource() {
-        // Given - one entity per known proto DetectorSource (proto currently exposes GLINER/PRESIDIO/REGEX)
-        PiiDetection.PIIEntity glinerEntity = PiiDetection.PIIEntity.newBuilder()
-                .setType("EMAIL").setText("a@b.com").setStart(0).setEnd(7).setScore(0.9f)
-                .setSource(PiiDetection.DetectorSource.GLINER).build();
+        // Given - one entity per known proto DetectorSource (proto currently exposes PRESIDIO/REGEX)
         PiiDetection.PIIEntity presidioEntity = PiiDetection.PIIEntity.newBuilder()
                 .setType("PHONE").setText("0612345678").setStart(10).setEnd(20).setScore(0.9f)
                 .setSource(PiiDetection.DetectorSource.PRESIDIO).build();
@@ -319,7 +316,6 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
                 .setSource(PiiDetection.DetectorSource.UNKNOWN_SOURCE).build();
 
         PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder()
-                .addEntities(glinerEntity)
                 .addEntities(presidioEntity)
                 .addEntities(regexEntity)
                 .addEntities(unknownEntity)
@@ -336,24 +332,37 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         // Then - sources are mapped to the domain enum
         assertSoftly(softly -> {
             softly.assertThat(result.sensitiveDataFound().get(0).source())
-                    .isEqualTo(ContentPiiDetection.DetectorSource.GLINER);
-            softly.assertThat(result.sensitiveDataFound().get(1).source())
                     .isEqualTo(ContentPiiDetection.DetectorSource.PRESIDIO);
-            softly.assertThat(result.sensitiveDataFound().get(2).source())
+            softly.assertThat(result.sensitiveDataFound().get(1).source())
                     .isEqualTo(ContentPiiDetection.DetectorSource.REGEX);
-            softly.assertThat(result.sensitiveDataFound().get(3).source())
+            softly.assertThat(result.sensitiveDataFound().get(2).source())
                     .isEqualTo(ContentPiiDetection.DetectorSource.UNKNOWN_SOURCE);
         });
     }
 
     @Test
-    @DisplayName("Should_ExposeOpenmedInDomainEnum_When_AdapterIsReady")
-    void Should_ExposeOpenmedInDomainEnum_When_AdapterIsReady() {
-        // Given - the domain enum exposes OPENMED (forward-compatible mapping in the adapter
-        // uses proto.name() so it will recognise OPENMED once the proto stub is regenerated)
-        // When / Then
-        assertThat(ContentPiiDetection.DetectorSource.valueOf("OPENMED"))
-                .isEqualTo(ContentPiiDetection.DetectorSource.OPENMED);
+    @DisplayName("Should_MapMinistralProtoSourceToDomain_When_EntityCarriesSource")
+    void Should_MapMinistralProtoSourceToDomain_When_EntityCarriesSource() {
+        // Given - one entity carrying the MINISTRAL proto source (enum value 8)
+        PiiDetection.PIIEntity ministralEntity = PiiDetection.PIIEntity.newBuilder()
+                .setType("EMAIL").setText("a@b.com").setStart(0).setEnd(7).setScore(0.9f)
+                .setSource(PiiDetection.DetectorSource.MINISTRAL).build();
+
+        PiiDetection.PIIDetectionResponse response = PiiDetection.PIIDetectionResponse.newBuilder()
+                .addEntities(ministralEntity)
+                .build();
+
+        when(stub.withDeadlineAfter(anyLong(), any())).thenReturn(stub);
+        when(stub.detectPII(any())).thenReturn(response);
+
+        GrpcPiiDetectorArmeriaClientAdapter service = new GrpcPiiDetectorArmeriaClientAdapter(config, stub, meterRegistry);
+
+        // When
+        ContentPiiDetection result = service.analyzePageContent("p", "t", "s", "payload");
+
+        // Then - the source is mapped to the MINISTRAL domain enum value
+        assertThat(result.sensitiveDataFound().getFirst().source())
+                .isEqualTo(ContentPiiDetection.DetectorSource.MINISTRAL);
     }
 
     @Test

@@ -133,10 +133,8 @@
       "rate": "Avg. throughput",
       "rateUnit": "char/s",
       "busy": "Cumulative time",
-      "judgeLabel": "LLM Judge",
-      "prefilterLabel": "Pre-filter",
-      "judgeUnit": "s/PII",
-      "busyNote": "Per-detector time is cumulative compute time; it may exceed the total scan duration due to parallelism. Throughput is in characters per second, except for the LLM Judge (seconds per judged PII)."
+      "postfilterLabel": "Post-filter",
+      "busyNote": "Per-detector time is cumulative compute time; it may exceed the total scan duration due to parallelism. Throughput is in characters per second."
     },
     "logs": {
       "purging": "[ui] Purging previous results...",
@@ -290,10 +288,6 @@
       "performance": "Performance Optimization"
     },
     "detectors": {
-      "gliner": {
-        "label": "GLiNER Detector",
-        "description": "AI-based entity recognition using the Piiranha model for detecting personal information"
-      },
       "presidio": {
         "label": "Presidio Detector",
         "description": "Microsoft's PII detection framework with pattern matching and NLP"
@@ -302,29 +296,25 @@
         "label": "Regex Detector",
         "description": "Pattern-based detection using regular expressions for structured data"
       },
-      "openmed": {
-        "label": "OpenMed (multilingual)",
-        "description": "Multilingual ML detector (FR/EN/DE/IT/ES) covering financial, crypto, vehicle and IT credential patterns."
+      "ministral": {
+        "label": "Ministral-PII",
+        "description": "Generative LLM detector (Ministral) that scans long documents in overlapping chunks. Complements the other detectors as an additional source (disabled by default).",
+        "advancedParams": "Advanced parameters",
+        "chunkSize": "Chunk size",
+        "chunkSizeHint": "Number of tokens processed per chunk (256-4096). Larger chunks give more context but slower inference.",
+        "overlap": "Overlap",
+        "overlapHint": "Number of tokens shared between consecutive chunks (0-512). Must stay smaller than the chunk size.",
+        "overlapError": "Overlap must be smaller than the chunk size."
       },
-      "gliner2": {
-        "label": "GLiNER2",
-        "help": "Multi-task zero-shot detector with per-type descriptions for disambiguation. Complements GLiNER as an additional source (disabled by default)."
-      },
-      "prefilter": {
+      "postfilter": {
         "label": "Deterministic pre-filter",
-        "description": "Rejects, before the LLM judge, values whose format is mechanically invalid (IP, MAC, IBAN)."
+        "description": "Rejects values whose format is mechanically invalid (IP, MAC, IBAN)."
       },
-      "detectorLabel": "Detector",
-      "judgeLabel": "LLM judge",
-      "judgeAriaLabel": "Enable the LLM judge for {{detector}}"
+      "detectorLabel": "Detector"
     },
     "threshold": {
       "label": "Default Confidence Threshold",
       "description": "Minimum confidence score (0.0-1.0) required for a detection to be reported. Lower values = more detections but potentially more false positives"
-    },
-    "nbLabels": {
-      "label": "Labels per Pass (GLiNER)",
-      "description": "Maximum number of labels processed in a single pass. Higher values improve speed but might reduce accuracy. Default is 35."
     },
     "validation": {
       "atLeastOneDetector": "At least one detector must be enabled"
@@ -344,22 +334,14 @@
       "types": "types",
       "threshold": "Confidence Threshold",
       "toggle": "Toggle {{type}}",
-      "llmJudge": "LLM as judge",
-      "llmJudgeToggle": "Enable/disable LLM judge for {{type}}",
-      "descriptionLabel": "Inference description",
-      "descriptionHelp": "Natural-language sentence GLiNER2 uses to recognise this type. Edit it to fine-tune detection without redeployment.",
       "detectors": {
-        "gliner": "GLiNER Detector",
         "presidio": "Presidio Detector",
-        "openmed": "OpenMed",
-        "gliner2": "GLiNER2 Detector"
+        "ministral": "Ministral-PII Detector"
       },
       "detectorNames": {
-        "GLINER": "GLiNER",
         "PRESIDIO": "Presidio",
         "REGEX": "Regex",
-        "OPENMED": "OpenMed",
-        "GLINER2": "GLiNER2"
+        "MINISTRAL": "Ministral-PII"
       },
       "categoryNames": {
         "TEMPORAL": "Sensitive dates",
@@ -385,7 +367,9 @@
         "Personal": "Personal Information",
         "LEGAL_ASSET": "Legal Assets",
         "IT_CREDENTIALS": "IT Credentials",
-        "CUSTOM": "Custom Labels"
+        "CUSTOM": "Custom Labels",
+        "EMPLOYMENT": "Employment & Education",
+        "GOV_ID": "Government Identifications"
       },
       "typeNames": {
         "FULL_NAME": "Full name",
@@ -575,7 +559,46 @@
         "LITECOIN_ADDRESS": "Litecoin address",
         "VEHICLE_VIN": "Vehicle VIN",
         "IMEI": "IMEI",
-        "EYE_COLOR": "Eye color"
+        "EYE_COLOR": "Eye color",
+        "FAX_NUMBER": "Fax number",
+        "BUILDING_NUMBER": "Building number",
+        "COUNTY": "County / district",
+        "STATE": "State / province",
+        "POSTCODE": "Postal code",
+        "COORDINATE": "Geographic coordinates",
+        "IPV4": "IPv4 address",
+        "IPV6": "IPv6 address",
+        "USER_NAME": "Username",
+        "HTTP_COOKIE": "HTTP cookie",
+        "DEVICE_IDENTIFIER": "Device identifier",
+        "OCCUPATION": "Occupation",
+        "EMPLOYMENT_STATUS": "Employment status",
+        "EMPLOYEE_ID": "Employee ID",
+        "EDUCATION_LEVEL": "Education level",
+        "ORGANIZATION": "Organization",
+        "COMPANY_NAME": "Company name",
+        "CUSTOMER_ID": "Customer ID",
+        "CREDIT_DEBIT_CARD": "Credit/debit card",
+        "BANK_ROUTING_NUMBER": "Bank routing number",
+        "SWIFT_BIC": "SWIFT/BIC code",
+        "SOCIAL_SECURITY_NUMBER": "Social security number",
+        "VEHICLE_IDENTIFIER": "Vehicle identifier",
+        "CERTIFICATE_LICENSE_NUMBER": "Certificate / license number",
+        "UNIQUE_ID": "Unique identifier",
+        "TITLE": "Title / salutation",
+        "RACE": "Race",
+        "ETHNICITY": "Ethnicity",
+        "RACE_ETHNICITY": "Race or ethnicity",
+        "RELIGION": "Religion",
+        "RELIGIOUS_BELIEF": "Religious belief",
+        "MARITAL_STATUS": "Marital status",
+        "SEXUALITY": "Sexual orientation",
+        "POLITICAL_VIEW": "Political view",
+        "LANGUAGE": "Language",
+        "BIOMETRIC_IDENTIFIER": "Biometric identifier",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Health plan beneficiary number",
+        "BLOOD_TYPE": "Blood type",
+        "TIME": "Time"
       },
       "typeDescriptions": {
         "FULL_NAME": "A person's full name (first + last)",
@@ -750,7 +773,47 @@
         "IBAN_CODE": "International Bank Account Number (IBAN) for European and international banking operations",
         "CRYPTO": "Cryptocurrency wallet addresses for various blockchains (Bitcoin, Ethereum, etc.)",
         "UK_NHS": "United Kingdom National Health Service patient identification numbers",
-        "UK_NINO": "United Kingdom National Insurance Number used for taxation and social security"
+        "UK_NINO": "United Kingdom National Insurance Number used for taxation and social security",
+        "FAX_NUMBER": "Fax numbers in various international formats",
+        "BUILDING_NUMBER": "Building, house or apartment numbers",
+        "COUNTY": "County, district or administrative subdivision",
+        "STATE": "Names of states, provinces or regions",
+        "POSTCODE": "Postal codes",
+        "COORDINATE": "Geographic coordinates (latitude and longitude)",
+        "IPV4": "IPv4 network addresses",
+        "IPV6": "IPv6 network addresses",
+        "USER_NAME": "System identifiers and login account names",
+        "HTTP_COOKIE": "HTTP cookies and session tokens",
+        "DEVICE_IDENTIFIER": "Unique device identifier",
+        "OCCUPATION": "A person's occupation or profession",
+        "EMPLOYMENT_STATUS": "Employment status (employed, self-employed, unemployed, etc.)",
+        "EMPLOYEE_ID": "Employee identification number",
+        "EDUCATION_LEVEL": "Education level or degree",
+        "ORGANIZATION": "Name of an organization or institution",
+        "COMPANY_NAME": "Name of a company or business",
+        "CUSTOMER_ID": "Customer identification number",
+        "CREDIT_DEBIT_CARD": "Credit or debit card numbers",
+        "BANK_ROUTING_NUMBER": "Bank routing number (clearing/ABA)",
+        "SWIFT_BIC": "International bank identifier code (SWIFT/BIC)",
+        "SOCIAL_SECURITY_NUMBER": "Generic social security number format",
+        "VEHICLE_IDENTIFIER": "Vehicle identification number (VIN) or license plate",
+        "CERTIFICATE_LICENSE_NUMBER": "Certificate or professional license number",
+        "UNIQUE_ID": "Generic unique identifier",
+        "TITLE": "A person's title or salutation (Mr., Mrs., Dr., etc.)",
+        "RACE": "Information about a person's racial origin",
+        "ETHNICITY": "Information about a person's ethnic origin",
+        "RACE_ETHNICITY": "Information about a person's racial or ethnic origin",
+        "RELIGION": "Religious affiliation or belief",
+        "RELIGIOUS_BELIEF": "A person's religious belief or conviction",
+        "MARITAL_STATUS": "Marital status (married, single, divorced, widowed, etc.)",
+        "SEXUALITY": "Information about a person's sexual orientation",
+        "POLITICAL_VIEW": "A person's political opinions or affiliations",
+        "LANGUAGE": "A person's spoken or native language",
+        "BIOMETRIC_IDENTIFIER": "Biometric identifier (fingerprint, facial recognition, etc.)",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Health insurance plan beneficiary number",
+        "BLOOD_TYPE": "Blood types (A, B, AB, O with Rh +/- factors)",
+        "TIME": "Time information in various formats",
+        "PIN": "PIN code used for authentication or security"
       },
       "actions": {
         "saveAll": "Save",

@@ -41,7 +41,7 @@ class PiiTypeLabelCoverageTest {
 
     /** Matches the leading {@code ('TYPE','DETECTOR',} of each pii_type_config INSERT tuple. */
     private static final Pattern TUPLE_PATTERN = Pattern.compile(
-            "\\(\\s*'([^']+)'\\s*,\\s*'(GLINER2|GLINER|OPENMED|PRESIDIO|REGEX)'\\s*,");
+            "\\(\\s*'([^']+)'\\s*,\\s*'(PRESIDIO|REGEX|MINISTRAL)'\\s*,");
 
     private static final String PRODUCTION_SEED = "classpath:data.sql";
     private static final String TEST_SEEDS = "classpath*:sql/data-*.sql";

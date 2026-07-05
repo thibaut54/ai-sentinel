@@ -39,11 +39,11 @@ const MOCK_ITEM: PersonallyIdentifiableInformationScanResult = {
   severity: 'high',
   piiTypeSummary: { EMAIL: 4, IBAN: 1 },
   detectedPersonallyIdentifiableInformationList: [
-    { startPosition: 0, endPosition: 10, piiTypeLabel: 'Email', confidence: 1, source: 'GLINER' },
-    { startPosition: 20, endPosition: 30, piiTypeLabel: 'Email', confidence: 0.95, source: 'GLINER' },
-    { startPosition: 40, endPosition: 50, piiTypeLabel: 'Email', confidence: 0.98, source: 'GLINER' },
+    { startPosition: 0, endPosition: 10, piiTypeLabel: 'Email', confidence: 1, source: 'PRESIDIO' },
+    { startPosition: 20, endPosition: 30, piiTypeLabel: 'Email', confidence: 0.95, source: 'PRESIDIO' },
+    { startPosition: 40, endPosition: 50, piiTypeLabel: 'Email', confidence: 0.98, source: 'PRESIDIO' },
     { startPosition: 60, endPosition: 70, piiTypeLabel: 'Email', confidence: 0.92, source: 'PRESIDIO' },
-    { startPosition: 80, endPosition: 90, piiTypeLabel: 'IBAN', confidence: 0.88, source: 'GLINER' },
+    { startPosition: 80, endPosition: 90, piiTypeLabel: 'IBAN', confidence: 0.88, source: 'PRESIDIO' },
   ],
 };
 

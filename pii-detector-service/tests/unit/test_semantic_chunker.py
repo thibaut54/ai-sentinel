@@ -1,24 +1,22 @@
 """
-Unit tests for SemanticTextChunker and related classes.
+Unit tests for ChunkResult, FallbackChunker and MinistralTokenChunker.
 
-This module provides comprehensive test coverage for semantic text chunking,
+This module provides test coverage for text chunking,
 following modern Python testing best practices with pytest.
 
 Test Naming Convention: Should_ExpectedBehavior_When_StateUnderTest
 """
 
 import logging
-from unittest.mock import Mock, patch
+import re
+from unittest.mock import Mock
 
 import pytest
 
 from pii_detector.infrastructure.text_processing.semantic_chunker import (
     ChunkResult,
-    GlinerSubwordChunker,
-    SemanticTextChunker,
     FallbackChunker,
-    create_chunker,
-    SEMCHUNK_AVAILABLE,
+    MinistralTokenChunker,
 )
 
 
@@ -83,253 +81,7 @@ class TestChunkResult:
         assert chunk.token_count is None
 
 
-# ============================================================================
-# SemanticTextChunker Initialization Tests
-# ============================================================================
 
-class TestSemanticTextChunkerInitialization:
-    """Test suite for SemanticTextChunker initialization."""
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_initialize_with_valid_parameters(self, mock_semchunk, mock_tokenizer):
-        """Should initialize semantic chunker with valid parameters."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        assert chunker.tokenizer == mock_tokenizer
-        assert chunker.chunk_size == 768
-        assert chunker.overlap == 100
-        mock_semchunk.chunkerify.assert_called_once_with(mock_tokenizer, 768)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', False)
-    def test_should_raise_import_error_when_semchunk_not_available(self, mock_tokenizer):
-        """Should raise ImportError when semchunk is not installed."""
-        with pytest.raises(ImportError, match="semchunk library is required"):
-            SemanticTextChunker(
-                tokenizer=mock_tokenizer,
-                chunk_size=768,
-                overlap=100
-            )
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_raise_value_error_when_chunk_size_less_than_overlap(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should raise ValueError when chunk_size <= overlap."""
-        with pytest.raises(ValueError, match="chunk_size .* must be greater than overlap"):
-            SemanticTextChunker(
-                tokenizer=mock_tokenizer,
-                chunk_size=100,
-                overlap=100
-            )
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_use_custom_logger_when_provided(
-        self, mock_semchunk, mock_tokenizer, logger_mock
-    ):
-        """Should use custom logger when provided."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100,
-            logger=logger_mock
-        )
-        
-        assert chunker.logger == logger_mock
-        logger_mock.info.assert_called_once()
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_create_default_logger_when_not_provided(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should create default logger when none provided."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        assert chunker.logger is not None
-
-
-# ============================================================================
-# SemanticTextChunker Chunking Tests
-# ============================================================================
-
-class TestSemanticTextChunkerChunking:
-    """Test suite for SemanticTextChunker text chunking operations."""
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_chunk_text_successfully(
-        self, mock_semchunk, mock_tokenizer, sample_text
-    ):
-        """Should chunk text into semantic chunks."""
-        mock_chunker = Mock()
-        mock_chunker.return_value = ["First chunk.", "Second chunk."]
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text(sample_text)
-        
-        assert len(results) == 2
-        assert results[0].text == "First chunk."
-        assert results[1].text == "Second chunk."
-        assert isinstance(results[0], ChunkResult)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_return_empty_list_for_empty_text(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should return empty list when text is empty."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text("")
-        
-        assert results == []
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_track_chunk_positions_correctly(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should track start and end positions of chunks."""
-        text = "First chunk. Second chunk."
-        mock_chunker = Mock()
-        mock_chunker.return_value = ["First chunk.", "Second chunk."]
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text(text)
-        
-        assert results[0].start == 0
-        assert results[0].end == 12
-        assert results[1].start == 13
-        assert results[1].end == 26
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_handle_chunk_not_found_in_text(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should handle case where chunk text is not found (normalized)."""
-        text = "Original text"
-        mock_chunker = Mock()
-        mock_chunker.return_value = ["Different text"]  # Won't be found
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text(text)
-        
-        # Should use fallback position tracking
-        assert len(results) == 1
-        assert results[0].start >= 0
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_raise_runtime_error_when_chunking_fails(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should raise RuntimeError when chunking fails."""
-        mock_chunker = Mock()
-        mock_chunker.side_effect = Exception("Chunking failed")
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        with pytest.raises(RuntimeError, match="Failed to chunk text"):
-            chunker.chunk_text("test text")
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_set_token_count_to_none(
-        self, mock_semchunk, mock_tokenizer, sample_text
-    ):
-        """Should set token_count to None (semchunk doesn't provide it)."""
-        mock_chunker = Mock()
-        mock_chunker.return_value = ["Chunk"]
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text(sample_text)
-        
-        assert all(r.token_count is None for r in results)
-
-
-# ============================================================================
-# SemanticTextChunker Info Tests
-# ============================================================================
-
-class TestSemanticTextChunkerInfo:
-    """Test suite for SemanticTextChunker information retrieval."""
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_return_chunk_info(self, mock_semchunk, mock_tokenizer):
-        """Should return chunker configuration information."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        info = chunker.get_chunk_info()
-        
-        assert info["chunk_size"] == 768
-        assert info["overlap"] == 100
-        assert info["library"] == "semchunk"
-        assert info["available"] == SEMCHUNK_AVAILABLE
-
-
-# ============================================================================
-# FallbackChunker Tests
-# ============================================================================
 
 class TestFallbackChunker:
     """Test suite for FallbackChunker."""
@@ -347,9 +99,24 @@ class TestFallbackChunker:
     def test_should_use_custom_chars_per_token(self):
         """Should use custom chars_per_token when provided."""
         chunker = FallbackChunker(chunk_size=768, overlap=100, chars_per_token=5)
-        
+
         assert chunker.chars_per_token == 5
         assert chunker.chunk_chars == 768 * 5
+
+    def test_should_raise_when_overlap_greater_or_equal_chunk_size(self):
+        """Should reject a pathological overlap >= chunk_size configuration."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=35, overlap=128)
+
+    def test_should_raise_when_chunk_size_not_positive(self):
+        """Should reject a non-positive chunk_size."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=0, overlap=0)
+
+    def test_should_raise_when_overlap_negative(self):
+        """Should reject a negative overlap."""
+        with pytest.raises(ValueError):
+            FallbackChunker(chunk_size=100, overlap=-1)
 
     def test_should_use_custom_logger_in_fallback(self, logger_mock):
         """Should use custom logger when provided."""
@@ -418,401 +185,137 @@ class TestFallbackChunker:
         assert info["available"] is True
 
 
-# ============================================================================
-# Factory Function Tests
-# ============================================================================
-
-class TestCreateChunker:
-    """Test suite for create_chunker factory function."""
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_create_semantic_chunker_when_available(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should create SemanticTextChunker when conditions are met."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=0,
-            use_semantic=True
-        )
-        
-        assert isinstance(chunker, SemanticTextChunker)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', False)
-    def test_should_create_fallback_when_semchunk_not_available(self, mock_tokenizer):
-        """Should create FallbackChunker when semchunk not available."""
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100,
-            use_semantic=True
-        )
-        
-        assert isinstance(chunker, FallbackChunker)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    def test_should_create_fallback_when_tokenizer_is_none(self):
-        """Should create FallbackChunker when tokenizer is None."""
-        chunker = create_chunker(
-            tokenizer=None,
-            chunk_size=768,
-            overlap=100,
-            use_semantic=True
-        )
-        
-        assert isinstance(chunker, FallbackChunker)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_create_fallback_when_use_semantic_false(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should create FallbackChunker when use_semantic is False."""
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100,
-            use_semantic=False
-        )
-        
-        assert isinstance(chunker, FallbackChunker)
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_create_fallback_when_semantic_init_fails(
-        self, mock_semchunk, mock_tokenizer, logger_mock
-    ):
-        """Should create FallbackChunker when SemanticTextChunker init fails."""
-        mock_semchunk.chunkerify.side_effect = Exception("Init failed")
-        
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=0,
-            use_semantic=True,
-            logger=logger_mock
-        )
-        
-        assert isinstance(chunker, FallbackChunker)
-        logger_mock.warning.assert_called()
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_use_custom_logger_in_factory(
-        self, mock_semchunk, mock_tokenizer, logger_mock
-    ):
-        """Should pass custom logger to created chunker."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100,
-            use_semantic=True,
-            logger=logger_mock
-        )
-        
-        assert chunker.logger == logger_mock
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_pass_parameters_to_semantic_chunker(
-        self, mock_semchunk, mock_tokenizer
-    ):
-        """Should pass all parameters to SemanticTextChunker."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        chunker = create_chunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=512,
-            overlap=50,
-            use_semantic=True
-        )
-        
-        assert chunker.chunk_size == 512
-        assert chunker.overlap == 50
-
-    def test_should_pass_parameters_to_fallback_chunker(self):
-        """Should pass all parameters to FallbackChunker."""
-        chunker = create_chunker(
-            tokenizer=None,
-            chunk_size=512,
-            overlap=50,
-            use_semantic=False
-        )
-        
-        assert chunker.chunk_size == 512
-        assert chunker.overlap == 50
 
 
 # ============================================================================
-# Edge Cases and Integration Tests
+# MinistralTokenChunker Tests
 # ============================================================================
 
-class TestEdgeCasesAndIntegration:
-    """Test suite for edge cases and integration scenarios."""
+class _FakeEncoding:
+    """Minimal stand-in for ``tokenizers.Encoding`` (only ``offsets`` is read)."""
 
-    def test_should_handle_very_short_text_in_fallback(self):
-        """Should handle very short text correctly."""
-        chunker = FallbackChunker(chunk_size=100, overlap=10)
-        
-        results = chunker.chunk_text("Hi")
-        
-        assert len(results) == 1
-        assert results[0].text == "Hi"
-
-    def test_should_handle_text_exactly_chunk_size(self):
-        """Should handle text that is exactly chunk size."""
-        text = "a" * 400  # Exactly 100 tokens at 4 chars/token
-        chunker = FallbackChunker(chunk_size=100, overlap=0, chars_per_token=4)
-        
-        results = chunker.chunk_text(text)
-        
-        assert len(results) == 1
-
-    def test_should_handle_large_overlap(self):
-        """Should handle large overlap values."""
-        text = "a" * 1000
-        chunker = FallbackChunker(chunk_size=100, overlap=80, chars_per_token=4)
-        
-        results = chunker.chunk_text(text)
-        
-        # Should still produce multiple chunks
-        assert len(results) >= 2
-
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_handle_unicode_text(self, mock_semchunk, mock_tokenizer):
-        """Should handle Unicode text correctly."""
-        text = "Héllo wörld! 你好世界 🌍"
-        mock_chunker = Mock()
-        mock_chunker.return_value = [text]
-        mock_semchunk.chunkerify.return_value = mock_chunker
-        
-        chunker = SemanticTextChunker(
-            tokenizer=mock_tokenizer,
-            chunk_size=768,
-            overlap=100
-        )
-        
-        results = chunker.chunk_text(text)
-        
-        assert len(results) == 1
-        assert results[0].text == text
-
-    def test_should_handle_unicode_text_in_fallback(self):
-        """Should handle Unicode text in fallback chunker."""
-        text = "Café résumé naïve 日本語"
-        chunker = FallbackChunker(chunk_size=100, overlap=10)
-        
-        results = chunker.chunk_text(text)
-        
-        assert len(results) >= 1
-        # Verify text is preserved
-        reconstructed = "".join(r.text for r in results)
-        assert text in reconstructed or len(reconstructed) > 0
+    def __init__(self, offsets):
+        self.offsets = offsets
 
 
-# ============================================================================
-# Parametrized Tests
-# ============================================================================
+class _WhitespaceFakeTokenizer:
+    """Whitespace tokenizer exposing the ``tokenizers.Tokenizer`` surface used.
 
-class TestParametrizedScenarios:
-    """Test suite using parametrization for multiple scenarios."""
+    Each maximal run of non-space characters is one token; ``offsets`` are the
+    exact char spans into the input — letting tests assert the char-offset
+    invariant against a tokenizer whose boundaries are fully deterministic. The
+    ``add_special_tokens`` kwarg is recorded so a test can assert the chunker
+    asks for content tokens only (faithful token budget).
+    """
 
-    @pytest.mark.parametrize("chunk_size,overlap,should_succeed", [
-        (768, 100, True),
-        (512, 50, True),
-        (100, 100, False),  # chunk_size == overlap
-        (100, 150, False),  # chunk_size < overlap
-    ])
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE', True)
-    @patch('pii_detector.infrastructure.text_processing.semantic_chunker.semchunk')
-    def test_should_validate_chunk_size_and_overlap(
-        self, mock_semchunk, chunk_size, overlap, should_succeed, mock_tokenizer
-    ):
-        """Should validate chunk_size and overlap relationship."""
-        mock_semchunk.chunkerify.return_value = Mock()
-        
-        if should_succeed:
-            chunker = SemanticTextChunker(
-                tokenizer=mock_tokenizer,
-                chunk_size=chunk_size,
-                overlap=overlap
-            )
-            assert chunker is not None
-        else:
-            with pytest.raises(ValueError):
-                SemanticTextChunker(
-                    tokenizer=mock_tokenizer,
-                    chunk_size=chunk_size,
-                    overlap=overlap
-                )
+    def __init__(self):
+        self.last_add_special_tokens = None
 
-    @pytest.mark.parametrize("text_length,expected_min_chunks", [
-        (0, 0),
-        (100, 1),
-        (1000, 1),
-        (10000, 2),
-    ])
-    def test_should_create_appropriate_number_of_chunks(
-        self, text_length, expected_min_chunks
-    ):
-        """Should create appropriate number of chunks based on text length."""
-        text = "a" * text_length
-        chunker = FallbackChunker(chunk_size=100, overlap=10, chars_per_token=4)
-        
-        results = chunker.chunk_text(text)
-        
-        assert len(results) >= expected_min_chunks
-
-    @pytest.mark.parametrize("chars_per_token", [1, 4, 8, 10])
-    def test_should_respect_chars_per_token_setting(self, chars_per_token):
-        """Should respect different chars_per_token values."""
-        chunker = FallbackChunker(
-            chunk_size=100,
-            overlap=10,
-            chars_per_token=chars_per_token
-        )
-
-        assert chunker.chunk_chars == 100 * chars_per_token
-        assert chunker.overlap_chars == 10 * chars_per_token
+    def encode(self, text, add_special_tokens=True):
+        self.last_add_special_tokens = add_special_tokens
+        offsets = [(m.start(), m.end()) for m in re.finditer(r"\S+", text)]
+        return _FakeEncoding(offsets)
 
 
-# ============================================================================
-# GlinerSubwordChunker Tests
-# ============================================================================
+class TestMinistralTokenChunker:
+    """Token-window chunker driven by the Ministral HF tokenizer offsets."""
 
-@pytest.mark.skipif(not SEMCHUNK_AVAILABLE, reason="semchunk not installed")
-class TestGlinerSubwordChunker:
-    """Test suite for GlinerSubwordChunker (semchunk + GLiNER tokenizer)."""
-
-    def test_Should_RaiseValueError_When_ChunkSizeIsZero(self, mock_tokenizer):
-        """Should reject chunk_size=0."""
+    def test_Should_RaiseValueError_When_ChunkSizeIsZero(self):
         with pytest.raises(ValueError, match="chunk_size"):
-            GlinerSubwordChunker(tokenizer=mock_tokenizer, chunk_size=0, overlap=0)
-
-    def test_Should_RaiseValueError_When_OverlapIsNegative(self, mock_tokenizer):
-        """Should reject negative overlap."""
-        with pytest.raises(ValueError, match="overlap"):
-            GlinerSubwordChunker(tokenizer=mock_tokenizer, chunk_size=384, overlap=-1)
-
-    def test_Should_RaiseValueError_When_OverlapGreaterOrEqualChunkSize(self, mock_tokenizer):
-        """Should reject overlap >= chunk_size to avoid infinite loops."""
-        with pytest.raises(ValueError, match="overlap"):
-            GlinerSubwordChunker(tokenizer=mock_tokenizer, chunk_size=100, overlap=100)
-        with pytest.raises(ValueError, match="overlap"):
-            GlinerSubwordChunker(tokenizer=mock_tokenizer, chunk_size=100, overlap=150)
-
-    def test_Should_ReturnEmptyList_When_TextIsEmpty(self, mock_tokenizer):
-        """Should short-circuit on empty input."""
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=Mock())
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=0, overlap=0
             )
 
+    def test_Should_RaiseValueError_When_OverlapNegative(self):
+        with pytest.raises(ValueError, match="overlap"):
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2048, overlap=-1
+            )
+
+    def test_Should_RaiseValueError_When_OverlapGreaterOrEqualChunkSize(self):
+        with pytest.raises(ValueError, match="overlap"):
+            MinistralTokenChunker(
+                tokenizer=_WhitespaceFakeTokenizer(), chunk_size=100, overlap=100
+            )
+
+    def test_Should_ReturnEmptyList_When_TextIsEmpty(self):
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=8, overlap=2
+        )
         assert chunker.chunk_text("") == []
 
-    def test_Should_PreserveOriginalOffsets_When_ChunkingText(self, mock_tokenizer):
-        """text[chunk.start:chunk.end] must equal chunk.text for every chunk."""
-        text = "Le numero AVS de Jean Dupont est 756.1234.5678.97 et son IBAN est CH9300762011623852957."
-
-        # Mock semchunk to return realistic (chunks, offsets) tuple
-        fake_chunks = ["Le numero AVS de Jean Dupont est ", "756.1234.5678.97 et son IBAN", " est CH9300762011623852957."]
-        fake_offsets = [(0, 33), (33, 61), (61, 88)]
-        chunker_mock = Mock(return_value=(fake_chunks, fake_offsets))
-
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=chunker_mock)
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
-            )
-
+    def test_Should_ReturnSingleChunkCoveringWholeText_When_TokensWithinChunkSize(self):
+        text = "Jean habite a Geneve"  # 4 whitespace tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=8, overlap=2
+        )
         results = chunker.chunk_text(text)
-
-        assert len(results) == 3
-        for i, result in enumerate(results):
-            assert result.text == fake_chunks[i]
-            assert result.start == fake_offsets[i][0]
-            assert result.end == fake_offsets[i][1]
-
-    def test_Should_PassOverlapKwarg_When_OverlapIsPositive(self, mock_tokenizer):
-        """Verifies semchunk is called with overlap kwarg when overlap > 0."""
-        chunker_mock = Mock(return_value=(["chunk"], [(0, 5)]))
-
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=chunker_mock)
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
-            )
-
-        chunker.chunk_text("hello")
-
-        chunker_mock.assert_called_once()
-        kwargs = chunker_mock.call_args.kwargs
-        assert kwargs["offsets"] is True
-        assert kwargs["overlap"] == 128
-
-    def test_Should_PassNoneOverlap_When_OverlapIsZero(self, mock_tokenizer):
-        """When overlap=0, pass None to semchunk to avoid forcing the kwarg."""
-        chunker_mock = Mock(return_value=(["chunk"], [(0, 5)]))
-
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=chunker_mock)
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=0,
-            )
-
-        chunker.chunk_text("hello")
-        kwargs = chunker_mock.call_args.kwargs
-        assert kwargs["overlap"] is None
-
-    def test_Should_FallbackGracefully_When_SemchunkVersionLacksOverlapKwarg(self, mock_tokenizer):
-        """Older semchunk without overlap kwarg should not crash; warns instead."""
-        # First call raises TypeError (older API), second call succeeds without overlap.
-        chunker_mock = Mock(side_effect=[
-            TypeError("got an unexpected keyword argument 'overlap'"),
-            (["chunk"], [(0, 5)]),
-        ])
-
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=chunker_mock)
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
-            )
-
-        results = chunker.chunk_text("hello")
-
         assert len(results) == 1
-        assert chunker_mock.call_count == 2
+        assert results[0].start == 0
+        assert results[0].end == len(text)
+        assert results[0].text == text
+        assert results[0].token_count == 4
 
-    def test_Should_ReportConfiguration_When_GetChunkInfoCalled(self, mock_tokenizer):
-        """get_chunk_info() must reflect constructor args for observability."""
-        with patch("pii_detector.infrastructure.text_processing.semantic_chunker.semchunk") as mock_semchunk:
-            mock_semchunk.chunkerify = Mock(return_value=Mock())
-            chunker = GlinerSubwordChunker(
-                tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
-            )
+    def test_Should_PreserveCharOffsetInvariant_When_MultipleChunks(self):
+        # The contract the detector relies on: text[chunk.start:chunk.end] is
+        # EXACTLY chunk.text for every chunk, so chunk-local find() + chunk.start
+        # rebases entities to correct global coordinates.
+        text = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda"
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=3, overlap=1
+        )
+        results = chunker.chunk_text(text)
+        assert len(results) > 1
+        for chunk in results:
+            assert text[chunk.start:chunk.end] == chunk.text
 
+    def test_Should_SplitOnTokenBoundaries_When_TextExceedsChunkSize(self):
+        text = "one two three four five six seven"  # 7 tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=3, overlap=0
+        )
+        results = chunker.chunk_text(text)
+        # stride 3, 7 tokens -> windows [0:3], [3:6], [6:7]
+        assert len(results) == 3
+        assert [c.token_count for c in results] == [3, 3, 1]
+
+    def test_Should_OverlapTokens_When_OverlapPositive(self):
+        text = "one two three four five six seven eight"  # 8 tokens
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=4, overlap=2
+        )
+        results = chunker.chunk_text(text)
+        assert len(results) >= 2
+        # Consecutive windows share tokens -> the next chunk starts before the
+        # previous one ends (char space), guaranteeing no boundary-split entity.
+        assert results[1].start < results[0].end
+
+    def test_Should_CoverEntireText_When_Chunking(self):
+        text = "  alpha beta gamma delta epsilon zeta  "  # leading/trailing space
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2, overlap=0
+        )
+        results = chunker.chunk_text(text)
+        # First chunk anchored at 0 and last chunk reaches len(text): no content
+        # at the document edges can be silently dropped.
+        assert results[0].start == 0
+        assert results[-1].end == len(text)
+
+    def test_Should_EncodeWithoutSpecialTokens_When_ComputingOffsets(self):
+        # Token budgets must be measured on content tokens only (no BOS/EOS),
+        # otherwise the configured size drifts from what the model consumes.
+        tokenizer = _WhitespaceFakeTokenizer()
+        chunker = MinistralTokenChunker(tokenizer=tokenizer, chunk_size=4, overlap=0)
+        chunker.chunk_text("one two three four five")
+        assert tokenizer.last_add_special_tokens is False
+
+    def test_Should_ReportConfiguration_When_GetChunkInfoCalled(self):
+        chunker = MinistralTokenChunker(
+            tokenizer=_WhitespaceFakeTokenizer(), chunk_size=2048, overlap=410
+        )
         info = chunker.get_chunk_info()
-        assert info["chunk_size"] == 384
-        assert info["overlap"] == 128
-        assert info["library"] == "semchunk"
+        assert info["chunk_size"] == 2048
+        assert info["overlap"] == 410
+        assert info["library"] == "tokenizers"
         assert info["available"] is True
         assert "tokenizer" in info
-
-    def test_Should_RaiseImportError_When_SemchunkUnavailable(self, mock_tokenizer):
-        """Constructor must fail loudly if semchunk is missing."""
-        with patch(
-            "pii_detector.infrastructure.text_processing.semantic_chunker.SEMCHUNK_AVAILABLE",
-            False,
-        ):
-            with pytest.raises(ImportError, match="semchunk"):
-                GlinerSubwordChunker(
-                    tokenizer=mock_tokenizer, chunk_size=384, overlap=128,
-                )

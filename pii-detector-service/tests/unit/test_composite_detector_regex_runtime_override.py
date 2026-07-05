@@ -82,7 +82,7 @@ class TestRuntimeRegexActivation:
             mock_load_config.return_value = (False, False)  # regex=False, presidio=False
             
             # Create composite detector via factory (as done at startup)
-            composite = create_composite_detector(ml_detector=None)
+            composite = create_composite_detector()
             
             # VERIFY FIXED STATE: regex_detector is NOW CREATED (fix implemented)
             assert composite.regex_detector is not None, (
@@ -103,7 +103,6 @@ class TestRuntimeRegexActivation:
             entities = composite.detect_pii(
                 sample_text_with_email,
                 threshold=0.5,
-                enable_ml=False,
                 enable_regex=True,  # Database override: use regex!
                 enable_presidio=False
             )
@@ -133,22 +132,20 @@ class TestRuntimeRegexActivation:
         """
         # ARRANGE: Create composite with regex detector available but initially disabled
         composite = CompositePIIDetector(
-            ml_detector=None,
             regex_detector=mock_regex_detector,
             presidio_detector=None,
             merger=None,
             enable_regex=False  # Initially disabled (as per TOML)
         )
-        
+
         # Inject a simple merger that just returns regex results
         with patch.object(composite, '_merger') as mock_merger:
             mock_merger.merge.return_value = mock_regex_detector.detect_pii.return_value
-            
+
             # ACT: Enable regex at runtime via parameter override
             entities = composite.detect_pii(
                 sample_text_with_email,
                 threshold=0.5,
-                enable_ml=False,
                 enable_regex=True,  # Runtime override: activate regex!
                 enable_presidio=False
             )
@@ -204,8 +201,8 @@ class TestRuntimeRegexActivation:
             mock_load_config.return_value = (False, False)  # regex=False, presidio=False
             
             # ACT
-            composite = create_composite_detector(ml_detector=None)
-            
+            composite = create_composite_detector()
+
             # ASSERT: FIXED - Detector is created even with TOML disabled
             assert composite.regex_detector is not None, (
                 "FIXED: Factory creates regex_detector instance even when TOML has regex_detection_enabled=false"
@@ -227,7 +224,6 @@ class TestNoDetectorsWarning:
         """
         # ARRANGE: Create composite with no detectors
         composite = CompositePIIDetector(
-            ml_detector=None,
             regex_detector=None,
             presidio_detector=None,
             enable_regex=False,
@@ -238,7 +234,6 @@ class TestNoDetectorsWarning:
             # ACT
             entities = composite.detect_pii(
                 "Some text with PII",
-                enable_ml=False,
                 enable_regex=True,  # Try to enable but detector is None
                 enable_presidio=False
             )

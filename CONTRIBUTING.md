@@ -397,7 +397,7 @@ Fixes #123
 
 docs(readme): update installation instructions for Windows
 
-test(detector): add integration tests for GLiNER model
+test(detector): add integration tests for Ministral model
 ```
 
 ## Testing Requirements
@@ -420,7 +420,7 @@ cd pii-detector-service
 pytest --cov=pii_detector --cov-report=html --cov-report=term
 
 # Run specific test file
-pytest tests/unit/test_gliner_detector.py -v
+pytest tests/unit/test_regex_detector.py -v
 
 # Run tests in parallel
 pytest -n auto

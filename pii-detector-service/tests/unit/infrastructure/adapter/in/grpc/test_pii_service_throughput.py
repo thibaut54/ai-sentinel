@@ -66,7 +66,7 @@ class TestLogThroughputHelper:
             )
 
     @pytest.mark.parametrize(
-        "phase", ["detection", "llm_judge", "total"]
+        "phase", ["detection", "total"]
     )
     def test_should_accept_each_spec_phase(self, phase: str) -> None:
         with patch(

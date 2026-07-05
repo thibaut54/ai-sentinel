@@ -30,7 +30,7 @@ DEFAULT_MAPPING_PATH = Path(__file__).resolve().parent / "label_mapping.toml"
 
 # Detector sections we flatten into detector_concept_map.json. Order is fixed so
 # the emitted JSON is deterministic across runs.
-DETECTOR_NAMES = ("GLINER2", "PRESIDIO", "REGEX", "OPENMED")
+DETECTOR_NAMES = ("PRESIDIO", "REGEX")
 
 
 def load_table(path: Path = DEFAULT_MAPPING_PATH) -> Dict[str, Any]:
@@ -83,7 +83,7 @@ def load_dataset_excludes(path: Path = DEFAULT_MAPPING_PATH) -> Dict[str, Set[st
 def load_detector_concept_map(path: Path = DEFAULT_MAPPING_PATH) -> Dict[str, Dict[str, str]]:
     """Return ``{DETECTOR: {PII_TYPE: CANONICAL_CONCEPT}}`` for the JSON map.
 
-    Only the four in-scope detectors are emitted, in :data:`DETECTOR_NAMES`
+    Only the two in-scope detectors are emitted, in :data:`DETECTOR_NAMES`
     order, so the resulting JSON is stable and Java-friendly.
     """
     table = load_table(path)

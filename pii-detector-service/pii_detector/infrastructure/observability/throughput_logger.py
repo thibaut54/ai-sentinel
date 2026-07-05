@@ -2,7 +2,7 @@
 Asynchronous throughput logger for the PII detection pipeline.
 
 The goal is to surface chars/sec per processing phase
-(``detection``, ``llm_judge``, ``total``) **without ever blocking** the
+(``detection``, ``format_prefilter``, ``total``) **without ever blocking** the
 scan. Logging therefore goes through a bounded :class:`queue.Queue` whose
 items are flushed by a daemon consumer thread. Producers (the gRPC
 servicer's hot path) call :meth:`log_phase`, which puts the record via
@@ -92,7 +92,7 @@ class ThroughputLogger:
         """Enqueue a throughput record. Never blocks.
 
         Args:
-            phase: One of ``detection``, ``llm_judge`` or ``total``.
+            phase: One of ``detection``, ``format_prefilter`` or ``total``.
             request_id: gRPC request identifier used to correlate phases.
             chars: Number of characters processed in this phase.
             duration_s: Wall-clock duration of the phase in seconds.

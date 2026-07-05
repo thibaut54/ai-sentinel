@@ -29,9 +29,7 @@ const FR_TRANSLATIONS = {
       rate: 'Débit moyen',
       rateUnit: 'car/s',
       busy: 'Temps cumulé',
-      judgeLabel: 'LLM Juge',
       prefilterLabel: 'Pré-filtre',
-      judgeUnit: 's/PII',
       busyNote: 'Temps de calcul cumulé.'
     }
   }
@@ -51,8 +49,7 @@ const COMPLETED_STATS: SpaceScanStatsDto = {
   attachmentChars: 530000,
   failedItems: [{ itemType: 'PAGE', title: 'Ma page' }],
   detectorStats: [
-    { detector: 'GLINER2', detections: 12, charsProcessed: 1730000, busyMs: 520000, charsPerSecond: 3326.9, discarded: 0 },
-    { detector: 'JUDGE', detections: 420, charsProcessed: 0, busyMs: 210000, charsPerSecond: null, discarded: 18 },
+    { detector: 'PRESIDIO', detections: 12, charsProcessed: 1730000, busyMs: 520000, charsPerSecond: 3326.9, discarded: 0 },
     { detector: 'PREFILTER', detections: 50, charsProcessed: 0, busyMs: 12, charsPerSecond: null, discarded: 5 }
   ]
 };
@@ -155,28 +152,17 @@ describe('SpaceScanStatsPopoverComponent', () => {
     expect(fixture.componentInstance.formatRate(null)).toBe('—');
   });
 
-  it('Should_IdentifyPostFilters_When_DetectorIsJudgeOrPrefilter', () => {
+  it('Should_IdentifyPrefilter_When_DetectorIsPrefilter', () => {
     createComponent();
     const c = fixture.componentInstance;
-    expect(c.isJudge('JUDGE')).toBe(true);
     expect(c.isPrefilter('PREFILTER')).toBe(true);
-    expect(c.isFilter('GLINER2')).toBe(false);
-  });
-
-  it('Should_FormatJudgeVelocityAsSecondsPerPii_When_DetectionsPositive', () => {
-    createComponent();
-    // 210000 ms / 420 PII = 0,5 s/PII
-    const judge = { detector: 'JUDGE', detections: 420, charsProcessed: 0, busyMs: 210000, charsPerSecond: null, discarded: 18 };
-    expect(fixture.componentInstance.formatJudgeVelocity(judge)).toBe('0,50');
   });
 
   it('Should_ExposeDiscardedCounts_When_StatsLoaded', () => {
     createComponent();
     fixture.componentInstance.onShow();
     const loaded = fixture.componentInstance.stats();
-    const judge = loaded?.detectorStats.find((d) => d.detector === 'JUDGE');
     const prefilter = loaded?.detectorStats.find((d) => d.detector === 'PREFILTER');
-    expect(judge?.discarded).toBe(18);
     expect(prefilter?.discarded).toBe(5);
   });
 });

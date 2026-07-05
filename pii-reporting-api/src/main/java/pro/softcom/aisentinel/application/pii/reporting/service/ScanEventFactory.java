@@ -291,7 +291,6 @@ public class ScanEventFactory {
             .endPosition(data.end())
             .confidence(data.score())
             .source(data.source())
-            .judgeStatus(data.judgeStatus())
             .build();
     }
 

@@ -75,8 +75,6 @@ public class PiiTypeConfigController {
                 request.threshold(),
                 request.category(),
                 request.detectorLabel(),
-                request.detectorDescription(),
-                request.llmJudgeEnabledOrDefault(),
                 request.countryCode(),
                 request.severity(),
                 PLACEHOLDER_USER
@@ -92,7 +90,7 @@ public class PiiTypeConfigController {
      * <p>
      * GET /api/v1/pii-detection/types/{detector}
      *
-     * @param detector the detector name (GLINER, PRESIDIO, or REGEX)
+     * @param detector the detector name (PRESIDIO, REGEX, or MINISTRAL)
      * @return list of configurations for the detector
      */
     @GetMapping("/{detector}")
@@ -175,8 +173,6 @@ public class PiiTypeConfigController {
                 request.detector(),
                 request.enabled(),
                 request.threshold(),
-                request.detectorDescription(),
-                request.llmJudgeEnabled(),
                 PLACEHOLDER_USER
         );
 
@@ -200,9 +196,7 @@ public class PiiTypeConfigController {
                         req.piiType(),
                         req.detector(),
                         req.enabled(),
-                        req.threshold(),
-                        req.detectorDescription(),
-                        req.llmJudgeEnabled()
+                        req.threshold()
                 ))
                 .toList();
 
@@ -221,7 +215,7 @@ public class PiiTypeConfigController {
     /**
      * Get PII type configurations grouped by detector and category for UI display.
      * Returns a nested structure: detector → categories → types.
-     * Includes GLINER, PRESIDIO and REGEX detectors.
+     * Includes PRESIDIO, REGEX and MINISTRAL detectors.
      * <p>
      * GET /api/v1/pii-detection/pii-types/grouped
      *

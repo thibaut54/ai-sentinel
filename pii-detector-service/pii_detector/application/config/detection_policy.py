@@ -69,7 +69,7 @@ def _load_llm_config() -> dict:
     if not config["models"]:
         raise ValueError(
             f"No model configuration files found in {models_dir}. "
-            "Please add at least one model configuration file (e.g., gliner-pii.toml)."
+            "Please add at least one model configuration file (e.g., presidio-detector.toml)."
         )
     
     return config
@@ -83,32 +83,26 @@ def get_enabled_models(config: dict) -> List[Dict[str, Any]]:
         
     Returns:
         List of enabled model configurations, sorted by priority (lowest number = highest priority)
-        Empty list if LLM detection is disabled or no models are enabled
+        Empty list if no LLM models are enabled
     """
     if "models" not in config:
         raise ValueError(
             "No [models] section found in configuration. "
             "Please add model configurations in config/models/ directory."
         )
-    
-    # Check if LLM detection is globally disabled
-    detection_config = config.get("detection", {})
-    llm_detection_enabled = detection_config.get("llm_detection_enabled", True)
-    
-    if not llm_detection_enabled:
-        # LLM detection disabled globally - return empty list
-        return []
-    
+
     # Filter non-LLM models (regex-detector, presidio-detector, etc.)
     non_llm_models = ["regex-detector", "presidio-detector"]
-    
+
     enabled_models = []
     for model_name, model_config in config["models"].items():
         # Skip non-LLM detectors
         if model_name in non_llm_models:
             continue
-            
-        if model_config.get("enabled", False):
+
+        # An enabled LLM model must carry a model_id (a plain patterns TOML,
+        # e.g. regex-patterns.toml, has none and is not a model).
+        if model_config.get("enabled", False) and model_config.get("model_id"):
             model_info = {
                 "name": model_name,
                 "model_id": model_config["model_id"],
@@ -120,23 +114,12 @@ def get_enabled_models(config: dict) -> List[Dict[str, Any]]:
                 "custom_filenames": model_config.get("download", {}).get("custom_filenames"),
             }
             enabled_models.append(model_info)
-    
-    # Check if at least one detection method is active
-    if not enabled_models:
-        regex_enabled = detection_config.get("regex_detection_enabled", False)
-        presidio_enabled = detection_config.get("presidio_detection_enabled", False)
-        
-        if not regex_enabled and not presidio_enabled:
-            raise ValueError(
-                "No enabled models found in configuration. "
-                "Please set enabled = true for at least one model in config/models/. "
-                "Alternatively, enable regex_detection_enabled or presidio_detection_enabled "
-                "in config/detection_config.toml."
-            )
-    
-    # Sort by priority (lowest number = highest priority)
+
+    # No enabled LLM model is a valid state: detection is Regex / Presidio /
+    # Ministral based, none of which is declared in config/models/*.toml.
+    # Sort by priority (lowest number = highest priority).
     enabled_models.sort(key=lambda m: m["priority"])
-    
+
     return enabled_models
 
 
@@ -166,15 +149,12 @@ class DetectionConfig:
     stride_tokens: Optional[int] = None
     long_text_threshold: Optional[int] = None
     custom_filenames: Optional[Dict[str, str]] = None
-    # GLiNER2 inference runtime ("fastgliner" | "pytorch"); None falls back to
-    # the [gliner2].runtime TOML default, then to the manager's code default.
-    gliner2_runtime: Optional[str] = None
 
     def __post_init__(self):
         """Load defaults from TOML if values not provided.
         
-        For single-model configurations, uses the highest priority enabled model.
-        For multi-model setups, the multi_detector.py will handle aggregation.
+        Applies the highest-priority enabled model's values as defaults when one
+        is configured; otherwise falls back to the [detection] section defaults.
         
         Raises:
             FileNotFoundError: If config files are not found
@@ -183,22 +163,22 @@ class DetectionConfig:
         """
         try:
             config = _load_llm_config()
-            
-            # Get enabled models
+
+            # Enabled LLM models are optional: detection is Regex / Presidio /
+            # Ministral based, so fall back to the [detection] defaults when no
+            # model TOML declares an enabled model instead of failing.
             enabled_models = get_enabled_models(config)
-            
-            # Use the highest priority model (first in sorted list) as default
-            primary_model = enabled_models[0]
-            
+            primary_model = enabled_models[0] if enabled_models else {}
+
             # Apply defaults only for None values
-            if self.model_id is None:
+            if self.model_id is None and primary_model:
                 self.model_id = primary_model["model_id"]
             if self.device is None:
-                self.device = primary_model["device"]
+                self.device = primary_model.get("device")
             if self.max_length is None:
-                self.max_length = primary_model["max_length"]
+                self.max_length = primary_model.get("max_length")
             if self.threshold is None:
-                # Use model-specific threshold or fall back to default
+                # Use model-specific threshold or fall back to the global default
                 model_threshold = primary_model.get("threshold")
                 if model_threshold is not None:
                     self.threshold = model_threshold
@@ -212,10 +192,6 @@ class DetectionConfig:
                 self.long_text_threshold = config["detection"].get("long_text_threshold", 10000)
             if self.custom_filenames is None:
                 self.custom_filenames = primary_model.get("custom_filenames")
-            if self.gliner2_runtime is None:
-                # Optional section: a TOML without [gliner2] leaves this None,
-                # so the model manager applies its own code default.
-                self.gliner2_runtime = config.get("gliner2", {}).get("runtime")
 
         except FileNotFoundError as e:
             raise FileNotFoundError(
@@ -224,9 +200,8 @@ class DetectionConfig:
                 "config/\n"
                 "├── detection-settings.toml  # Global settings\n"
                 "└── models/\n"
-                "    ├── gliner-pii.toml      # Model configurations\n"
-                "    └── ...\n\n"
-                "See the old config/llm.toml for reference."
+                "    ├── presidio-detector.toml  # Detector configurations\n"
+                "    └── ...\n"
             ) from e
             
         except KeyError as e:

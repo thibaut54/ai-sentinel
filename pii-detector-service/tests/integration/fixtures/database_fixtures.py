@@ -73,7 +73,6 @@ def _create_schema_and_load_data(conn) -> None:
             """
             CREATE TABLE IF NOT EXISTS pii_detection_config (
                 id              INTEGER PRIMARY KEY,
-                gliner_enabled  BOOLEAN NOT NULL,
                 presidio_enabled BOOLEAN NOT NULL,
                 regex_enabled   BOOLEAN NOT NULL,
                 default_threshold NUMERIC(4,2) NOT NULL,

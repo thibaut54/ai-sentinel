@@ -402,9 +402,9 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         }
         long duration = System.currentTimeMillis() - startTime;
 
-        // Spec llm-judge-qwen §3.2: structured [THROUGHPUT] tag, aligned with the
-        // Python format ([THROUGHPUT] phase=detection ...). Emitted on a parallel
-        // scheduler so the Reactor pipeline never blocks on logging.
+        // Structured [THROUGHPUT] tag, aligned with the Python format
+        // ([THROUGHPUT] phase=detection ...). Emitted on a parallel scheduler so
+        // the Reactor pipeline never blocks on logging.
         ContentPiiDetection detectionForLog = contentPiiDetection;
         Mono.fromRunnable(() -> {
                     double charsPerSecond = duration > 0 ? (charCount * 1000.0) / duration : 0;

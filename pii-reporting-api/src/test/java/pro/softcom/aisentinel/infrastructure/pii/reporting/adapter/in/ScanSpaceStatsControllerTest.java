@@ -41,7 +41,7 @@ class ScanSpaceStatsControllerTest {
             "uuid", "KEY",
             Instant.parse("2026-06-07T10:00:00Z"), Instant.parse("2026-06-07T10:12:34Z"),
             42, 1, 1_200_000L, 7, 2, 530_000L,
-            List.of(new ScanDetectorStat("GLINER2", 12, 1_730_000L, 520_000L, 0)),
+            List.of(new ScanDetectorStat("MINISTRAL", 12, 1_730_000L, 520_000L, 0)),
             List.of(new FailedScanItem(ItemType.ATTACHMENT, "file.pdf")));
         when(getScanSpaceStatsPort.getLatestSpaceStats("KEY")).thenReturn(Optional.of(stats));
 
@@ -52,7 +52,7 @@ class ScanSpaceStatsControllerTest {
             .andExpect(jsonPath("$.durationMs").value(754000))
             .andExpect(jsonPath("$.pagesScanned").value(42))
             .andExpect(jsonPath("$.attachmentsFailed").value(2))
-            .andExpect(jsonPath("$.detectorStats[0].detector").value("GLINER2"))
+            .andExpect(jsonPath("$.detectorStats[0].detector").value("MINISTRAL"))
             .andExpect(jsonPath("$.detectorStats[0].charsPerSecond").value(3326.9))
             .andExpect(jsonPath("$.detectorStats[0].discarded").value(0))
             .andExpect(jsonPath("$.failedItems[0].itemType").value("ATTACHMENT"))

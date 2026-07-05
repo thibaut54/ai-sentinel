@@ -1,20 +1,14 @@
 """
-Probe live PII detection service via gRPC on the docanno corpus.
+Probe the live PII detection service via gRPC on the docanno corpus.
 
 Why this script:
-- We observe 78 findings in production for confluence-pii-test-document-docanno.txt
-- NVIDIA hosted gliner-PII (same labels, same threshold 0.8) returns ~128 entities
-- We need to inspect WHERE the 50 entities are dropped in our pipeline:
-  1. Inside predict_chunked (chunker output, per-chunk entities)
-  2. After multi-pass aggregation
-  3. After conflict resolution
-  4. After overlap resolution
-  5. After post-filter (pii_service._filter_entities_by_type_config)
+- Inspect what the running pipeline returns for a given corpus document and
+  where findings are added/dropped across the pipeline stages.
 
 Strategy:
 - Call the running gRPC server at localhost:50051 with fetch_config_from_db=true
   so we hit the EXACT same pipeline as the live UI scan.
-- Breakpoints already set in IntelliJ will fire and capture intermediate states.
+- Breakpoints set in IntelliJ will fire and capture intermediate states.
 """
 from __future__ import annotations
 

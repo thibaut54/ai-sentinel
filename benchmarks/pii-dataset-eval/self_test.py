@@ -2,7 +2,7 @@
 
 Runs WITHOUT network and WITHOUT the ``datasets`` package: it exercises the pure
 normalization logic on two hand-crafted docs (one per dataset shape) plus the
-detector concept map and the synthetic blind-spot fixtures.
+detector concept map.
 
 Run: ``python self_test.py``  (also importable as a pytest module).
 """
@@ -12,7 +12,6 @@ import json
 
 import build_datasets
 import mapping
-import synthetic_fixtures
 
 # --- gretelai shape: pii_spans is a JSON *string* ---------------------------
 # generated_text + a json.dumps'd list of {start,end,label}. iban -> IBAN (gold),
@@ -90,37 +89,11 @@ def test_ai4privacy_object_list_mapping() -> None:
 
 def test_detector_concept_map_keys() -> None:
     detector_map = mapping.load_detector_concept_map()
-    _check(set(detector_map.keys()) == {"GLINER2", "PRESIDIO", "REGEX", "OPENMED"},
+    _check(set(detector_map.keys()) == {"PRESIDIO", "REGEX"},
            f"detector map keys wrong: {sorted(detector_map)}")
-    _check(detector_map["GLINER2"]["IBAN"] == "IBAN", "GLINER2.IBAN should map to IBAN")
     _check(detector_map["PRESIDIO"]["IBAN_CODE"] == "IBAN", "PRESIDIO.IBAN_CODE should map to IBAN")
     _check(detector_map["REGEX"]["SOCIALNUM"] == "NATIONAL_ID_NUMBER",
            "REGEX.SOCIALNUM should map to NATIONAL_ID_NUMBER")
-    _check(detector_map["OPENMED"]["CVV"] == "CARD_CVV", "OPENMED.CVV should map to CARD_CVV")
-
-
-def test_extractor_concept_map() -> None:
-    extractor_map = mapping.load_extractor_concept_map()
-    _check("_default" in extractor_map, "extractor map must have a _default section")
-    default = extractor_map["_default"]
-    # in-scope mappings
-    _check(default.get("iban") == "IBAN", "extractor iban -> IBAN")
-    _check(default.get("ssn") == "NATIONAL_ID_NUMBER", "extractor ssn -> NATIONAL_ID_NUMBER")
-    _check(default.get("credit_card") == "CARD_NUMBER", "extractor credit_card -> CARD_NUMBER")
-    # out-of-scope -> IGNORE
-    _check(default.get("email") == "IGNORE", "extractor email -> IGNORE")
-    _check(default.get("first_name") == "IGNORE", "extractor first_name -> IGNORE")
-
-
-def test_synthetic_fixtures_byte_exact() -> None:
-    docs = synthetic_fixtures.build_docs()
-    labels = {doc["spans"][0]["label"] for doc in docs}
-    _check({"ACCESS_TOKEN", "RECOVERY_CODE", "CARD_EXPIRY", "SECRET"}.issubset(labels),
-           f"synthetic fixtures missing blind-spot labels: {labels}")
-    for doc in docs:
-        for span in doc["spans"]:
-            sliced = doc["text"][span["start"]:span["end"]]
-            _check(bool(sliced), f"synthetic: empty slice in {doc['id']}")
 
 
 def main() -> int:
@@ -128,8 +101,6 @@ def main() -> int:
         test_gretelai_json_string_mapping,
         test_ai4privacy_object_list_mapping,
         test_detector_concept_map_keys,
-        test_extractor_concept_map,
-        test_synthetic_fixtures_byte_exact,
     ]
     for test in tests:
         test()

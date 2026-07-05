@@ -10,13 +10,13 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorRunStat;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
-import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.JudgeStatus;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.PersonallyIdentifiableInformationType;
 import pro.softcom.aisentinel.infrastructure.pii.scan.adapter.out.config.PiiDetectorConfig;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,7 +30,7 @@ import static pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.Detecto
  * What: Uses an Armeria-provided gRPC blocking stub to call the Python gRPC service.
  * Why: Improves HTTP/2/gRPC client stability and observability while preserving domain API.
  *
- * <p><b>Observability (spec llm-judge-qwen §3.2 / §5.4)</b>:
+ * <p><b>Observability</b>:
  * each gRPC call emits Micrometer metrics tagged {@code phase=grpc.client} and a
  * structured {@code [THROUGHPUT]} log. The emission is performed via
  * {@link Mono#subscribeOn(reactor.core.scheduler.Scheduler)} with
@@ -109,10 +109,9 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
      * Emits Micrometer counter + timer plus a structured {@code [THROUGHPUT]}
      * log line asynchronously to keep the Reactor pipeline non-blocking.
      *
-     * <p>Spec llm-judge-qwen §3.2: the throughput recording must NEVER add
-     * latency to the scan itself. We schedule the emission on
-     * {@link Schedulers#parallel()} and never call {@code block()} on the
-     * resulting {@link Mono}.
+     * <p>The throughput recording must NEVER add latency to the scan itself. We
+     * schedule the emission on {@link Schedulers#parallel()} and never call
+     * {@code block()} on the resulting {@link Mono}.
      */
     private void emitThroughputMetricsAsync(String requestId, int charCount, long durationMs) {
         Mono.fromRunnable(() -> recordThroughput(requestId, charCount, durationMs))
@@ -144,7 +143,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .map(entity -> convertToSensitiveData(entity, content, hasSupplementaryChars))
                 .toList();
 
-        List<ContentPiiDetection.DiscardedSensitiveData> discardedByJudge =
+        List<ContentPiiDetection.DiscardedSensitiveData> discardedByPostfilter =
                 response.getDiscardedEntitiesList().stream()
                         .map(discarded -> convertToDiscardedSensitiveData(discarded, content, hasSupplementaryChars))
                         .toList();
@@ -159,10 +158,10 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .pageId(pageId)
                 .pageTitle(pageTitle)
                 .spaceKey(spaceKey)
-                .analysisDate(LocalDateTime.now())
+                .analysisDate(LocalDateTime.now(ZoneId.systemDefault()))
                 .sensitiveDataFound(sensitiveDataList)
                 .statistics(statistics)
-                .discardedByJudge(discardedByJudge)
+                .discardedByPostfilter(discardedByPostfilter)
                 .detectorRunStats(detectorRunStats)
                 .build();
     }
@@ -214,27 +213,8 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 end,
                 (double) entity.getScore(),
                 String.format("pii-entity-%s", entity.getType().toLowerCase()),
-                source,
-                convertToJudgeStatus(entity.getJudgeStatus())
+                source
         );
-    }
-
-    /**
-     * Maps the gRPC {@link PiiDetection.JudgeStatus} to the domain enum.
-     * Name-based mapping keeps the adapter forward-compatible; an unknown or
-     * unspecified value falls back to {@link JudgeStatus#UNSPECIFIED}.
-     */
-    private JudgeStatus convertToJudgeStatus(PiiDetection.JudgeStatus protoStatus) {
-        if (protoStatus == null) {
-            return JudgeStatus.UNSPECIFIED;
-        }
-        return switch (protoStatus.name()) {
-            case "NOT_AUDITED" -> JudgeStatus.NOT_AUDITED;
-            case "VALIDATED_TRUE_POSITIVE" -> JudgeStatus.VALIDATED_TRUE_POSITIVE;
-            case "VALIDATED_UNSURE" -> JudgeStatus.VALIDATED_UNSURE;
-            case "FAIL_OPEN_KEPT" -> JudgeStatus.FAIL_OPEN_KEPT;
-            default -> JudgeStatus.UNSPECIFIED;
-        };
     }
 
     /**
@@ -259,17 +239,12 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
         if (protoSource == null) {
             return DetectorSource.UNKNOWN_SOURCE;
         }
-        // Name-based mapping keeps the adapter forward-compatible:
-        // OPENMED is supported even before the proto stub is regenerated with
-        // the new enum value (see openmed-api-contract.md §2).
+        // Name-based mapping keeps the adapter forward-compatible.
         return switch (protoSource.name()) {
-            case "GLINER" -> GLINER;
-            case "GLINER2" -> GLINER2;
             case "PRESIDIO" -> PRESIDIO;
             case "REGEX" -> REGEX;
-            case "OPENMED" -> OPENMED;
-            case "JUDGE" -> JUDGE;
-            case "PREFILTER" -> PREFILTER;
+            case "MINISTRAL" -> MINISTRAL;
+            case "POSTFILTER" -> POSTFILTER;
             default -> DetectorSource.UNKNOWN_SOURCE;
         };
     }

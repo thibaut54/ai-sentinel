@@ -4,7 +4,7 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 
 /**
  * Enumeration of PII (Personally Identifiable Information) types emitted by the gRPC server.
- * Aligned with server taxonomy from Multi-Pass GLiNER detector and Presidio.
+ * Aligned with server taxonomy from the Ministral and Presidio detectors.
  *
  * CONSOLIDATED VERSION: 44 PII types across 7 categories
  * Down from 114 types / 13 categories for better performance and accuracy.

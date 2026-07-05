@@ -105,30 +105,22 @@
                   @for (detector of data.detectorStats; track detector.detector) {
                     <tr>
                       <th scope="row">
-                        @if (isJudge(detector.detector)) {
-                          {{ 'dashboard.scanStats.judgeLabel' | transloco }}
-                        } @else if (isPrefilter(detector.detector)) {
-                          {{ 'dashboard.scanStats.prefilterLabel' | transloco }}
+                        @if (isPrefilter(detector.detector)) {
+                          {{ 'dashboard.scanStats.postfilterLabel' | transloco }}
                         } @else {
                           {{ detector.detector }}
                         }
                       </th>
                       <td>{{ detector.detections }}</td>
                       <td>
-                        @if (isFilter(detector.detector)) {
+                        @if (isPrefilter(detector.detector)) {
                           {{ detector.discarded }}
                         } @else {
                           —
                         }
                       </td>
                       <td>
-                        @if (isJudge(detector.detector)) {
-                          @if (detector.detections > 0) {
-                            {{ formatJudgeVelocity(detector) }}&nbsp;{{ 'dashboard.scanStats.judgeUnit' | transloco }}
-                          } @else {
-                            —
-                          }
-                        } @else if (isPrefilter(detector.detector)) {
+                        @if (isPrefilter(detector.detector)) {
                           —
                         } @else {
                           @if (detector.charsPerSecond !== null) {

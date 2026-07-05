@@ -46,17 +46,17 @@ class DatabaseConfigAdapter:
         Fetch PII detection configuration from database.
 
         Returns:
-            Dictionary with config keys: gliner_enabled, presidio_enabled,
-            regex_enabled, default_threshold, llm_judge_enabled,
-            prefilter_enabled.
+            Dictionary with config keys: presidio_enabled, regex_enabled,
+            ministral_enabled, ministral_chunk_size, ministral_overlap,
+            default_threshold, postfilter_enabled.
             Returns None if fetch fails.
 
         Business Rule: Single-row configuration table with id=1.
 
-        Note on ``llm_judge_enabled`` / ``prefilter_enabled``: both columns are
-        fetched defensively via ``COALESCE`` so the adapter remains compatible
-        with deployments that have not yet applied the migration adding these
-        columns (see spec section 2.6).
+        Note: the Ministral and ``postfilter_enabled`` columns are read
+        defensively via a UndefinedColumn fallback so the adapter stays
+        compatible with deployments that have not yet applied the migration
+        adding these columns.
         """
         connection = None
         cursor = None
@@ -65,56 +65,46 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # Query the single-row configuration table.
-            # ``openmed_enabled``, ``llm_judge_enabled`` and ``prefilter_enabled``
-            # are read defensively: ``COALESCE`` / a UndefinedColumn fallback keep
-            # existing rows readable even if the columns have not been added yet by
-            # Hibernate DDL update on a freshly-pulled environment.
+            # Query the single-row configuration table. The Ministral and
+            # postfilter columns are read defensively: a UndefinedColumn
+            # fallback keeps existing rows readable even if the columns have not
+            # been added yet by Hibernate DDL update on a freshly-pulled
+            # environment.
             query = """
-                SELECT
-                    gliner_enabled,
-                    presidio_enabled,
-                    regex_enabled,
-                    COALESCE(openmed_enabled, FALSE) AS openmed_enabled,
-                    COALESCE(gliner2_enabled, FALSE) AS gliner2_enabled,
-                    default_threshold,
-                    nb_of_label_by_pass,
-                    llm_judge_enabled,
-                    prefilter_enabled,
-                    COALESCE(gliner_judge_enabled, FALSE) AS gliner_judge_enabled,
-                    COALESCE(presidio_judge_enabled, FALSE) AS presidio_judge_enabled,
-                    COALESCE(regex_judge_enabled, FALSE) AS regex_judge_enabled,
-                    COALESCE(openmed_judge_enabled, FALSE) AS openmed_judge_enabled,
-                    COALESCE(gliner2_judge_enabled, FALSE) AS gliner2_judge_enabled
-                FROM pii_detection_config
-                WHERE id = 1
-            """
+                    SELECT presidio_enabled,
+                        regex_enabled,
+                        ministral_enabled,
+                        ministral_chunk_size,
+                        ministral_overlap,
+                        default_threshold,
+                        postfilter_enabled
+                    FROM pii_detection_config
+                    WHERE id = 1 \
+                    """
 
             try:
                 cursor.execute(query)
                 result = cursor.fetchone()
             except psycopg2.errors.UndefinedColumn:
-                # Migration not yet applied for openmed_enabled, gliner2_enabled,
-                # llm_judge_enabled or prefilter_enabled -- retry without the new
-                # columns. They all default to FALSE downstream so the service
-                # stays usable on a freshly-pulled environment before Hibernate
-                # DDL update.
+                # Migration not yet applied for ministral_* or postfilter_enabled
+                # -- retry without the new columns. They all default downstream so
+                # the service stays usable on a freshly-pulled environment before
+                # Hibernate DDL update.
                 logger.warning(
-                    "openmed_enabled / gliner2_enabled / llm_judge_enabled / "
-                    "prefilter_enabled column missing in pii_detection_config; "
-                    "falling back on defaults (false). Apply migration to enable."
+                    "ministral_* / postfilter_enabled column missing in "
+                    "pii_detection_config; falling back on defaults. "
+                    "Apply migration to enable."
                 )
                 connection.rollback()
                 cursor.execute(
                     """
                     SELECT
-                        gliner_enabled,
                         presidio_enabled,
                         regex_enabled,
-                        FALSE AS openmed_enabled,
-                        FALSE AS gliner2_enabled,
-                        default_threshold,
-                        nb_of_label_by_pass
+                        FALSE AS ministral_enabled,
+                        2048 AS ministral_chunk_size,
+                        410 AS ministral_overlap,
+                        default_threshold
                     FROM pii_detection_config
                     WHERE id = 1
                     """
@@ -130,39 +120,29 @@ class DatabaseConfigAdapter:
 
             config = dict(result)
             # Normalise the flags so downstream code can assume they are always
-            # present (False when the migration is pending).
-            config.setdefault("llm_judge_enabled", False)
-            if config["llm_judge_enabled"] is None:
-                config["llm_judge_enabled"] = False
-            config.setdefault("prefilter_enabled", False)
-            if config["prefilter_enabled"] is None:
-                config["prefilter_enabled"] = False
-            config.setdefault("gliner2_enabled", False)
-            if config["gliner2_enabled"] is None:
-                config["gliner2_enabled"] = False
-            # Per-detector LLM-judge routing flags (added by migration 012).
-            # Absent / NULL -> False so a pre-migration DB audits nothing extra
-            # and the judge stays a no-op until an operator opts a detector in.
-            for _judge_flag in (
-                "gliner_judge_enabled",
-                "presidio_judge_enabled",
-                "regex_judge_enabled",
-                "openmed_judge_enabled",
-                "gliner2_judge_enabled",
-            ):
-                config.setdefault(_judge_flag, False)
-                if config[_judge_flag] is None:
-                    config[_judge_flag] = False
+            # present (defaults applied when the migration is pending).
+            config.setdefault("postfilter_enabled", False)
+            if config["postfilter_enabled"] is None:
+                config["postfilter_enabled"] = False
+            # Ministral-PII detector flag + chunking knobs (added by migration
+            # 013). Absent / NULL -> the documented defaults so a pre-migration
+            # DB stays usable and the detector stays a no-op until opted in.
+            config.setdefault("ministral_enabled", False)
+            if config["ministral_enabled"] is None:
+                config["ministral_enabled"] = False
+            config.setdefault("ministral_chunk_size", 2048)
+            if config["ministral_chunk_size"] is None:
+                config["ministral_chunk_size"] = 2048
+            config.setdefault("ministral_overlap", 410)
+            if config["ministral_overlap"] is None:
+                config["ministral_overlap"] = 410
             logger.info(
                 "Successfully fetched config from database: "
-                f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
-                f"openmed={config['openmed_enabled']}, "
-                f"gliner2={config['gliner2_enabled']}, "
+                f"ministral={config['ministral_enabled']}, "
                 f"threshold={config['default_threshold']}, "
-                f"llm_judge={config['llm_judge_enabled']}, "
-                f"prefilter={config['prefilter_enabled']}"
+                f"postfilter={config['postfilter_enabled']}"
             )
             return config
 
@@ -199,22 +179,23 @@ class DatabaseConfigAdapter:
         Fetch PII type-specific configurations from database.
 
         Args:
-            detector: Optional detector filter ('GLINER', 'PRESIDIO', 'REGEX').
+            detector: Optional detector filter ('PRESIDIO', 'REGEX', 'MINISTRAL').
                      If None, fetches all PII type configs.
 
         Returns:
             Dictionary mapping PII type to config dict with keys:
             - enabled (bool): Whether this PII type is enabled
             - threshold (float): Detection threshold for this type (0.0-1.0)
-            - detector (str): Detector name (GLINER, PRESIDIO, REGEX)
-            - display_name (str): Human-readable name
+            - detector (str): Detector name (PRESIDIO, REGEX, MINISTRAL)
             - category (str): PII category
-            
+            - country_code (str): Optional country code
+            - detector_label (str): Detector-specific label
+
             Example: {
-                'EMAIL': {'enabled': True, 'threshold': 0.5, 'detector': 'GLINER', ...},
-                'CREDIT_CARD': {'enabled': False, 'threshold': 0.7, 'detector': 'PRESIDIO', ...}
+                'EMAIL': {'enabled': True, 'threshold': 0.5, 'detector': 'PRESIDIO', ...},
+                'CREDIT_CARD': {'enabled': False, 'threshold': 0.7, 'detector': 'REGEX', ...}
             }
-            
+
             Returns None if fetch fails.
 
         Business Rule: PII type configs control which types are detected and
@@ -229,11 +210,7 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # ``detector_description`` is read defensively: a freshly-pulled
-            # environment where Hibernate DDL update has not yet added the
-            # column must not crash. We COALESCE to NULL and, on UndefinedColumn,
-            # retry without the column (description defaults to None downstream).
-            results = self._execute_pii_type_query(cursor, connection, detector)
+            results = self._execute_pii_type_query(cursor, detector)
 
             if not results:
                 logger.warning(
@@ -254,15 +231,6 @@ class DatabaseConfigAdapter:
                     'category': row['category'],
                     'country_code': row['country_code'],
                     'detector_label': row['detector_label'],
-                    # GLiNER2 inference description ({label: description}). None
-                    # when the column is absent (pre-migration) or unset.
-                    'detector_description': row.get('detector_description'),
-                    # Per-type LLM-judge opt-out. Defaults to True (judge
-                    # enabled) when the column is absent (pre-migration).
-                    'llm_judge_enabled': (
-                        True if row.get('llm_judge_enabled') is None
-                        else bool(row['llm_judge_enabled'])
-                    ),
                 }
                 # Primary key (may overwrite for duplicates across detectors)
                 configs[pii_type] = entry
@@ -274,7 +242,7 @@ class DatabaseConfigAdapter:
                 f"Successfully fetched {len(configs)} PII type configs from database "
                 f"(detector={detector or 'ALL'})"
             )
-            
+
             # Log sample of configs for debugging
             sample_types = list(configs.keys())[:3]
             for pii_type in sample_types:
@@ -283,7 +251,7 @@ class DatabaseConfigAdapter:
                     f"  {pii_type}: enabled={cfg['enabled']}, "
                     f"threshold={cfg['threshold']}, detector={cfg['detector']}"
                 )
-            
+
             return configs
 
         except psycopg2.OperationalError as e:
@@ -314,49 +282,25 @@ class DatabaseConfigAdapter:
             if connection:
                 connection.close()
 
-    def _execute_pii_type_query(self, cursor, connection, detector: Optional[str]):
-        """Run the pii_type_config SELECT with defensive optional-column fallbacks.
+    def _execute_pii_type_query(self, cursor, detector: Optional[str]):
+        """Run the pii_type_config SELECT.
 
-        ``detector_description`` (used by GLiNER2 for {label: description}
-        inference) and ``llm_judge_enabled`` (per-type judge opt-out) are
-        fetched defensively: on a freshly-pulled environment where Hibernate
-        DDL update has not yet created a column, ``psycopg2`` raises
-        ``UndefinedColumn``. We then retry with fewer optional columns so the
-        service stays usable (description defaults to ``None`` and the judge
-        flag to ``True`` downstream).
+        All selected columns (including ``detector_label``, added by init-script
+        007) are part of the base schema, so no optional-column fallback is
+        required.
         """
-        base_columns = (
+        columns = (
             "pii_type, detector, enabled, threshold, "
             "category, country_code, detector_label"
         )
         where_clause = "WHERE detector = %s\n" if detector else ""
         params = (detector,) if detector else None
-
-        # Most-complete first; each fallback drops the newest optional column.
-        optional_column_sets = (
-            ", detector_description, llm_judge_enabled",
-            ", detector_description",
-            "",
+        query = (
+            f"SELECT {columns}\n"
+            f"FROM pii_type_config\n{where_clause}ORDER BY category, pii_type"
         )
-        for i, optional_columns in enumerate(optional_column_sets):
-            query = (
-                f"SELECT {base_columns}{optional_columns}\n"
-                f"FROM pii_type_config\n{where_clause}ORDER BY category, pii_type"
-            )
-            try:
-                cursor.execute(query, params)
-                return cursor.fetchall()
-            except psycopg2.errors.UndefinedColumn:
-                if i == len(optional_column_sets) - 1:
-                    raise
-                self.logger.warning(
-                    "Optional column(s) missing in pii_type_config "
-                    "(tried '%s'); retrying with fewer columns. "
-                    "Apply migrations to enable.",
-                    optional_columns.strip(', ') or '<none>',
-                )
-                connection.rollback()
-        return None  # pragma: no cover - unreachable
+        cursor.execute(query, params)
+        return cursor.fetchall()
 
 
 # Global singleton instance for reuse

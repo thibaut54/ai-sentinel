@@ -8,20 +8,13 @@ import { PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detecti
 import { ConfluenceConnectionConfig } from '../../core/models/confluence-connection-config.model';
 
 const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
-  glinerEnabled: true,
   presidioEnabled: true,
   regexEnabled: true,
-  openmedEnabled: false,
-  gliner2Enabled: false,
-  prefilterEnabled: false,
-  llmJudgeEnabled: true,
-  glinerJudgeEnabled: true,
-  presidioJudgeEnabled: false,
-  regexJudgeEnabled: false,
-  openmedJudgeEnabled: false,
-  gliner2JudgeEnabled: false,
+  postfilterEnabled: false,
+  ministralEnabled: false,
+  ministralChunkSize: 1024,
+  ministralOverlap: 128,
   defaultThreshold: 0.75,
-  nbOfLabelByPass: 35,
   updatedAt: '2026-03-16T10:00:00',
 };
 
@@ -43,14 +36,20 @@ const FR_TRANSLATIONS = {
     nav: { detectors: 'Détecteurs', thresholds: 'Seuils', piiTypes: 'Types PII', confluence: 'Confluence' },
     sections: { detectors: 'Détecteurs', threshold: 'Seuils', performance: 'Perf' },
     detectors: {
-      gliner: { label: 'GLiNER', description: 'desc' },
       presidio: { label: 'Presidio', description: 'desc' },
       regex: { label: 'Regex', description: 'desc' },
-      openmed: { label: 'OpenMed', description: 'desc' },
-      prefilter: { label: 'Pré-filtre déterministe', description: 'desc' },
+      ministral: {
+        label: 'Ministral-PII',
+        description: 'desc',
+        advancedParams: 'Paramètres avancés',
+        chunkSize: 'Taille de fenêtre',
+        chunkSizeHint: 'hint',
+        overlap: 'Chevauchement',
+        overlapHint: 'hint',
+        overlapError: 'erreur',
+      },
+      postfilter: { label: 'Post-filtre déterministe', description: 'desc' },
       detectorLabel: 'Détecteur',
-      judgeLabel: 'Juge LLM',
-      judgeAriaLabel: 'Activer le juge LLM pour {{detector}}',
     },
     messages: { loadError: 'Erreur', saveAllSuccess: 'Sauvegardé', saveAllError: 'Erreur' },
     confluence: { messages: { loadError: 'Erreur', saveSuccess: 'OK', saveError: 'Erreur' } },
@@ -159,216 +158,100 @@ describe('PiiSettingsComponent', () => {
     expect(component.saving()).toBe(false);
   });
 
-  it('Should_CreateOpenmedEnabledControl_When_FormInitialized', () => {
-    // Then - openmedEnabled control exists and defaults to false
-    const openmedControl = component.configForm.get('openmedEnabled');
-    expect(openmedControl).toBeTruthy();
-    expect(openmedControl?.value).toBe(false);
-  });
-
-  it('Should_PassAtLeastOneDetectorValidation_When_OnlyOpenmedEnabled', () => {
-    // Given - All other detectors disabled, only openmed enabled
-    component.configForm.patchValue({
-      glinerEnabled: false,
-      presidioEnabled: false,
-      regexEnabled: false,
-      openmedEnabled: true,
-    });
-
-    // Then - Form must not carry atLeastOneDetector error
-    expect(component.configForm.hasError('atLeastOneDetector')).toBe(false);
-  });
-
   it('Should_FailAtLeastOneDetectorValidation_When_AllDetectorsDisabled', () => {
-    // Given - All detectors disabled (including openmed and gliner2)
+    // Given - All detectors disabled
     component.configForm.patchValue({
-      glinerEnabled: false,
       presidioEnabled: false,
       regexEnabled: false,
-      openmedEnabled: false,
-      gliner2Enabled: false,
+      ministralEnabled: false,
     });
 
     // Then - Form must carry atLeastOneDetector error
     expect(component.configForm.hasError('atLeastOneDetector')).toBe(true);
   });
 
-  it('Should_CreateGliner2EnabledControl_When_FormInitialized', () => {
-    const gliner2Control = component.configForm.get('gliner2Enabled');
-    expect(gliner2Control).toBeTruthy();
-    expect(gliner2Control?.value).toBe(false);
-  });
-
-  it('Should_CreatePrefilterEnabledControl_When_FormInitialized', () => {
-    const prefilterControl = component.configForm.get('prefilterEnabled');
+  it('Should_CreatePostfilterEnabledControl_When_FormInitialized', () => {
+    const prefilterControl = component.configForm.get('postfilterEnabled');
     expect(prefilterControl).toBeTruthy();
     expect(prefilterControl?.value).toBe(false);
   });
 
-  it('Should_PassAtLeastOneDetectorValidation_When_OnlyGliner2Enabled', () => {
-    component.configForm.patchValue({
-      glinerEnabled: false,
-      presidioEnabled: false,
-      regexEnabled: false,
-      openmedEnabled: false,
-      gliner2Enabled: true,
-    });
+  it('Should_FailOverlapValidation_When_OverlapNotLessThanChunkSize', () => {
+    // Given - overlap equal to (>=) chunk size
+    component.configForm.patchValue({ ministralChunkSize: 512, ministralOverlap: 512 });
 
-    expect(component.configForm.hasError('atLeastOneDetector')).toBe(false);
+    // Then - Form must carry the cross-field error and be invalid
+    expect(component.configForm.hasError('ministralOverlapGteChunkSize')).toBe(true);
+    expect(component.configForm.invalid).toBe(true);
   });
 
-  it('Should_TrackDescriptionChange_When_Gliner2RowEdited', () => {
-    // Given a GLINER2 row registered as original
-    const type = {
-      id: 1,
-      piiType: 'EMAIL',
-      detector: 'GLINER2' as const,
-      enabled: true,
-      threshold: 0.5,
-      llmJudgeEnabled: true,
-      category: 'CONTACT',
-      detectorDescription: 'adresse e-mail',
-    };
-    component.groupedPiiTypes.set([
-      { detector: 'GLINER2', categories: [{ category: 'CONTACT', types: [type] }] },
-    ]);
-    // Seed originals via the private initializer through loadAllConfigs path:
-    (component as unknown as { originalPiiTypes: { set: (m: Map<string, unknown>) => void } })
-      .originalPiiTypes.set(new Map([['GLINER2:EMAIL', { ...type }]]));
+  it('Should_PassOverlapValidation_When_OverlapLessThanChunkSize', () => {
+    // Given - overlap strictly below chunk size
+    component.configForm.patchValue({ ministralChunkSize: 1024, ministralOverlap: 128 });
 
-    // When the description changes
-    component.onPiiTypeDescriptionChange(type, 'nouvelle description');
-
-    // Then the row is tracked as modified (drives the bulk save + unsaved indicator)
-    expect(component.hasUnsavedTypeChanges()).toBe(true);
-  });
-
-  it('Should_CreatePerDetectorJudgeControls_When_FormInitialized', () => {
-    // Then - each per-detector judge control exists on the form
-    for (const control of [
-      'glinerJudgeEnabled',
-      'presidioJudgeEnabled',
-      'regexJudgeEnabled',
-      'openmedJudgeEnabled',
-      'gliner2JudgeEnabled',
-    ]) {
-      expect(component.configForm.get(control)).toBeTruthy();
-    }
-  });
-
-  it('Should_NotCreateGlobalLlmJudgeControl_When_FormInitialized', () => {
-    // Then - the removed global judge control no longer exists on the form
-    expect(component.configForm.get('llmJudgeEnabled')).toBeNull();
-  });
-
-  it('Should_PatchPerDetectorJudgeControls_When_ConfigLoaded', () => {
-    // The MOCK config has the GLINER judge on and the others off.
-    expect(component.configForm.get('glinerJudgeEnabled')?.value).toBe(true);
-    expect(component.configForm.get('presidioJudgeEnabled')?.value).toBe(false);
-  });
-
-  it('Should_TrackJudgeToggleChange_When_PiiTypeJudgeToggled', () => {
-    // Given a row registered as original with the judge enabled
-    const type = {
-      id: 1,
-      piiType: 'EMAIL',
-      detector: 'GLINER' as const,
-      enabled: true,
-      threshold: 0.5,
-      llmJudgeEnabled: true,
-      category: 'CONTACT',
-    };
-    component.groupedPiiTypes.set([
-      { detector: 'GLINER', categories: [{ category: 'CONTACT', types: [type] }] },
-    ]);
-    (component as unknown as { originalPiiTypes: { set: (m: Map<string, unknown>) => void } })
-      .originalPiiTypes.set(new Map([['GLINER:EMAIL', { ...type }]]));
-
-    // When the LLM-judge toggle is turned off
-    component.onPiiTypeJudgeToggleChange(type, false);
-
-    // Then the row is tracked as modified
-    expect(component.hasUnsavedTypeChanges()).toBe(true);
+    // Then - Form must not carry the cross-field error
+    expect(component.configForm.hasError('ministralOverlapGteChunkSize')).toBe(false);
   });
 
   it('Should_ReflectDetectorMasterState_When_DetectorEnabledQueried', () => {
-    // Given - openmed master off, gliner master on (from MOCK config)
-    expect(component.isDetectorEnabled('GLINER')).toBe(true);
-    expect(component.isDetectorEnabled('OPENMED')).toBe(false);
+    // Given - presidio master on, ministral master off (from MOCK config)
+    expect(component.isDetectorEnabled('PRESIDIO')).toBe(true);
+    expect(component.isDetectorEnabled('MINISTRAL')).toBe(false);
     // Unknown detector defaults to enabled
     expect(component.isDetectorEnabled('UNKNOWN')).toBe(true);
   });
 
   it('Should_CollapseDetectorSubSection_When_MasterToggledOff', () => {
-    // Given - GLINER master is on and its sub-section expanded
-    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
+    // Given - PRESIDIO master is on and its sub-section expanded
+    expect(component.isDetectorCollapsed('PRESIDIO')).toBe(false);
 
     // When - the master toggle is turned off then the handler runs
-    component.configForm.patchValue({ glinerEnabled: false });
-    component.onDetectorMasterToggle('GLINER');
+    component.configForm.patchValue({ presidioEnabled: false });
+    component.onDetectorMasterToggle('PRESIDIO');
 
-    // Then - the GLINER sub-section is collapsed
-    expect(component.isDetectorCollapsed('GLINER')).toBe(true);
+    // Then - the PRESIDIO sub-section is collapsed
+    expect(component.isDetectorCollapsed('PRESIDIO')).toBe(true);
 
     // When - the master toggle is turned back on
-    component.configForm.patchValue({ glinerEnabled: true });
-    component.onDetectorMasterToggle('GLINER');
+    component.configForm.patchValue({ presidioEnabled: true });
+    component.onDetectorMasterToggle('PRESIDIO');
 
-    // Then - the GLINER sub-section is expanded again
-    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
-  });
-
-  it('Should_CollapseDisabledDetectorsOnLoad_When_ConfigLoaded', () => {
-    // The MOCK config has openmed + gliner2 disabled -> their sub-sections
-    // must start collapsed; the enabled ones must start expanded.
-    expect(component.isDetectorCollapsed('OPENMED')).toBe(true);
-    expect(component.isDetectorCollapsed('GLINER2')).toBe(true);
-    expect(component.isDetectorCollapsed('GLINER')).toBe(false);
+    // Then - the PRESIDIO sub-section is expanded again
     expect(component.isDetectorCollapsed('PRESIDIO')).toBe(false);
   });
 
-  it('Should_PreservePerTypeJudgeValue_When_DetectorJudgeToggledOff', () => {
-    // Given - the GLINER judge is on (MOCK config)
-    expect(component.isDetectorJudgeEnabled('GLINER')).toBe(true);
-
-    // When - the GLINER judge is turned off
-    component.configForm.patchValue({ glinerJudgeEnabled: false });
-
-    // Then - the detector judge reads as off and the per-type values are NOT
-    // mutated (the view derives the off state; no modification is tracked).
-    expect(component.isDetectorJudgeEnabled('GLINER')).toBe(false);
-    expect(component.hasUnsavedTypeChanges()).toBe(false);
-  });
-
-  it('Should_DefaultToDisabled_When_DetectorJudgeQueriedForUnknownDetector', () => {
-    expect(component.isDetectorJudgeEnabled('UNKNOWN')).toBe(false);
+  it('Should_CollapseDisabledDetectorsOnLoad_When_ConfigLoaded', () => {
+    // The MOCK config has ministral disabled -> its sub-section must start
+    // collapsed; the enabled ones must start expanded.
+    expect(component.isDetectorCollapsed('MINISTRAL')).toBe(true);
+    expect(component.isDetectorCollapsed('PRESIDIO')).toBe(false);
+    expect(component.isDetectorCollapsed('REGEX')).toBe(false);
   });
 
   // ========== Helpers ==========
 
-  function seedGlinerType(overrides: Partial<PiiTypeConfig> = {}): PiiTypeConfig {
+  function seedPresidioType(overrides: Partial<PiiTypeConfig> = {}): PiiTypeConfig {
     const type: PiiTypeConfig = {
       id: 1,
       piiType: 'EMAIL',
-      detector: 'GLINER',
+      detector: 'PRESIDIO',
       enabled: true,
       threshold: 0.5,
-      llmJudgeEnabled: true,
       category: 'CONTACT',
       ...overrides,
     };
     component.groupedPiiTypes.set([
-      { detector: 'GLINER', categories: [{ category: 'CONTACT', types: [{ ...type }] }] },
+      { detector: 'PRESIDIO', categories: [{ category: 'CONTACT', types: [{ ...type }] }] },
     ]);
     (component as unknown as { originalPiiTypes: { set: (m: Map<string, PiiTypeConfig>) => void } })
-      .originalPiiTypes.set(new Map([['GLINER:EMAIL', { ...type }]]));
+      .originalPiiTypes.set(new Map([['PRESIDIO:EMAIL', { ...type }]]));
     return type;
   }
 
   // ========== PII type modification handlers ==========
 
   it('Should_TrackModification_When_PiiTypeToggleChanged', () => {
-    const type = seedGlinerType({ enabled: true });
+    const type = seedPresidioType({ enabled: true });
 
     component.onPiiTypeToggleChange(type, false);
 
@@ -377,7 +260,7 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_TrackModification_When_PiiTypeThresholdChanged', () => {
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
 
     component.onPiiTypeThresholdChange(type, 0.9);
 
@@ -385,7 +268,7 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_DropModification_When_ThresholdRevertedToOriginal', () => {
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
 
     component.onPiiTypeThresholdChange(type, 0.9);
     component.onPiiTypeThresholdChange({ ...type, threshold: 0.9 }, 0.5);
@@ -400,7 +283,6 @@ describe('PiiSettingsComponent', () => {
       detector: 'REGEX',
       enabled: true,
       threshold: 0.5,
-      llmJudgeEnabled: false,
       category: 'CONTACT',
     };
 
@@ -419,7 +301,7 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_PersistTypes_When_SavePiiTypesWithModifications', () => {
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
     component.onPiiTypeThresholdChange(type, 0.9);
 
     component.onSavePiiTypes();
@@ -434,7 +316,7 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_StopSaving_When_SavePiiTypesFails', () => {
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
     component.onPiiTypeThresholdChange(type, 0.9);
 
     component.onSavePiiTypes();
@@ -490,7 +372,7 @@ describe('PiiSettingsComponent', () => {
   it('Should_SaveBothRequests_When_DetectorAndTypesChanged', () => {
     component.configForm.patchValue({ defaultThreshold: 0.8 });
     component.configForm.markAsDirty();
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
     component.onPiiTypeThresholdChange(type, 0.9);
 
     let saved = false;
@@ -521,18 +403,18 @@ describe('PiiSettingsComponent', () => {
   // ========== Reset ==========
 
   it('Should_RestoreFormFromCurrentConfig_When_ResetDetectorConfig', () => {
-    component.configForm.patchValue({ defaultThreshold: 0.1, glinerEnabled: false });
+    component.configForm.patchValue({ defaultThreshold: 0.1, presidioEnabled: false });
     component.configForm.markAsDirty();
 
     component.onResetDetectorConfig();
 
     expect(component.configForm.get('defaultThreshold')?.value).toBe(MOCK_DETECTOR_CONFIG.defaultThreshold);
-    expect(component.configForm.get('glinerEnabled')?.value).toBe(MOCK_DETECTOR_CONFIG.glinerEnabled);
+    expect(component.configForm.get('presidioEnabled')?.value).toBe(MOCK_DETECTOR_CONFIG.presidioEnabled);
     expect(component.configForm.pristine).toBe(true);
   });
 
   it('Should_ClearModifications_When_ResetPiiTypes', () => {
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
     component.onPiiTypeThresholdChange(type, 0.9);
     expect(component.hasUnsavedTypeChanges()).toBe(true);
 
@@ -546,7 +428,7 @@ describe('PiiSettingsComponent', () => {
   it('Should_ResetEverything_When_ResetAll', () => {
     component.configForm.patchValue({ defaultThreshold: 0.1 });
     component.configForm.markAsDirty();
-    const type = seedGlinerType({ threshold: 0.5 });
+    const type = seedPresidioType({ threshold: 0.5 });
     component.onPiiTypeThresholdChange(type, 0.9);
 
     component.onResetAll();
@@ -584,11 +466,9 @@ describe('PiiSettingsComponent', () => {
 
   it('Should_ExposeAtLeastOneDetectorError_When_AllDisabledAndTouched', () => {
     component.configForm.patchValue({
-      glinerEnabled: false,
       presidioEnabled: false,
       regexEnabled: false,
-      openmedEnabled: false,
-      gliner2Enabled: false,
+      ministralEnabled: false,
     });
     component.configForm.markAllAsTouched();
 
@@ -598,7 +478,7 @@ describe('PiiSettingsComponent', () => {
   // ========== Search ==========
 
   it('Should_FilterTypes_When_SearchTermMatches', () => {
-    seedGlinerType({ piiType: 'EMAIL' });
+    seedPresidioType({ piiType: 'EMAIL' });
 
     component.onSearchChange('EMAIL');
 
@@ -607,7 +487,7 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_ReportNoResults_When_SearchTermDoesNotMatch', () => {
-    seedGlinerType({ piiType: 'EMAIL', countryCode: 'CH' });
+    seedPresidioType({ piiType: 'EMAIL', countryCode: 'CH' });
 
     component.onSearchChange('zzz-no-match-zzz');
 
@@ -690,7 +570,7 @@ describe('PiiSettingsComponent', () => {
 
     const req = httpMock.expectOne('/api/v1/pii-detection/pii-types');
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 5, piiType: 'BADGE_NUMBER', detector: 'GLINER', enabled: true, threshold: 0.8, llmJudgeEnabled: false, category: 'CUSTOM' });
+    req.flush({ id: 5, piiType: 'BADGE_NUMBER', detector: 'MINISTRAL', enabled: true, threshold: 0.8, category: 'CUSTOM' });
 
     // loadAllConfigs is re-triggered on success
     httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);

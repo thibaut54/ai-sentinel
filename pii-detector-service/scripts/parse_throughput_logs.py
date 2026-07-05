@@ -30,9 +30,6 @@ Usage (CLI)::
 
 The script has **no third-party dependencies** -- it must stay runnable in
 post-CI environments where the ``pii_detector`` package is not installed.
-
-Spec reference: ``_bmad-output/planning-artifacts/llm-judge-qwen-spec.md``
-sections 3.1, 3.2 and 3.3.
 """
 
 from __future__ import annotations
@@ -73,8 +70,6 @@ _INT_FIELDS = frozenset(
         "entities_kept",
         "entities_rejected",
         "entities_final",
-        "batches",
-        "llm_total_calls",
     }
 )
 _FLOAT_FIELDS = frozenset(
@@ -82,13 +77,12 @@ _FLOAT_FIELDS = frozenset(
         "duration_s",
         "duration_ms",
         "chars_per_s",
-        "llm_total_call_duration_s",
     }
 )
 
 # Phases we recognise as canonical. Unknown phases are tolerated but logged
 # at DEBUG level so corrupted data does not silently inflate aggregates.
-_KNOWN_PHASES = frozenset({"detection", "llm_judge", "total", "grpc.client"})
+_KNOWN_PHASES = frozenset({"detection", "total", "grpc.client"})
 
 
 # ---------------------------------------------------------------------------
@@ -125,19 +119,6 @@ class PhaseStats:
 
 
 @dataclass
-class LlmJudgeStats:
-    """LLM-judge specific aggregates (rejection rate, batches...)."""
-
-    entries: int
-    entities_in: int
-    entities_kept: int
-    entities_rejected: int
-    rejection_rate: float
-    average_batches: float
-    average_llm_call_duration_s: float
-
-
-@dataclass
 class RequestBreakdown:
     """Per-``request_id`` view used for the slowest-request table."""
 
@@ -154,7 +135,6 @@ class ThroughputReport:
 
     entry_count: int
     phase_stats: Dict[str, PhaseStats] = field(default_factory=dict)
-    llm_judge: Optional[LlmJudgeStats] = None
     slowest_requests: List[RequestBreakdown] = field(default_factory=list)
 
 
@@ -319,13 +299,11 @@ def aggregate(entries: Sequence[ThroughputEntry]) -> ThroughputReport:
             mean_chars_per_s=statistics.fmean(values) if values else 0.0,
         )
 
-    llm_judge = _compute_llm_judge_stats(grouped.get("llm_judge", []))
     slowest = _slowest_requests(entries, limit=10)
 
     return ThroughputReport(
         entry_count=len(entries),
         phase_stats=phase_stats,
-        llm_judge=llm_judge,
         slowest_requests=slowest,
     )
 
@@ -345,45 +323,6 @@ def _percentile(values: Sequence[float], pct: int) -> float:
     # q[49] the 50th, q[98] the 99th.
     idx = max(0, min(98, pct - 1))
     return float(quantiles[idx])
-
-
-def _compute_llm_judge_stats(
-    judge_entries: Sequence[ThroughputEntry],
-) -> Optional[LlmJudgeStats]:
-    """Collect LLM-judge specific aggregates from ``llm_judge`` entries."""
-    if not judge_entries:
-        return None
-    entities_in = sum(int(e.extra.get("entities_in", 0)) for e in judge_entries)
-    entities_kept = sum(int(e.extra.get("entities_kept", 0)) for e in judge_entries)
-    entities_rejected = sum(
-        int(e.extra.get("entities_rejected", 0)) for e in judge_entries
-    )
-    rejection_rate = (
-        entities_rejected / entities_in if entities_in > 0 else 0.0
-    )
-    batches_values = [
-        int(e.extra.get("batches", 0))
-        for e in judge_entries
-        if "batches" in e.extra
-    ]
-    call_durations = [
-        float(e.extra.get("llm_total_call_duration_s", 0.0))
-        for e in judge_entries
-        if "llm_total_call_duration_s" in e.extra
-    ]
-    return LlmJudgeStats(
-        entries=len(judge_entries),
-        entities_in=entities_in,
-        entities_kept=entities_kept,
-        entities_rejected=entities_rejected,
-        rejection_rate=rejection_rate,
-        average_batches=(
-            statistics.fmean(batches_values) if batches_values else 0.0
-        ),
-        average_llm_call_duration_s=(
-            statistics.fmean(call_durations) if call_durations else 0.0
-        ),
-    )
 
 
 def _slowest_requests(
@@ -418,8 +357,8 @@ def write_report(
     Args:
         report: Aggregated report for the improved/current run.
         out_path: Destination file. Parent directory must exist.
-        baseline_report: Optional baseline (without LLM judge) used to render
-            the ``Delta vs baseline`` section.
+        baseline_report: Optional baseline run used to render the
+            ``Delta vs baseline`` section.
 
     Raises:
         FileNotFoundError: If ``out_path.parent`` does not exist.
@@ -437,8 +376,6 @@ def write_report(
     )
     lines.append("")
     lines.extend(_render_phase_table(report))
-    lines.append("")
-    lines.extend(_render_llm_judge_section(report))
     lines.append("")
     lines.extend(_render_delta_section(report, baseline_report))
     lines.append("")
@@ -463,29 +400,6 @@ def _render_phase_table(report: ThroughputReport) -> List[str]:
             f"{stats.p95:.1f} | {stats.p99:.1f} | "
             f"{stats.mean_chars_per_s:.1f} |"
         )
-    return lines
-
-
-def _render_llm_judge_section(report: ThroughputReport) -> List[str]:
-    lines = ["## LLM judge stats", ""]
-    stats = report.llm_judge
-    if stats is None:
-        lines.append("_No `llm_judge` entries found._")
-        return lines
-    lines.append("| metric | value |")
-    lines.append("| --- | ---: |")
-    lines.append(f"| entries | {stats.entries} |")
-    lines.append(f"| entities_in | {stats.entities_in} |")
-    lines.append(f"| entities_kept | {stats.entities_kept} |")
-    lines.append(f"| entities_rejected | {stats.entities_rejected} |")
-    lines.append(
-        f"| rejection_rate | {stats.rejection_rate * 100:.2f}% |"
-    )
-    lines.append(f"| average batches | {stats.average_batches:.2f} |")
-    lines.append(
-        f"| average llm_total_call_duration_s | "
-        f"{stats.average_llm_call_duration_s:.3f} |"
-    )
     return lines
 
 
@@ -553,9 +467,6 @@ def _render_footer() -> List[str]:
         "---",
         "",
         f"Generated at {now} (UTC).",
-        "",
-        "Spec reference: `_bmad-output/planning-artifacts/"
-        "llm-judge-qwen-spec.md` section 3.3.",
     ]
 
 
@@ -576,8 +487,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="parse_throughput_logs",
         description=(
-            "Aggregate [THROUGHPUT] log lines into a Markdown report "
-            "(spec section 3.3)."
+            "Aggregate [THROUGHPUT] log lines into a Markdown report."
         ),
     )
     parser.add_argument(
@@ -671,7 +581,6 @@ if __name__ == "__main__":  # pragma: no cover - CLI guard
 __all__ = [
     "ThroughputEntry",
     "PhaseStats",
-    "LlmJudgeStats",
     "RequestBreakdown",
     "ThroughputReport",
     "parse_log_lines",
