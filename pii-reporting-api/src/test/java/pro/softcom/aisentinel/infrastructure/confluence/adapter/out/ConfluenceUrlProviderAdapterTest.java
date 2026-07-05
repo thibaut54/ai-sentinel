@@ -20,6 +20,8 @@ class ConfluenceUrlProviderAdapterTest {
     @InjectMocks
     private ConfluenceUrlProviderAdapter adapter;
 
+    private static final String SPACE_KEY = "SPACE";
+
     @Test
     void Should_ReturnBaseUrl_When_BaseUrlCalled() {
         when(confluenceConnectionConfig.baseUrl()).thenReturn("https://confluence.example.com");
@@ -31,14 +33,14 @@ class ConfluenceUrlProviderAdapterTest {
 
     @Test
     void Should_ReturnNull_When_PageIdIsNull() {
-        String result = adapter.pageUrl(null);
+        String result = adapter.pageUrl(SPACE_KEY, null);
 
         assertThat(result).isNull();
     }
 
     @Test
     void Should_ReturnNull_When_PageIdIsBlank() {
-        String result = adapter.pageUrl("  ");
+        String result = adapter.pageUrl(SPACE_KEY, "  ");
 
         assertThat(result).isNull();
     }
@@ -47,7 +49,7 @@ class ConfluenceUrlProviderAdapterTest {
     void Should_ReturnNull_When_BaseUrlIsNull() {
         when(confluenceConnectionConfig.baseUrl()).thenReturn(null);
 
-        String result = adapter.pageUrl("12345");
+        String result = adapter.pageUrl(SPACE_KEY, "12345");
 
         assertThat(result).isNull();
     }
@@ -56,19 +58,29 @@ class ConfluenceUrlProviderAdapterTest {
     void Should_ReturnNull_When_BaseUrlIsBlank() {
         when(confluenceConnectionConfig.baseUrl()).thenReturn("  ");
 
-        String result = adapter.pageUrl("12345");
+        String result = adapter.pageUrl(SPACE_KEY, "12345");
 
         assertThat(result).isNull();
     }
 
     @Test
-    void Should_ReturnCloudUrl_When_DeploymentTypeIsCloud() {
+    void Should_ReturnNull_When_DeploymentTypeIsCloudAndSpaceKeyIsBlank() {
         when(confluenceConnectionConfig.baseUrl()).thenReturn("https://confluence.example.com");
         when(confluenceConnectionConfig.deploymentType()).thenReturn(ConfluenceDeploymentType.CLOUD);
 
-        String result = adapter.pageUrl("12345");
+        String result = adapter.pageUrl("  ", "12345");
 
-        assertThat(result).isEqualTo("https://confluence.example.com/pages/12345");
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void Should_ReturnCloudDeepLink_When_DeploymentTypeIsCloud() {
+        when(confluenceConnectionConfig.baseUrl()).thenReturn("https://confluence.example.com");
+        when(confluenceConnectionConfig.deploymentType()).thenReturn(ConfluenceDeploymentType.CLOUD);
+
+        String result = adapter.pageUrl(SPACE_KEY, "12345");
+
+        assertThat(result).isEqualTo("https://confluence.example.com/spaces/SPACE/pages/12345");
     }
 
     @Test
@@ -76,7 +88,7 @@ class ConfluenceUrlProviderAdapterTest {
         when(confluenceConnectionConfig.baseUrl()).thenReturn("https://confluence.example.com");
         when(confluenceConnectionConfig.deploymentType()).thenReturn(ConfluenceDeploymentType.DATA_CENTER);
 
-        String result = adapter.pageUrl("12345");
+        String result = adapter.pageUrl(SPACE_KEY, "12345");
 
         assertThat(result).isEqualTo("https://confluence.example.com/pages/viewpage.action?pageId=12345");
     }
@@ -86,10 +98,10 @@ class ConfluenceUrlProviderAdapterTest {
         when(confluenceConnectionConfig.baseUrl()).thenReturn("https://confluence.example.com/");
         when(confluenceConnectionConfig.deploymentType()).thenReturn(ConfluenceDeploymentType.CLOUD);
 
-        String result = adapter.pageUrl("12345");
+        String result = adapter.pageUrl(SPACE_KEY, "12345");
 
         assertThat(result)
-                .isEqualTo("https://confluence.example.com/pages/12345")
-                .doesNotContain("//pages");
+                .isEqualTo("https://confluence.example.com/spaces/SPACE/pages/12345")
+                .doesNotContain("//spaces");
     }
 }

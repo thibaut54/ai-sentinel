@@ -47,7 +47,8 @@ class ScanEventFactoryTest {
         ContentParserFactory parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         PiiContextExtractor piiContextExtractor = new PiiContextExtractor(parserFactory);
         factory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
-        lenient().when(confluenceUrlProvider.pageUrl(anyString())).thenAnswer(inv -> "https://wiki/pages/" + inv.getArgument(0));
+        lenient().when(confluenceUrlProvider.pageUrl(anyString(), anyString()))
+                .thenAnswer(inv -> "https://wiki/pages/" + inv.getArgument(1));
     }
 
     private ConfluencePage page(String id) {
@@ -71,7 +72,7 @@ class ScanEventFactoryTest {
                 softly.assertThat(result.eventType()).isEqualTo("start");
                 softly.assertThat(result.pagesTotal()).isEqualTo(10);
                 softly.assertThat(result.scanStatus()).isEqualTo(ScanStatus.RUNNING);
-                softly.assertThat(result.analysisProgressPercentage()).isEqualTo(0.0);
+                softly.assertThat(result.analysisProgressPercentage()).isZero();
                 softly.assertThat(result.emittedAt()).isNotNull();
             });
         }
@@ -115,7 +116,7 @@ class ScanEventFactoryTest {
                 softly.assertThat(result.eventType()).isEqualTo("pageStart");
                 softly.assertThat(result.pageId()).isEqualTo("p1");
                 softly.assertThat(result.pageTitle()).isEqualTo("Page p1");
-                softly.assertThat(result.pageIndex()).isEqualTo(0);
+                softly.assertThat(result.pageIndex()).isZero();
                 softly.assertThat(result.pagesTotal()).isEqualTo(5);
                 softly.assertThat(result.pageUrl()).contains("p1");
                 softly.assertThat(result.scanStatus()).isEqualTo(ScanStatus.RUNNING);
@@ -332,21 +333,6 @@ class ScanEventFactoryTest {
     @Nested
     @DisplayName("buildPageUrl - edge cases")
     class BuildPageUrl {
-
-        @Test
-        @DisplayName("Should_ReturnNull_When_ConfluenceUrlProviderIsNull")
-        void Should_ReturnNull_When_ConfluenceUrlProviderIsNull() {
-            // Arrange - factory without URL provider
-            ContentParserFactory parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
-            PiiContextExtractor extractor = new PiiContextExtractor(parserFactory);
-            ScanEventFactory factoryNoUrl = new ScanEventFactory(null, extractor, severityCalculationService);
-
-            // Act
-            ConfluenceContentScanResult result = factoryNoUrl.createErrorEvent(SCAN_ID, SPACE_KEY, "p1", "error", 0.0);
-
-            // Assert
-            assertThat(result.pageUrl()).isNull();
-        }
 
         @Test
         @DisplayName("Should_ReturnNull_When_PageIdIsNull")
