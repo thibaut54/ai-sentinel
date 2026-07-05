@@ -21,6 +21,11 @@ import pro.softcom.aisentinel.application.pii.export.exception.ExportException;
 import pro.softcom.aisentinel.application.pii.export.exception.UnsupportedSourceTypeException;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorException;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
+import pro.softcom.aisentinel.domain.pii.remediation.AttachmentRedactionUnsupportedException;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
+import pro.softcom.aisentinel.domain.pii.remediation.IllegalStatusTransitionException;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
+import pro.softcom.aisentinel.domain.pii.remediation.SelectionOutdatedException;
 import pro.softcom.aisentinel.domain.pii.scan.IllegalScanStatusTransitionException;
 import pro.softcom.aisentinel.domain.pii.scan.Initiator;
 import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
@@ -246,6 +251,50 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/test/throw"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorKey").value("error.scan.not_found"));
+    }
+
+    // ========== Remediation exceptions (4) ==========
+
+    @Test
+    @DisplayName("Should_Return403WithErrorKey_When_RemediationDisabled")
+    void Should_Return403WithErrorKey_When_RemediationDisabled() throws Exception {
+        ExceptionThrowingTestController.exceptionToThrow.set(new RemediationDisabledException("disabled"));
+
+        mockMvc.perform(get("/test/throw"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorKey").value("error.remediation.disabled"));
+    }
+
+    @Test
+    @DisplayName("Should_Return409WithErrorKey_When_IllegalFindingStatusTransition")
+    void Should_Return409WithErrorKey_When_IllegalFindingStatusTransition() throws Exception {
+        ExceptionThrowingTestController.exceptionToThrow.set(new IllegalStatusTransitionException(
+                FindingRemediationStatus.REDACTED, FindingRemediationStatus.PENDING));
+
+        mockMvc.perform(get("/test/throw"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorKey").value("error.remediation.invalid_status_transition"));
+    }
+
+    @Test
+    @DisplayName("Should_Return422WithErrorKey_When_AttachmentRedactionUnsupported")
+    void Should_Return422WithErrorKey_When_AttachmentRedactionUnsupported() throws Exception {
+        ExceptionThrowingTestController.exceptionToThrow.set(
+                new AttachmentRedactionUnsupportedException("attachments are not redactable"));
+
+        mockMvc.perform(get("/test/throw"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errorKey").value("error.remediation.attachment_not_supported"));
+    }
+
+    @Test
+    @DisplayName("Should_Return409WithErrorKey_When_SelectionOutdated")
+    void Should_Return409WithErrorKey_When_SelectionOutdated() throws Exception {
+        ExceptionThrowingTestController.exceptionToThrow.set(new SelectionOutdatedException("checksum mismatch"));
+
+        mockMvc.perform(get("/test/throw"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorKey").value("error.remediation.selection_outdated"));
     }
 
     // ========== Export exceptions (3) ==========
