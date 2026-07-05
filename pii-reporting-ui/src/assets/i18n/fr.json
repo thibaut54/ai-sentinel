@@ -1059,7 +1059,8 @@
     },
     "toast": {
       "obfuscated": "<b>{{count}}</b> finding(s) caviardé(s) dans la source.",
-      "treated": "<b>{{count}}</b> finding(s) marqué(s) traité(s)."
+      "treated": "<b>{{count}}</b> finding(s) marqué(s) traité(s).",
+      "completedWithIssues": "Caviardage terminé avec des erreurs — consultez le détail des résultats."
     },
     "pager": {
       "label": "{{first}}–{{last}} sur {{total}} findings",
@@ -1071,6 +1072,7 @@
     "noFindings": "Aucun finding ne correspond.",
     "job": {
       "running": "Caviardage en cours… {{done}}/{{total}}",
+      "rescanRecommended": "Caviardage terminé — relancez un scan pour mettre à jour les findings.",
       "succeeded": "Réussis",
       "failed": "Échoués",
       "skipped": "Ignorés"

@@ -1059,7 +1059,8 @@
     },
     "toast": {
       "obfuscated": "<b>{{count}}</b> finding(s) obfuscated in the source.",
-      "treated": "<b>{{count}}</b> finding(s) marked handled."
+      "treated": "<b>{{count}}</b> finding(s) marked handled.",
+      "completedWithIssues": "Obfuscation finished with errors — check the outcome details."
     },
     "pager": {
       "label": "{{first}}–{{last}} of {{total}} findings",
@@ -1071,6 +1072,7 @@
     "noFindings": "No finding matches.",
     "job": {
       "running": "Obfuscating… {{done}}/{{total}}",
+      "rescanRecommended": "Obfuscation finished — run a new scan to refresh findings.",
       "succeeded": "Succeeded",
       "failed": "Failed",
       "skipped": "Skipped"

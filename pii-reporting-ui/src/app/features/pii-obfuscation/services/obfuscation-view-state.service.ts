@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import {
+  ObfuscationPlanDto,
   RemediationFindingsSearchResponse,
   RemediationGroupBy,
   RemediationStatusFilter
@@ -19,6 +20,8 @@ export class ObfuscationViewStateService {
   readonly searchText = signal('');
   readonly itemFilter = signal<string | null>(null);
   readonly lastSearchResponse = signal<RemediationFindingsSearchResponse | null>(null);
+  readonly lastPlan = signal<ObfuscationPlanDto | null>(null);
+  readonly loading = signal(false);
 
   toggleAccordion(key: string): void {
     this.openAccordions.update((open) => {

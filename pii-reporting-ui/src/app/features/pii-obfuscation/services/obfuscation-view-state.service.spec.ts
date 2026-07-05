@@ -18,6 +18,24 @@ describe('ObfuscationViewStateService', () => {
     expect(service.searchText()).toBe('');
     expect(service.itemFilter()).toBeNull();
     expect(service.lastSearchResponse()).toBeNull();
+    expect(service.lastPlan()).toBeNull();
+    expect(service.loading()).toBe(false);
+  });
+
+  it('Should_StoreBackendPlanVerbatim_When_PlanSet', () => {
+    const service = createService();
+    const plan = {
+      totalFindings: 7,
+      bySeverity: { high: 3, low: 4 },
+      pagesImpacted: 2,
+      falsePositivesReported: 1,
+      selectionChecksum: 'abc',
+      attachmentExclusions: 0
+    };
+
+    service.lastPlan.set(plan);
+
+    expect(service.lastPlan()).toBe(plan);
   });
 
   it('Should_UpdateFilters_When_SignalsSet', () => {

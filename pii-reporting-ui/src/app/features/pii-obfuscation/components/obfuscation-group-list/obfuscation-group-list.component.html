@@ -1,0 +1,72 @@
+<div class="ob-groups">
+  @for (group of groups(); track group.key) {
+    <section
+      class="ob-group"
+      [class.ob-group--open]="isOpen(group.key)"
+      [attr.data-testid]="testIds.root"
+    >
+      <div class="ob-group-head">
+        <button
+          type="button"
+          role="checkbox"
+          class="ob-master ob-master--{{ group.masterState }}"
+          [attr.aria-checked]="ariaChecked(group.masterState)"
+          [attr.aria-label]="'obfuscation.selectAllGroup' | transloco"
+          [title]="'obfuscation.selectAllGroup' | transloco"
+          (click)="masterToggled.emit(group)"
+          [attr.data-testid]="testIds.master"
+        >
+          @if (group.masterState === 'all') {
+            <i class="pi pi-check" aria-hidden="true"></i>
+          } @else if (group.masterState === 'partial') {
+            <span class="ob-master-dash" aria-hidden="true"></span>
+          }
+        </button>
+        <button
+          type="button"
+          class="ob-group-toggle"
+          [attr.aria-expanded]="isOpen(group.key)"
+          (click)="groupToggled.emit(group.key)"
+          [attr.data-testid]="testIds.toggle"
+        >
+          <i
+            class="pi pi-chevron-right ob-chevron"
+            [class.ob-chevron--open]="isOpen(group.key)"
+            aria-hidden="true"
+          ></i>
+          <span class="ob-dot ob-dot--{{ severityOf(group) }}" aria-hidden="true"></span>
+          <span class="ob-group-label">{{ group.label }}</span>
+          <span class="ob-group-spacer"></span>
+          @if (group.selectedCount > 0) {
+            <span class="ob-group-selected" [attr.data-testid]="testIds.selectedCount">
+              {{ 'obfuscation.nSelectedShort' | transloco: { count: group.selectedCount } }}
+            </span>
+          }
+          <span class="ob-group-count" [attr.data-testid]="testIds.count">{{ group.total }}</span>
+        </button>
+      </div>
+      @if (isOpen(group.key)) {
+        <div class="ob-group-body">
+          @for (finding of group.findings; track finding.findingId) {
+            <app-obfuscation-finding-row
+              [finding]="finding"
+              [groupBy]="groupBy()"
+              (toggled)="rowToggled.emit(finding)"
+              (markManual)="rowMarkManual.emit(finding)"
+              (reportFalsePositive)="rowReportFalsePositive.emit(finding)"
+              (restore)="rowRestore.emit(finding)"
+            />
+          }
+          @if (group.findings.length < group.total) {
+            <p class="ob-group-hint" [attr.data-testid]="testIds.hint">
+              {{
+                'obfuscation.groupPageHint'
+                  | transloco: { visible: group.findings.length, total: group.total }
+              }}
+            </p>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

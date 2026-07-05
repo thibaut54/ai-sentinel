@@ -111,6 +111,18 @@ describe('ObfuscationSelectionService', () => {
     });
   });
 
+  it('Should_ForgetFindingEverywhere_When_FindingForgotten', () => {
+    const service = createService();
+    service.excludeFinding('f1');
+    service.includeFinding('f2');
+
+    service.forgetFinding('f1');
+    service.forgetFinding('f2');
+
+    expect(service.excludedFindingIds().size).toBe(0);
+    expect(service.includedFindingIds().size).toBe(0);
+  });
+
   it('Should_ExposeNoAggregateComputation_When_ApiSurfaceInspected', () => {
     const service = createService();
 

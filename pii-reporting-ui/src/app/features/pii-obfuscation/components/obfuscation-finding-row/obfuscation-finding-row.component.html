@@ -1,0 +1,115 @@
+<div
+  class="ob-occ"
+  [class.ob-occ--selected]="finding().selected"
+  [class.ob-occ--treated]="treated()"
+  [class.ob-occ--ineligible]="!finding().eligibleForRedaction"
+  [attr.data-testid]="testIds.root"
+>
+  <input
+    type="checkbox"
+    class="ob-occ-check"
+    [class.ob-occ-check--fp]="status() === 'FALSE_POSITIVE'"
+    [checked]="finding().selected"
+    [disabled]="checkboxDisabled()"
+    (change)="toggled.emit()"
+    [attr.aria-label]="'obfuscation.select' | transloco"
+    [attr.data-testid]="testIds.checkbox"
+  />
+
+  <div class="ob-occ-main">
+    @if (status() === 'REDACTED') {
+      <span class="ob-redacted-block" [attr.data-testid]="testIds.value">
+        <i class="pi pi-lock" aria-hidden="true"></i>
+        {{ 'obfuscation.redactedValue' | transloco }}
+      </span>
+    } @else {
+      <span
+        class="ob-masked-badge"
+        [class.ob-masked-badge--fp]="status() === 'FALSE_POSITIVE'"
+        [attr.data-testid]="testIds.value"
+        >{{ finding().maskedContext }}</span
+      >
+    }
+    <span class="ob-occ-meta">
+      @if (groupBy() === 'severity') {
+        <span class="ob-occ-type">{{ finding().piiType }}</span>
+      }
+      <i class="pi pi-file" aria-hidden="true"></i>
+      <span class="ob-occ-page">{{ finding().pageTitle }}</span>
+      @if (finding().attachmentName) {
+        <span class="ob-occ-attachment">· {{ finding().attachmentName }}</span>
+      }
+    </span>
+    @if (!finding().eligibleForRedaction) {
+      <span class="ob-occ-ineligible-reason" [attr.data-testid]="testIds.ineligible">
+        @if (finding().attachmentName) {
+          {{ 'obfuscation.ineligible.attachment' | transloco: { kind: attachmentKind() ?? '' } }}
+        } @else {
+          {{ finding().ineligibilityReason }}
+        }
+      </span>
+    }
+  </div>
+
+  <div class="ob-occ-side">
+    <app-confidence-indicator [value]="finding().confidenceScore" />
+    <app-detector-tag [detector]="detectorSource()" [small]="true" />
+    <span
+      class="ob-status-badge ob-status-badge--{{ statusMeta().variant }}"
+      [attr.data-testid]="testIds.status"
+    >
+      <i class="pi {{ statusMeta().icon }}" aria-hidden="true"></i>
+      {{ statusMeta().labelKey | transloco }}
+    </span>
+    <span class="ob-occ-actions">
+      @switch (status()) {
+        @case ('PENDING') {
+          <button
+            type="button"
+            class="ob-icon-btn ob-icon-btn--ok"
+            (click)="markManual.emit()"
+            [title]="'obfuscation.action.markManual' | transloco"
+            [attr.aria-label]="'obfuscation.action.markManual' | transloco"
+            [attr.data-testid]="testIds.markManual"
+          >
+            <i class="pi pi-check" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            class="ob-icon-btn ob-icon-btn--warn"
+            (click)="reportFalsePositive.emit()"
+            [title]="'obfuscation.action.markFp' | transloco"
+            [attr.aria-label]="'obfuscation.action.markFp' | transloco"
+            [attr.data-testid]="testIds.reportFp"
+          >
+            <i class="pi pi-flag" aria-hidden="true"></i>
+          </button>
+        }
+        @case ('MANUALLY_HANDLED') {
+          <button
+            type="button"
+            class="ob-icon-btn"
+            (click)="restore.emit()"
+            [title]="'obfuscation.action.undoManual' | transloco"
+            [attr.aria-label]="'obfuscation.action.undoManual' | transloco"
+            [attr.data-testid]="testIds.restore"
+          >
+            <i class="pi pi-replay" aria-hidden="true"></i>
+          </button>
+        }
+        @case ('FALSE_POSITIVE') {
+          <button
+            type="button"
+            class="ob-icon-btn"
+            (click)="restore.emit()"
+            [title]="'obfuscation.action.restore' | transloco"
+            [attr.aria-label]="'obfuscation.action.restore' | transloco"
+            [attr.data-testid]="testIds.restore"
+          >
+            <i class="pi pi-replay" aria-hidden="true"></i>
+          </button>
+        }
+      }
+    </span>
+  </div>
+</div>

@@ -50,6 +50,11 @@ export class ObfuscationSelectionService {
     this.includedFindingIdsState.update((ids) => withAdded(ids, findingId));
   }
 
+  forgetFinding(findingId: string): void {
+    this.excludedFindingIdsState.update((ids) => withRemoved(ids, findingId));
+    this.includedFindingIdsState.update((ids) => withRemoved(ids, findingId));
+  }
+
   clear(): void {
     this.checkedTypesState.set(new Set());
     this.checkedSeveritiesState.set(new Set());
