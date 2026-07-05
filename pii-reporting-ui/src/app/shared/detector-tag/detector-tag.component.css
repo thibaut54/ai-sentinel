@@ -12,12 +12,6 @@
   padding: 1px 5px;
 }
 
-.detector-gliner {
-  background: var(--sentinel-gliner-bg);
-  color: var(--sentinel-gliner-color-alt);
-  border: 1px solid var(--sentinel-gliner-border);
-}
-
 .detector-presidio {
   background: var(--sentinel-presidio-bg);
   color: var(--sentinel-presidio-color);
@@ -28,18 +22,6 @@
   background: var(--sentinel-regex-bg);
   color: var(--sentinel-regex-color-alt);
   border: 1px solid var(--sentinel-regex-border);
-}
-
-.detector-openmed {
-  background: var(--sentinel-openmed-bg);
-  color: var(--sentinel-openmed-fg);
-  border: 1px solid var(--sentinel-openmed-border);
-}
-
-.detector-gliner2 {
-  background: var(--sentinel-gliner2-bg);
-  color: var(--sentinel-gliner2-fg);
-  border: 1px solid var(--sentinel-gliner2-border);
 }
 
 .detector-unknown {

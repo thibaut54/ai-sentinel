@@ -87,7 +87,7 @@ services:
       resources:
         limits:
           cpus: '8.0'       # <= host CPU count; covers PII_WORKER_PROCESSES (6) + headroom
-          memory: 16G       # NLP/ML models (fast_gliner ONNX ~1.4G x workers)
+          memory: 16G       # NLP/ML models x workers
         reservations:
           cpus: '2.0'       # guaranteed minimum
           memory: 16G       # guaranteed for model load
@@ -117,26 +117,9 @@ services:
       # PII_WORKER_PROCESSES * TORCH_NUM_THREADS <= cpus limit below.
       PII_WORKER_PROCESSES: ${PII_WORKER_PROCESSES:-6}
       TORCH_NUM_THREADS: ${TORCH_NUM_THREADS:-1}
-      # LLM-as-judge HTTP concurrency cap (matches LM Studio "Max Concurrent").
-      # Held here by a producer-side semaphore regardless of page concurrency.
-      LLM_JUDGE_MAX_WORKERS: ${LLM_JUDGE_MAX_WORKERS:-4}
-      # LM Studio endpoint + exact model id. The TOML default points at a
-      # Tailscale IP; override to the reachable LAN endpoint. The model id MUST
-      # include the quant suffix (@q8_0) so _resolve_model_id exact-matches it
-      # instead of falling back to the qwen3.6-35b fuzzy match.
-      LLM_JUDGE_BASE_URL: ${LLM_JUDGE_BASE_URL:-http://172.22.22.63:1234/v1}
-      LLM_JUDGE_PREFERRED_MODEL: ${LLM_JUDGE_PREFERRED_MODEL:-detect-pii-4b-v2@q8_0}
-      # GLiNER2 runtime override (env > TOML > default). Uncomment to force:
-      # "fastgliner" (speed, labels-only, 0.5 threshold floor) or "pytorch"
-      # (sends detector_description, honours any threshold). Empty => TOML value.
-      # GLINER2_RUNTIME: pytorch
     volumes:
       - huggingface-cache:/app/.cache/huggingface
       - ./secrets:/secrets:ro
-      # Monolithic GLiNER2 ONNX export consumed by the fast_gliner runtime
-      # (auto-discovered at /app/models/...; PyTorch fallback if absent).
-      # Produced by pii-detector-service/scripts/export_gliner2_to_monolithic_onnx.py
-      - ./pii-detector-service/models/gliner2-privacy-filter-onnx:/app/models/gliner2-privacy-filter-onnx:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,8 +165,7 @@ services:
       PII_DETECTOR_HOST: pii-detector
       PII_DETECTOR_PORT: 50051
       # Pages scanned concurrently — match PII_WORKER_PROCESSES on the detector
-      # so the worker pool stays fed. Page events stay ordered; the LLM judge
-      # remains bounded to LLM_JUDGE_MAX_WORKERS independently.
+      # so the worker pool stays fed. Page events stay ordered.
       PII_SCAN_PAGE_CONCURRENCY: ${PII_SCAN_PAGE_CONCURRENCY:-6}
 
       PII_DATABASE_ENCRYPTION_KEY_FILE: /secrets/pii_database_encryption_key.txt

@@ -1,26 +1,17 @@
 """Pool de processus d'inférence pour paralléliser les requêtes DetectPII.
 
-Pourquoi des processus : le pipeline est dominé à ~99.7 % par le forward pass
-GLiNER2 (DeBERTa-v3-large) sur CPU. L'intra-op PyTorch scale mal au-delà de
-quelques threads (memory-bound) ; le data-parallélisme « N inférences
-indépendantes sur N cœurs » scale quasi linéairement
-(cf. benchmarks/SCALING-CONCLUSIONS.md).
+Pourquoi des processus : quand la détection est CPU-bound, le data-parallélisme
+« N inférences indépendantes sur N cœurs » scale mieux que l'intra-op d'un seul
+processus.
 
 Stratégie mémoire : sur Linux (container), le pool est créé par **fork après
-préchargement** — le parent charge le détecteur singleton (poids fp32 ~1.8 GB)
-SANS exécuter de forward, puis forke N workers qui héritent des poids en
-copy-on-write : la RAM reste ~1 copie de modèle, pas N. Sur les plateformes
-sans fork (Windows dev), chaque worker recharge sa copie (spawn).
-
-Exception fast_gliner : quand GLiNER2 tourne sur le runtime fast_gliner
-(gline-rs/ONNX Runtime), le pool force **spawn** même sur Linux — une session
-ORT ne survit pas au fork (deadlock au premier Run() de l'enfant, y compris
-après rechargement de session). Chaque worker spawn charge sa propre session
-(~1.4 GB ONNX × N, pas de COW possible sur ces poids).
+préchargement** — le parent charge le détecteur singleton SANS exécuter de
+forward, puis forke N workers qui héritent de l'état en copy-on-write. Sur les
+plateformes sans fork (Windows dev), chaque worker recharge sa copie (spawn).
 
 Activation : env ``PII_WORKER_PROCESSES`` (0/1 ou absent = pool désactivé,
 comportement historique inchangé). ``TORCH_NUM_THREADS`` s'applique à chaque
-worker (recommandé : 1-2 avec N workers ≈ cœurs du container).
+worker.
 
 Sécurité fork : le parent ne doit JAMAIS exécuter de forward avant le fork
 (aucun thread BLAS vivant) ; chaque worker fait son propre warmup après fork.
@@ -101,22 +92,6 @@ def _worker_detect_with_stats(payload):
     return _WORKER_DETECTOR.detect_pii(content, threshold, **(kwargs or {})), []
 
 
-def _singleton_uses_fastgliner() -> bool:
-    """True si le singleton (déjà chargé par pii_service) tourne sur fast_gliner."""
-    try:
-        import importlib
-        pii_service = importlib.import_module(
-            'pii_detector.infrastructure.adapter.in.grpc.pii_service')
-        detector = pii_service.get_detector_instance()
-    except Exception:  # pragma: no cover - defensive
-        return False
-    gliner2 = getattr(detector, 'gliner2_detector', None)
-    return any(
-        getattr(candidate, 'runtime', None) == 'fastgliner'
-        for candidate in (detector, gliner2) if candidate is not None
-    )
-
-
 class DetectorWorkerPool:
     """Façade thread-safe au-dessus de ``multiprocessing.Pool``.
 
@@ -130,16 +105,6 @@ class DetectorWorkerPool:
         self.processes = processes
         self.torch_threads = torch_threads
         start_method = 'fork' if 'fork' in mp.get_all_start_methods() else 'spawn'
-        if start_method == 'fork' and _singleton_uses_fastgliner():
-            # Une session ONNX Runtime (fast_gliner/PyO3) ne survit PAS au
-            # fork : ses threads intra-op n'existent que dans le parent et le
-            # premier Run() de l'enfant deadlock — recharger une session
-            # fraîche post-fork deadlocke aussi (vérifié par
-            # experiments/fastgliner_fork_safety_smoke.py). spawn donne à
-            # chaque worker un interpréteur propre qui charge sa propre
-            # session ; le bénéfice COW ne s'applique de toute façon pas aux
-            # poids ONNX.
-            start_method = 'spawn'
         ctx = mp.get_context(start_method)
         logger.info(
             'Starting detector worker pool: %d processes (%s), '

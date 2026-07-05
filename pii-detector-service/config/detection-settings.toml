@@ -13,8 +13,8 @@ pii_extra_models = []
 # DATABASE-MANAGED SETTINGS (fetched at runtime via database_config_adapter)
 # ============================================================================
 # The following settings are now managed exclusively in the database:
-# - gliner_enabled: Controls GLiNER/MultiPass detector activation
-# - presidio_enabled: Controls Presidio detector activation  
+# - ministral_enabled: Controls Ministral detector activation
+# - presidio_enabled: Controls Presidio detector activation
 # - regex_enabled: Controls Regex detector activation
 # - default_threshold: Global confidence threshold
 #
@@ -22,22 +22,6 @@ pii_extra_models = []
 # when `fetch_config_from_db=true` is set in gRPC request.
 # This allows runtime reconfiguration without service restart.
 # ============================================================================
-
-# Enable multi-model aggregation (true/false)
-multi_detector_enabled = false
-
-# Enable LLM-based detection at startup (true/false)
-# When true, enables ML models (GLiNER, Piiranha, etc.) for PII detection
-# When false, all LLM models are disabled regardless of their individual config
-# Note: This is a startup-time configuration - use database for runtime control
-llm_detection_enabled = true
-
-# Enable Multi-Pass GLiNER detection (true/false)
-# When true, uses MultiPassGlinerDetector instead of standard GLiNERDetector
-# Multi-pass runs 13 parallel detection passes (one per category) and resolves conflicts
-# This provides better accuracy for large label sets (114 PII types)
-# Note: This is a startup-time configuration - cannot be changed at runtime
-multipass_gliner_enabled = true
 
 # Log detailed provenance information about which model detected each entity
 log_provenance = false
@@ -47,7 +31,6 @@ log_throughput = false
 
 # Token overlap for chunk splitting (prevents boundary truncation)
 # Recommended 10-20% of max_length for optimal entity detection at boundaries
-# For GLiNER (720 tokens): 100 tokens overlap = 13.9%
 stride_tokens = 100
 
 # Character threshold to trigger chunked processing
@@ -75,7 +58,7 @@ overlap_resolution = "prefer_longer"
 # Enable parallel processing of multiple texts (ThreadPoolExecutor)
 # When true, multiple texts are processed in parallel by the same model
 # Performance impact: ~49% faster with 5 workers (based on benchmark tests)
-# Note: This is NOT batch processing (which GLiNER doesn't support)
+# Note: This is NOT batch processing -- models are invoked once per text
 # This uses ThreadPoolExecutor to process multiple texts concurrently
 enabled = true
 
@@ -106,59 +89,3 @@ parallel_execution = true
 
 # Timeout per model in seconds (increased to 180s to handle complex pages)
 model_timeout = 180
-
-# ============================================================================
-# LLM JUDGE SETTINGS (post-detection false-positive filter)
-# Runtime activation is controlled by the database flag `llm_judge_enabled`
-# in table `pii_detection_config` (spec section 2.6). All defaults below
-# can be overridden by the environment variables prefixed with
-# `LLM_JUDGE_` (env > TOML > code default).
-# ============================================================================
-[llm_judge]
-enabled_default = false                       # DB flag wins; TOML is a fallback
-#base_url = "http://127.0.0.1:1234/v1"       # LM Studio endpoint
-# LM Studio host on the LAN (172.22.22.0/24). Two known traps if unreachable:
-# 1. A leftover docker network on 172.22.0.0/16 shadows the whole LAN
-#    (docker network ls + inspect, remove the colliding one).
-# 2. The corporate VPN installs a 172.22.22.0/24 route hijacking the subnet
-#    (route print | findstr 172.22) — disconnect the VPN.
-#base_url = "http://172.22.22.63:1234/v1"             # LM Studio endpoint
-base_url = "http://100.94.174.101:1234/v1"             # LM Studio endpoint
-#preferred_model = "qwen/qwen3.6-35b-a3b"        # resolved via /v1/models
-#preferred_model = "qwen3.6-35b-a3b-instruct-pure"        # resolved via /v1/models
-#preferred_model = "qwen3.6-27b-mtp"        # resolved via /v1/models
-preferred_model = "detect-pii-4b-v2"        # resolved via /v1/models
-max_batch_size = 1                             # 1 verdict per HTTP call (MVP)
-max_workers = 4                                # parallel HTTP calls
-timeout_seconds = 120                          # per call HTTP timeout
-max_tokens = 2048                              # absorbs Qwen 3.6 reasoning + JSON
-temperature = 0.2
-top_p = 1.0
-context_window_chars = 300                     # ctx_before / ctx_after window
-fail_open = true                               # timeout / error -> entity kept
-use_json_schema = true                         # response_format=json_schema strict
-# Override with LLM_JUDGE_PER_TYPE_PROMPTS=1.
-per_type_prompts = true                        # true -> route system prompt by pii_type (v7)
-
-# Detector sources audited by the LLM judge (post-MVP extension, spec §10).
-# Comma-separated list. Empty / missing -> {GLINER} (MVP default).
-# Allowed values: GLINER, REGEX, PRESIDIO, OPENMED.
-# Override at runtime with the env var LLM_JUDGE_AUDIT_SOURCES (env > TOML).
-# Note: the validator currently reads the env var directly; the TOML line
-# exists as the single source of truth for documented operator-facing
-# defaults until the corresponding DB column ships.
-audit_sources = "GLINER"
-
-# ============================================================================
-# GLINER2 RUNTIME SETTINGS
-# Inference runtime selection for the GLiNER2 detector. Overridable by the
-# env var GLINER2_RUNTIME (env > TOML > code default).
-# ============================================================================
-[gliner2]
-# "fastgliner" (gline-rs/ONNX, ~4x faster on CPU) or "pytorch".
-# fastgliner does NOT send the per-label detector_description to the model
-# (labels only) and hard-caps the effective threshold at a 0.5 floor.
-# pytorch sends the descriptions and honours any threshold. Choose pytorch
-# when detection fidelity matters, fastgliner when CPU throughput matters.
-#runtime = "fastgliner"
-runtime = "pytorch"

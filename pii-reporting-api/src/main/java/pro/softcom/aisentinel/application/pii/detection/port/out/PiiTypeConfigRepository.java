@@ -30,25 +30,6 @@ public interface PiiTypeConfigRepository {
     PiiTypeConfig updateAtomically(String piiType, String detector, boolean enabled, double threshold, String updatedBy);
 
     /**
-     * Updates a PII type configuration atomically, including the GLiNER2
-     * inference description.
-     *
-     * @param piiType             the PII type identifier
-     * @param detector            the detector name
-     * @param enabled             whether the configuration is enabled
-     * @param threshold           the detection threshold
-     * @param detectorDescription the GLiNER2 inference description; {@code null}
-     *                            leaves the stored description unchanged
-     * @param llmJudgeEnabled     per-type LLM-as-Judge toggle; {@code null}
-     *                            leaves the stored value unchanged
-     * @param updatedBy           the user performing the update
-     * @return the updated configuration
-     * @throws IllegalArgumentException if configuration not found
-     */
-    PiiTypeConfig updateAtomically(String piiType, String detector, boolean enabled, double threshold,
-                                   String detectorDescription, Boolean llmJudgeEnabled, String updatedBy);
-
-    /**
      * Updates multiple PII type configurations atomically.
      * <p>
      * All updates are performed within a single transaction to ensure consistency

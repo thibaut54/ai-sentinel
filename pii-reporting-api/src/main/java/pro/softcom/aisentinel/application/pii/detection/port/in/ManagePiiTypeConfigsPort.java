@@ -9,7 +9,7 @@ import java.util.Map;
  * Port IN for managing PII type-specific configurations.
  * <p>
  * Allows clients to retrieve and update configuration for individual PII types
- * per detector (GLiNER, Presidio, Regex).
+ * per detector (Presidio, Regex, Ministral).
  */
 public interface ManagePiiTypeConfigsPort {
 
@@ -23,7 +23,7 @@ public interface ManagePiiTypeConfigsPort {
     /**
      * Retrieves PII type configurations for a specific detector.
      *
-     * @param detector the detector name (GLINER, PRESIDIO, or REGEX)
+     * @param detector the detector name (PRESIDIO, REGEX, or MINISTRAL)
      * @return list of configurations for the specified detector
      * @throws IllegalArgumentException if detector is invalid
      */
@@ -55,8 +55,6 @@ public interface ManagePiiTypeConfigsPort {
             double threshold,
             String category,
             String detectorLabel,
-            String detectorDescription,
-            boolean llmJudgeEnabled,
             String countryCode,
             String severity,
             String createdBy
@@ -75,27 +73,6 @@ public interface ManagePiiTypeConfigsPort {
      * @throws IllegalArgumentException if parameters are invalid
      */
     PiiTypeConfig updateConfig(String piiType, String detector, boolean enabled, double threshold, String updatedBy);
-
-    /**
-     * Updates configuration for a specific PII type and detector, including the
-     * GLiNER2 inference description.
-     *
-     * @param piiType             the PII type identifier
-     * @param detector            the detector name
-     * @param enabled             whether the PII type is enabled
-     * @param threshold           the detection threshold (0.0-1.0)
-     * @param detectorDescription the GLiNER2 inference description; {@code null}
-     *                            leaves the existing description unchanged
-     *                            ("absent = unchanged" semantics)
-     * @param llmJudgeEnabled     per-type LLM-as-Judge toggle; {@code null}
-     *                            leaves the stored value unchanged
-     *                            ("absent = unchanged" semantics)
-     * @param updatedBy           the user making the update
-     * @return the updated configuration
-     * @throws IllegalArgumentException if parameters are invalid
-     */
-    PiiTypeConfig updateConfig(String piiType, String detector, boolean enabled, double threshold,
-                               String detectorDescription, Boolean llmJudgeEnabled, String updatedBy);
 
     /**
      * Bulk update of multiple PII type configurations.
@@ -124,9 +101,7 @@ public interface ManagePiiTypeConfigsPort {
             String piiType,
             String detector,
             boolean enabled,
-            double threshold,
-            String detectorDescription,
-            Boolean llmJudgeEnabled
+            double threshold
     ) {
     }
 }

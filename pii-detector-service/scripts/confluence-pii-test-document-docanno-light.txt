@@ -8,7 +8,7 @@ Chaque section couvre un type PII avec :
   [TP] = Vrai positif (DOIT etre detecte)
   [FP] = Faux positif (NE DOIT PAS etre detecte)
 
-Configuration testee : PII types GLiNER + Presidio + Regex actifs par defaut.
+Configuration testee : PII types Presidio + Regex + Ministral actifs par defaut.
 ================================================================================
 
 

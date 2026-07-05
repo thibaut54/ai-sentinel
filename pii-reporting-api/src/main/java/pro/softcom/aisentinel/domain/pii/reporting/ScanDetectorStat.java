@@ -9,10 +9,10 @@ import java.math.RoundingMode;
  * <p>Business purpose: lets the dashboard compare detectors by throughput
  * (characters processed per second of busy time) and detection volume.
  *
- * @param detector       detector identifier (e.g. GLINER2, PRESIDIO, REGEX); also the
- *                       JUDGE/postfilter post-filters, surfaced as pseudo detectors
+ * @param detector       detector identifier (e.g. PRESIDIO, REGEX, MINISTRAL); also the
+ *                       POSTFILTER post-filter, surfaced as a pseudo detector
  * @param detections     total raw entities found by this detector (or examined count
- *                       for the JUDGE/postfilter post-filters)
+ *                       for the POSTFILTER post-filter)
  * @param charsProcessed total characters submitted to this detector
  * @param busyMs         cumulated busy time of this detector in milliseconds
  * @param discarded      total PII discarded by this stage (0 for real detectors)

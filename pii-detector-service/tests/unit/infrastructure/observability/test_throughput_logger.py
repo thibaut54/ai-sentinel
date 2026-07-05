@@ -136,7 +136,7 @@ class TestLogPhase:
         logger = logger_factory()
         with caplog.at_level(logging.INFO, logger="pii_detector.throughput"):
             logger.log_phase(
-                "llm_judge", request_id="req_z", chars=42, duration_s=0.0
+                "detection", request_id="req_z", chars=42, duration_s=0.0
             )
             assert _wait_until(
                 lambda: any("[THROUGHPUT]" in r.message for r in caplog.records)

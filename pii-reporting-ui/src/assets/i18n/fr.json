@@ -133,10 +133,8 @@
       "rate": "Débit moyen",
       "rateUnit": "car/s",
       "busy": "Temps cumulé",
-      "judgeLabel": "LLM Juge",
       "postfilterLabel": "Post-filtre",
-      "judgeUnit": "s/PII",
-      "busyNote": "Le temps par détecteur est un temps de calcul cumulé ; il peut dépasser la durée totale du scan en raison du parallélisme. Le débit est exprimé en caractères par seconde, sauf pour le LLM Juge (secondes par PII jugé)."
+      "busyNote": "Le temps par détecteur est un temps de calcul cumulé ; il peut dépasser la durée totale du scan en raison du parallélisme. Le débit est exprimé en caractères par seconde."
     },
     "logs": {
       "purging": "[ui] Purge des résultats précédents ...",
@@ -290,10 +288,6 @@
       "performance": "Optimisation des performances"
     },
     "detectors": {
-      "gliner": {
-        "label": "Détecteur GLiNER",
-        "description": "Reconnaissance d'entités basée sur l'IA utilisant le modèle GLiNER pour détecter les informations personnelles"
-      },
       "presidio": {
         "label": "Détecteur Presidio",
         "description": "Framework de détection d'IPI de Microsoft avec correspondance de motifs et NLP"
@@ -301,14 +295,6 @@
       "regex": {
         "label": "Détecteur Regex",
         "description": "Détection basée sur des motifs utilisant des expressions régulières pour les données structurées"
-      },
-      "openmed": {
-        "label": "OpenMed (multilingue)",
-        "description": "Détecteur ML multilingue (FR/EN/DE/IT/ES) couvrant les patterns financiers, crypto, véhicules et IT credentials."
-      },
-      "gliner2": {
-        "label": "GLiNER2",
-        "help": "Détecteur zéro-shot multi-tâches avec descriptions par type pour désambiguïser. Source complémentaire de GLiNER (désactivé par défaut)."
       },
       "ministral": {
         "label": "Ministral-PII",
@@ -322,19 +308,13 @@
       },
       "postfilter": {
         "label": "Post-filtre déterministe",
-        "description": "Rejette avant le juge LLM les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
+        "description": "Rejette les valeurs dont le format est mécaniquement invalide (IP, MAC, IBAN)."
       },
-      "detectorLabel": "Détecteur",
-      "judgeLabel": "Juge LLM",
-      "judgeAriaLabel": "Activer le juge LLM pour {{detector}}"
+      "detectorLabel": "Détecteur"
     },
     "threshold": {
       "label": "Seuil de confiance par défaut",
       "description": "Score de confiance minimum (0.0-1.0) requis pour qu'une détection soit signalée. Valeurs plus basses = plus de détections mais potentiellement plus de faux positifs"
-    },
-    "nbLabels": {
-      "label": "Étiquettes par passe (GLiNER)",
-      "description": "Nombre maximum d'étiquettes traitées en une seule passe. Des valeurs plus élevées améliorent la vitesse mais peuvent réduire la précision. La valeur par défaut est 35."
     },
     "validation": {
       "atLeastOneDetector": "Au moins un détecteur doit être activé"
@@ -354,22 +334,13 @@
       "types": "types",
       "threshold": "Seuil de confiance",
       "toggle": "Activer/désactiver {{type}}",
-      "llmJudge": "LLM as judge",
-      "llmJudgeToggle": "Activer/désactiver le juge LLM pour {{type}}",
-      "descriptionLabel": "Description d'inférence",
-      "descriptionHelp": "Phrase en langage naturel que GLiNER2 utilise pour reconnaître ce type. Modifiable pour affiner la détection sans redéploiement.",
       "detectors": {
-        "gliner": "Détecteur GLiNER",
         "presidio": "Détecteur Presidio",
-        "openmed": "OpenMed",
-        "gliner2": "Détecteur GLiNER2"
+        "ministral": "Détecteur Ministral-PII"
       },
       "detectorNames": {
-        "GLINER": "GLiNER",
         "PRESIDIO": "Presidio",
         "REGEX": "Regex",
-        "OPENMED": "OpenMed",
-        "GLINER2": "GLiNER2",
         "MINISTRAL": "Ministral-PII"
       },
       "categoryNames": {
@@ -396,7 +367,9 @@
         "Personal": "Informations personnelles",
         "LEGAL_ASSET": "Actifs juridiques",
         "IT_CREDENTIALS": "Identifiants informatiques",
-        "CUSTOM": "Labels personnalisés"
+        "CUSTOM": "Labels personnalisés",
+        "EMPLOYMENT": "Emploi et éducation",
+        "GOV_ID": "Identifications gouvernementales"
       },
       "typeNames": {
         "FULL_NAME": "Nom complet",
@@ -586,7 +559,46 @@
         "LITECOIN_ADDRESS": "Adresse Litecoin",
         "VEHICLE_VIN": "VIN véhicule",
         "IMEI": "IMEI",
-        "EYE_COLOR": "Couleur des yeux"
+        "EYE_COLOR": "Couleur des yeux",
+        "FAX_NUMBER": "Numéro de fax",
+        "BUILDING_NUMBER": "Numéro de bâtiment",
+        "COUNTY": "Comté / district",
+        "STATE": "État / province",
+        "POSTCODE": "Code postal",
+        "COORDINATE": "Coordonnées géographiques",
+        "IPV4": "Adresse IPv4",
+        "IPV6": "Adresse IPv6",
+        "USER_NAME": "Nom d'utilisateur",
+        "HTTP_COOKIE": "Cookie HTTP",
+        "DEVICE_IDENTIFIER": "Identifiant d'appareil",
+        "OCCUPATION": "Profession",
+        "EMPLOYMENT_STATUS": "Statut d'emploi",
+        "EMPLOYEE_ID": "Identifiant employé",
+        "EDUCATION_LEVEL": "Niveau d'éducation",
+        "ORGANIZATION": "Organisation",
+        "COMPANY_NAME": "Nom d'entreprise",
+        "CUSTOMER_ID": "Identifiant client",
+        "CREDIT_DEBIT_CARD": "Carte de crédit/débit",
+        "BANK_ROUTING_NUMBER": "Numéro d'acheminement bancaire",
+        "SWIFT_BIC": "Code SWIFT/BIC",
+        "SOCIAL_SECURITY_NUMBER": "Numéro de sécurité sociale",
+        "VEHICLE_IDENTIFIER": "Identifiant de véhicule",
+        "CERTIFICATE_LICENSE_NUMBER": "Numéro de certificat / licence",
+        "UNIQUE_ID": "Identifiant unique",
+        "TITLE": "Civilité / titre",
+        "RACE": "Origine raciale",
+        "ETHNICITY": "Origine ethnique",
+        "RACE_ETHNICITY": "Origine raciale ou ethnique",
+        "RELIGION": "Religion",
+        "RELIGIOUS_BELIEF": "Croyance religieuse",
+        "MARITAL_STATUS": "Statut matrimonial",
+        "SEXUALITY": "Orientation sexuelle",
+        "POLITICAL_VIEW": "Opinion politique",
+        "LANGUAGE": "Langue",
+        "BIOMETRIC_IDENTIFIER": "Identifiant biométrique",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Numéro de bénéficiaire d'assurance santé",
+        "BLOOD_TYPE": "Groupe sanguin",
+        "TIME": "Heure"
       },
       "typeDescriptions": {
         "FULL_NAME": "Nom complet d'une personne (prénom + nom)",
@@ -761,7 +773,47 @@
         "MEDICAL_RECORD_NUMBER": "Numéro de dossier médical électronique",
         "HEALTH_INSURANCE_NUMBER": "Numéro de carte d'assurance maladie",
         "DIAGNOSIS": "Diagnostic médical ou condition de santé",
-        "MEDICATION": "Nom de médicament ou prescription"
+        "MEDICATION": "Nom de médicament ou prescription",
+        "FAX_NUMBER": "Numéros de fax dans divers formats internationaux",
+        "BUILDING_NUMBER": "Numéro de bâtiment, maison ou appartement",
+        "COUNTY": "Comté, district ou subdivision administrative",
+        "STATE": "Noms d'états, provinces ou régions",
+        "POSTCODE": "Codes postaux",
+        "COORDINATE": "Coordonnées géographiques (latitude et longitude)",
+        "IPV4": "Adresses réseau IPv4",
+        "IPV6": "Adresses réseau IPv6",
+        "USER_NAME": "Identifiants système et noms de compte de connexion",
+        "HTTP_COOKIE": "Cookies HTTP et jetons de session",
+        "DEVICE_IDENTIFIER": "Identifiant unique d'appareil",
+        "OCCUPATION": "Profession ou métier d'une personne",
+        "EMPLOYMENT_STATUS": "Statut d'emploi (employé, indépendant, sans emploi, etc.)",
+        "EMPLOYEE_ID": "Numéro d'identification d'employé",
+        "EDUCATION_LEVEL": "Niveau d'éducation ou diplôme",
+        "ORGANIZATION": "Nom d'une organisation ou institution",
+        "COMPANY_NAME": "Nom d'une entreprise ou société",
+        "CUSTOMER_ID": "Numéro d'identification de client",
+        "CREDIT_DEBIT_CARD": "Numéros de carte de crédit ou de débit",
+        "BANK_ROUTING_NUMBER": "Numéro d'acheminement bancaire (clearing/ABA)",
+        "SWIFT_BIC": "Code d'identification bancaire international (SWIFT/BIC)",
+        "SOCIAL_SECURITY_NUMBER": "Format générique de numéro de sécurité sociale",
+        "VEHICLE_IDENTIFIER": "Numéro d'identification de véhicule (VIN) ou plaque d'immatriculation",
+        "CERTIFICATE_LICENSE_NUMBER": "Numéro de certificat ou de licence professionnelle",
+        "UNIQUE_ID": "Identifiant unique générique",
+        "TITLE": "Civilité ou titre d'une personne (M., Mme, Dr, etc.)",
+        "RACE": "Informations sur l'origine raciale d'une personne",
+        "ETHNICITY": "Informations sur l'origine ethnique d'une personne",
+        "RACE_ETHNICITY": "Informations sur l'origine raciale ou ethnique d'une personne",
+        "RELIGION": "Appartenance ou croyance religieuse",
+        "RELIGIOUS_BELIEF": "Croyance ou conviction religieuse d'une personne",
+        "MARITAL_STATUS": "Statut matrimonial (marié, célibataire, divorcé, veuf, etc.)",
+        "SEXUALITY": "Informations sur l'orientation sexuelle d'une personne",
+        "POLITICAL_VIEW": "Opinions ou affiliations politiques d'une personne",
+        "LANGUAGE": "Langue parlée ou maternelle d'une personne",
+        "BIOMETRIC_IDENTIFIER": "Identifiant biométrique (empreinte digitale, reconnaissance faciale, etc.)",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Numéro de bénéficiaire d'un régime d'assurance santé",
+        "BLOOD_TYPE": "Groupes sanguins (A, B, AB, O avec facteurs Rh +/-)",
+        "TIME": "Informations d'heure dans différents formats",
+        "PIN": "Code PIN à usage d'authentification ou de sécurité"
       },
       "actions": {
         "saveAll": "Enregistrer tous les types",

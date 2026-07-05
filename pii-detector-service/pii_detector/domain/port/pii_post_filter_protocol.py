@@ -3,8 +3,8 @@ Protocol defining the contract for post-detection PII filters.
 
 This module defines the PIIPostFilterProtocol used by the application layer
 to plug filters that run AFTER the primary detection + merge pipeline
-(e.g. LLM-as-Judge). Filters audit the merged entity list and decide
-which entities to keep or discard.
+(e.g. the deterministic format post-filter). Filters audit the merged
+entity list and decide which entities to keep or discard.
 
 Architecture:
 - Domain port: depends only on domain entities (PIIEntity)
@@ -28,7 +28,7 @@ class PIIPostFilterProtocol(Protocol):
     - Fail-open on errors when configured to preserve recall
 
     Examples of post-filters:
-    - LLM-as-Judge (precision audit on GLiNER entities)
+    - Deterministic format post-filter (precision audit on merged entities)
     - Allow/block lists by value or by source
     - Confidence threshold gating
     """

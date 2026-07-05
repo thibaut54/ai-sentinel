@@ -46,7 +46,7 @@ class PiiDetectionConfigControllerMinistralTest {
     @Test
     void Should_ExposeMinistralFields_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, false, false, true, 2048, 256, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
+            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
@@ -61,7 +61,7 @@ class PiiDetectionConfigControllerMinistralTest {
     @Test
     void Should_DefaultMinistralEnabledFalse_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, false, false, false, 1024, 128, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
@@ -74,7 +74,7 @@ class PiiDetectionConfigControllerMinistralTest {
     @Test
     void Should_PersistMinistralFields_When_PutConfig() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, false, false, true, 2048, 256, new BigDecimal("0.75"), 35, false, false, false, false, false, false, false,
+            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -82,16 +82,12 @@ class PiiDetectionConfigControllerMinistralTest {
 
         String body = """
                 {
-                  "glinerEnabled": true,
                   "presidioEnabled": true,
                   "regexEnabled": true,
-                  "openmedEnabled": false,
-                  "gliner2Enabled": false,
                   "ministralEnabled": true,
                   "ministralChunkSize": 2048,
                   "ministralOverlap": 256,
-                  "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 35
+                  "defaultThreshold": 0.75
                 }
                 """;
 
@@ -118,16 +114,12 @@ class PiiDetectionConfigControllerMinistralTest {
         // ministralOverlap >= ministralChunkSize violates the cross-field rule.
         String body = """
                 {
-                  "glinerEnabled": true,
                   "presidioEnabled": true,
                   "regexEnabled": true,
-                  "openmedEnabled": false,
-                  "gliner2Enabled": false,
                   "ministralEnabled": true,
                   "ministralChunkSize": 256,
                   "ministralOverlap": 256,
-                  "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 35
+                  "defaultThreshold": 0.75
                 }
                 """;
 
@@ -142,15 +134,11 @@ class PiiDetectionConfigControllerMinistralTest {
         // ministralEnabled is @NotNull on the request DTO.
         String body = """
                 {
-                  "glinerEnabled": true,
                   "presidioEnabled": true,
                   "regexEnabled": true,
-                  "openmedEnabled": false,
-                  "gliner2Enabled": false,
                   "ministralChunkSize": 1024,
                   "ministralOverlap": 128,
-                  "defaultThreshold": 0.75,
-                  "nbOfLabelByPass": 35
+                  "defaultThreshold": 0.75
                 }
                 """;
 

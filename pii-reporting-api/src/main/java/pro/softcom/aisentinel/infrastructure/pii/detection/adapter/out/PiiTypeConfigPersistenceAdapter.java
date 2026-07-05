@@ -83,45 +83,12 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
             double threshold,
             String updatedBy
     ) {
-        return doUpdateAtomically(piiType, detector, enabled, threshold, null, null, updatedBy);
-    }
-
-    @Override
-    @Transactional
-    public PiiTypeConfig updateAtomically(
-            String piiType,
-            String detector,
-            boolean enabled,
-            double threshold,
-            String detectorDescription,
-            Boolean llmJudgeEnabled,
-            String updatedBy
-    ) {
-        return doUpdateAtomically(piiType, detector, enabled, threshold, detectorDescription, llmJudgeEnabled, updatedBy);
-    }
-
-    /**
-     * Performs the atomic single-config update within the caller's transaction.
-     * <p>
-     * Extracted as a private method so both public overloads can declare their own
-     * {@code @Transactional} boundary without self-invoking a proxied method
-     * (which would bypass the transactional advice).
-     */
-    private PiiTypeConfig doUpdateAtomically(
-            String piiType,
-            String detector,
-            boolean enabled,
-            double threshold,
-            String detectorDescription,
-            Boolean llmJudgeEnabled,
-            String updatedBy
-    ) {
         PiiTypeConfigEntity entity = jpaRepository.findByPiiTypeAndDetector(piiType, detector)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Configuration not found for PII type: " + piiType + " and detector: " + detector
                 ));
 
-        applyUpdate(entity, enabled, threshold, detectorDescription, llmJudgeEnabled, updatedBy);
+        applyUpdate(entity, enabled, threshold, updatedBy);
 
         PiiTypeConfigEntity saved = jpaRepository.save(entity);
         return saved.toDomain();
@@ -143,8 +110,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                                     " and detector: " + update.detector()
                     ));
 
-                    applyUpdate(entity, update.enabled(), update.threshold(),
-                            update.detectorDescription(), update.llmJudgeEnabled(), updatedBy);
+                    applyUpdate(entity, update.enabled(), update.threshold(), updatedBy);
 
                     return entity;
                 })
@@ -158,27 +124,15 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
 
     /**
      * Applies an update to an entity in place.
-     * <p>
-     * "Absent = unchanged" semantics (spec §5.1): a {@code null}
-     * {@code detectorDescription} or {@code llmJudgeEnabled} leaves the stored
-     * value untouched, so a client omitting the field never erases it.
      */
     private void applyUpdate(
             PiiTypeConfigEntity entity,
             boolean enabled,
             double threshold,
-            String detectorDescription,
-            Boolean llmJudgeEnabled,
             String updatedBy
     ) {
         entity.setEnabled(enabled);
         entity.setThreshold(threshold);
-        if (detectorDescription != null) {
-            entity.setDetectorDescription(detectorDescription);
-        }
-        if (llmJudgeEnabled != null) {
-            entity.setLlmJudgeEnabled(llmJudgeEnabled);
-        }
         entity.setUpdatedBy(updatedBy);
     }
 }

@@ -1,7 +1,7 @@
 """
 Ministral-PII generative PII detector.
 
-Unlike the token-classification detectors (OpenMed, GLiNER2), Ministral-PII is a
+Unlike the deterministic Presidio and Regex detectors, Ministral-PII is a
 **specialised LLM extractor** served behind an OpenAI-compatible
 ``/chat/completions`` endpoint (LM Studio). We prompt the model to return a
 strict JSON array of ``{text, label}`` objects, then locate each returned text
@@ -30,8 +30,9 @@ here: the downstream gRPC type-config gate keeps entities with no config row and
 drops the ones an operator disabled, so passthrough never resurrects a disabled
 type.
 
-This detector is permanently exempt from the LLM-as-judge post-filter (same
-model nature): its entities stay ``NOT_AUDITED``. It never sets ``judge_status``.
+Ministral's entities flow through the same deterministic format post-filter
+(:mod:`format_postfilter_validator`) as every other detector's; there is no
+per-detector exemption.
 """
 
 from __future__ import annotations
@@ -69,7 +70,7 @@ DEFAULT_GLOBAL_THRESHOLD = 0.5
 # per-type thresholds (0.50 in the seed), every well-mapped detection was
 # silently dropped by _apply_per_type_thresholds and by the gRPC type-config
 # gate. A fixed 1.0 keeps them; per-type thresholds thus never suppress a
-# Ministral finding — disable the type instead. Ministral is judge-exempt.
+# Ministral finding — disable the type instead.
 MINISTRAL_CONFIDENCE = 1.0
 
 # Default chunking parameters (real tokens). Mirrors the DB defaults in
@@ -547,7 +548,7 @@ class MinistralDetector:
         return kept
 
     # ------------------------------------------------------------------
-    # Configuration resolution (mirrors OpenMedDetector)
+    # Configuration resolution
     # ------------------------------------------------------------------
 
     def _resolve_runtime_config(
@@ -606,8 +607,9 @@ class MinistralDetector:
         threshold = cfg.get("threshold")
         if threshold is not None:
             scoring_overrides[pii_type] = float(threshold)
-        # Optional human-readable label forwarded to the LLM judge. When absent,
-        # _pair_to_entity falls back to the pii_type.
+        # Optional human-readable label surfaced in the gRPC response
+        # (PIIEntity.type_label). When absent, _pair_to_entity falls back to
+        # the pii_type.
         type_label = cfg.get("type_label")
         if type_label:
             type_labels[pii_type] = str(type_label)

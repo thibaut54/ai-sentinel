@@ -10,7 +10,7 @@ class ScanDetectorStatTest {
     @Test
     @DisplayName("Should_ComputeThroughputRoundedToOneDecimal_When_BusyTimePositive")
     void Should_ComputeThroughputRoundedToOneDecimal_When_BusyTimePositive() {
-        ScanDetectorStat stat = new ScanDetectorStat("GLINER2", 12, 1_730_000L, 520_000L, 0);
+        ScanDetectorStat stat = new ScanDetectorStat("MINISTRAL", 12, 1_730_000L, 520_000L, 0);
 
         assertThat(stat.charsPerSecond()).isEqualTo(3326.9);
     }
@@ -35,8 +35,8 @@ class ScanDetectorStatTest {
     @Test
     @DisplayName("Should_CarryDiscardedCount_When_PostFilterStat")
     void Should_CarryDiscardedCount_When_PostFilterStat() {
-        ScanDetectorStat judge = new ScanDetectorStat("JUDGE", 420, 0L, 1_400L, 18);
+        ScanDetectorStat postfilter = new ScanDetectorStat("POSTFILTER", 420, 0L, 1_400L, 18);
 
-        assertThat(judge.discarded()).isEqualTo(18);
+        assertThat(postfilter.discarded()).isEqualTo(18);
     }
 }

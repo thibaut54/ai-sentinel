@@ -32,29 +32,18 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
 
     @Override
     public PiiDetectionConfig updateConfig(UpdatePiiDetectionConfigCommand command) {
-        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, postfilterEnabled={}",
-                command.glinerEnabled(), command.presidioEnabled(), command.regexEnabled(),
-                command.openmedEnabled(), command.gliner2Enabled(), command.defaultThreshold(),
-                command.nbOfLabelByPass(), command.llmJudgeEnabled(), command.postfilterEnabled());
+        log.info("Updating PII detection configuration: presidio={}, regex={}, ministral={}, threshold={}, postfilterEnabled={}",
+                command.presidioEnabled(), command.regexEnabled(), command.ministralEnabled(),
+                command.defaultThreshold(), command.postfilterEnabled());
 
         PiiDetectionConfig newConfig = new PiiDetectionConfig(
                 CONFIG_ID,
-                command.glinerEnabled(),
                 command.presidioEnabled(),
                 command.regexEnabled(),
-                command.openmedEnabled(),
-                command.gliner2Enabled(),
                 command.ministralEnabled(),
                 command.ministralChunkSize(),
                 command.ministralOverlap(),
                 command.defaultThreshold(),
-                command.nbOfLabelByPass(),
-                command.llmJudgeEnabled(),
-                command.glinerJudgeEnabled(),
-                command.presidioJudgeEnabled(),
-                command.regexJudgeEnabled(),
-                command.openmedJudgeEnabled(),
-                command.gliner2JudgeEnabled(),
                 command.postfilterEnabled(),
                 LocalDateTime.now(ZoneId.systemDefault()),
                 command.updatedBy()

@@ -12,7 +12,7 @@ The filter judges format only, never test-vs-prod: the canonical test cards
 scope (research §3).
 
 Measured on the reference corpus (``data-analysis.md``): 3/21 false positives
-caught (14-digit numbers the judge also rejects), 0 real card lost (the 9 Luhn
+caught (14-digit numbers that are not valid cards), 0 real card lost (the 9 Luhn
 collisions -- e.g. ``33333333333331`` -- are session/log numbers that pass Luhn
 by chance, never an actual card). Marginal FP gain, kept for prod protection
 against any well-formed but Luhn-invalid PAN.

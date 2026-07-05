@@ -36,7 +36,7 @@ def create_torch_mock():
     cuda_mock.empty_cache = Mock()
     cuda_mock.device_count = Mock(return_value=0)
     
-    # Mock torch.utils for GLiNER
+    # Mock torch.utils
     utils_mock = types.ModuleType('torch.utils')
     utils_mock.__spec__ = types.SimpleNamespace(
         name='torch.utils',
@@ -97,34 +97,3 @@ def create_transformers_mock():
 if 'transformers' not in sys.modules:
     transformers_mock = create_transformers_mock()
     sys.modules['transformers'] = transformers_mock
-
-
-# Mock GLiNER to prevent import errors
-def create_gliner_mock():
-    """Create mock for gliner module."""
-    gliner_mock = types.ModuleType('gliner')
-    gliner_mock.__spec__ = types.SimpleNamespace(
-        name='gliner',
-        loader=None,
-        origin=None,
-        submodule_search_locations=None
-    )
-    gliner_mock.GLiNER = Mock()
-    
-    # Mock gliner.model
-    model_mock = types.ModuleType('gliner.model')
-    model_mock.__spec__ = types.SimpleNamespace(
-        name='gliner.model',
-        loader=None,
-        origin=None,
-        submodule_search_locations=None
-    )
-    model_mock.GLiNER = Mock()
-    
-    return gliner_mock, model_mock
-
-
-if 'gliner' not in sys.modules:
-    gliner_mock, gliner_model_mock = create_gliner_mock()
-    sys.modules['gliner'] = gliner_mock
-    sys.modules['gliner.model'] = gliner_model_mock

@@ -195,25 +195,9 @@ export class PiiSettingsComponent implements OnInit {
    * stored values (customisations are preserved by construction).
    */
   private static readonly DETECTOR_MASTER_CONTROL: Readonly<Record<string, string>> = {
-    GLINER: 'glinerEnabled',
     PRESIDIO: 'presidioEnabled',
     REGEX: 'regexEnabled',
-    OPENMED: 'openmedEnabled',
-    GLINER2: 'gliner2Enabled',
     MINISTRAL: 'ministralEnabled'
-  };
-
-  /**
-   * Maps a "Types d'IPI" detector group to its per-detector LLM-judge toggle in
-   * the "Moteur de détection" section. A per-type judge toggle is only editable
-   * when the judge of its owning detector is on.
-   */
-  private static readonly DETECTOR_JUDGE_CONTROL: Readonly<Record<string, string>> = {
-    GLINER: 'glinerJudgeEnabled',
-    PRESIDIO: 'presidioJudgeEnabled',
-    REGEX: 'regexJudgeEnabled',
-    OPENMED: 'openmedJudgeEnabled',
-    GLINER2: 'gliner2JudgeEnabled'
   };
 
   ngOnInit(): void {
@@ -228,22 +212,13 @@ export class PiiSettingsComponent implements OnInit {
 
   private initForm(): void {
     this.configForm = this.fb.group({
-      glinerEnabled: [true],
       presidioEnabled: [true],
       regexEnabled: [true],
-      openmedEnabled: [false],
-      gliner2Enabled: [false],
       postfilterEnabled: [false],
-      glinerJudgeEnabled: [false],
-      presidioJudgeEnabled: [false],
-      regexJudgeEnabled: [false],
-      openmedJudgeEnabled: [false],
-      gliner2JudgeEnabled: [false],
       ministralEnabled: [false],
       ministralChunkSize: [2048, [Validators.required, Validators.min(256), Validators.max(4096)]],
       ministralOverlap: [410, [Validators.required, Validators.min(0), Validators.max(512)]],
-      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
-      nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
+      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]]
     }, {
       validators: [this.atLeastOneDetectorValidator, this.overlapLessThanChunkSizeValidator]
     } as AbstractControlOptions);
@@ -311,7 +286,7 @@ export class PiiSettingsComponent implements OnInit {
 
     const request: CreatePiiTypeConfigRequest = {
       piiType: formValue.piiType,
-      detector: 'GLINER',
+      detector: 'MINISTRAL',
       enabled: true,
       threshold: formValue.threshold,
       category: formValue.category,
@@ -384,14 +359,11 @@ export class PiiSettingsComponent implements OnInit {
    * Custom validator: at least one detector must be enabled.
    */
   private atLeastOneDetectorValidator(group: FormGroup): {[key: string]: boolean} | null {
-    const gliner = group.get('glinerEnabled')?.value;
     const presidio = group.get('presidioEnabled')?.value;
     const regex = group.get('regexEnabled')?.value;
-    const openmed = group.get('openmedEnabled')?.value;
-    const gliner2 = group.get('gliner2Enabled')?.value;
     const ministral = group.get('ministralEnabled')?.value;
 
-    if (!gliner && !presidio && !regex && !openmed && !gliner2 && !ministral) {
+    if (!presidio && !regex && !ministral) {
       return {atLeastOneDetector: true};
     }
     return null;
@@ -425,22 +397,13 @@ export class PiiSettingsComponent implements OnInit {
         // Set detector config
         this.currentConfig.set(detectorConfig);
         this.configForm.patchValue({
-          glinerEnabled: detectorConfig.glinerEnabled,
           presidioEnabled: detectorConfig.presidioEnabled,
           regexEnabled: detectorConfig.regexEnabled,
-          openmedEnabled: detectorConfig.openmedEnabled,
-          gliner2Enabled: detectorConfig.gliner2Enabled,
-          prefilterEnabled: detectorConfig.postfilterEnabled,
-          glinerJudgeEnabled: detectorConfig.glinerJudgeEnabled,
-          presidioJudgeEnabled: detectorConfig.presidioJudgeEnabled,
-          regexJudgeEnabled: detectorConfig.regexJudgeEnabled,
-          openmedJudgeEnabled: detectorConfig.openmedJudgeEnabled,
-          gliner2JudgeEnabled: detectorConfig.gliner2JudgeEnabled,
+          postfilterEnabled: detectorConfig.postfilterEnabled,
           ministralEnabled: detectorConfig.ministralEnabled,
           ministralChunkSize: detectorConfig.ministralChunkSize,
           ministralOverlap: detectorConfig.ministralOverlap,
-          defaultThreshold: detectorConfig.defaultThreshold,
-          nbOfLabelByPass: detectorConfig.nbOfLabelByPass
+          defaultThreshold: detectorConfig.defaultThreshold
         });
 
         // Set PII types
@@ -536,50 +499,8 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
-   * Handle LLM-judge toggle change for a PII type.
-   * Reuses the same modification key as enabled/threshold so all edits of a row
-   * merge into a SINGLE bulk update entry.
-   */
-  onPiiTypeJudgeToggleChange(type: PiiTypeConfig, llmJudgeEnabled: boolean): void {
-    const key = this.getPiiTypeKey(type.detector, type.piiType);
-    const original = this.originalPiiTypes().get(key);
-
-    if (!original) return;
-
-    const modified: PiiTypeConfig = {
-      ...type,
-      llmJudgeEnabled
-    };
-
-    this.trackPiiTypeModification(key, original, modified);
-
-    this.updateGroupedPiiTypes(type.detector, type.piiType, {llmJudgeEnabled});
-  }
-
-  /**
-   * Handle inference-description change for a GLINER2 PII type.
-   * Reuses the same modification key as toggle/threshold so all edits of a row
-   * merge into a SINGLE bulk update entry.
-   */
-  onPiiTypeDescriptionChange(type: PiiTypeConfig, detectorDescription: string): void {
-    const key = this.getPiiTypeKey(type.detector, type.piiType);
-    const original = this.originalPiiTypes().get(key);
-
-    if (!original) return;
-
-    const modified: PiiTypeConfig = {
-      ...type,
-      detectorDescription
-    };
-
-    this.trackPiiTypeModification(key, original, modified);
-
-    this.updateGroupedPiiTypes(type.detector, type.piiType, {detectorDescription});
-  }
-
-  /**
    * Track a PII-type row modification: record it when it differs from the
-   * original (enabled, threshold, LLM-judge toggle or description), drop it when it matches again.
+   * original (enabled or threshold), drop it when it matches again.
    * Always emits a new Map reference so the signal recomputes.
    */
   private trackPiiTypeModification(
@@ -589,9 +510,7 @@ export class PiiSettingsComponent implements OnInit {
   ): void {
     const changed =
       modified.enabled !== original.enabled ||
-      modified.threshold !== original.threshold ||
-      modified.llmJudgeEnabled !== original.llmJudgeEnabled ||
-      (modified.detectorDescription ?? '') !== (original.detectorDescription ?? '');
+      modified.threshold !== original.threshold;
 
     if (changed) {
       this.modifiedPiiTypes().set(key, modified);
@@ -603,22 +522,15 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
-   * Build a bulk-update payload entry. Always carries the LLM-judge toggle and
-   * adds detectorDescription ONLY for GLINER2 rows (extension of the bulk
-   * contract, sent conditionally).
+   * Build a bulk-update payload entry.
    */
   private toUpdateRequest(type: PiiTypeConfig): UpdatePiiTypeConfigRequest {
-    const update: UpdatePiiTypeConfigRequest = {
+    return {
       piiType: type.piiType,
       detector: type.detector,
       enabled: type.enabled,
-      threshold: type.threshold,
-      llmJudgeEnabled: type.llmJudgeEnabled
+      threshold: type.threshold
     };
-    if (type.detector === 'GLINER2') {
-      update.detectorDescription = type.detectorDescription ?? '';
-    }
-    return update;
   }
 
   /**
@@ -829,22 +741,13 @@ export class PiiSettingsComponent implements OnInit {
   onResetDetectorConfig(): void {
     if (this.currentConfig()) {
       this.configForm.patchValue({
-        glinerEnabled: this.currentConfig()!.glinerEnabled,
         presidioEnabled: this.currentConfig()!.presidioEnabled,
         regexEnabled: this.currentConfig()!.regexEnabled,
-        openmedEnabled: this.currentConfig()!.openmedEnabled,
-        gliner2Enabled: this.currentConfig()!.gliner2Enabled,
-        prefilterEnabled: this.currentConfig()!.postfilterEnabled,
-        glinerJudgeEnabled: this.currentConfig()!.glinerJudgeEnabled,
-        presidioJudgeEnabled: this.currentConfig()!.presidioJudgeEnabled,
-        regexJudgeEnabled: this.currentConfig()!.regexJudgeEnabled,
-        openmedJudgeEnabled: this.currentConfig()!.openmedJudgeEnabled,
-        gliner2JudgeEnabled: this.currentConfig()!.gliner2JudgeEnabled,
+        postfilterEnabled: this.currentConfig()!.postfilterEnabled,
         ministralEnabled: this.currentConfig()!.ministralEnabled,
         ministralChunkSize: this.currentConfig()!.ministralChunkSize,
         ministralOverlap: this.currentConfig()!.ministralOverlap,
-        defaultThreshold: this.currentConfig()!.defaultThreshold,
-        nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
+        defaultThreshold: this.currentConfig()!.defaultThreshold
       });
       this.configForm.markAsPristine();
       // Restore the collapse state to match the reset detector toggles.
@@ -986,21 +889,6 @@ export class PiiSettingsComponent implements OnInit {
     const control = PiiSettingsComponent.DETECTOR_MASTER_CONTROL[detector];
     if (!control) {
       return true;
-    }
-    return !!this.configForm.get(control)?.value;
-  }
-
-  /**
-   * Whether the per-detector LLM-judge toggle is enabled for the detector that
-   * owns a "Types d'IPI" sub-section. When off, the per-type judge toggles of
-   * that detector are shown off and disabled WITHOUT mutating their stored
-   * values, so re-enabling restores each customisation.
-   * Unknown detectors (no judge control) default to disabled.
-   */
-  isDetectorJudgeEnabled(detector: string): boolean {
-    const control = PiiSettingsComponent.DETECTOR_JUDGE_CONTROL[detector];
-    if (!control) {
-      return false;
     }
     return !!this.configForm.get(control)?.value;
   }

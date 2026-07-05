@@ -82,16 +82,8 @@
   --sentinel-severity-total-card: #22c55e; /* green-500 -- total severity card */
 
   /* ---------------------------------------------------------------------------
-     Detector Colors (GLiNER, Presidio, Regex)
+     Detector Colors (Presidio, Regex, Ministral)
      --------------------------------------------------------------------------- */
-  /* GLiNER -- purple */
-  --sentinel-gliner-bg: #f3f0ff;           /* violet-50 -- badge/card background */
-  --sentinel-gliner-color: #7c3aed;        /* violet-600 -- text color */
-  --sentinel-gliner-color-alt: #6d28d9;    /* violet-700 -- detector tag text */
-  --sentinel-gliner-border: #e0d6ff;       /* custom -- border */
-  --sentinel-gliner-avatar-bg: #f3edfd;    /* custom -- avatar background */
-  --sentinel-gliner-avatar-border: #e6dafc; /* custom -- avatar border */
-
   /* Presidio -- blue */
   --sentinel-presidio-bg: #eff6ff;         /* blue-50 -- badge/card background */
   --sentinel-presidio-color: #1d4ed8;      /* blue-700 -- text color */
@@ -107,21 +99,7 @@
   --sentinel-regex-avatar-bg: #f8efe9;     /* custom -- avatar background */
   --sentinel-regex-avatar-border: #f1ded0; /* custom -- avatar border */
 
-  /* OpenMed -- teal */
-  --sentinel-openmed-bg: #ccfbf1;          /* teal-100 -- badge/card background */
-  --sentinel-openmed-fg: #134e4a;          /* teal-900 -- text color */
-  --sentinel-openmed-border: #14b8a6;      /* teal-500 -- border */
-  --sentinel-openmed-avatar-bg: #d5f8f0;   /* custom -- avatar background */
-  --sentinel-openmed-avatar-border: #99f6e4; /* teal-200 -- avatar border */
-
-  /* GLiNER2 -- indigo (distinct from GLiNER, OpenMed teal, Presidio blue) */
-  --sentinel-gliner2-bg: #e0e7ff;          /* indigo-100 -- badge/card background */
-  --sentinel-gliner2-fg: #312e81;          /* indigo-900 -- text color (contrast >= 4.5:1) */
-  --sentinel-gliner2-border: #6366f1;      /* indigo-500 -- border */
-  --sentinel-gliner2-avatar-bg: #eef2ff;   /* indigo-50 -- avatar background */
-  --sentinel-gliner2-avatar-border: #c7d2fe; /* indigo-200 -- avatar border */
-
-  /* Ministral -- amber (distinct from GLiNER2 indigo, OpenMed teal, Presidio blue) */
+  /* Ministral -- amber (distinct from Presidio blue) */
   --sentinel-ministral-bg: #fef3c7;          /* amber-100 -- badge/card background */
   --sentinel-ministral-fg: #78350f;          /* amber-900 -- text color (contrast >= 4.5:1) */
   --sentinel-ministral-border: #f59e0b;      /* amber-500 -- border */
@@ -329,20 +307,12 @@
   --sentinel-severity-total-card: #4ade80; /* green-400 -- total severity card */
 
   /* ---------------------------------------------------------------------------
-     Detector Colors (GLiNER, Presidio, Regex)
+     Detector Colors (Presidio, Regex, Ministral)
      ---------------------------------------------------------------------------
      Backgrounds are very low-opacity tints of each detector color on the dark
      base. Text colors are the lighter variants (300-400 range) for legibility.
      Borders are muted mid-tones of each hue.
      --------------------------------------------------------------------------- */
-  /* GLiNER -- purple */
-  --sentinel-gliner-bg: #1a1428;           /* very dark violet tint */
-  --sentinel-gliner-color: #a78bfa;        /* violet-400 -- brighter for dark bg */
-  --sentinel-gliner-color-alt: #c4b5fd;    /* violet-300 -- detector tag text */
-  --sentinel-gliner-border: #3b2d5e;       /* muted dark violet */
-  --sentinel-gliner-avatar-bg: #1f1833;    /* slightly lifted violet tint */
-  --sentinel-gliner-avatar-border: #4c3578; /* mid violet */
-
   /* Presidio -- blue */
   --sentinel-presidio-bg: #0f1724;         /* very dark blue tint */
   --sentinel-presidio-color: #60a5fa;      /* blue-400 -- brighter for dark bg */
@@ -357,20 +327,6 @@
   --sentinel-regex-border: #5c4a1a;        /* muted dark amber */
   --sentinel-regex-avatar-bg: #201a10;     /* slightly lifted amber tint */
   --sentinel-regex-avatar-border: #6b5520; /* mid amber */
-
-  /* OpenMed -- teal */
-  --sentinel-openmed-bg: #134e4a;          /* very dark teal tint */
-  --sentinel-openmed-fg: #5eead4;          /* teal-300 -- detector tag text */
-  --sentinel-openmed-border: #14b8a6;      /* teal-500 -- border */
-  --sentinel-openmed-avatar-bg: #0f3a37;   /* slightly lifted teal tint */
-  --sentinel-openmed-avatar-border: #2d6e69; /* mid teal */
-
-  /* GLiNER2 -- indigo (dark theme override, mirrors the light palette) */
-  --sentinel-gliner2-bg: #141729;          /* very dark indigo tint */
-  --sentinel-gliner2-fg: #a5b4fc;          /* indigo-300 -- readable on dark (contrast >= 4.5:1) */
-  --sentinel-gliner2-border: #3730a3;      /* indigo-800 -- muted border */
-  --sentinel-gliner2-avatar-bg: #1a1f3d;   /* slightly lifted indigo tint */
-  --sentinel-gliner2-avatar-border: #4338ca; /* indigo-700 -- mid indigo */
 
   /* Ministral -- amber (dark theme override, mirrors the light palette) */
   --sentinel-ministral-bg: #291a08;          /* very dark amber tint */

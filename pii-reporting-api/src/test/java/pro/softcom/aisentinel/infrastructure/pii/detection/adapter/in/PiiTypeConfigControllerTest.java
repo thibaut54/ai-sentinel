@@ -43,9 +43,9 @@ class PiiTypeConfigControllerTest {
     @DisplayName("Should_IncludeRegexDetector_When_GetGroupedForUI")
     void Should_IncludeRegexDetector_When_GetGroupedForUI() {
         // Arrange
-        var glinerConfig = PiiTypeConfig.builder()
+        var ministralConfig = PiiTypeConfig.builder()
                 .piiType("EMAIL")
-                .detector("GLINER")
+                .detector("MINISTRAL")
                 .enabled(true)
                 .threshold(0.80)
                 .category("CONTACT")
@@ -72,7 +72,7 @@ class PiiTypeConfigControllerTest {
                 .build();
 
         when(managePiiTypeConfigsPort.getAllConfigs())
-                .thenReturn(List.of(glinerConfig, presidioConfig, regexConfig));
+                .thenReturn(List.of(ministralConfig, presidioConfig, regexConfig));
 
         // Act
         var response = controller.getGroupedForUI();
@@ -89,7 +89,7 @@ class PiiTypeConfigControllerTest {
             List<String> detectors = body.stream()
                     .map(GroupedPiiTypesResponseDto::detector)
                     .toList();
-            softly.assertThat(detectors).containsExactly("GLINER", "PRESIDIO", "REGEX");
+            softly.assertThat(detectors).containsExactly("MINISTRAL", "PRESIDIO", "REGEX");
         });
     }
 
@@ -162,8 +162,8 @@ class PiiTypeConfigControllerTest {
                 .piiType("SOCIALNUM").detector("REGEX").enabled(true)
                 .threshold(0.75).category("IDENTITY").detectorLabel("social security number")
                 .severity("HIGH").build();
-        var glinerConfig = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+        var ministralConfig = PiiTypeConfig.builder()
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("email address")
                 .severity("LOW").build();
         var presidioConfig = PiiTypeConfig.builder()
@@ -172,7 +172,7 @@ class PiiTypeConfigControllerTest {
                 .severity("HIGH").build();
 
         when(managePiiTypeConfigsPort.getAllConfigs())
-                .thenReturn(List.of(regexConfig, glinerConfig, presidioConfig));
+                .thenReturn(List.of(regexConfig, ministralConfig, presidioConfig));
 
         // Act
         var response = controller.getGroupedForUI();
@@ -182,7 +182,7 @@ class PiiTypeConfigControllerTest {
         List<String> detectors = response.getBody().stream()
                 .map(GroupedPiiTypesResponseDto::detector)
                 .toList();
-        assertThat(detectors).containsExactly("GLINER", "PRESIDIO", "REGEX");
+        assertThat(detectors).containsExactly("MINISTRAL", "PRESIDIO", "REGEX");
     }
 
     @Test
@@ -190,7 +190,7 @@ class PiiTypeConfigControllerTest {
     void Should_ReturnAllConfigs_When_GetAllConfigsCalled() {
         // Arrange
         var config = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
         when(managePiiTypeConfigsPort.getAllConfigs()).thenReturn(List.of(config));
 
@@ -226,7 +226,7 @@ class PiiTypeConfigControllerTest {
     void Should_ReturnConfigsByCategory_When_GetConfigsByCategoryCalled() {
         // Arrange
         var config = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("email").severity("LOW").build();
         when(managePiiTypeConfigsPort.getConfigsByCategory())
                 .thenReturn(Map.of("CONTACT", List.of(config)));
@@ -245,12 +245,12 @@ class PiiTypeConfigControllerTest {
     void Should_ReturnCreated_When_CreateConfigCalled() {
         // Arrange
         var created = PiiTypeConfig.builder()
-                .piiType("CUSTOM_TYPE").detector("GLINER").enabled(true)
+                .piiType("CUSTOM_TYPE").detector("MINISTRAL").enabled(true)
                 .threshold(0.80).category("CONTACT").detectorLabel("custom").severity("LOW").build();
         when(managePiiTypeConfigsPort.createConfig(any())).thenReturn(created);
         var request = new CreatePiiTypeConfigRequestDto(
-                "CUSTOM_TYPE", "GLINER", true, 0.80,
-                "CONTACT", "custom", null, null, "LOW", null
+                "CUSTOM_TYPE", "MINISTRAL", true, 0.80,
+                "CONTACT", "custom", null, "LOW"
         );
 
         // Act
@@ -267,14 +267,14 @@ class PiiTypeConfigControllerTest {
     void Should_ReturnUpdated_When_UpdateConfigCalled() {
         // Arrange
         var updated = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(false)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(false)
                 .threshold(0.90).category("CONTACT").detectorLabel("email").severity("LOW").build();
         when(managePiiTypeConfigsPort.updateConfig(anyString(), anyString(), anyBoolean(),
-                anyDouble(), any(), any(), anyString())).thenReturn(updated);
-        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "GLINER", false, 0.90, null, null);
+                anyDouble(), anyString())).thenReturn(updated);
+        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "MINISTRAL", false, 0.90);
 
         // Act
-        var response = controller.updateConfig("GLINER", "EMAIL", request);
+        var response = controller.updateConfig("MINISTRAL", "EMAIL", request);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -284,9 +284,9 @@ class PiiTypeConfigControllerTest {
     @Test
     @DisplayName("Should_ThrowIllegalArgument_When_UpdateConfigPathMismatch")
     void Should_ThrowIllegalArgument_When_UpdateConfigPathMismatch() {
-        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "PRESIDIO", true, 0.80, null, null);
+        var request = new UpdatePiiTypeConfigRequestDto("EMAIL", "PRESIDIO", true, 0.80);
 
-        assertThatThrownBy(() -> controller.updateConfig("GLINER", "EMAIL", request))
+        assertThatThrownBy(() -> controller.updateConfig("MINISTRAL", "EMAIL", request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Path parameters must match request body values");
     }
@@ -294,10 +294,10 @@ class PiiTypeConfigControllerTest {
     @Test
     @DisplayName("Should_ReturnNoContent_When_DeleteConfigCalled")
     void Should_ReturnNoContent_When_DeleteConfigCalled() {
-        var response = controller.deleteConfig("GLINER", "CUSTOM_TYPE");
+        var response = controller.deleteConfig("MINISTRAL", "CUSTOM_TYPE");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(managePiiTypeConfigsPort).deleteConfig("CUSTOM_TYPE", "GLINER");
+        verify(managePiiTypeConfigsPort).deleteConfig("CUSTOM_TYPE", "MINISTRAL");
     }
 
     @Test
@@ -305,10 +305,10 @@ class PiiTypeConfigControllerTest {
     void Should_ReturnBulkUpdated_When_BulkUpdateCalled() {
         // Arrange
         var updated = PiiTypeConfig.builder()
-                .piiType("EMAIL").detector("GLINER").enabled(true)
+                .piiType("EMAIL").detector("MINISTRAL").enabled(true)
                 .threshold(0.85).category("CONTACT").detectorLabel("email").severity("LOW").build();
         when(managePiiTypeConfigsPort.bulkUpdate(any(), anyString())).thenReturn(List.of(updated));
-        var request = List.of(new UpdatePiiTypeConfigRequestDto("EMAIL", "GLINER", true, 0.85, null, null));
+        var request = List.of(new UpdatePiiTypeConfigRequestDto("EMAIL", "MINISTRAL", true, 0.85));
 
         // Act
         var response = controller.bulkUpdate(request);

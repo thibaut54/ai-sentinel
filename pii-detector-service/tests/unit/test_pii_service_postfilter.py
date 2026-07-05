@@ -30,7 +30,7 @@ def _ip_entity(text: str) -> PIIEntity:
         start=0,
         end=len(text),
         score=0.9,
-        source=DetectorSource.GLINER2,
+        source=DetectorSource.MINISTRAL,
     )
 
 
@@ -47,7 +47,7 @@ class TestIsPostfilterEnabled:
             ({}, False),
             ({"postfilter_enabled": False}, False),
             ({"postfilter_enabled": True}, True),
-            ({"gliner_enabled": True}, False),  # unrelated flags ignored
+            ({"ministral_enabled": True}, False),  # unrelated flags ignored
         ],
     )
     def test_should_default_to_false_when_flag_missing(

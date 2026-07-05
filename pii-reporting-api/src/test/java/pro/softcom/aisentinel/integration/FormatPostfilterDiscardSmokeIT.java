@@ -43,20 +43,16 @@ import java.time.Duration;
 
 /**
  * Smoke test de bout en bout du <b>post-filtre déterministe de format</b>
- * (Stage B, exécuté avant le LLM-judge dans {@code pii-detector-service}) :
+ * (exécuté après détection dans {@code pii-detector-service}) :
  * vérifie que les entités au format mécaniquement impossible (échec
  * checksum/parse) remontent dans la réponse gRPC avec un verdict
  * {@code FALSE_POSITIVE} jusqu'au domaine Java
- * ({@link ContentPiiDetection#discardedByJudge()} — le canal de discard est
- * partagé entre le pré-filtre et le judge).
+ * ({@link ContentPiiDetection#discardedByPostfilter()}).
  *
- * <p>Déterministe et <b>sans aucun LLM</b> : contrairement à
- * {@link JudgeDiscardedEntitiesSmokeIT}, ce test ne lance pas de mock LM Studio
- * et n'expose aucune variable {@code LLM_JUDGE_*}. Le pré-filtre n'appelle
- * jamais de réseau. Le détecteur (GLINER2 + PRESIDIO + REGEX, seed standard +
- * flag {@code postfilter_enabled} forcé à {@code true}, {@code llm_judge_enabled}
- * forcé à {@code false}) écarte les valeurs au format impossible et conserve
- * les vrais positifs bien formés.
+ * <p>Déterministe et <b>sans aucun LLM</b> : le pré-filtre n'appelle jamais de
+ * réseau. Le détecteur (PRESIDIO + REGEX, seed standard + flag
+ * {@code postfilter_enabled} forcé à {@code true}) écarte les valeurs au
+ * format impossible et conserve les vrais positifs bien formés.
  *
  * <p>Le texte de test (PLAN.md §5) combine :
  * <ul>
@@ -77,7 +73,7 @@ class FormatPostfilterDiscardSmokeIT {
 
     private static final Logger log = LoggerFactory.getLogger(FormatPostfilterDiscardSmokeIT.class);
 
-    private static final String SQL_SEED = "classpath:sql/data-improved-gliner2-presidio-regex.sql";
+    private static final String SQL_SEED = "classpath:sql/data-presidio-regex.sql";
     private static final int GRPC_PORT = 50051;
 
     private static final String POSTGRES_ALIAS = "postgres-it";
@@ -119,8 +115,8 @@ class FormatPostfilterDiscardSmokeIT {
             .withNetwork(NETWORK)
             .withNetworkAliases(POSTGRES_ALIAS);
 
-    // Pas de mock LM Studio : le pré-filtre est purement déterministe et
-    // n'appelle aucun LLM. Aucun env LLM_JUDGE_* n'est défini ci-dessous.
+    // Pas de mock LM Studio : le post-filtre est purement déterministe et
+    // n'appelle aucun LLM.
     @Container
     static final GenericContainer<?> piiDetector = new GenericContainer<>(buildPiiDetectorImage())
         .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint(""))
@@ -174,8 +170,8 @@ class FormatPostfilterDiscardSmokeIT {
         ContentPiiDetection detection = piiDetectorClient.analyzeContent(SAMPLE_TEXT);
 
         log.info("[postfilter-smoke] kept={} discarded={}",
-            detection.sensitiveDataFound().size(), detection.discardedByJudge().size());
-        detection.discardedByJudge().forEach(d -> log.info(
+            detection.sensitiveDataFound().size(), detection.discardedByPostfilter().size());
+        detection.discardedByPostfilter().forEach(d -> log.info(
             "[postfilter-smoke] [postfilter-FP] type={} detector={} value={} verdict={} confidence={} reason={}",
             d.data().type(), d.data().source(), d.data().value(),
             d.judgeVerdict(), d.judgeConfidence(), d.judgeReason()));
@@ -183,14 +179,14 @@ class FormatPostfilterDiscardSmokeIT {
             "[postfilter-smoke] [KEPT] type={} detector={} value={}",
             s.type(), s.source(), s.value()));
 
-        Assertions.assertFalse(detection.discardedByJudge().isEmpty(),
+        Assertions.assertFalse(detection.discardedByPostfilter().isEmpty(),
             "Le pré-filtre doit écarter au moins une valeur au format impossible "
             + "(faux IP / plage horaire / faux IBAN). Si vide, le canal "
             + "discarded_entities (proto/python/java) est cassé, le flag "
             + "postfilter_enabled n'est pas pris en compte, ou le détecteur n'a "
             + "rien remonté sur ces valeurs.");
 
-        for (DiscardedSensitiveData discarded : detection.discardedByJudge()) {
+        for (DiscardedSensitiveData discarded : detection.discardedByPostfilter()) {
             Assertions.assertEquals("FALSE_POSITIVE", discarded.judgeVerdict(),
                 "verdict inattendu pour " + discarded);
             Assertions.assertTrue(discarded.judgeConfidence() > 0.9,
@@ -213,8 +209,7 @@ class FormatPostfilterDiscardSmokeIT {
             "Le vrai IBAN " + VALID_IBAN + " ne doit jamais être écarté par le pré-filtre.");
 
         // Au moins un des deux vrais positifs doit rester détecté (recall
-        // préservé de bout en bout). On reste tolérant à la part probabiliste
-        // de GLINER2 : on n'exige pas que les DEUX soient remontés.
+        // préservé de bout en bout) : on n'exige pas que les DEUX soient remontés.
         boolean validKept = keptContainsValue(detection, VALID_IP)
             || keptContainsValue(detection, VALID_IBAN);
         Assertions.assertTrue(validKept,
@@ -238,7 +233,7 @@ class FormatPostfilterDiscardSmokeIT {
     }
 
     private static boolean discardContainsValue(ContentPiiDetection detection, String value) {
-        return detection.discardedByJudge().stream()
+        return detection.discardedByPostfilter().stream()
             .anyMatch(d -> value.equals(d.data().value()));
     }
 
@@ -256,13 +251,12 @@ class FormatPostfilterDiscardSmokeIT {
             ScriptUtils.executeSqlScript(conn, new EncodedResource(resource, StandardCharsets.UTF_8));
         }
         jdbcTemplate.execute(
-            "UPDATE pii_detection_config SET postfilter_enabled = true, llm_judge_enabled = false WHERE id = 1");
-        log.info("[postfilter-smoke] DB reseed depuis {} + postfilter_enabled=true, llm_judge_enabled=false",
-            SQL_SEED);
+            "UPDATE pii_detection_config SET postfilter_enabled = true WHERE id = 1");
+        log.info("[postfilter-smoke] DB reseed depuis {} + postfilter_enabled=true", SQL_SEED);
     }
 
     // ========================================================================
-    // Container plumbing (même approche que JudgeDiscardedEntitiesSmokeIT)
+    // Container plumbing
     // ========================================================================
 
     private static String ensureHfCacheDir() {

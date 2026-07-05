@@ -13,7 +13,6 @@ import { PopoverModule, Popover } from 'primeng/popover';
 import { TableModule } from 'primeng/table';
 import { TranslocoModule } from '@jsverse/transloco';
 import {
-  ScanDetectorStatDto,
   SentinelleApiService,
   SpaceScanStatsDto
 } from '../../../../core/services/sentinelle-api.service';
@@ -111,32 +110,10 @@ export class SpaceScanStatsPopoverComponent {
     return Math.round(charsPerSecond).toLocaleString('fr-FR');
   }
 
-  /** True for the LLM-as-judge pseudo detector, whose velocity is measured in
-   * seconds per judged PII rather than characters per second. */
-  isJudge(detector: string): boolean {
-    return detector === 'JUDGE';
-  }
-
-  /** True for the deterministic format pre-filter pseudo detector. */
+  /** True for the deterministic format pre-filter pseudo detector, which discards
+   * PII and has no characters-per-second throughput. */
   isPrefilter(detector: string): boolean {
     return detector === 'PREFILTER';
-  }
-
-  /** True for a post-filter pseudo detector (JUDGE or PREFILTER): these discard
-   * PII and have no characters-per-second throughput. */
-  isFilter(detector: string): boolean {
-    return this.isJudge(detector) || this.isPrefilter(detector);
-  }
-
-  /** Formats the judge velocity as seconds per judged PII (e.g. `0,28`), null-safe.
-   * The unit is appended in the template so it stays translatable. */
-  formatJudgeVelocity(detector: ScanDetectorStatDto): string {
-    if (detector.detections <= 0) {
-      return '—';
-    }
-    const secondsPerPii = detector.busyMs / 1000 / detector.detections;
-    const decimals = secondsPerPii >= 10 ? 1 : 2;
-    return secondsPerPii.toFixed(decimals).replace('.', ',');
   }
 
   private toFrenchDecimal(value: number): string {

@@ -55,12 +55,10 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
             throw new IllegalArgumentException("Configuration cannot be null");
         }
         
-        log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, openmedEnabled={}, gliner2Enabled={}, threshold={}, nbOfLabelByPass={}, llmJudgeEnabled={}, postfilterEnabled={}, updatedBy={}",
-                config.glinerEnabled(), config.presidioEnabled(),
-                config.regexEnabled(), config.openmedEnabled(), config.gliner2Enabled(),
-                config.defaultThreshold(), config.nbOfLabelByPass(), config.llmJudgeEnabled(),
-                config.postfilterEnabled(), config.updatedBy());
+        log.info("Updating PII detection configuration: presidioEnabled={}, " +
+                "regexEnabled={}, ministralEnabled={}, threshold={}, postfilterEnabled={}, updatedBy={}",
+                config.presidioEnabled(), config.regexEnabled(), config.ministralEnabled(),
+                config.defaultThreshold(), config.postfilterEnabled(), config.updatedBy());
 
 
         PiiDetectionConfigEntity entity = toEntity(config);
@@ -71,29 +69,19 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
 
     /**
      * Creates and persists default configuration.
-     * Default: All detectors enabled, threshold 0.75, LLM judge OFF, pre-filter OFF.
+     * Default: Presidio and regex enabled, threshold 0.75, post-filter OFF.
      */
     private PiiDetectionConfig createDefaultConfig() {
         log.info("Creating default PII detection configuration");
 
         PiiDetectionConfig defaultConfig = new PiiDetectionConfig(
                 CONFIG_ID,
-                true,  // glinerEnabled
                 true,  // presidioEnabled
                 true,  // regexEnabled
-                false, // openmedEnabled
-                false, // gliner2Enabled (cf. spec D4 — explicit operator opt-in)
                 false, // ministralEnabled (explicit operator opt-in)
                 DEFAULT_MINISTRAL_CHUNK_SIZE, // ministralChunkSize
                 DEFAULT_MINISTRAL_OVERLAP, // ministralOverlap
                 new BigDecimal("0.75"),  // defaultThreshold
-                35, // nbOfLabelByPass
-                false, // llmJudgeEnabled (derived = OR of per-detector judge flags)
-                false, // glinerJudgeEnabled
-                false, // presidioJudgeEnabled
-                false, // regexJudgeEnabled
-                false, // openmedJudgeEnabled
-                false, // gliner2JudgeEnabled
                 false, // postfilterEnabled (zero-effect rollout default)
                 LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
@@ -109,22 +97,12 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private PiiDetectionConfig toDomain(PiiDetectionConfigEntity entity) {
         return new PiiDetectionConfig(
                 entity.getId(),
-                entity.getGlinerEnabled(),
                 entity.getPresidioEnabled(),
                 entity.getRegexEnabled(),
-                entity.getOpenmedEnabled() != null && entity.getOpenmedEnabled(),
-                entity.getGliner2Enabled() != null && entity.getGliner2Enabled(),
                 entity.getMinistralEnabled() != null && entity.getMinistralEnabled(),
                 entity.getMinistralChunkSize() != null ? entity.getMinistralChunkSize() : DEFAULT_MINISTRAL_CHUNK_SIZE,
                 entity.getMinistralOverlap() != null ? entity.getMinistralOverlap() : DEFAULT_MINISTRAL_OVERLAP,
                 entity.getDefaultThreshold(),
-                entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
-                entity.getLlmJudgeEnabled() != null && entity.getLlmJudgeEnabled(),
-                entity.getGlinerJudgeEnabled() != null && entity.getGlinerJudgeEnabled(),
-                entity.getPresidioJudgeEnabled() != null && entity.getPresidioJudgeEnabled(),
-                entity.getRegexJudgeEnabled() != null && entity.getRegexJudgeEnabled(),
-                entity.getOpenmedJudgeEnabled() != null && entity.getOpenmedJudgeEnabled(),
-                entity.getGliner2JudgeEnabled() != null && entity.getGliner2JudgeEnabled(),
                 entity.getPostfilterEnabled() != null && entity.getPostfilterEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
@@ -137,24 +115,12 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private PiiDetectionConfigEntity toEntity(PiiDetectionConfig config) {
         return PiiDetectionConfigEntity.builder()
                 .id(CONFIG_ID)
-                .glinerEnabled(config.glinerEnabled())
                 .presidioEnabled(config.presidioEnabled())
                 .regexEnabled(config.regexEnabled())
-                .openmedEnabled(config.openmedEnabled())
-                .gliner2Enabled(config.gliner2Enabled())
                 .ministralEnabled(config.ministralEnabled())
                 .ministralChunkSize(config.ministralChunkSize())
                 .ministralOverlap(config.ministralOverlap())
-                // DB-only column: the specialised model is permanently exempt from the judge.
-                .ministralJudgeEnabled(false)
                 .defaultThreshold(config.defaultThreshold())
-                .nbOfLabelByPass(config.nbOfLabelByPass())
-                .llmJudgeEnabled(config.llmJudgeEnabled())
-                .glinerJudgeEnabled(config.glinerJudgeEnabled())
-                .presidioJudgeEnabled(config.presidioJudgeEnabled())
-                .regexJudgeEnabled(config.regexJudgeEnabled())
-                .openmedJudgeEnabled(config.openmedJudgeEnabled())
-                .gliner2JudgeEnabled(config.gliner2JudgeEnabled())
                 .postfilterEnabled(config.postfilterEnabled())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())

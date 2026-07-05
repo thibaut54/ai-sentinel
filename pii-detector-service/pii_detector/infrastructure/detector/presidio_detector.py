@@ -321,8 +321,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 if detector_label:
@@ -356,8 +356,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 threshold = config.get('threshold')

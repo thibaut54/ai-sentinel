@@ -52,13 +52,6 @@ PYTHON_DETECTION_LINE = (
     "duration_s=3.421 chars_per_s=4453.4 entities_in=42"
 )
 
-PYTHON_LLM_JUDGE_LINE = (
-    "[THROUGHPUT] phase=llm_judge request_id=req_42 chars=15234 "
-    "duration_s=3.421 chars_per_s=4453.4 entities_in=42 entities_kept=24 "
-    "entities_rejected=18 batches=3 llm_total_calls=3 "
-    "llm_total_call_duration_s=3.380"
-)
-
 PYTHON_TOTAL_LINE = (
     "[THROUGHPUT] phase=total request_id=req_42 chars=15234 "
     "duration_s=3.500 chars_per_s=4352.6 entities_final=24"
@@ -94,16 +87,6 @@ class TestParseLogLines:
         assert entry.duration_s == pytest.approx(3.421)
         assert entry.chars_per_s == pytest.approx(4453.4)
         assert entry.extra == {"entities_in": 42}
-
-    def test_parses_python_llm_judge_line_with_all_fields(self) -> None:
-        [entry] = ptl.parse_log_lines([PYTHON_LLM_JUDGE_LINE])
-        assert entry.phase == "llm_judge"
-        assert entry.extra["entities_in"] == 42
-        assert entry.extra["entities_kept"] == 24
-        assert entry.extra["entities_rejected"] == 18
-        assert entry.extra["batches"] == 3
-        assert entry.extra["llm_total_calls"] == 3
-        assert entry.extra["llm_total_call_duration_s"] == pytest.approx(3.380)
 
     def test_parses_python_total_line(self) -> None:
         [entry] = ptl.parse_log_lines([PYTHON_TOTAL_LINE])
@@ -191,22 +174,10 @@ class TestAggregate:
         assert stats.p99 >= stats.p95
         assert stats.mean_chars_per_s == pytest.approx(5050.0)
 
-    def test_computes_rejection_rate_when_llm_judge_entries_present(self) -> None:
-        entries = ptl.parse_log_lines([PYTHON_LLM_JUDGE_LINE, PYTHON_LLM_JUDGE_LINE])
-        report = ptl.aggregate(entries)
-        assert report.llm_judge is not None
-        # 2 entries with 42 entities_in each => 84 total ; 18 rejected each => 36
-        assert report.llm_judge.entities_in == 84
-        assert report.llm_judge.entities_rejected == 36
-        assert report.llm_judge.rejection_rate == pytest.approx(36 / 84)
-        assert report.llm_judge.average_batches == pytest.approx(3.0)
-        assert report.llm_judge.average_llm_call_duration_s == pytest.approx(3.380)
-
     def test_handles_empty_input_gracefully(self) -> None:
         report = ptl.aggregate([])
         assert report.entry_count == 0
         assert report.phase_stats == {}
-        assert report.llm_judge is None
         assert report.slowest_requests == []
 
     def test_groups_by_request_id_when_breakdown_requested(self) -> None:
@@ -240,7 +211,7 @@ class TestAggregate:
 class TestWriteReport:
     def test_writes_markdown_with_all_sections(self, tmp_path: Path) -> None:
         entries = ptl.parse_log_lines(
-            [PYTHON_DETECTION_LINE, PYTHON_LLM_JUDGE_LINE, PYTHON_TOTAL_LINE]
+            [PYTHON_DETECTION_LINE, PYTHON_TOTAL_LINE]
         )
         report = ptl.aggregate(entries)
         out = tmp_path / "report.md"
@@ -248,12 +219,9 @@ class TestWriteReport:
         content = out.read_text(encoding="utf-8")
         assert "# Throughput report" in content
         assert "## Throughput per phase" in content
-        assert "## LLM judge stats" in content
         assert "## Breakdown" in content
         # No baseline => no delta section.
         assert "## Delta vs baseline" not in content
-        # Spec reference is in the footer.
-        assert "section 3.3" in content
 
     def test_includes_delta_section_when_baseline_provided(
         self, tmp_path: Path
@@ -274,16 +242,6 @@ class TestWriteReport:
         content = out.read_text(encoding="utf-8")
         assert "## Delta vs baseline" not in content
 
-    def test_handles_llm_judge_phase_absent(self, tmp_path: Path) -> None:
-        # Baseline only has detection -- no llm_judge entries at all.
-        report = ptl.aggregate(_make_entries([100.0, 200.0], phase="detection"))
-        out = tmp_path / "report.md"
-        ptl.write_report(report, out)
-        content = out.read_text(encoding="utf-8")
-        assert "## LLM judge stats" in content
-        # The placeholder string indicates the section is rendered empty.
-        assert "_No `llm_judge` entries found._" in content
-
     def test_raises_when_output_parent_missing(self, tmp_path: Path) -> None:
         report = ptl.aggregate(_make_entries([100.0]))
         out = tmp_path / "missing-dir" / "report.md"
@@ -302,7 +260,7 @@ class TestCli:
     ) -> None:
         log_file = tmp_path / "input.log"
         log_file.write_text(
-            PYTHON_DETECTION_LINE + "\n" + PYTHON_LLM_JUDGE_LINE + "\n",
+            PYTHON_DETECTION_LINE + "\n" + PYTHON_TOTAL_LINE + "\n",
             encoding="utf-8",
         )
         out = tmp_path / "report.md"

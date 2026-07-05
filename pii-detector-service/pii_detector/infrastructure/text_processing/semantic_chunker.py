@@ -1,22 +1,16 @@
 """
-Semantic text chunking with token-aware splitting.
+Text chunking with token-aware splitting.
 
-This module provides intelligent text chunking that respects semantic boundaries
-(sentences, paragraphs) while ensuring no chunk exceeds token limits.
-Critical for models like GLiNER that have internal sentence-level token limits.
+This module provides text chunking for the Ministral-PII LLM extractor:
+- MinistralTokenChunker: exact token-window chunking via the model's HuggingFace
+  tokenizer offsets.
+- FallbackChunker: char-ratio approximation used only when a tokenizer cannot be
+  loaded.
 """
 
 import logging
-import re
-import time
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
-
-try:
-    import semchunk
-    SEMCHUNK_AVAILABLE = True
-except ImportError:
-    SEMCHUNK_AVAILABLE = False
 
 
 @dataclass
@@ -28,145 +22,13 @@ class ChunkResult:
     token_count: Optional[int] = None
 
 
-class SemanticTextChunker:
-    """
-    Token-aware semantic text chunker.
-    
-    Uses semchunk library to intelligently split text into chunks that:
-    1. Respect semantic boundaries (sentences, paragraphs)
-    2. Never exceed specified token limits
-    3. Can overlap for context preservation at boundaries
-    
-    Critical for GLiNER which has a 768-token limit per sentence internally.
-    Beneficial for other transformer models to optimize processing.
-    """
-
-    def __init__(
-        self,
-        tokenizer: Any,
-        chunk_size: int,
-        overlap: int = 0,
-        logger: Optional[logging.Logger] = None
-    ):
-        """
-        Initialize semantic chunker.
-        
-        Args:
-            tokenizer: HuggingFace tokenizer or compatible tokenizer
-            chunk_size: Maximum tokens per chunk (hard limit)
-            overlap: Number of tokens to overlap between chunks (default: 0)
-            logger: Optional logger instance
-            
-        Raises:
-            ImportError: If semchunk is not installed
-            ValueError: If chunk_size <= overlap
-        """
-        if not SEMCHUNK_AVAILABLE:
-            raise ImportError(
-                "semchunk library is required for semantic chunking. "
-                "Install it with: pip install semchunk"
-            )
-        
-        if chunk_size <= overlap:
-            raise ValueError(f"chunk_size ({chunk_size}) must be greater than overlap ({overlap})")
-
-        self.tokenizer = tokenizer
-        self.chunk_size = chunk_size
-        self.overlap = overlap
-        self.logger = logger or logging.getLogger(__name__)
-        
-        # Initialize semchunk chunker
-        # semchunk API: chunkerify(tokenizer, chunk_size, memoize=True)
-        # overlap is handled differently - not a direct parameter
-        self.chunker = semchunk.chunkerify(
-            tokenizer, 
-            chunk_size
-        )
-
-        self.logger.info(
-            f"SemanticTextChunker initialized: chunk_size={chunk_size}, overlap={overlap}"
-        )
-
-    def chunk_text(self, text: str) -> List[ChunkResult]:
-        """
-        Split text into semantic chunks respecting token limits.
-        
-        Args:
-            text: Text to chunk
-            
-        Returns:
-            List of ChunkResult objects with text and position info
-            
-        Raises:
-            RuntimeError: If chunking fails
-        """
-        start_time = time.time()
-
-        if not text:
-            return []
-        
-        try:
-            # Use semchunk to get intelligent chunks
-            chunks = self.chunker(text)
-            
-            # Convert to ChunkResult objects with position tracking
-            results = []
-            current_pos = 0
-            
-            for chunk_text in chunks:
-                # Find chunk position in original text
-                # Account for possible whitespace normalization
-                start = text.find(chunk_text, current_pos)
-                if start == -1:
-                    # Fallback: chunk might be normalized, use current position
-                    start = current_pos
-                
-                end = start + len(chunk_text)
-                
-                result = ChunkResult(
-                    text=chunk_text,
-                    start=start,
-                    end=end,
-                    token_count=None  # semchunk doesn't provide this
-                )
-                results.append(result)
-                
-                # Move position forward for next search
-                current_pos = end
-            
-            self.logger.debug(
-                f"Chunked {len(text)} chars into {len(results)} semantic chunks"
-            )
-            elapsed_time = time.time() - start_time
-            print(f"[chunk_text] Chunking text completed in {elapsed_time:.2f}s")
-            return results
-            
-        except Exception as e:
-            self.logger.error(f"Semantic chunking failed: {str(e)}")
-            raise RuntimeError(f"Failed to chunk text: {str(e)}") from e
-
-    def get_chunk_info(self) -> dict:
-        """
-        Get information about chunker configuration.
-        
-        Returns:
-            Dictionary with chunker settings
-        """
-        return {
-            "chunk_size": self.chunk_size,
-            "overlap": self.overlap,
-            "library": "semchunk",
-            "available": SEMCHUNK_AVAILABLE
-        }
-
-
 class FallbackChunker:
     """
     Simple character-based chunker with overlap support.
 
-    This implementation splits on character boundaries with approximate token
-    estimation. Works well for GLiNER PII detection as proven by testing.
-    Uses conservative 3 chars/token ratio for safety with multilingual text.
+    Used as the degraded fallback when a real tokenizer is unavailable. Splits on
+    character boundaries with approximate token estimation, using a conservative
+    3 chars/token ratio for safety with multilingual text.
     """
 
     def __init__(
@@ -186,10 +48,8 @@ class FallbackChunker:
             logger: Optional logger instance
         """
         # Guard against a silently pathological configuration (overlap >= chunk
-        # would make windows re-scan more than they advance). Mirrors the guards
-        # in SemanticTextChunker / WhitespaceWordWindowChunker so a bad value
-        # fails loudly instead of producing degenerate, infinitely-overlapping
-        # chunks.
+        # would make windows re-scan more than they advance) so a bad value fails
+        # loudly instead of producing degenerate, infinitely-overlapping chunks.
         if chunk_size <= 0:
             raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
         if overlap < 0:
@@ -216,26 +76,26 @@ class FallbackChunker:
     def chunk_text(self, text: str) -> List[ChunkResult]:
         """
         Split text into character-based chunks.
-        
+
         Args:
             text: Text to chunk
-            
+
         Returns:
             List of ChunkResult objects
         """
         if not text:
             return []
-        
+
         results = []
         offset = 0
-        
+
         while offset < len(text):
             # Calculate chunk boundaries
             chunk_start = max(0, offset - self.overlap_chars if offset > 0 else 0)
             chunk_end = min(len(text), offset + self.chunk_chars)
-            
+
             chunk_text = text[chunk_start:chunk_end]
-            
+
             result = ChunkResult(
                 text=chunk_text,
                 start=chunk_start,
@@ -243,13 +103,13 @@ class FallbackChunker:
                 token_count=None
             )
             results.append(result)
-            
+
             offset += self.chunk_chars
-        
+
         self.logger.debug(
             f"Fallback chunked {len(text)} chars into {len(results)} chunks"
         )
-        
+
         return results
 
     def get_chunk_info(self) -> dict:
@@ -262,207 +122,6 @@ class FallbackChunker:
             "chars_per_token": self.chars_per_token,
             "library": "fallback",
             "available": True
-        }
-
-
-class WhitespaceWordWindowChunker:
-    """
-    Word-window chunker aligned with GLiNER's internal ``WhitespaceTokenSplitter``.
-
-    GLiNER applies its ``max_len`` limit (e.g. 384) to *whitespace tokens* — words
-    plus isolated punctuation — not to subword tokens. Char-based or subword-based
-    chunking upstream may leave chunks that exceed the word limit on dense input
-    (URLs, identifiers, code), causing GLiNER to silently truncate beyond
-    ``max_len`` and drop entities at the tail.
-
-    This chunker reproduces the exact regex GLiNER uses
-    (``\\w+(?:[-_]\\w+)*|\\S``) to count whitespace tokens, so configuring
-    ``chunk_size`` strictly below ``max_len`` guarantees no internal truncation.
-
-    Char positions are taken from the regex match offsets, keeping
-    char-based offset alignment with the rest of the pipeline.
-    """
-
-    # Aligned with gliner.data_processing.tokenizer.WhitespaceTokenSplitter
-    _GLINER_WHITESPACE_PATTERN = re.compile(r"\w+(?:[-_]\w+)*|\S")
-
-    def __init__(
-        self,
-        chunk_size: int,
-        overlap: int,
-        logger: Optional[logging.Logger] = None,
-    ) -> None:
-        if chunk_size <= overlap:
-            raise ValueError(
-                f"chunk_size ({chunk_size}) must be greater than overlap ({overlap})"
-            )
-        if chunk_size <= 0:
-            raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
-
-        self._chunk_size = chunk_size
-        self._overlap = overlap
-        self._stride = chunk_size - overlap
-        self._logger = logger or logging.getLogger(__name__)
-
-        self._logger.info(
-            "WhitespaceWordWindowChunker initialized: "
-            f"chunk_size={chunk_size} (whitespace tokens), overlap={overlap}, "
-            "aligned with GLiNER WhitespaceTokenSplitter"
-        )
-
-    def chunk_text(self, text: str) -> List[ChunkResult]:
-        """Split ``text`` into windows bounded by GLiNER-aligned token counts."""
-        if not text:
-            return []
-
-        token_spans: List[Tuple[int, int]] = [
-            (m.start(), m.end())
-            for m in self._GLINER_WHITESPACE_PATTERN.finditer(text)
-        ]
-        if not token_spans:
-            return []
-
-        total = len(token_spans)
-        if total <= self._chunk_size:
-            start_char = token_spans[0][0]
-            end_char = token_spans[-1][1]
-            return [ChunkResult(
-                text=text[start_char:end_char],
-                start=start_char,
-                end=end_char,
-                token_count=total,
-            )]
-
-        chunks: List[ChunkResult] = []
-        i = 0
-        while i < total:
-            j = min(i + self._chunk_size, total)
-            start_char = token_spans[i][0]
-            end_char = token_spans[j - 1][1]
-            chunks.append(ChunkResult(
-                text=text[start_char:end_char],
-                start=start_char,
-                end=end_char,
-                token_count=j - i,
-            ))
-            if j >= total:
-                break
-            i += self._stride
-        return chunks
-
-    def get_chunk_info(self) -> dict:
-        return {
-            "chunk_size": self._chunk_size,
-            "overlap": self._overlap,
-            "library": "gliner-aligned-whitespace",
-            "available": True,
-        }
-
-
-class GlinerSubwordChunker:
-    """
-    Token-aware chunker aligned with GLiNER's actual subword tokenizer.
-
-    GLiNER's max_len (e.g. 384) applies to the **subword tokens** produced by its
-    HuggingFace tokenizer (DeBERTa for ``nvidia/gliner-PII``), not to whitespace
-    tokens. On accent-rich / contraction-rich French text, 380 whitespace tokens
-    can correspond to 600+ subword tokens, causing GLiNER to silently truncate.
-
-    This chunker uses ``semchunk.chunkerify(tokenizer, chunk_size)`` so the chunk
-    size is measured in the same unit GLiNER consumes, with native ``overlap``
-    support and exact char-offset return (``chunks[i] == text[off[i][0]:off[i][1]]``).
-    """
-
-    def __init__(
-        self,
-        tokenizer: Any,
-        chunk_size: int,
-        overlap: int,
-        logger: Optional[logging.Logger] = None,
-    ) -> None:
-        if not SEMCHUNK_AVAILABLE:
-            raise ImportError(
-                "semchunk library is required for GlinerSubwordChunker. "
-                "Install it with: pip install semchunk>=2.2.0"
-            )
-        if chunk_size <= 0:
-            raise ValueError(f"chunk_size ({chunk_size}) must be > 0")
-        if overlap < 0:
-            raise ValueError(f"overlap ({overlap}) must be >= 0")
-        if overlap >= chunk_size:
-            raise ValueError(
-                f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
-            )
-
-        self._tokenizer = tokenizer
-        self._chunk_size = chunk_size
-        self._overlap = overlap
-        self._logger = logger or logging.getLogger(__name__)
-
-        # semchunk.chunkerify accepts a HF tokenizer, a model name, or a callable.
-        # The returned chunker is reusable and memoized.
-        self._chunker = semchunk.chunkerify(tokenizer, chunk_size)
-
-        self._logger.info(
-            "GlinerSubwordChunker initialized: chunk_size=%d (subword tokens), "
-            "overlap=%d, tokenizer=%s",
-            chunk_size,
-            overlap,
-            type(tokenizer).__name__,
-        )
-
-    def chunk_text(self, text: str) -> List[ChunkResult]:
-        """Split ``text`` into chunks bounded by ``chunk_size`` subword tokens."""
-        if not text:
-            return []
-
-        # semchunk returns (chunks, offsets) with offsets=True; offsets is a list
-        # of (start, end) char positions guaranteeing chunks[i] == text[s:e].
-        # The overlap parameter is supported natively since semchunk 2.2.
-        try:
-            chunks, offsets = self._chunker(
-                text,
-                offsets=True,
-                overlap=self._overlap if self._overlap > 0 else None,
-            )
-        except TypeError:
-            # Older semchunk without overlap kwarg: fall back to no-overlap call.
-            chunks, offsets = self._chunker(text, offsets=True)
-            self._logger.warning(
-                "Installed semchunk does not support overlap kwarg; "
-                "running without overlap (chunks=%d)",
-                len(chunks),
-            )
-
-        results: List[ChunkResult] = []
-        for chunk_text, (start, end) in zip(chunks, offsets):
-            # Encode without special tokens to match how the chunk size is
-            # measured by semchunk (raw subword token count). Lets predict_chunked
-            # log accurate token coverage instead of falling back to 0.
-            try:
-                token_count = len(self._tokenizer.encode(chunk_text, add_special_tokens=False))
-            except Exception:
-                token_count = None
-            results.append(ChunkResult(
-                text=chunk_text,
-                start=int(start),
-                end=int(end),
-                token_count=token_count,
-            ))
-
-        self._logger.debug(
-            "GlinerSubwordChunker: %d chars -> %d chunks (chunk_size=%d, overlap=%d)",
-            len(text), len(results), self._chunk_size, self._overlap,
-        )
-        return results
-
-    def get_chunk_info(self) -> dict:
-        return {
-            "chunk_size": self._chunk_size,
-            "overlap": self._overlap,
-            "library": "semchunk",
-            "available": SEMCHUNK_AVAILABLE,
-            "tokenizer": type(self._tokenizer).__name__,
         }
 
 
@@ -572,51 +231,3 @@ class MinistralTokenChunker:
             "available": True,
             "tokenizer": type(self._tokenizer).__name__,
         }
-
-
-def create_chunker(
-    tokenizer: Optional[Any] = None,
-    chunk_size: int = 378,
-    overlap: int = 50,
-    use_semantic: bool = False,
-    logger: Optional[logging.Logger] = None
-) -> Any:
-    """
-    Factory function to create appropriate chunker.
-
-    Args:
-        tokenizer: HuggingFace tokenizer (required for semantic chunking)
-        chunk_size: Maximum tokens per chunk (default: 378 for GLiNER)
-        overlap: Number of tokens to overlap (default: 50)
-        use_semantic: Use semantic chunking (default: False, semchunk doesn't support overlap)
-        logger: Optional logger instance
-
-    Returns:
-        SemanticTextChunker or FallbackChunker instance
-
-    Note:
-        Character-based chunking is preferred because:
-        1. It properly supports overlap for context continuity
-        2. It has been tested and works well with GLiNER PII detection
-        3. semchunk library doesn't support overlap parameter
-    """
-    logger = logger or logging.getLogger(__name__)
-
-    # Use semantic chunking only if explicitly requested AND overlap is 0
-    # (semchunk doesn't support overlap)
-    if use_semantic and SEMCHUNK_AVAILABLE and tokenizer is not None and overlap == 0:
-        try:
-            return SemanticTextChunker(
-                tokenizer=tokenizer,
-                chunk_size=chunk_size,
-                overlap=overlap,
-                logger=logger
-            )
-        except Exception as e:
-            logger.warning(f"Failed to create semantic chunker: {e}, using character-based")
-
-    return FallbackChunker(
-        chunk_size=chunk_size,
-        overlap=overlap,
-        logger=logger
-    )

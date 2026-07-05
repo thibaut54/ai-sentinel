@@ -1,6 +1,6 @@
 -- Create PII Type Configuration Table
 -- This table stores per-PII-type configuration (enable/disable and thresholds)
--- for each detector (GLiNER, Presidio, Regex)
+-- for each detector (Presidio, Regex)
 
 CREATE TABLE IF NOT EXISTS pii_type_config
 (
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS pii_type_config
     updated_by    VARCHAR(255)             NOT NULL DEFAULT 'system',
     CONSTRAINT unique_type_detector UNIQUE (pii_type, detector),
     CONSTRAINT check_threshold CHECK (threshold >= 0.0 AND threshold <= 1.0),
-    CONSTRAINT check_detector CHECK (detector IN ('GLINER', 'PRESIDIO', 'REGEX'))
+    CONSTRAINT check_detector CHECK (detector IN ('PRESIDIO', 'REGEX'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_pii_type_config_detector ON pii_type_config (detector);

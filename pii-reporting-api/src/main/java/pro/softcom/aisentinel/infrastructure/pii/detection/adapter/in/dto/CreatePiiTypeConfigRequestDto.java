@@ -5,15 +5,9 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for creating a new PII type configuration (custom label).
- *
- * @param detectorDescription Optional GLiNER2 inference description (only
- *        relevant for {@code GLINER2} rows).
- * @param llmJudgeEnabled Optional per-type LLM-as-Judge toggle. When
- *        {@code null} (field omitted) it defaults to {@code true}.
  */
 public record CreatePiiTypeConfigRequestDto(
         @NotBlank(message = "PII type cannot be blank")
@@ -37,21 +31,9 @@ public record CreatePiiTypeConfigRequestDto(
 
         String detectorLabel,
 
-        @Size(max = 2000, message = "Detector description must be at most 2000 characters")
-        String detectorDescription,
-
         String countryCode,
 
         @Pattern(regexp = "^(HIGH|MEDIUM|LOW)$", message = "Severity must be HIGH, MEDIUM, or LOW")
-        String severity,
-
-        Boolean llmJudgeEnabled
+        String severity
 ) {
-    /**
-     * Returns the {@code llmJudgeEnabled} flag value with a {@code true} default
-     * when the client omits the field.
-     */
-    public boolean llmJudgeEnabledOrDefault() {
-        return llmJudgeEnabled == null || llmJudgeEnabled;
-    }
 }

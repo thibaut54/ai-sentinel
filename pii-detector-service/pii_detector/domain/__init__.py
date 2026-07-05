@@ -18,7 +18,6 @@ from .exception.exceptions import (
 from .port.pii_detector_protocol import PIIDetectorProtocol
 # Import and re-export domain services (pure business logic)
 from .service.detection_merger import DetectionMerger
-from .service.entity_processor import EntityProcessor
 
 __all__ = [
     # ===== ENTITIES =====
@@ -30,7 +29,6 @@ __all__ = [
 
     # ===== DOMAIN SERVICES =====
     "DetectionMerger",
-    "EntityProcessor",
 
     # ===== EXCEPTIONS =====
     "PIIDetectionError",

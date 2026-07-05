@@ -67,43 +67,22 @@ public class PiiDetectionConfigController {
     @Operation(summary = "Update PII detection configuration")
     public ResponseEntity<@NonNull PiiDetectionConfigResponseDto> updateConfig(
             @Valid @RequestBody UpdatePiiDetectionConfigRequestDto request) {
-        
-        // The global llmJudgeEnabled guard is derived server-side as the OR of the five
-        // per-detector judge flags. Any incoming llmJudgeEnabled value is ignored so the
-        // Python detector service always sees a consistent global gate.
-        boolean derivedLlmJudgeEnabled = PiiDetectionConfig.computeGlobalLlmJudgeEnabled(
-                request.glinerJudgeEnabledOrDefault(),
-                request.presidioJudgeEnabledOrDefault(),
-                request.regexJudgeEnabledOrDefault(),
-                request.openmedJudgeEnabledOrDefault(),
-                request.gliner2JudgeEnabledOrDefault());
 
-        log.info("PUT /api/v1/pii-detection/config - Updating configuration: gliner={}, " +
-                "presidio={}, regex={}, openmed={}, gliner2={}, threshold={}, llmJudgeEnabled={}, postfilterEnabled={}",
-                request.glinerEnabled(), request.presidioEnabled(),
-                request.regexEnabled(), request.openmedEnabled(), request.gliner2Enabled(),
-                request.defaultThreshold(), derivedLlmJudgeEnabled, request.postfilterEnabledOrDefault());
+        log.info("PUT /api/v1/pii-detection/config - Updating configuration: " +
+                "presidio={}, regex={}, ministral={}, threshold={}, postfilterEnabled={}",
+                request.presidioEnabled(), request.regexEnabled(), request.ministralEnabled(),
+                request.defaultThreshold(), request.postfilterEnabledOrDefault());
 
         try {
             String updatedBy = ADMIN_USERNAME;
 
             UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-                request.glinerEnabled(),
                 request.presidioEnabled(),
                 request.regexEnabled(),
-                request.openmedEnabled(),
-                request.gliner2Enabled(),
                 request.ministralEnabled(),
                 request.ministralChunkSizeOrDefault(),
                 request.ministralOverlapOrDefault(),
                 request.defaultThreshold(),
-                request.nbOfLabelByPass(),
-                derivedLlmJudgeEnabled,
-                request.glinerJudgeEnabledOrDefault(),
-                request.presidioJudgeEnabledOrDefault(),
-                request.regexJudgeEnabledOrDefault(),
-                request.openmedJudgeEnabledOrDefault(),
-                request.gliner2JudgeEnabledOrDefault(),
                 request.postfilterEnabledOrDefault(),
                 updatedBy
             );
@@ -129,22 +108,12 @@ public class PiiDetectionConfigController {
      */
     private PiiDetectionConfigResponseDto toResponseDto(PiiDetectionConfig config) {
         return new PiiDetectionConfigResponseDto(
-            config.glinerEnabled(),
             config.presidioEnabled(),
             config.regexEnabled(),
-            config.openmedEnabled(),
-            config.gliner2Enabled(),
             config.ministralEnabled(),
             config.ministralChunkSize(),
             config.ministralOverlap(),
             config.defaultThreshold(),
-            config.nbOfLabelByPass(),
-            config.llmJudgeEnabled(),
-            config.glinerJudgeEnabled(),
-            config.presidioJudgeEnabled(),
-            config.regexJudgeEnabled(),
-            config.openmedJudgeEnabled(),
-            config.gliner2JudgeEnabled(),
             config.postfilterEnabled(),
             config.updatedAt(),
             config.updatedBy()

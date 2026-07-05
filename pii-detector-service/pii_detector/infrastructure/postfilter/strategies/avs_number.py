@@ -16,8 +16,9 @@ Ground truth (research §1): ``756.9217.0769.85`` valid (PASS),
 (reject).
 
 Measured on the reference corpus (``data-analysis.md``): 0/5 false positives
-caught -- the 5 discards all carry a valid EAN-13 key, the judge rejected them
-for the wrong reason (it expects a 9-digit AVS). The 13/1034 finding collisions
+caught -- the 5 discards all carry a valid EAN-13 key and were flagged as false
+positives for the wrong reason (a 9-digit AVS format was expected). The 13/1034
+finding collisions
 are synthetic test AVS (``756.1234.1234.12``), not real numbers. 0 real FP gain
 on this corpus; kept for consistency and prod protection against a malformed
 AVS-13.

@@ -2,8 +2,7 @@
 
 This module exposes :class:`FormatPrefilterValidator`, an implementation of
 the :class:`~pii_detector.domain.port.pii_post_filter_protocol.PIIPostFilterProtocol`
-that runs as the **final precision stage** of the detection pipeline (the
-LLM-as-judge is retired now that the primary detector is itself an LLM). It
+that runs as the **final precision stage** of the detection pipeline. It
 rejects only deterministic false positives, in two passes:
 
 1. a **cross-label technical-artifact denylist**
@@ -14,19 +13,17 @@ rejects only deterministic false positives, in two passes:
 2. the **per-``pii_type`` strategies** in :mod:`registry` that drop
    mechanically-impossible findings (positive checksum / parse failures).
 
-Key design points (mirrors :mod:`llm_validator` so the gRPC plumbing is
-reused unchanged):
+Key design points:
 
 - **Fail-open absolute**: a non-canonical value, an unmapped ``pii_type``, or
   any exception raised by a strategy keeps the entity (recall preserved at all
   costs -- see ``data-analysis.md``).
-- **Shared discard channel**: :meth:`filter_with_verdicts` returns the same
-  ``(kept, rejections)`` shape as
-  :meth:`LLMJudgeValidator.filter_with_verdicts`, so
-  ``_add_discarded_entities_to_response`` serialises post-filter rejections
-  without any change. Each rejection carries a :class:`_PrefilterVerdict`
-  duck-typed on :class:`PiiVerdict` (``.verdict`` / ``.confidence`` /
-  ``.reason``).
+- **Shared discard channel**: :meth:`filter_with_verdicts` returns a
+  ``(kept, rejections)`` shape that ``_add_discarded_entities_to_response``
+  already knows how to serialise (the proto verdict fields keep their
+  historical ``judge_*`` names but carry the post-filter verdict). Each
+  rejection carries a :class:`_PostfilterVerdict` (``.verdict`` /
+  ``.confidence`` / ``.reason``).
 - **No HTTP / no model**: the filter is purely deterministic, so there is no
   network call, no thread-pool, and no lifecycle to shut down.
 
@@ -80,7 +77,7 @@ def _normalize_pii_type(pii_type) -> str:
 
     Reimplements the gRPC ``_normalize_pii_type_for_grpc`` rule locally so the
     infrastructure pre-filter never imports the inbound gRPC adapter. Free-text
-    GLiNER2 labels (``card number``) become ``CARD_NUMBER``.
+    Ministral passthrough labels (``card number``) become ``CARD_NUMBER``.
     """
     if pii_type is None or pii_type == "":
         return "UNKNOWN"
@@ -159,11 +156,10 @@ class FormatPostfilterValidator(PIIPostFilterProtocol):
     ) -> Tuple[List[PIIEntity], List[Tuple[PIIEntity, _PostfilterVerdict]]]:
         """Filter entities and also return the rejected ones with verdicts.
 
-        Same ``(kept, rejections)`` contract as
-        :meth:`LLMJudgeValidator.filter_with_verdicts`: ``kept`` preserves the
-        original ordering and ``rejections`` lists each discarded entity with
-        the ``FALSE_POSITIVE`` verdict that motivated the rejection. Entities
-        kept by fail-open never appear in ``rejections``.
+        Returns a ``(kept, rejections)`` pair: ``kept`` preserves the original
+        ordering and ``rejections`` lists each discarded entity with the
+        ``FALSE_POSITIVE`` verdict that motivated the rejection. Entities kept
+        by fail-open never appear in ``rejections``.
         """
         kept: List[PIIEntity] = []
         rejections: List[Tuple[PIIEntity, _PostfilterVerdict]] = []

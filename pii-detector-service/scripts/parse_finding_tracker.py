@@ -4,16 +4,10 @@ et imprime un tableau de bisection.
 
 Logs instrumentes (couvre 100% des etapes ou le compteur de findings change) :
 
-    multi_pass_gliner_detector.py :
-        MULTIPASS_RAW                    count=N
-        MULTIPASS_AFTER_AGGREGATE        in=N out=M dropped=K
-        MULTIPASS_AFTER_CONFLICT         in=N out=M dropped=K
-        MULTIPASS_AFTER_OVERLAP          in=N out=M dropped=K
-
     composite_detector.py :
-        COMPOSITE_ML_RAW                 count=N
         COMPOSITE_REGEX_RAW              count=N
         COMPOSITE_PRESIDIO_RAW           count=N
+        COMPOSITE_MINISTRAL_RAW          count=N
         COMPOSITE_AFTER_MERGE            in=N out=M dropped=K
 
     detection_merger.py :
@@ -57,13 +51,9 @@ PATTERN = re.compile(
 
 # Ordre canonique d'affichage (du debut a la fin du pipeline)
 CANONICAL_ORDER = [
-    "MULTIPASS_RAW",
-    "MULTIPASS_AFTER_AGGREGATE",
-    "MULTIPASS_AFTER_CONFLICT",
-    "MULTIPASS_AFTER_OVERLAP",
-    "COMPOSITE_ML_RAW",
     "COMPOSITE_REGEX_RAW",
     "COMPOSITE_PRESIDIO_RAW",
+    "COMPOSITE_MINISTRAL_RAW",
     "COMPOSITE_AFTER_MERGE",
     "MERGER_AFTER_DEDUP",
     "MERGER_AFTER_OVERLAP",

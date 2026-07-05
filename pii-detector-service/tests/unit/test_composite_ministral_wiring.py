@@ -5,23 +5,13 @@ Guards the ensemble contract for the Ministral-PII detector:
 - ``detect_pii(enable_ministral=True)`` triggers Ministral, ``False`` skips it;
 - a Ministral branch failure degrades silently (does not break the request);
 - REGRESSION: the operator-configured ``ministral_chunk_size`` / ``ministral_overlap``
-  actually reach the detector, and the GLiNER multi-pass ``chunk_size``
-  (nb_of_label_by_pass) is NEVER leaked into the Ministral chunking knobs.
+  actually reach the detector.
 """
 from __future__ import annotations
-
-from unittest.mock import MagicMock
 
 from pii_detector.application.orchestration.composite_detector import CompositePIIDetector
 from pii_detector.domain.entity.detector_source import DetectorSource
 from pii_detector.domain.entity.pii_entity import PIIEntity
-
-
-def _stub_ml_detector(entities=None) -> MagicMock:
-    detector = MagicMock()
-    detector.model_id = "stub-ml"
-    detector.detect_pii.return_value = entities or []
-    return detector
 
 
 class _RecordingMinistralDetector:
@@ -74,7 +64,6 @@ class TestCompositeMinistralSlot:
     def test_Should_AcceptMinistralDetector_When_PassedAtConstruction(self):
         ministral = _RecordingMinistralDetector()
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=ministral,
             enable_regex=False,
             enable_presidio=False,
@@ -85,7 +74,6 @@ class TestCompositeMinistralSlot:
 
     def test_Should_DisableMinistral_When_DetectorIsNoneEvenIfEnableTrue(self):
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=None,
             enable_regex=False,
             enable_presidio=False,
@@ -96,7 +84,6 @@ class TestCompositeMinistralSlot:
     def test_Should_CallMinistralDetector_When_RuntimeFlagTrue(self):
         ministral = _RecordingMinistralDetector(entities=[_ministral_entity()])
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=ministral,
             enable_regex=False,
             enable_presidio=False,
@@ -105,7 +92,6 @@ class TestCompositeMinistralSlot:
 
         result = composite.detect_pii(
             "jane@example.com",
-            enable_ml=False,
             enable_regex=False,
             enable_presidio=False,
             enable_ministral=True,
@@ -116,7 +102,6 @@ class TestCompositeMinistralSlot:
     def test_Should_SkipMinistral_When_RuntimeFlagFalse(self):
         ministral = _RecordingMinistralDetector(entities=[_ministral_entity()])
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=ministral,
             enable_regex=False,
             enable_presidio=False,
@@ -125,7 +110,6 @@ class TestCompositeMinistralSlot:
 
         composite.detect_pii(
             "jane@example.com",
-            enable_ml=False,
             enable_regex=False,
             enable_presidio=False,
             enable_ministral=False,
@@ -136,7 +120,6 @@ class TestCompositeMinistralSlot:
     def test_Should_DegradeSilently_When_MinistralRaises(self):
         ministral = _RecordingMinistralDetector(raises=RuntimeError("endpoint down"))
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=ministral,
             enable_regex=False,
             enable_presidio=False,
@@ -145,7 +128,6 @@ class TestCompositeMinistralSlot:
 
         result = composite.detect_pii(
             "jane@example.com",
-            enable_ml=False,
             enable_regex=False,
             enable_presidio=False,
             enable_ministral=True,
@@ -154,13 +136,11 @@ class TestCompositeMinistralSlot:
 
 
 class TestMinistralChunkKnobWiring:
-    """REGRESSION: dedicated ministral chunk knobs must reach the detector and
-    the GLiNER multi-pass chunk_size must never leak into them."""
+    """REGRESSION: dedicated ministral chunk knobs must reach the detector."""
 
-    def _run(self, *, chunk_size, ministral_chunk_size, ministral_overlap):
+    def _run(self, *, ministral_chunk_size, ministral_overlap):
         ministral = _RecordingMinistralDetector()
         composite = CompositePIIDetector(
-            ml_detector=_stub_ml_detector(),
             ministral_detector=ministral,
             enable_regex=False,
             enable_presidio=False,
@@ -168,25 +148,15 @@ class TestMinistralChunkKnobWiring:
         )
         composite.detect_pii(
             "some text with PII",
-            enable_ml=False,
             enable_regex=False,
             enable_presidio=False,
             enable_ministral=True,
-            chunk_size=chunk_size,
             ministral_chunk_size=ministral_chunk_size,
             ministral_overlap=ministral_overlap,
         )
         return ministral.received
 
     def test_Should_ForwardDedicatedKnobs_When_Provided(self):
-        received = self._run(chunk_size=35, ministral_chunk_size=1024, ministral_overlap=128)
+        received = self._run(ministral_chunk_size=1024, ministral_overlap=128)
         assert received["chunk_size"] == 1024
         assert received["overlap"] == 128
-
-    def test_Should_NotLeakGlinerChunkSize_When_DedicatedKnobsAbsent(self):
-        # The shared GLiNER nb_of_label_by_pass (=35) must NOT become the
-        # Ministral token chunk size; absent dedicated values, the detector
-        # receives None and falls back to its own token defaults.
-        received = self._run(chunk_size=35, ministral_chunk_size=None, ministral_overlap=None)
-        assert received["chunk_size"] is None
-        assert received["overlap"] is None

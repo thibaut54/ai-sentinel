@@ -73,7 +73,7 @@ public class FetchSpaceUpdateInfoUseCase implements ConfluenceSpaceUpdateInfoPor
         Optional<Instant> lastScanDate = findLastScanDate(spaceKey);
 
         if (lastScanDate.isEmpty()) {
-            log.info("No completed scan found for space {}", spaceKey);
+            log.debug("No completed scan found for space {}", spaceKey);
             return CompletableFuture.completedFuture(
                 SpaceUpdateInfo.noScanYet(spaceKey, spaceName, null)
             );

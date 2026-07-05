@@ -1,8 +1,8 @@
 {
-  "_comment": "Source of truth: pii-reporting-api/src/main/resources/data.sql (detector='GLINER' AND enabled=true). See docs/gliner-enabled-pii.md. Keep this file in sync manually.",
+  "_comment": "Source of truth: pii-reporting-api/src/main/resources/data.sql. Keep this file in sync manually.",
   "project": {
     "name": "ai-sentinel-pii-eval",
-    "description": "PII annotation project for AI Sentinel evaluation. Labels mirror data.sql GLiNER-enabled types (30 entries). See docs/gliner-enabled-pii.md.",
+    "description": "PII annotation project for AI Sentinel evaluation.",
     "project_type": "SequenceLabeling"
   },
   "category_colors": {

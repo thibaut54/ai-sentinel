@@ -25,7 +25,7 @@ public class ArmeriaPiiGrpcClientConfiguration {
      * Applies response/connect timeouts from configuration to avoid default 15s deadline.
      *
      * <p>Long-running RPCs (e.g. PII detection on 100k-char Excel sheets that take
-     * 200+ seconds of GLiNER multipass + Presidio + OpenMed) used to fail with
+     * 200+ seconds of Ministral + Presidio + Regex) used to fail with
      * {@code com.linecorp.armeria.common.ClosedSessionException} wrapped as a
      * {@code grpc UNKNOWN}. Cause: Armeria's default {@code idleTimeoutMillis}
      * (10s) and {@code pingIntervalMillis} (0 = disabled) close the HTTP/2

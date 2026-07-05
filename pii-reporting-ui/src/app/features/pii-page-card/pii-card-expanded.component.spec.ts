@@ -61,10 +61,10 @@ const MOCK_ITEM: PersonallyIdentifiableInformationScanResult = {
   severity: 'high',
   piiTypeSummary: { EMAIL: 3, IBAN: 1 },
   detectedPersonallyIdentifiableInformationList: [
-    { startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER', maskedContext: 'user@***' },
-    { startPosition: 20, endPosition: 30, piiTypeLabel: 'EMAIL', confidence: 0.95, source: 'GLINER', maskedContext: 'admin@***' },
+    { startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'PRESIDIO', maskedContext: 'user@***' },
+    { startPosition: 20, endPosition: 30, piiTypeLabel: 'EMAIL', confidence: 0.95, source: 'PRESIDIO', maskedContext: 'admin@***' },
     { startPosition: 40, endPosition: 50, piiTypeLabel: 'EMAIL', confidence: 0.9, source: 'PRESIDIO', maskedContext: 'test@***' },
-    { startPosition: 60, endPosition: 70, piiTypeLabel: 'IBAN', confidence: 0.88, source: 'GLINER', maskedContext: 'CH*** ****' },
+    { startPosition: 60, endPosition: 70, piiTypeLabel: 'IBAN', confidence: 0.88, source: 'PRESIDIO', maskedContext: 'CH*** ****' },
   ],
 };
 
@@ -201,7 +201,7 @@ describe('PiiCardExpandedComponent', () => {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
         {
-          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER',
+          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'PRESIDIO',
           maskedContext: 'Contact: [EMAIL] for info',
           sensitiveValue: 'user@example.com',
           sensitiveContext: 'Contact: user@example.com for info',
@@ -229,7 +229,7 @@ describe('PiiCardExpandedComponent', () => {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
         {
-          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'GLINER',
+          startPosition: 0, endPosition: 10, piiTypeLabel: 'EMAIL', confidence: 1, source: 'PRESIDIO',
           maskedContext: 'user@***',
           sensitiveValue: 'user@example.com',
         },
@@ -384,7 +384,7 @@ describe('PiiCardExpandedComponent', () => {
     const item: PersonallyIdentifiableInformationScanResult = {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
-        { startPosition: 0, endPosition: 5, piiTypeLabel: 'piiType.EMAIL', confidence: 0.5, source: 'GLINER', maskedContext: '***' },
+        { startPosition: 0, endPosition: 5, piiTypeLabel: 'piiType.EMAIL', confidence: 0.5, source: 'PRESIDIO', maskedContext: '***' },
       ],
     };
     const component = createComponent(item);
@@ -396,7 +396,7 @@ describe('PiiCardExpandedComponent', () => {
     const item: PersonallyIdentifiableInformationScanResult = {
       ...MOCK_ITEM,
       detectedPersonallyIdentifiableInformationList: [
-        { startPosition: 0, endPosition: 5, piiTypeLabel: 'EMAIL', confidence: 0.5, source: 'GLINER', maskedContext: 'Contact: [EMAIL] now' },
+        { startPosition: 0, endPosition: 5, piiTypeLabel: 'EMAIL', confidence: 0.5, source: 'PRESIDIO', maskedContext: 'Contact: [EMAIL] now' },
       ],
     };
     const component = createComponent(item);

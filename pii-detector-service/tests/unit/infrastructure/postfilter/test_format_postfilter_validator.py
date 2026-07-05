@@ -34,7 +34,7 @@ def _entity(text: str, pii_type: str) -> PIIEntity:
         start=0,
         end=len(text),
         score=0.9,
-        source=DetectorSource.GLINER,
+        source=DetectorSource.MINISTRAL,
     )
 
 
@@ -75,7 +75,7 @@ class TestFilterWithVerdicts:
         assert "parse failed" in verdict.reason
 
     def test_should_normalise_freetext_label_to_registry_key(self) -> None:
-        # GLiNER2 free-text label "ip address" -> normalised "IP_ADDRESS".
+        # free-text label "ip address" -> normalised "IP_ADDRESS".
         validator = FormatPostfilterValidator()
         fake_ip = _entity("0.244.999.7", "ip address")
         kept, rejections = validator.filter_with_verdicts("text", [fake_ip])

@@ -31,8 +31,8 @@ from pii_detector.infrastructure.postfilter.strategies.swiss_uid import (
 _GO_STRATEGIES = (IpAddressStrategy(), MacAddressStrategy(), IbanStrategy())
 
 # v2 (PRUDENCE, data-analysis.md): safe checksum strategies with 0 real FP gain
-# on the reference corpus (CARD 3/21 FP, AVS 0/5 FP -- valid checksums the judge
-# mis-rejects), kept for prod protection. Never counted in the FP ROI.
+# on the reference corpus (CARD 3/21 FP, AVS 0/5 FP -- valid checksums, not real
+# false positives), kept for prod protection. Never counted in the FP ROI.
 _card_number = CardNumberStrategy()
 _avs_number = AvsNumberStrategy()
 _PRUDENCE_STRATEGIES = (_card_number, _avs_number)
@@ -54,7 +54,7 @@ _swiss_uid = SwissUidStrategy()
 STRATEGIES = {s.pii_type: s for s in _GO_STRATEGIES + _PRUDENCE_STRATEGIES}
 STRATEGIES["TAX_ID"] = _swiss_uid
 # -- v2b aliases: same instance reused under a second registry key ----------
-STRATEGIES["TAX_NUMBER"] = _swiss_uid  # Swiss UID under its other GLiNER2 label
+STRATEGIES["TAX_NUMBER"] = _swiss_uid  # Swiss UID under its other pii_type label
 STRATEGIES["PAYMENT_CARD"] = _card_number  # alias of CARD_NUMBER (Luhn 13-19)
 STRATEGIES["NATIONAL_ID_NUMBER"] = _avs_number  # alias of AVS_NUMBER (756/EAN-13)
 

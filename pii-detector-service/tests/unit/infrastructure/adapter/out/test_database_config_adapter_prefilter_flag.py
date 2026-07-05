@@ -1,9 +1,8 @@
 """Tests for the ``postfilter_enabled`` flag in
 :class:`DatabaseConfigAdapter.fetch_config`.
 
-These tests focus narrowly on the new column added for the deterministic
-format pre-filter (PLAN.md section 1.7), mirroring the ``llm_judge_enabled``
-flag tests:
+These tests focus narrowly on the ``postfilter_enabled`` column added for the
+deterministic format pre-filter (PLAN.md section 1.7):
 
 - Normal path returning the flag from the row.
 - Defensive fallback when the column is missing (migration not yet
@@ -31,27 +30,19 @@ from pii_detector.infrastructure.adapter.out.database_config_adapter import (
 
 def _row(
     *,
-    gliner: bool = True,
     presidio: bool = True,
     regex: bool = False,
-    openmed: bool = False,
-    gliner2: bool = False,
     threshold: float = 0.5,
-    chunk_size: int = 10,
-    llm_judge: Any = False,
     postfilter: Any = False,
 ) -> Dict[str, Any]:
-    # Mirrors what a RealDictCursor returns for the main SELECT (openmed /
-    # gliner2 are COALESCEd to FALSE there, so they are always present).
+    # Mirrors what a RealDictCursor returns for the main SELECT.
     return {
-        "gliner_enabled": gliner,
         "presidio_enabled": presidio,
         "regex_enabled": regex,
-        "openmed_enabled": openmed,
-        "gliner2_enabled": gliner2,
+        "ministral_enabled": False,
+        "ministral_chunk_size": 2048,
+        "ministral_overlap": 410,
         "default_threshold": threshold,
-        "nb_of_label_by_pass": chunk_size,
-        "llm_judge_enabled": llm_judge,
         "postfilter_enabled": postfilter,
     }
 
@@ -112,13 +103,9 @@ class TestFetchConfigPrefilterFlag:
             "column postfilter_enabled does not exist"
         )
         fallback_row = {
-            "gliner_enabled": True,
             "presidio_enabled": True,
             "regex_enabled": False,
-            "openmed_enabled": False,
-            "gliner2_enabled": False,
             "default_threshold": 0.5,
-            "nb_of_label_by_pass": 10,
         }
         with _patched_adapter(
             fetchone_results=[fallback_row],

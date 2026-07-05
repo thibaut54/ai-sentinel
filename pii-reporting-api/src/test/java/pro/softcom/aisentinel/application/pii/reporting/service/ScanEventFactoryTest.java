@@ -223,7 +223,7 @@ class ScanEventFactoryTest {
             int end = start + "john@example.com".length();
             ContentPiiDetection.SensitiveData sensitiveData = new ContentPiiDetection.SensitiveData(
                     "EMAIL", "Email", "john@example.com", null, start, end, 0.95,
-                    null, ContentPiiDetection.DetectorSource.GLINER
+                    null, ContentPiiDetection.DetectorSource.MINISTRAL
             );
             ContentPiiDetection detection = ContentPiiDetection.builder()
                     .pageId("p6")
@@ -257,7 +257,7 @@ class ScanEventFactoryTest {
             );
             ContentPiiDetection.SensitiveData emailData = new ContentPiiDetection.SensitiveData(
                     "EMAIL", "Email", "john@example.com", null, 27, 43, 0.95,
-                    null, ContentPiiDetection.DetectorSource.GLINER
+                    null, ContentPiiDetection.DetectorSource.MINISTRAL
             );
             ContentPiiDetection detection = ContentPiiDetection.builder()
                     .pageId("p7")

@@ -53,9 +53,9 @@ class ScanSpaceStatsPersistenceAdapterTest {
     @Test
     @DisplayName("Should_DelegateDetectorAccumulation_When_AccumulateDetectorStat")
     void Should_DelegateDetectorAccumulation_When_AccumulateDetectorStat() {
-        adapter.accumulateDetectorStat(SCAN_ID, SPACE_KEY, "GLINER2", 520L, 1000L, 12, 0);
+        adapter.accumulateDetectorStat(SCAN_ID, SPACE_KEY, "MINISTRAL", 520L, 1000L, 12, 0);
 
-        verify(detectorStatsRepository).accumulate(SCAN_ID, SPACE_KEY, "GLINER2", 520L, 1000L, 12, 0);
+        verify(detectorStatsRepository).accumulate(SCAN_ID, SPACE_KEY, "MINISTRAL", 520L, 1000L, 12, 0);
     }
 
     @Test

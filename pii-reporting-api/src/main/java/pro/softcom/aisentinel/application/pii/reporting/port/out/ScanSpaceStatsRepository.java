@@ -79,11 +79,11 @@ public interface ScanSpaceStatsRepository {
      *
      * @param scanId    unique scan identifier
      * @param spaceKey  Confluence space key
-     * @param detector  detector identifier (e.g. GLINER2)
+     * @param detector  detector identifier (e.g. MINISTRAL)
      * @param busyMs    busy time of this detector for the request, in milliseconds
      * @param chars     characters submitted to this detector for the request
      * @param detections raw entities found by this detector for the request (or examined
-     *                   count for the JUDGE/postfilter post-filters)
+     *                   count for the POSTFILTER post-filter)
      * @param discarded  PII discarded by this stage for the request (0 for real detectors)
      */
     void accumulateDetectorStat(String scanId, String spaceKey, String detector,

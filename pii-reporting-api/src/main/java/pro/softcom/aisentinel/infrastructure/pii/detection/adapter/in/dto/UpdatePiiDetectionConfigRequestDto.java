@@ -18,37 +18,16 @@ import java.math.BigDecimal;
  *
  * <p>Validation: Ensures at least one detector is enabled and threshold is within valid range.
  *
- * @param glinerEnabled    Whether GLiNER detector should be enabled
  * @param presidioEnabled  Whether Presidio detector should be enabled
  * @param regexEnabled     Whether custom regex detector should be enabled
- * @param openmedEnabled   Whether OpenMed detector should be enabled
- * @param gliner2Enabled   Whether GLiNER2 detector should be enabled
  * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
  * @param ministralChunkSize  Sliding-window chunk size (tokens) for the Ministral-PII detector (256-4096)
  * @param ministralOverlap    Sliding-window overlap (tokens) for the Ministral-PII detector (0-512, less than the chunk size)
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
- * @param nbOfLabelByPass     Maximum labels per detector batch
- * @param llmJudgeEnabled     Deprecated/ignored: the global guard is now derived server-side
- *                            as the OR of the five per-detector judge flags. Kept optional for
- *                            backward compatibility; any incoming value is ignored.
- * @param glinerJudgeEnabled  Whether the LLM-as-Judge stage runs on GLiNER findings.
- *                            Optional: when omitted, defaults to {@code false}.
- * @param presidioJudgeEnabled Whether the LLM-as-Judge stage runs on Presidio findings.
- *                            Optional: when omitted, defaults to {@code false}.
- * @param regexJudgeEnabled   Whether the LLM-as-Judge stage runs on regex findings.
- *                            Optional: when omitted, defaults to {@code false}.
- * @param openmedJudgeEnabled Whether the LLM-as-Judge stage runs on OpenMed findings.
- *                            Optional: when omitted, defaults to {@code false}.
- * @param gliner2JudgeEnabled Whether the LLM-as-Judge stage runs on GLiNER2 findings.
- *                            Optional: when omitted, defaults to {@code false}.
- * @param postfilterEnabled    Whether the deterministic format pre-filter stage is enabled.
+ * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled.
  *                            Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
-    @JsonProperty("glinerEnabled")
-    @NotNull(message = "glinerEnabled is required")
-    Boolean glinerEnabled,
-
     @JsonProperty("presidioEnabled")
     @NotNull(message = "presidioEnabled is required")
     Boolean presidioEnabled,
@@ -56,14 +35,6 @@ public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("regexEnabled")
     @NotNull(message = "regexEnabled is required")
     Boolean regexEnabled,
-
-    @JsonProperty("openmedEnabled")
-    @NotNull(message = "openmedEnabled is required")
-    Boolean openmedEnabled,
-
-    @JsonProperty("gliner2Enabled")
-    @NotNull(message = "gliner2Enabled is required")
-    Boolean gliner2Enabled,
 
     @JsonProperty("ministralEnabled")
     @NotNull(message = "ministralEnabled is required")
@@ -86,29 +57,6 @@ public record UpdatePiiDetectionConfigRequestDto(
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")
     BigDecimal defaultThreshold,
-
-    @JsonProperty("nbOfLabelByPass")
-    @NotNull(message = "nbOfLabelByPass is required")
-    @DecimalMin(value = "1", message = "nbOfLabelByPass must be at least 1")
-    Integer nbOfLabelByPass,
-
-    @JsonProperty("llmJudgeEnabled")
-    Boolean llmJudgeEnabled,
-
-    @JsonProperty("glinerJudgeEnabled")
-    Boolean glinerJudgeEnabled,
-
-    @JsonProperty("presidioJudgeEnabled")
-    Boolean presidioJudgeEnabled,
-
-    @JsonProperty("regexJudgeEnabled")
-    Boolean regexJudgeEnabled,
-
-    @JsonProperty("openmedJudgeEnabled")
-    Boolean openmedJudgeEnabled,
-
-    @JsonProperty("gliner2JudgeEnabled")
-    Boolean gliner2JudgeEnabled,
 
     @JsonProperty("postfilterEnabled")
     Boolean postfilterEnabled
@@ -157,46 +105,6 @@ public record UpdatePiiDetectionConfigRequestDto(
     }
 
     /**
-     * Returns the {@code glinerJudgeEnabled} flag with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean glinerJudgeEnabledOrDefault() {
-        return glinerJudgeEnabled != null && glinerJudgeEnabled;
-    }
-
-    /**
-     * Returns the {@code presidioJudgeEnabled} flag with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean presidioJudgeEnabledOrDefault() {
-        return presidioJudgeEnabled != null && presidioJudgeEnabled;
-    }
-
-    /**
-     * Returns the {@code regexJudgeEnabled} flag with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean regexJudgeEnabledOrDefault() {
-        return regexJudgeEnabled != null && regexJudgeEnabled;
-    }
-
-    /**
-     * Returns the {@code openmedJudgeEnabled} flag with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean openmedJudgeEnabledOrDefault() {
-        return openmedJudgeEnabled != null && openmedJudgeEnabled;
-    }
-
-    /**
-     * Returns the {@code gliner2JudgeEnabled} flag with a {@code false} default
-     * when the client omits the field.
-     */
-    public boolean gliner2JudgeEnabledOrDefault() {
-        return gliner2JudgeEnabled != null && gliner2JudgeEnabled;
-    }
-
-    /**
      * Returns the {@code postfilterEnabled} flag value with a {@code false} default
      * when the client omits the field. Keeps the rollout zero-effect.
      */
@@ -205,17 +113,11 @@ public record UpdatePiiDetectionConfigRequestDto(
     }
 
     private boolean notAtLeastOneAnalyserEnabled(){
-        return glinerEnabled != null
-            && presidioEnabled != null
+        return presidioEnabled != null
             && regexEnabled != null
-            && openmedEnabled != null
-            && gliner2Enabled != null
             && ministralEnabled != null
-            && !glinerEnabled
             && !presidioEnabled
             && !regexEnabled
-            && !openmedEnabled
-            && !gliner2Enabled
             && !ministralEnabled;
     }
 }

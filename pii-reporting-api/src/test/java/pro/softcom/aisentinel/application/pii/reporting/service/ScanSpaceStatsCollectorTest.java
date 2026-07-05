@@ -119,14 +119,14 @@ class ScanSpaceStatsCollectorTest {
         ConfluenceContentScanResult ev = event(DetectionReportingEventType.ITEM)
             .sourceContent("1234567890")
             .detectorRunStats(List.of(
-                new DetectorRunStat(DetectorSource.GLINER2, 520L, 12, 0),
-                new DetectorRunStat(DetectorSource.JUDGE, 1_400L, 12, 4)))
+                new DetectorRunStat(DetectorSource.MINISTRAL, 520L, 12, 0),
+                new DetectorRunStat(DetectorSource.POSTFILTER, 1_400L, 12, 4)))
             .build();
 
         collector.recordEvent(ev);
 
-        verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "GLINER2", 520L, 10L, 12, 0);
-        verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "JUDGE", 1_400L, 10L, 12, 4);
+        verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "MINISTRAL", 520L, 10L, 12, 0);
+        verify(repository).accumulateDetectorStat(SCAN_ID, SPACE_KEY, "POSTFILTER", 1_400L, 10L, 12, 4);
     }
 
     @Test

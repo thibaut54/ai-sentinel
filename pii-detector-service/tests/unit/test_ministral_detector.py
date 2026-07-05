@@ -10,7 +10,7 @@ remote endpoint is contacted.
 Coverage focuses on:
 - label -> canonical pii_type mapping
 - global offset rebasing across multiple chunks
-- source == DetectorSource.MINISTRAL and judge_status default (NOT_AUDITED)
+- source == DetectorSource.MINISTRAL
 - per-chunk HTTP failure does not crash detect_pii (fail-open partial)
 - tolerant JSON-array parsing (markdown fences / surrounding prose)
 """
@@ -25,7 +25,6 @@ import httpx
 import pytest
 
 from pii_detector.domain.entity.detector_source import DetectorSource
-from pii_detector.domain.entity.judge_status import JudgeStatus
 from pii_detector.infrastructure.detector.ministral_detector import (
     MinistralDetector,
     _LabelResolver,
@@ -204,19 +203,6 @@ class TestOffsetRebasingAcrossChunks:
         assert text[by_type["PERSON"].start: by_type["PERSON"].end] == "name"
         assert text[by_type["ID"].start: by_type["ID"].end] == "id99"
         assert by_type["ID"].start == text.index("id99")
-
-
-class TestJudgeStatusDefault:
-    def test_Should_NotSetJudgeStatus_So_DefaultsToNotAudited(self):
-        detector = _build_detector(
-            [_chat_response([{"text": "john@acme.com", "label": "EMAIL"}])]
-        )
-        configs = _configs(("EMAIL", "EMAIL", 0.0))
-        entities = detector.detect_pii("john@acme.com", pii_type_configs=configs)
-        assert len(entities) == 1
-        # The detector must NOT attach judge_status (mirrors openmed/gliner2);
-        # it defaults to NOT_AUDITED in the gRPC response builder.
-        assert entities[0].get("judge_status", JudgeStatus.NOT_AUDITED) is JudgeStatus.NOT_AUDITED
 
 
 class TestFailOpenPerChunk:

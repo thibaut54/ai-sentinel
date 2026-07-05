@@ -19,9 +19,9 @@ import java.util.Map;
  * @param analysisDate timestamp when the analysis was performed
  * @param sensitiveDataFound list of detected sensitive elements on the page
  * @param statistics aggregated counters for the page (keyed by metric name)
- * @param discardedByJudge elements detected by the detectors but rejected by
- *        the LLM-as-judge post-filter (empty when the judge is disabled);
- *        exposed to measure the judge's false-positive reduction
+ * @param discardedByPostfilter elements detected by the detectors but rejected
+ *        by the precision post-filter (empty when the post-filter is disabled);
+ *        exposed to measure the post-filter's false-positive reduction
  * @param detectorRunStats per-detector execution stats for this analysis (one
  *        entry per detector that actually ran, even at zero detection); empty
  *        when the detection service does not report them
@@ -34,13 +34,13 @@ public record ContentPiiDetection(
     LocalDateTime analysisDate,
     List<SensitiveData> sensitiveDataFound,
     Map<String, Integer> statistics,
-    List<DiscardedSensitiveData> discardedByJudge,
+    List<DiscardedSensitiveData> discardedByPostfilter,
     List<DetectorRunStat> detectorRunStats
 ) {
 
     public ContentPiiDetection {
-        // Builder callers predating the judge measurement never set the field.
-        discardedByJudge = discardedByJudge == null ? List.of() : discardedByJudge;
+        // Builder callers predating the post-filter measurement never set the field.
+        discardedByPostfilter = discardedByPostfilter == null ? List.of() : discardedByPostfilter;
         // Builder callers predating detector-stats collection never set the field.
         detectorRunStats = detectorRunStats == null ? List.of() : detectorRunStats;
     }
@@ -66,6 +66,7 @@ public record ContentPiiDetection(
         PHONE_NUMBER(PHONE_NUMBER_LABEL),
         TELEPHONENUM(PHONE_NUMBER_LABEL),
         FAX("Fax"),
+        FAX_NUMBER("Numéro de fax"),
 
         // Identity
         DATE_OF_BIRTH("Date de naissance"),
@@ -83,6 +84,15 @@ public record ContentPiiDetection(
         MARITAL_STATUS("État civil"),
         EYE_COLOR("Couleur des yeux"),
         NRP("Nationalité, Religion ou Groupe Politique"),
+        TITLE("Titre de civilité"),
+        RACE("Origine raciale"),
+        ETHNICITY("Origine ethnique"),
+        RACE_ETHNICITY("Origine raciale ou ethnique"),
+        RELIGION("Religion"),
+        RELIGIOUS_BELIEF("Croyance religieuse"),
+        SEXUALITY("Orientation sexuelle"),
+        POLITICAL_VIEW("Opinion politique"),
+        LANGUAGE("Langue"),
 
         // Location
         LOCATION("Localisation"),
@@ -98,6 +108,10 @@ public record ContentPiiDetection(
         STATE("État/Province"),
         STATE_OR_REGION("Canton ou région"),
         GPS("Coordonnées GPS"),
+        BUILDING_NUMBER("Numéro de bâtiment"),
+        COUNTY("Comté ou district"),
+        POSTCODE(POSTAL_CODE_LABEL),
+        COORDINATE("Coordonnées géographiques"),
 
         // Financial
         CREDIT_CARD("Carte de crédit"),
@@ -133,6 +147,9 @@ public record ContentPiiDetection(
         INVOICE("Facture"),
         SALARY("Salaire"),
         TRANSACTION("Transaction"),
+        CREDIT_DEBIT_CARD("Carte de crédit ou de débit"),
+        BANK_ROUTING_NUMBER("Numéro de routage bancaire"),
+        SWIFT_BIC("Code BIC/SWIFT"),
 
         // Government IDs
         SSN("Numéro AVS"),
@@ -148,6 +165,9 @@ public record ContentPiiDetection(
         DRIVER_LICENSE_NUMBER("Numéro de permis de conduire"),
         DRIVERS_LICENSE_NUMBER("Numéro de permis de conduire"),
         LICENSE_NUMBER("Numéro de licence"),
+        SOCIAL_SECURITY_NUMBER("Numéro de sécurité sociale"),
+        CERTIFICATE_LICENSE_NUMBER("Numéro de certificat ou de licence"),
+        UNIQUE_ID("Identifiant unique"),
 
         // IT & Credentials
         PASSWORD("Mot de passe ou code PIN"),
@@ -168,6 +188,11 @@ public record ContentPiiDetection(
         SESSION_ID("Identifiant de session"),
         ACCOUNT_ID("Identifiant de compte"),
         SENSITIVE_ACCOUNT_ID("Identifiant de compte sensible"),
+        IPV4("Adresse IPv4"),
+        IPV6("Adresse IPv6"),
+        HTTP_COOKIE("Cookie HTTP"),
+        DEVICE_IDENTIFIER("Identifiant d'appareil"),
+        USER_NAME("Identifiant système ou compte de connexion"),
 
         // Medical/Healthcare
         MEDICAL("Information médicale"),
@@ -182,6 +207,8 @@ public record ContentPiiDetection(
         MEDICAL_RECORD_NUMBER("Numéro de dossier médical"),
         DOCTOR("Médecin"),
         HOSPITAL("Hôpital"),
+        HEALTH_PLAN_BENEFICIARY_NUMBER("Numéro de bénéficiaire d'assurance santé"),
+        BLOOD_TYPE("Groupe sanguin"),
 
         // Professional
         EMPLOYEE("Employé"),
@@ -190,6 +217,13 @@ public record ContentPiiDetection(
         DEPARTMENT("Département"),
         STUDENT("Étudiant"),
         SCHOOL("École"),
+        OCCUPATION("Profession"),
+        EMPLOYMENT_STATUS("Statut professionnel"),
+        EMPLOYEE_ID("Identifiant d'employé"),
+        EDUCATION_LEVEL("Niveau d'éducation"),
+        ORGANIZATION("Organisation"),
+        COMPANY_NAME("Nom d'entreprise"),
+        CUSTOMER_ID("Identifiant client"),
 
         // Legal
         LEGAL("Information légale"),
@@ -206,6 +240,7 @@ public record ContentPiiDetection(
         LICENSE_PLATE("Plaque d'immatriculation"),
         VIN("Numéro VIN"),
         VEHICLE_VIN("Numéro VIN"),
+        VEHICLE_IDENTIFIER("Identifiant de véhicule"),
         PROPERTY("Propriété"),
         INSURANCE("Assurance"),
 
@@ -216,6 +251,7 @@ public record ContentPiiDetection(
         IRIS("Scan iris"),
         VOICE("Empreinte vocale"),
         DNA("ADN"),
+        BIOMETRIC_IDENTIFIER("Identifiant biométrique"),
 
         // Temporal
         DATE("Date"),
@@ -285,51 +321,17 @@ public record ContentPiiDetection(
      */
     public enum DetectorSource {
         UNKNOWN_SOURCE,
-        GLINER,
         PRESIDIO,
         REGEX,
-        OPENMED,
-        GLINER2,
         /**
-         * The LLM-as-judge post-filter, surfaced as a pseudo detector in
-         * run-stats only. Its velocity is seconds per judged PII, not
-         * characters per second.
-         */
-        JUDGE,
-        /**
-         * The deterministic format pre-filter, surfaced as a pseudo detector in
-         * run-stats only to expose how many PII it discarded.
+         * The deterministic format precision post-filter, surfaced as a pseudo
+         * detector in run-stats only to expose how many PII it discarded.
          */
         POSTFILTER,
         /**
-         * Specialised LLM PII detector (Ministral-PII). Permanently exempt from
-         * the LLM-as-judge post-filter (same model nature): its findings stay
-         * {@link JudgeStatus#NOT_AUDITED}.
+         * Specialised LLM PII detector (Ministral-PII).
          */
         MINISTRAL
-    }
-
-    /**
-     * Outcome of the LLM-as-judge post-filter for a kept PII entity.
-     *
-     * <p>Mirrors the {@code JudgeStatus} gRPC enum. There is no
-     * {@code FALSE_POSITIVE} value on purpose: such entities are discarded and
-     * surfaced via {@link DiscardedSensitiveData} instead, never kept. Lets
-     * reporting tell a judge-validated finding apart from one kept without
-     * being judged or kept by the fail-open policy after a failed judge call,
-     * so fail-open noise can be measured rather than silently mixed in.</p>
-     */
-    public enum JudgeStatus {
-        /** Unknown / legacy (produced before the field existed). */
-        UNSPECIFIED,
-        /** Not submitted to the judge (judge disabled, source not audited, or per-type opt-out). */
-        NOT_AUDITED,
-        /** Judge returned TRUE_POSITIVE: finding explicitly validated. */
-        VALIDATED_TRUE_POSITIVE,
-        /** Judge returned UNSURE: kept by the recall-preserving policy. */
-        VALIDATED_UNSURE,
-        /** Judge call failed: kept by the fail-open policy without being judged. */
-        FAIL_OPEN_KEPT
     }
 
     /**
@@ -343,8 +345,7 @@ public record ContentPiiDetection(
      * @param end end index of the occurrence in the content
      * @param score confidence score provided by the detector (may be null)
      * @param selector optional selector or hint pointing to the element location
-     * @param source source of the detected PII entity (e.g. GLiNER, Presidio)
-     * @param judgeStatus whether/how the LLM-judge processed this kept entity
+     * @param source source of the detected PII entity (e.g. Presidio, Ministral)
      */
     public record SensitiveData(
         String type,
@@ -355,21 +356,8 @@ public record ContentPiiDetection(
         int end,
         Double score,
         String selector,
-        DetectorSource source,
-        JudgeStatus judgeStatus
+        DetectorSource source
     ) {
-        /**
-         * Convenience constructor for callers predating the judge-status field
-         * (e.g. tests and detectors that never went through the judge): defaults
-         * {@code judgeStatus} to {@link JudgeStatus#NOT_AUDITED}.
-         */
-        public SensitiveData(
-            String type, String typeLabel, String value, String context,
-            int position, int end, Double score, String selector, DetectorSource source
-        ) {
-            this(type, typeLabel, value, context, position, end, score, selector, source,
-                JudgeStatus.NOT_AUDITED);
-        }
     }
 
     /**
@@ -382,7 +370,7 @@ public record ContentPiiDetection(
      * @param source the detector these stats belong to
      * @param durationMs wall-clock duration of this detector's execution, in milliseconds
      * @param entitiesFound for real detectors, raw entities found (pre-merge); for the
-     *                      JUDGE/postfilter post-filters, the number of PII examined
+     *                      post-filter, the number of PII examined
      * @param entitiesDiscarded number of PII the stage discarded (0 for real detectors)
      */
     public record DetectorRunStat(
@@ -395,12 +383,12 @@ public record ContentPiiDetection(
 
     /**
      * A sensitive element detected by the detectors but discarded by the
-     * LLM-as-judge post-filter (FALSE_POSITIVE verdict).
+     * precision post-filter.
      *
      * @param data the element as originally detected (before rejection)
      * @param judgeVerdict verdict that motivated the rejection (e.g. FALSE_POSITIVE)
-     * @param judgeConfidence judge confidence in the verdict (0.0-1.0)
-     * @param judgeReason short natural-language justification from the judge
+     * @param judgeConfidence post-filter confidence in the verdict (0.0-1.0)
+     * @param judgeReason short natural-language justification for the rejection
      */
     public record DiscardedSensitiveData(
         SensitiveData data,

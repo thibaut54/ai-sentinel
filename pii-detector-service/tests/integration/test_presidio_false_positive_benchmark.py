@@ -100,7 +100,7 @@ PRESIDIO_ENTITIES: Dict[str, Dict] = {
 # Realistic texts — content typical of Confluence/corporate docs that
 # contains ambiguous tokens (product names, version numbers, ports, dates,
 # locations, technical IDs, acronyms, code snippets) but NO actual PII.
-# Same corpus as GLiNER benchmark for comparable results.
+# Shared corpus for comparable results.
 # Every detection on these texts is a FALSE POSITIVE.
 # ---------------------------------------------------------------------------
 CLEAN_TEXTS: Dict[str, str] = {
@@ -201,7 +201,7 @@ CLEAN_TEXTS: Dict[str, str] = {
         "Release notes — AI Sentinel v2.4.0 — 2025-03-20. "
         "New features: SharePoint connector (Beta), Confluence Data Center support, "
         "bulk export of scan results in CSV format. "
-        "Improvements: GLiNER detection throughput improved by 35% via parallel chunk "
+        "Improvements: detection throughput improved by 35% via parallel chunk "
         "processing with ThreadPoolExecutor (max_workers=10). Presidio analyzer now "
         "supports French and German languages. Dashboard refresh rate reduced from "
         "5s to 2s using Server-Sent Events. "
@@ -223,7 +223,7 @@ CLEAN_TEXTS: Dict[str, str] = {
         "Training budget: CHF 5,000 for Spring Boot 3 certification and Angular 19 workshop. "
         "Total Q1 spend: CHF 42,350 (92% of budget). Variance: -CHF 3,650 under budget. "
         "Forecast Q2: CHF 48,000 (+13%) due to SharePoint integration and GPU node "
-        "for GLiNER model serving (NC6s v3, CHF 2,800/month)."
+        "for model serving (NC6s v3, CHF 2,800/month)."
     ),
 }
 

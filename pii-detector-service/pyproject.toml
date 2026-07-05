@@ -32,34 +32,12 @@ dependencies = [
     "torch>=2.0.0",
 
     # ML and NLP dependencies (torch excluded - install via extras)
-    # transformers >= 5.0 is the floor for OpenMed types. The Dockerfile
-    # bumps transformers to >= 5.9 explicitly *after* the main install to
-    # work around gliner 0.2.26's transitive pin `transformers<5.2.0`,
-    # which would otherwise force pip to downgrade to 5.1 and break the
-    # OpenMed/privacy-filter-multilingual model load (the
-    # `openai_privacy_filter` model_type is only registered natively in
-    # transformers 5.9+). gliner 0.2.26's `<5.2` pin is cosmetic: its
-    # runtime API is stable on 5.9, verified by calling
-    # GLiNER.predict_entities on nvidia/gliner-PII under transformers 5.9.
+    # transformers >= 5.0 is the floor for loading the Ministral tokenizer
+    # (HF repo OpenMed/Ministral-3B-PII-Preview).
     "transformers>=5.0.0",
     "huggingface-hub>=0.19.0",
     "accelerate>=0.20.0",
-    "gliner>=0.2.0",
-    # GLiNER2 multi-task detector (spec detector-gliner2). Like gliner, it may
-    # carry a transitive transformers upper pin; the same post-install bump to
-    # transformers >= 5.0 applies (its extract() API is stable on 5.x).
-    "gliner2>=1.0.0",
-    "semchunk>=2.2.0",
-    # OpenMed wrapper that exposes PrivacyFilterTorchPipeline (cached pipeline
-    # over the OpenMed/privacy-filter-multilingual model). The [hf] extra pulls
-    # the HF-compatible torch backend (transformers 5+, datasets, tokenizers).
-    "openmed[hf]>=1.5.0",
-    
-    # ONNX runtime optimization
-    "optimum[onnxruntime]>=1.14.0",
-    "onnx>=1.15.0",
-    "onnxruntime>=1.16.0",
-    
+
     # gRPC core dependencies
     "grpcio>=1.76.0",
     "grpcio-tools>=1.76.0",
@@ -98,15 +76,6 @@ dependencies = [
 # If absolutely needed for EN/DE only, install locally outside project deps:
 #   pip install spacy && python -m spacy download en_core_web_sm de_core_news_sm
 nlp = []
-
-# fast_gliner (Rust gline-rs inference runtime for GLiNER2, no torch on the
-# inference path) is deliberately NOT an extra here: it pins
-# huggingface-hub<1.0, which would make pip downgrade the hub required by
-# transformers >=5.9 and break it. The Dockerfile installs it with
-# `pip install --no-deps fast_gliner` instead (its only hub import,
-# snapshot_download, still exists in hub 1.x). Linux/macOS wheels only; on a
-# Windows host the detector falls back to the gliner2 PyTorch runtime
-# automatically (see Gliner2ModelManager).
 
 dev = [
     # Testing framework
@@ -185,7 +154,7 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 # Stream log records to the console as tests run so slow integration suites
-# (e.g. OpenMed benchmark) show progress instead of looking frozen under
+# (e.g. detector model loading) show progress instead of looking frozen under
 # pytest's default stdout capture.
 log_cli = true
 log_cli_level = "INFO"

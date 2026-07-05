@@ -10,15 +10,6 @@ describe('DetectorTagComponent', () => {
     }).compileComponents();
   });
 
-  it('Should_RenderGlinerTag_When_DetectorIsGliner', () => {
-    fixture = TestBed.createComponent(DetectorTagComponent);
-    fixture.componentRef.setInput('detector', 'GLINER');
-    fixture.detectChanges();
-    const el = fixture.nativeElement.querySelector('.detector-tag');
-    expect(el.textContent.trim()).toBe('GLINER');
-    expect(el.classList).toContain('detector-gliner');
-  });
-
   it('Should_RenderPresidioTag_When_DetectorIsPresidio', () => {
     fixture = TestBed.createComponent(DetectorTagComponent);
     fixture.componentRef.setInput('detector', 'PRESIDIO');
@@ -37,18 +28,9 @@ describe('DetectorTagComponent', () => {
     expect(el.classList).toContain('detector-regex');
   });
 
-  it('Should_RenderOpenmedTag_When_DetectorIsOpenmed', () => {
-    fixture = TestBed.createComponent(DetectorTagComponent);
-    fixture.componentRef.setInput('detector', 'OPENMED');
-    fixture.detectChanges();
-    const el = fixture.nativeElement.querySelector('.detector-tag');
-    expect(el.textContent.trim()).toBe('OPENMED');
-    expect(el.classList).toContain('detector-openmed');
-  });
-
   it('Should_ApplySmallClass_When_SmallIsTrue', () => {
     fixture = TestBed.createComponent(DetectorTagComponent);
-    fixture.componentRef.setInput('detector', 'GLINER');
+    fixture.componentRef.setInput('detector', 'PRESIDIO');
     fixture.componentRef.setInput('small', true);
     fixture.detectChanges();
     const el = fixture.nativeElement.querySelector('.detector-tag');
