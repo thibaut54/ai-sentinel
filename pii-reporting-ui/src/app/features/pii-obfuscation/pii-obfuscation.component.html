@@ -1,0 +1,18 @@
+<section class="ob-page" [attr.data-testid]="testIds.page">
+  @if (remediationConfig.enabled()) {
+    <header class="ob-head">
+      <h2 class="ob-title">
+        <i class="pi pi-globe" aria-hidden="true"></i>
+        {{ selection.scope()?.spaceKey }}
+      </h2>
+    </header>
+
+    <!-- Grouped findings view, bulk bar and dialogs land here in the next increments. -->
+    <div class="ob-content" [attr.data-testid]="testIds.content"></div>
+  } @else {
+    <div class="ob-disabled" role="status" [attr.data-testid]="testIds.featureDisabled">
+      <i class="pi pi-lock" aria-hidden="true"></i>
+      <p>{{ 'obfuscation.featureDisabled' | transloco }}</p>
+    </div>
+  }
+</section>

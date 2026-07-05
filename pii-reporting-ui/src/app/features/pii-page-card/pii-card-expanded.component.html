@@ -76,23 +76,30 @@
     </div>
   }
 
-  <!-- Top reveal action (duplicate of footer button) -->
-  @if (sentinelleApi.revealAllowed()) {
+  <!-- Top actions: obfuscation entry + reveal (duplicate of footer button) -->
+  @if (sentinelleApi.revealAllowed() || remediationConfig.enabled()) {
     <div class="card-header-actions">
-      <button class="btn-reveal"
-              type="button"
-              (click)="revealRequested.emit()"
-              [disabled]="isRevealing()"
-              [attr.aria-label]="revealed()
-                ? ('piiItem.actions.maskAriaLabel' | transloco)
-                : ('piiItem.actions.revealAriaLabel' | transloco)">
-        @if (isRevealing()) {
-          <span class="spinner" aria-hidden="true"></span>
-        }
-        {{ revealed()
-          ? ('piiItem.actions.mask' | transloco)
-          : ('piiItem.actions.reveal' | transloco) }}
-      </button>
+      <app-obfuscation-entry-button
+        [spaceKey]="item().spaceKey"
+        [pageId]="item().pageId"
+        [attachmentName]="item().attachmentName"
+        [labeled]="true"></app-obfuscation-entry-button>
+      @if (sentinelleApi.revealAllowed()) {
+        <button class="btn-reveal"
+                type="button"
+                (click)="revealRequested.emit()"
+                [disabled]="isRevealing()"
+                [attr.aria-label]="revealed()
+                  ? ('piiItem.actions.maskAriaLabel' | transloco)
+                  : ('piiItem.actions.revealAriaLabel' | transloco)">
+          @if (isRevealing()) {
+            <span class="spinner" aria-hidden="true"></span>
+          }
+          {{ revealed()
+            ? ('piiItem.actions.mask' | transloco)
+            : ('piiItem.actions.reveal' | transloco) }}
+        </button>
+      }
     </div>
   }
 

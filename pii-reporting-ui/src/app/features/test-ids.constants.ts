@@ -40,6 +40,16 @@ export const TestIds = {
     collapseButton: 'pii-card-collapse',
     revealButton: 'pii-card-reveal',
     confluenceLink: 'pii-card-confluence-link',
+  },
+  obfuscation: {
+    page: 'obfuscation-page',
+    content: 'obfuscation-content',
+    featureDisabled: 'obfuscation-feature-disabled',
+    entryButtons: {
+      space: 'btn-obfuscate-space',
+      page: 'btn-obfuscate-page',
+      attachment: 'btn-obfuscate-attachment'
+    }
   }
 } as const;
 

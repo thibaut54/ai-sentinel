@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { PiiCardExpandedComponent } from './pii-card-expanded.component';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { PersonallyIdentifiableInformationScanResult } from '../../core/models/personally-identifiable-information-scan-result';
 import { SentinelleApiService } from '../../core/services/sentinelle-api.service';
+import { RemediationConfigService } from '../../core/services/remediation-config.service';
 
 const FR_TRANSLATIONS = {
   piiItem: {
@@ -70,8 +72,11 @@ const MOCK_ITEM: PersonallyIdentifiableInformationScanResult = {
 
 describe('PiiCardExpandedComponent', () => {
   let fixture: ComponentFixture<PiiCardExpandedComponent>;
+  let remediationConfigMock: { enabled: ReturnType<typeof signal<boolean>> };
 
   beforeEach(async () => {
+    remediationConfigMock = { enabled: signal(false) };
+
     await TestBed.configureTestingModule({
       imports: [
         PiiCardExpandedComponent,
@@ -82,7 +87,9 @@ describe('PiiCardExpandedComponent', () => {
         }),
       ],
       providers: [
+        provideRouter([]),
         { provide: SentinelleApiService, useValue: { revealAllowed: signal(true) } },
+        { provide: RemediationConfigService, useValue: remediationConfigMock },
       ],
     }).compileComponents();
   });
@@ -161,6 +168,38 @@ describe('PiiCardExpandedComponent', () => {
     const spy = vi.spyOn(fixture.componentInstance.revealRequested, 'emit');
     fixture.nativeElement.querySelector('.card-header-actions .btn-reveal').click();
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('Should_ShowPageObfuscationEntry_When_RemediationEnabled', () => {
+    remediationConfigMock.enabled.set(true);
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', MOCK_ITEM);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const entry = fixture.nativeElement.querySelector('[data-testid="btn-obfuscate-page"]');
+    expect(entry).toBeTruthy();
+  });
+
+  it('Should_HideObfuscationEntry_When_RemediationDisabled', () => {
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', MOCK_ITEM);
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const entry = fixture.nativeElement.querySelector('app-obfuscation-entry-button button');
+    expect(entry).toBeFalsy();
+  });
+
+  it('Should_ShowAttachmentObfuscationEntry_When_ItemIsAttachment', () => {
+    remediationConfigMock.enabled.set(true);
+    fixture = TestBed.createComponent(PiiCardExpandedComponent);
+    fixture.componentRef.setInput('item', { ...MOCK_ITEM, attachmentName: 'doc.pdf' });
+    fixture.componentRef.setInput('revealed', false);
+    fixture.componentRef.setInput('isRevealing', false);
+    fixture.detectChanges();
+    const entry = fixture.nativeElement.querySelector('[data-testid="btn-obfuscate-attachment"]');
+    expect(entry).toBeTruthy();
   });
 
   it('Should_DisplayConfluenceLink_When_PageUrlExists', () => {

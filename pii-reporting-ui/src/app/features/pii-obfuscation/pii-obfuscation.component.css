@@ -1,0 +1,39 @@
+.ob-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem 1rem 6rem;
+}
+
+.ob-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ob-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--sentinel-text-primary);
+  font-size: 1.25rem;
+}
+
+.ob-disabled {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  border: 1px dashed var(--sentinel-border-strong);
+  border-radius: 12px;
+  background: var(--sentinel-bg-card);
+  color: var(--sentinel-text-secondary);
+  text-align: center;
+}
+
+.ob-disabled .pi {
+  font-size: 1.5rem;
+}

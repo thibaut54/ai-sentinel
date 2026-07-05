@@ -10,6 +10,8 @@ import { SEVERITY_STYLES } from './severity.config';
 import { PiiEntityRow, ValuePart } from './pii-type-row.model';
 import { PiiItemCardUtils } from '../pii-item-card/pii-item-card.utils';
 import { SentinelleApiService } from '../../core/services/sentinelle-api.service';
+import { RemediationConfigService } from '../../core/services/remediation-config.service';
+import { ObfuscationEntryButtonComponent } from '../pii-obfuscation/components/obfuscation-entry-button/obfuscation-entry-button.component';
 
 export type SortColumn = 'typeLabel' | 'value' | 'confidence' | 'detector';
 export type SortDirection = 'asc' | 'desc';
@@ -17,7 +19,14 @@ export type SortDirection = 'asc' | 'desc';
 @Component({
   selector: 'app-pii-card-expanded',
   standalone: true,
-  imports: [TranslocoModule, FormsModule, MultiSelectModule, DetectorTagComponent, ConfidenceIndicatorComponent],
+  imports: [
+    TranslocoModule,
+    FormsModule,
+    MultiSelectModule,
+    DetectorTagComponent,
+    ConfidenceIndicatorComponent,
+    ObfuscationEntryButtonComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pii-card-expanded.component.html',
   styleUrl: './pii-card-expanded.component.css',
@@ -32,6 +41,7 @@ export class PiiCardExpandedComponent {
   readonly openInConfluence = output<void>();
 
   readonly sentinelleApi = inject(SentinelleApiService);
+  readonly remediationConfig = inject(RemediationConfigService);
   private readonly translocoService = inject(TranslocoService);
   private readonly piiItemCardUtils = inject(PiiItemCardUtils);
 
