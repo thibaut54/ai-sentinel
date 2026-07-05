@@ -89,8 +89,10 @@ public class ApplicationUseCasesConfig {
     @Bean
     public ScanEventFactory scanEventFactory(ConfluenceUrlProvider confluenceUrlProvider,
                                              PiiContextExtractor piiContextExtractor,
-                                             SeverityCalculationService severityCalculationService) {
-        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+                                             SeverityCalculationService severityCalculationService,
+                                             ValueFingerprintCalculator valueFingerprintCalculator) {
+        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService,
+                                    valueFingerprintCalculator);
     }
 
     @Bean

@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ValueFingerprintCalculator;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -17,12 +18,15 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.PlainTextParser;
+import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
+import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -37,6 +41,9 @@ class ScanEventFactoryTest {
     @Mock
     private SeverityCalculationService severityCalculationService;
 
+    @Mock
+    private ValueFingerprintCalculator valueFingerprintCalculator;
+
     private ScanEventFactory factory;
 
     private static final String SCAN_ID = "scan-42";
@@ -46,7 +53,8 @@ class ScanEventFactoryTest {
     void setUp() {
         ContentParserFactory parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         PiiContextExtractor piiContextExtractor = new PiiContextExtractor(parserFactory);
-        factory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        factory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService,
+                valueFingerprintCalculator);
         lenient().when(confluenceUrlProvider.pageUrl(anyString(), anyString()))
                 .thenAnswer(inv -> "https://wiki/pages/" + inv.getArgument(1));
     }
@@ -276,6 +284,40 @@ class ScanEventFactoryTest {
 
             // Assert
             assertThat(result.severity()).isEqualTo(PersonallyIdentifiableInformationSeverity.HIGH);
+        }
+
+        @Test
+        @DisplayName("Should_EnrichEachDetectedPiiWithValueFingerprint_When_DetectionHasFindings")
+        void Should_EnrichEachDetectedPiiWithValueFingerprint_When_DetectionHasFindings() {
+            // Arrange
+            ConfluencePage page = page("p9");
+            String content = "Password: secret123 email: john@example.com";
+            ContentPiiDetection.SensitiveData pwdData = new ContentPiiDetection.SensitiveData(
+                    "PASSWORD", "Password", "secret123", null, 10, 19, 0.9,
+                    null, ContentPiiDetection.DetectorSource.REGEX
+            );
+            ContentPiiDetection.SensitiveData emailData = new ContentPiiDetection.SensitiveData(
+                    "EMAIL", "Email", "john@example.com", null, 27, 43, 0.95,
+                    null, ContentPiiDetection.DetectorSource.MINISTRAL
+            );
+            ContentPiiDetection detection = ContentPiiDetection.builder()
+                    .pageId("p9")
+                    .sensitiveDataFound(List.of(pwdData, emailData))
+                    .build();
+            when(severityCalculationService.calculateSeverity(anyString()))
+                    .thenReturn(PersonallyIdentifiableInformationSeverity.LOW);
+            when(severityCalculationService.aggregateCounts(anyList()))
+                    .thenReturn(new SeverityCounts(0, 0, 2));
+            when(valueFingerprintCalculator.fingerprint("secret123")).thenReturn("fp-password");
+            when(valueFingerprintCalculator.fingerprint("john@example.com")).thenReturn("fp-email");
+
+            // Act
+            ConfluenceContentScanResult result = factory.createPageItemEvent(SCAN_ID, SPACE_KEY, page, content, detection, 60.0);
+
+            // Assert
+            assertThat(result.detectedPIIList())
+                    .extracting(DetectedPersonallyIdentifiableInformation::valueFingerprint)
+                    .containsExactly("fp-password", "fp-email");
         }
     }
 
