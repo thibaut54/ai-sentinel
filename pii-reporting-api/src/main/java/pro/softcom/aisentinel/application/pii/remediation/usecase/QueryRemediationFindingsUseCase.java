@@ -1,0 +1,276 @@
+package pro.softcom.aisentinel.application.pii.remediation.usecase;
+
+import lombok.RequiredArgsConstructor;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.QueryRemediationFindingsPort;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingGroup;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingGroup.MasterState;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingView;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.GroupBy;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.StatusFilter;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsResult;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationTotals;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
+import pro.softcom.aisentinel.application.pii.remediation.service.EligibleFinding;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver.Resolution;
+import pro.softcom.aisentinel.application.pii.remediation.service.SelectionEvaluator;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
+import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Remediation read model: resolves the latest scan events of a scope into eligible
+ * findings, joins the remediation projection, applies the view filters and computes
+ * every displayed aggregate (groups, tri-state master checkboxes, selected counts,
+ * pagination, totals) server-side.
+ *
+ * <p>Reads events in encrypted mode only: masked contexts and metadata leave this use
+ * case, plaintext PII values never do.</p>
+ */
+@RequiredArgsConstructor
+public class QueryRemediationFindingsUseCase implements QueryRemediationFindingsPort {
+
+    private static final String ATTACHMENT_INELIGIBILITY_REASON = "ATTACHMENT_REDACTION_UNSUPPORTED";
+
+    private final RemediationConfigPort remediationConfigPort;
+    private final ScanResultQuery scanResultQuery;
+    private final FindingRemediationStore findingRemediationStore;
+    private final ScanEventFindingResolver findingResolver;
+    private final SelectionEvaluator selectionEvaluator;
+
+    @Override
+    public boolean isRemediationEnabled() {
+        return remediationConfigPort.isRemediationEnabled();
+    }
+
+    @Override
+    public RemediationFindingsResult search(RemediationFindingsQuery query) {
+        requireEnabled();
+        return scanResultQuery.findLatestScan()
+                .map(scan -> searchScan(scan.scanId(), query))
+                .orElseGet(() -> emptyResult(query));
+    }
+
+    private void requireEnabled() {
+        if (!remediationConfigPort.isRemediationEnabled()) {
+            throw new RemediationDisabledException("PII remediation is disabled by configuration");
+        }
+    }
+
+    private RemediationFindingsResult searchScan(String scanId, RemediationFindingsQuery query) {
+        List<ConfluenceContentScanResult> scopedEvents = scanResultQuery
+                .listItemEventsEncryptedByScanIdAndSpaceKey(scanId, query.spaceKey())
+                .stream()
+                .filter(event -> inScope(event, query))
+                .toList();
+        Resolution resolution = findingResolver.resolve(scopedEvents);
+        List<StatusedFinding> visible = visibleFindings(resolution.findings(), query);
+        List<StatusedFinding> filtered = visible.stream()
+                .filter(finding -> matchesStatusFilter(finding.status(), query.statusFilter()))
+                .sorted(orderingFor(query.groupBy()))
+                .toList();
+        return RemediationFindingsResult.builder()
+                .groups(buildGroups(filtered, query))
+                .totals(totalsOf(visible))
+                .page(query.page())
+                .pageSize(query.pageSize())
+                .totalElements(filtered.size())
+                .nonEligibleLegacyCount(resolution.nonEligibleLegacyCount())
+                .build();
+    }
+
+    private static boolean inScope(ConfluenceContentScanResult event, RemediationFindingsQuery query) {
+        if (query.pageId() == null) {
+            return true;
+        }
+        if (!query.pageId().equals(event.pageId())) {
+            return false;
+        }
+        return query.attachmentName() == null || query.attachmentName().equals(event.attachmentName());
+    }
+
+    private List<StatusedFinding> visibleFindings(List<EligibleFinding> findings, RemediationFindingsQuery query) {
+        Map<String, FindingRemediationStatus> statuses = statusesOf(findings);
+        return findings.stream()
+                .map(finding -> toStatused(finding, statuses, query.selection()))
+                .filter(finding -> matchesSearchText(finding.finding(), query.searchText()))
+                .filter(finding -> matchesItemFilter(finding.finding().reference(), query.itemFilter()))
+                .toList();
+    }
+
+    private Map<String, FindingRemediationStatus> statusesOf(List<EligibleFinding> findings) {
+        if (findings.isEmpty()) {
+            return Map.of();
+        }
+        List<String> ids = findings.stream().map(EligibleFinding::findingId).toList();
+        return findingRemediationStore.findStatusesByIds(ids);
+    }
+
+    private StatusedFinding toStatused(EligibleFinding finding,
+                                       Map<String, FindingRemediationStatus> statuses,
+                                       RemediationSelection selection) {
+        FindingRemediationStatus status =
+                statuses.getOrDefault(finding.findingId(), FindingRemediationStatus.PENDING);
+        return new StatusedFinding(finding, status, selectionEvaluator.isSelected(finding, status, selection));
+    }
+
+    private static boolean matchesSearchText(EligibleFinding finding, String searchText) {
+        if (searchText == null || searchText.isBlank()) {
+            return true;
+        }
+        String needle = searchText.toLowerCase(Locale.ROOT);
+        return Stream.of(finding.maskedContext(), finding.pageTitle(), finding.piiTypeLabel(),
+                        finding.reference().piiType(), finding.reference().attachmentName())
+                .anyMatch(value -> value != null && value.toLowerCase(Locale.ROOT).contains(needle));
+    }
+
+    private static boolean matchesItemFilter(FindingReference reference, String itemFilter) {
+        if (itemFilter == null || itemFilter.isBlank()) {
+            return true;
+        }
+        return itemFilter.equals(reference.pageId()) || itemFilter.equals(reference.attachmentName());
+    }
+
+    private static boolean matchesStatusFilter(FindingRemediationStatus status, StatusFilter filter) {
+        return switch (filter) {
+            case ALL -> true;
+            case PENDING -> status == FindingRemediationStatus.PENDING;
+            case HANDLED -> status == FindingRemediationStatus.REDACTED
+                    || status == FindingRemediationStatus.MANUALLY_HANDLED;
+            case FALSE_POSITIVE -> status == FindingRemediationStatus.FALSE_POSITIVE;
+        };
+    }
+
+    private static RemediationTotals totalsOf(List<StatusedFinding> visible) {
+        long pending = countByStatus(visible, FindingRemediationStatus.PENDING);
+        long handled = countByStatus(visible, FindingRemediationStatus.REDACTED)
+                + countByStatus(visible, FindingRemediationStatus.MANUALLY_HANDLED);
+        long falsePositive = countByStatus(visible, FindingRemediationStatus.FALSE_POSITIVE);
+        return new RemediationTotals(pending, handled, falsePositive, visible.size());
+    }
+
+    private static long countByStatus(List<StatusedFinding> findings, FindingRemediationStatus status) {
+        return findings.stream().filter(finding -> finding.status() == status).count();
+    }
+
+    private static Comparator<StatusedFinding> orderingFor(GroupBy groupBy) {
+        return groupComparator(groupBy)
+                .thenComparing(finding -> finding.finding().pageTitle(),
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(finding -> finding.finding().reference().attachmentName(),
+                        Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(finding -> finding.finding().findingId());
+    }
+
+    private static Comparator<StatusedFinding> groupComparator(GroupBy groupBy) {
+        if (groupBy == GroupBy.SEVERITY) {
+            return Comparator.comparing(finding -> finding.finding().reference().severity());
+        }
+        return Comparator.comparing(finding -> finding.finding().reference().piiType());
+    }
+
+    private static List<RemediationFindingGroup> buildGroups(List<StatusedFinding> ordered,
+                                                             RemediationFindingsQuery query) {
+        Map<String, List<StatusedFinding>> byKey = ordered.stream()
+                .collect(Collectors.groupingBy(finding -> groupKeyOf(finding, query.groupBy()),
+                        LinkedHashMap::new, Collectors.toList()));
+        int pageStart = query.page() * query.pageSize();
+        int pageEnd = pageStart + query.pageSize();
+        List<RemediationFindingGroup> groups = new ArrayList<>();
+        int globalIndex = 0;
+        for (List<StatusedFinding> members : byKey.values()) {
+            groups.add(toGroup(members, query.groupBy(), pageStart - globalIndex, pageEnd - globalIndex));
+            globalIndex += members.size();
+        }
+        return groups;
+    }
+
+    private static RemediationFindingGroup toGroup(List<StatusedFinding> members, GroupBy groupBy,
+                                                   int sliceFrom, int sliceTo) {
+        int from = Math.clamp(sliceFrom, 0, members.size());
+        int to = Math.clamp(sliceTo, 0, members.size());
+        long selectedCount = members.stream().filter(StatusedFinding::selected).count();
+        long pendingCount = countByStatus(members, FindingRemediationStatus.PENDING);
+        StatusedFinding first = members.getFirst();
+        return RemediationFindingGroup.builder()
+                .key(groupKeyOf(first, groupBy))
+                .label(labelOf(first.finding(), groupBy))
+                .severity(first.finding().reference().severity())
+                .total(members.size())
+                .selectedCount(selectedCount)
+                .masterState(masterStateOf(pendingCount, selectedCount))
+                .findings(members.subList(from, to).stream().map(QueryRemediationFindingsUseCase::toView).toList())
+                .build();
+    }
+
+    private static String groupKeyOf(StatusedFinding finding, GroupBy groupBy) {
+        if (groupBy == GroupBy.SEVERITY) {
+            return finding.finding().reference().severity().name();
+        }
+        return finding.finding().reference().piiType();
+    }
+
+    private static String labelOf(EligibleFinding finding, GroupBy groupBy) {
+        if (groupBy == GroupBy.SEVERITY) {
+            return finding.reference().severity().name();
+        }
+        String label = finding.piiTypeLabel();
+        return label == null || label.isBlank() ? finding.reference().piiType() : label;
+    }
+
+    private static MasterState masterStateOf(long pendingCount, long selectedCount) {
+        if (pendingCount == 0 || selectedCount == 0) {
+            return MasterState.NONE;
+        }
+        return selectedCount == pendingCount ? MasterState.ALL : MasterState.PARTIAL;
+    }
+
+    private static RemediationFindingView toView(StatusedFinding statused) {
+        EligibleFinding finding = statused.finding();
+        FindingReference reference = finding.reference();
+        boolean onAttachment = reference.attachmentName() != null;
+        return RemediationFindingView.builder()
+                .findingId(finding.findingId())
+                .piiType(reference.piiType())
+                .severity(reference.severity())
+                .detector(reference.detector())
+                .confidenceScore(finding.confidence())
+                .maskedContext(finding.maskedContext())
+                .pageId(reference.pageId())
+                .pageTitle(finding.pageTitle())
+                .attachmentName(reference.attachmentName())
+                .status(statused.status())
+                .selected(statused.selected())
+                .eligibleForRedaction(!onAttachment)
+                .ineligibilityReason(onAttachment ? ATTACHMENT_INELIGIBILITY_REASON : null)
+                .build();
+    }
+
+    private static RemediationFindingsResult emptyResult(RemediationFindingsQuery query) {
+        return RemediationFindingsResult.builder()
+                .groups(List.of())
+                .totals(RemediationTotals.empty())
+                .page(query.page())
+                .pageSize(query.pageSize())
+                .totalElements(0)
+                .nonEligibleLegacyCount(0)
+                .build();
+    }
+
+    private record StatusedFinding(EligibleFinding finding, FindingRemediationStatus status, boolean selected) {
+    }
+}
