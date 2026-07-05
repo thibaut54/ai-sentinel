@@ -1,55 +1,72 @@
 package pro.softcom.aisentinel.infrastructure.pii.detection.adapter.in.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
 /**
  * DTO for updating PII detection configuration via REST API.
- * 
+ *
  * <p>Business purpose: Allows clients to modify detector enable/disable states
  * and confidence thresholds used by the PII detection service.
- * 
+ *
  * <p>Validation: Ensures at least one detector is enabled and threshold is within valid range.
- * 
- * @param glinerEnabled    Whether GLiNER detector should be enabled
+ *
  * @param presidioEnabled  Whether Presidio detector should be enabled
  * @param regexEnabled     Whether custom regex detector should be enabled
+ * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
+ * @param ministralChunkSize  Sliding-window chunk size (tokens) for the Ministral-PII detector (256-4096)
+ * @param ministralOverlap    Sliding-window overlap (tokens) for the Ministral-PII detector (0-512, less than the chunk size)
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
+ * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled.
+ *                            Optional in the payload: when omitted, defaults to {@code false}.
  */
 public record UpdatePiiDetectionConfigRequestDto(
-    @JsonProperty("glinerEnabled")
-    @NotNull(message = "glinerEnabled is required")
-    Boolean glinerEnabled,
-    
     @JsonProperty("presidioEnabled")
     @NotNull(message = "presidioEnabled is required")
     Boolean presidioEnabled,
-    
+
     @JsonProperty("regexEnabled")
     @NotNull(message = "regexEnabled is required")
     Boolean regexEnabled,
-    
+
+    @JsonProperty("ministralEnabled")
+    @NotNull(message = "ministralEnabled is required")
+    Boolean ministralEnabled,
+
+    @JsonProperty("ministralChunkSize")
+    @NotNull(message = "ministralChunkSize is required")
+    @Min(value = 256, message = "ministralChunkSize must be at least 256")
+    @Max(value = 4096, message = "ministralChunkSize must be at most 4096")
+    Integer ministralChunkSize,
+
+    @JsonProperty("ministralOverlap")
+    @NotNull(message = "ministralOverlap is required")
+    @Min(value = 0, message = "ministralOverlap must be at least 0")
+    @Max(value = 512, message = "ministralOverlap must be at most 512")
+    Integer ministralOverlap,
+
     @JsonProperty("defaultThreshold")
     @NotNull(message = "defaultThreshold is required")
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")
     BigDecimal defaultThreshold,
 
-    @JsonProperty("nbOfLabelByPass")
-    @NotNull(message = "nbOfLabelByPass is required")
-    @DecimalMin(value = "1", message = "nbOfLabelByPass must be at least 1")
-    Integer nbOfLabelByPass
+    @JsonProperty("postfilterEnabled")
+    Boolean postfilterEnabled
 ) {
     /**
      * Validates business rules for the configuration request.
-     * 
+     *
      * <p>Business rule: At least one detector must be enabled to ensure
      * the system can perform PII detection.
-     * 
+     *
      * @throws IllegalArgumentException if no detectors are enabled
      */
     public UpdatePiiDetectionConfigRequestDto {
@@ -58,12 +75,49 @@ public record UpdatePiiDetectionConfigRequestDto(
             }
     }
 
+    /**
+     * Cross-field rule: the Ministral overlap must be strictly smaller than the
+     * chunk size. Returns {@code true} when either value is {@code null} so the
+     * {@link NotNull} constraints report the missing field instead.
+     */
+    @AssertTrue(message = "ministralOverlap must be less than ministralChunkSize")
+    public boolean isMinistralOverlapLessThanChunkSize() {
+        if (ministralOverlap == null || ministralChunkSize == null) {
+            return true;
+        }
+        return ministralOverlap < ministralChunkSize;
+    }
+
+    /**
+     * Returns the {@code ministralChunkSize} value with a {@code 2048} default
+     * when the client omits the field.
+     */
+    public int ministralChunkSizeOrDefault() {
+        return ministralChunkSize != null ? ministralChunkSize : 2048;
+    }
+
+    /**
+     * Returns the {@code ministralOverlap} value with a {@code 410} default
+     * when the client omits the field.
+     */
+    public int ministralOverlapOrDefault() {
+        return ministralOverlap != null ? ministralOverlap : 410;
+    }
+
+    /**
+     * Returns the {@code postfilterEnabled} flag value with a {@code false} default
+     * when the client omits the field. Keeps the rollout zero-effect.
+     */
+    public boolean postfilterEnabledOrDefault() {
+        return postfilterEnabled != null && postfilterEnabled;
+    }
+
     private boolean notAtLeastOneAnalyserEnabled(){
-        return glinerEnabled != null
-            && presidioEnabled != null
+        return presidioEnabled != null
             && regexEnabled != null
-            && !glinerEnabled
+            && ministralEnabled != null
             && !presidioEnabled
-            && !regexEnabled;
+            && !regexEnabled
+            && !ministralEnabled;
     }
 }

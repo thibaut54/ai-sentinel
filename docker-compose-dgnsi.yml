@@ -1,0 +1,49 @@
+# Docker Compose override for DGNSI deployment
+# - Injects the corporate CA so SSL verification works behind the DGNSI proxy.
+# - Pins the images to a self-built ":dgnsi" tag, loaded from a tar (offline,
+#   no GHCR pull) — see the deployment folder README.
+#
+# Prerequisites (in the run directory):
+#   ./certs/corporate-ca.pem  - corporate CA bundle (PEM) for the Python detector
+#   ./certs/cacerts           - PKCS12 JDK truststore (password "changeit") for the API
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose-dgnsi.yml up -d
+
+services:
+  # ============================================================================
+  # PII DETECTOR (Python/gRPC) — corporate CA for outbound HTTPS / model download
+  # ============================================================================
+  pii-detector:
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:dgnsi
+    pull_policy: never
+    environment:
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/corporate-ca.pem
+      SSL_CERT_FILE: /etc/ssl/certs/corporate-ca.pem
+      CURL_CA_BUNDLE: /etc/ssl/certs/corporate-ca.pem
+    volumes:
+      - ./certs/corporate-ca.pem:/etc/ssl/certs/corporate-ca.pem:ro
+
+  # ============================================================================
+  # PII REPORTING API (Spring Boot) — corporate CA for external HTTPS calls
+  # (Confluence, SharePoint, Jira connectors)
+  # ============================================================================
+  pii-reporting-api:
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:dgnsi
+    pull_policy: never
+    environment:
+      # Replaces the JVM default truststore, so ./certs/cacerts MUST be a full
+      # PKCS12 truststore (default roots + corporate CA), not the CA alone.
+      JAVA_TOOL_OPTIONS: >-
+        -Djavax.net.ssl.trustStoreType=PKCS12
+        -Djavax.net.ssl.trustStore=/etc/ssl/certs/corporate-cacerts
+        -Djavax.net.ssl.trustStorePassword=changeit
+    volumes:
+      - ./certs/cacerts:/etc/ssl/certs/corporate-cacerts:ro
+
+  # ============================================================================
+  # PII REPORTING UI (Angular + Nginx) — pinned to the self-built tag
+  # ============================================================================
+  pii-reporting-ui:
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:dgnsi
+    pull_policy: never

@@ -1,6 +1,14 @@
 package pro.softcom.aisentinel.infrastructure.config;
 
+import pro.softcom.aisentinel.application.confluence.port.out.*;
+import pro.softcom.aisentinel.application.pii.reporting.port.in.*;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.*;
+import pro.softcom.aisentinel.application.pii.reporting.service.*;
+import pro.softcom.aisentinel.application.pii.reporting.usecase.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pro.softcom.aisentinel.application.config.port.in.GetPollingConfigPort;
@@ -8,11 +16,13 @@ import pro.softcom.aisentinel.application.config.port.out.ReadConfluenceConfigPo
 import pro.softcom.aisentinel.application.config.usecase.GetPollingConfigUseCase;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpacePort;
 import pro.softcom.aisentinel.application.confluence.port.in.ConfluenceSpaceUpdateInfoPort;
-import pro.softcom.aisentinel.application.confluence.port.out.*;
+import pro.softcom.aisentinel.application.confluence.port.in.ManageConfluenceConnectionPort;
+import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceConnectionConfigRepository;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceSpaceCacheRefreshService;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchConfluenceSpaceContentUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchSpaceUpdateInfoUseCase;
+import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
@@ -27,19 +37,20 @@ import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionRepo
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
-import pro.softcom.aisentinel.application.pii.reporting.port.in.*;
-import pro.softcom.aisentinel.application.pii.reporting.port.out.*;
-import pro.softcom.aisentinel.application.pii.reporting.service.*;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.PlainTextParser;
-import pro.softcom.aisentinel.application.pii.reporting.usecase.*;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
 import pro.softcom.aisentinel.application.pii.security.port.out.SavePiiAuditPort;
 import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceCloudHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.ConfluenceDataCenterHttpClientAdapter;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.DelegatingConfluenceClient;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfigUpdatedEvent;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 /**
  * Spring configuration that wires application use cases as beans from the infrastructure layer.
@@ -48,6 +59,15 @@ import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
  */
 @Configuration
 public class ApplicationUseCasesConfig {
+
+    @Bean
+    public ConfluenceClient delegatingConfluenceClient(
+            @Qualifier("confluenceConfig") ConfluenceConnectionConfig confluenceConfig,
+            ObjectMapper objectMapper) {
+        var cloudAdapter = new ConfluenceCloudHttpClientAdapter(confluenceConfig, objectMapper);
+        var dataCenterAdapter = new ConfluenceDataCenterHttpClientAdapter(confluenceConfig, objectMapper);
+        return new DelegatingConfluenceClient(confluenceConfig, cloudAdapter, dataCenterAdapter);
+    }
 
     @Bean
     public ConfluenceSpacePort confluenceUseCase(ConfluenceClient confluenceClient,
@@ -118,43 +138,57 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
-    public StreamConfluenceScanPort streamConfluenceScanUseCase(
+    public ScanSpaceStatsCollector scanSpaceStatsCollector(ScanSpaceStatsRepository scanSpaceStatsRepository) {
+        return new ScanSpaceStatsCollector(scanSpaceStatsRepository);
+    }
+
+    @Bean
+    public GetScanSpaceStatsPort getScanSpaceStatsPort(
+            ScanCheckpointRepository scanCheckpointRepository,
+            ScanSpaceStatsRepository scanSpaceStatsRepository,
+            FailedScanItemQuery failedScanItemQuery) {
+        return new GetScanSpaceStatsUseCase(scanCheckpointRepository, scanSpaceStatsRepository, failedScanItemQuery);
+    }
+
+    @Bean
+    public ScanPipelineDependencies scanPipelineDependencies(
             ConfluenceAccessor confluenceAccessor,
             PiiDetectorClient piiDetectorClient,
             ContentScanOrchestrator contentScanOrchestrator,
             AttachmentProcessor attachmentProcessor,
             ScanTimeOutConfig scanTimeoutConfig,
             HtmlContentParser htmlContentParser,
-            PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort,
-            ScanCheckpointRepository scanCheckpointRepository) {
-        return new StreamConfluenceScanUseCase(
+            ScanSpaceStatsCollector scanSpaceStatsCollector,
+            @Value("${scan.page-concurrency:1}") int pageConcurrency) {
+        return new ScanPipelineDependencies(
                 confluenceAccessor,
                 piiDetectorClient,
                 contentScanOrchestrator,
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
+                scanSpaceStatsCollector,
+                pageConcurrency
+        );
+    }
+
+    @Bean
+    public StreamConfluenceScanPort streamConfluenceScanUseCase(
+            ScanPipelineDependencies scanPipelineDependencies,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort) {
+        return new StreamConfluenceScanUseCase(
+                scanPipelineDependencies,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
     }
 
     @Bean
     public StreamConfluenceResumeScanPort streamConfluenceResumeScanUseCase(
-            ConfluenceAccessor confluenceAccessor,
-            PiiDetectorClient piiDetectorClient,
-            ContentScanOrchestrator contentScanOrchestrator,
-            AttachmentProcessor attachmentProcessor,
-            ScanCheckpointRepository scanCheckpointRepository,
-            ScanTimeOutConfig scanTimeoutConfig,
-            HtmlContentParser htmlContentParser) {
+            ScanPipelineDependencies scanPipelineDependencies,
+            ScanCheckpointRepository scanCheckpointRepository) {
         return new StreamConfluenceResumeScanUseCase(
-                confluenceAccessor,
-                piiDetectorClient,
-                contentScanOrchestrator,
-                attachmentProcessor,
-                scanCheckpointRepository,
-                scanTimeoutConfig,
-                htmlContentParser
+                scanPipelineDependencies,
+                scanCheckpointRepository
         );
     }
 
@@ -261,5 +295,17 @@ public class ApplicationUseCasesConfig {
     public ManagePiiTypeConfigsPort managePiiTypeConfigsPort(
         PiiTypeConfigRepository piiTypeConfigRepository) {
         return new ManagePiiTypeConfigsUseCase(piiTypeConfigRepository);
+    }
+
+    @Bean
+    public ManageConfluenceConnectionPort manageConfluenceConnectionPort(
+            ConfluenceConnectionConfigRepository confluenceConnectionConfigRepository,
+            EncryptionService encryptionService,
+            ApplicationEventPublisher eventPublisher) {
+        return new ManageConfluenceConnectionUseCase(
+                confluenceConnectionConfigRepository,
+                encryptionService,
+                () -> eventPublisher.publishEvent(new ConfluenceConfigUpdatedEvent(this))
+        );
     }
 }

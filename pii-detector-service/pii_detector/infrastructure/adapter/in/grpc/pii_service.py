@@ -5,16 +5,13 @@ This module implements the gRPC service for PII detection with optimizations
 for memory usage when processing large volumes of data.
 """
 
-import atexit
 import gc
 import logging
 import os
 import threading
 import time
 from concurrent import futures
-from logging.handlers import QueueHandler, QueueListener
-from queue import Queue
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import grpc
 import psutil
@@ -25,46 +22,11 @@ from grpc_reflection.v1alpha import reflection
 from pii_detector.domain.entity.detector_source import DetectorSource
 # Import PIIType for proper normalization
 from pii_detector.domain.entity.pii_type import PIIType
-# Import the PII detector
-from pii_detector.infrastructure.detector.pii_detector import PIIDetector
-from pii_detector.infrastructure.detector.pii_detector import \
-    PIIEntity as DetectedPIIEntity
 # Import the generated gRPC code
 from pii_detector.proto.generated import pii_detection_pb2, \
     pii_detection_pb2_grpc
 
-# Import GLiNER detector for GLiNER models
-try:
-    from pii_detector.infrastructure.detector.gliner_detector import GLiNERDetector
-except Exception:  # pragma: no cover - safe import guard
-    GLiNERDetector = None  # type: ignore
-
-# Import Multi-Pass GLiNER detector for parallel category detection
-try:
-    from pii_detector.infrastructure.detector.multi_pass_gliner_detector import MultiPassGlinerDetector
-except Exception:  # pragma: no cover - safe import guard
-    MultiPassGlinerDetector = None  # type: ignore
-
-# Optional pre-caching of additional HF models (extensible)
-try:
-    from pii_detector.infrastructure.model_management.model_cache import ensure_models_cached, get_env_extra_models
-except Exception:  # pragma: no cover - safe import guard
-    ensure_models_cached = None
-    get_env_extra_models = None
-
-# Optional multi-model composite (opt-in via config)
-try:
-    from pii_detector.application.orchestration.multi_detector import (
-        MultiModelPIIDetector,
-        get_multi_model_ids_from_config,
-        should_use_multi_detector
-    )
-except Exception:  # pragma: no cover - safe import guard
-    MultiModelPIIDetector = None  # type: ignore
-    get_multi_model_ids_from_config = None  # type: ignore
-    should_use_multi_detector = None  # type: ignore
-
-# Optional composite detector (ML + Regex)
+# Composite detector (Regex + Presidio + Ministral)
 try:
     from pii_detector.application.orchestration.composite_detector import (
         CompositePIIDetector,
@@ -83,41 +45,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Asynchronous PII logging infrastructure
-_pii_log_queue: Queue = Queue(maxsize=10_000)
-_pii_queue_handler = QueueHandler(_pii_log_queue)
-_pii_logger = logging.getLogger("pii_detector.pii_log")
-_pii_logger.setLevel(logging.INFO)
-_pii_logger.addHandler(logging.StreamHandler())
-_pii_log_listener = QueueListener(_pii_log_queue, _pii_logger.handlers[0])
-_pii_log_listener.start()
-
-
-def _shutdown_pii_log_listener():
-    """
-    Safely stop the PII log listener and flush remaining records.
-    
-    This function is idempotent and safe to call multiple times.
-    It ensures that any queued log records are properly flushed before
-    the process exits, preventing loss of PII detection logs.
-    
-    Business rule: All detected PII must be logged for audit purposes.
-    This shutdown hook ensures logs are not lost during process termination.
-    """
-    global _pii_log_listener
-    if _pii_log_listener is not None:
-        try:
-            _pii_log_listener.stop()
-            logger.debug("PII log listener stopped successfully")
-        except Exception as e:
-            logger.warning(f"Error stopping PII log listener: {e}")
-        finally:
-            _pii_log_listener = None
-
-
-# Register shutdown hook to flush PII logs on process exit
-atexit.register(_shutdown_pii_log_listener)
-
 # Singleton instance for the PII detector
 _detector_instance = None
 _detector_lock = threading.Lock()
@@ -133,158 +60,21 @@ def get_detector_instance():
 
 
 def _initialize_detector_instance():
-    """Initialize the global detector instance with appropriate configuration."""
+    """Initialize the global composite detector instance."""
     global _detector_instance
-    
-    _pre_cache_models()
-    
-    # Priority order: Composite > Multi > Single
-    if _should_use_composite():
-        _detector_instance = _create_composite_detector()
-    elif _should_use_multi_detector():
-        _detector_instance = _create_multi_detector()
-    else:
-        _detector_instance = _create_single_detector()
-    
-    # Download and load models only if detector is not None
-    if _detector_instance is not None:
-        _detector_instance.download_model()
-        _detector_instance.load_model()
-        logger.info("Singleton PII detector initialized successfully")
-    else:
-        logger.info("No ML detector initialized - will use rule-based detection only")
 
+    _detector_instance = _create_composite_detector()
 
-def _pre_cache_models() -> None:
-    """Pre-cache additional HuggingFace models if available."""
-    try:
-        if ensure_models_cached and get_env_extra_models:
-            ensure_models_cached(get_env_extra_models())
-    except Exception as e:  # pragma: no cover - defensive
-        logger.warning(f"Pre-caching extra models failed (continuing): {e}")
-
-
-def _should_use_composite() -> bool:
-    """Determine if composite detector (ML + Regex) should be used."""
-    if not (CompositePIIDetector and create_composite_detector and should_use_composite_detector):
-        return False
-    
-    try:
-        return should_use_composite_detector()
-    except Exception as e:
-        logger.warning(f"Failed to determine composite detector status: {e}")
-        return False
-
-
-def _should_use_multi_detector() -> bool:
-    """Determine if multi-model detector should be used."""
-    if not (MultiModelPIIDetector and get_multi_model_ids_from_config and should_use_multi_detector):
-        return False
-    
-    try:
-        return should_use_multi_detector()
-    except Exception as e:
-        logger.warning(f"Failed to determine multi-detector status: {e}")
-        return False
+    _detector_instance.download_model()
+    _detector_instance.load_model()
+    logger.info("Singleton PII detector initialized successfully")
 
 
 def _create_composite_detector():
-    """Create and return a composite detector instance (ML + Regex)."""
-    try:
-        # First, create the appropriate ML detector
-        if _should_use_multi_detector():
-            ml_detector = _create_multi_detector()
-        else:
-            ml_detector = _create_single_detector()
-        
-        # Then wrap it in composite detector with regex
-        composite = create_composite_detector(ml_detector=ml_detector)
-        logger.info("Composite detector (ML + Regex) enabled")
-        return composite
-    except Exception as e:  # pragma: no cover - defensive fallback
-        logger.warning(f"Failed to initialize composite detector, falling back to ML only: {e}")
-        if _should_use_multi_detector():
-            return _create_multi_detector()
-        else:
-            return _create_single_detector()
-
-
-def _create_multi_detector():
-    """Create and return a multi-model detector instance."""
-    try:
-        model_ids = get_multi_model_ids_from_config()
-        detector = MultiModelPIIDetector(model_ids=model_ids)
-        logger.info(f"Multi-model detection enabled with {len(model_ids)} models: {model_ids}")
-        return detector
-    except Exception as e:  # pragma: no cover - defensive fallback
-        logger.warning(f"Failed to initialize multi-model detector, falling back to single model: {e}")
-        return PIIDetector()
-
-
-def _create_single_detector():
-    """Create and return a single-model detector instance, or None if no LLM models are enabled."""
-    from pii_detector.application.config.detection_policy import DetectionConfig, get_enabled_models, _load_llm_config
-    
-    # Check if any LLM models are enabled
-    try:
-        config_dict = _load_llm_config()
-        enabled_models = get_enabled_models(config_dict)
-        
-        if not enabled_models:
-            # TODO When no LLM models are enabled, returning None relies on the caller to handle this case correctly. Consider documenting this behavior in the function docstring or adding a check that at least one detection method (Presidio/Regex) is enabled before returning None to prevent a scenario where all detection is disabled.
-            # No LLM models enabled - return None to use only Presidio/Regex
-            logger.info("No LLM models enabled - will use only Presidio/Regex detection")
-            return None
-        
-        logger.info("Using single-model detector (either multi-detector disabled or only 1 model enabled)")
-        config = DetectionConfig()
-        
-        if _is_gliner_model(config.model_id):
-            # Check if Multi-Pass GLiNER is enabled
-            if _should_use_multipass_gliner(config_dict):
-                logger.info(f"Using Multi-Pass GLiNER detector for: {config.model_id}")
-                return MultiPassGlinerDetector(config=config)
-            else:
-                logger.info(f"Detected GLiNER model: {config.model_id}")
-                return GLiNERDetector(config=config)
-        
-        logger.info(f"Using standard transformer detector for: {config.model_id}")
-        return PIIDetector()
-        
-    except Exception as e:
-        logger.error(f"Failed to create single detector: {e}")
-        raise
-
-
-def _should_use_multipass_gliner(config_dict: dict) -> bool:
-    """
-    Check if Multi-Pass GLiNER detection is enabled in config.
-    
-    Multi-Pass GLiNER runs 13 parallel detection passes (one per category)
-    to avoid label limit degradation and resolves conflicts deterministically.
-    
-    Args:
-        config_dict: Configuration dictionary loaded from detection-settings.toml
-        
-    Returns:
-        True if multipass_gliner_enabled is set to true, False otherwise
-    """
-    if MultiPassGlinerDetector is None:
-        logger.debug("MultiPassGlinerDetector not available")
-        return False
-        
-    detection_config = config_dict.get("detection", {})
-    multipass_enabled = detection_config.get("multipass_gliner_enabled", False)
-    
-    if multipass_enabled:
-        logger.info("Multi-Pass GLiNER detection enabled in config")
-        
-    return multipass_enabled
-
-
-def _is_gliner_model(model_id: str) -> bool:
-    """Check if the model is a GLiNER model."""
-    return GLiNERDetector is not None and "gliner" in model_id.lower()
+    """Create and return the composite detector instance (Regex + Presidio + Ministral)."""
+    composite = create_composite_detector()
+    logger.info("Composite detector (Regex + Presidio + Ministral) enabled")
+    return composite
 
 
 class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
@@ -307,13 +97,45 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         # Load throughput logging configuration
         self.log_throughput = self._load_log_throughput_config()
-        
+
         # Use singleton detector instance
         self.detector = get_detector_instance()
-        
+
+        # Optional inference worker pool (env PII_WORKER_PROCESSES > 1).
+        # N worker processes give data parallelism across concurrent requests.
+        # The pool is created after the singleton detector above is built so
+        # workers inherit it.
+        self._worker_pool = None
+        self._init_worker_pool()
+
         # Start memory monitoring thread if enabled
         if self.enable_memory_monitoring:
             self._start_memory_monitoring()
+
+    def _init_worker_pool(self) -> None:
+        """Create and warm up the inference worker pool when enabled by env."""
+        try:
+            from pii_detector.infrastructure.model_management.detector_worker_pool import (
+                DetectorWorkerPool,
+                pool_size_from_env,
+            )
+
+            pool_size = pool_size_from_env()
+            if pool_size <= 1:
+                return
+            torch_threads = int(os.getenv('TORCH_NUM_THREADS', '1'))
+            self._worker_pool = DetectorWorkerPool(pool_size, torch_threads)
+            self._worker_pool.warm_up()
+            logger.info(
+                "Inference worker pool active: %d processes x %d torch threads",
+                pool_size, torch_threads)
+        except Exception:
+            # Defensive: a pool failure must never prevent the service from
+            # starting — fall back to the historical single-detector path.
+            logger.error(
+                "Failed to start inference worker pool; falling back to "
+                "in-process detection", exc_info=True)
+            self._worker_pool = None
     
     def _load_log_throughput_config(self) -> bool:
         """
@@ -466,31 +288,101 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         request_id = self._generate_request_id(start_time)
         pii_type_configs = None
         detector_flags = None
-        
+
         try:
             self.request_counter += 1
             content, threshold = self._extract_and_validate_request(request, context, request_id)
-            
+
             if content is None:
                 return pii_detection_pb2.PIIDetectionResponse()
-            
+
             # Fetch dynamic configuration from database if requested
-            chunk_size = None
             if request.fetch_config_from_db:
-                threshold, pii_type_configs, detector_flags, chunk_size = self._fetch_and_apply_config(threshold, request_id)
-            
-            entities = self._execute_detection(
-                content, threshold, request_id, detector_flags, pii_type_configs, chunk_size
+                threshold, pii_type_configs, detector_flags = self._fetch_and_apply_config(threshold, request_id)
+
+            # Phase 1: detection (composite detector).
+            detection_start = time.monotonic()
+            entities, detector_stats = self._execute_detection(
+                content, threshold, request_id, detector_flags, pii_type_configs
             )
-            
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_AFTER_DETECTION count=%d",
+                request_id, len(entities),
+            )
+            self._log_throughput(
+                "detection",
+                request_id=request_id,
+                chars=len(content),
+                duration_s=time.monotonic() - detection_start,
+                entities_in=len(entities),
+            )
+
             # Apply PII type-specific filtering if configs were fetched
+            entities_before_type_filter = len(entities)
             if pii_type_configs:
                 entities = self._filter_entities_by_type_config(entities, pii_type_configs, request_id)
-            
-            response = self._build_detection_response(content, entities, request_id)
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_AFTER_TYPE_CONFIG_FILTER in=%d out=%d dropped=%d",
+                request_id, entities_before_type_filter, len(entities),
+                entities_before_type_filter - len(entities),
+            )
+
+            # Phase 1bis: deterministic precision post-filter, the final
+            # filtering stage of the pipeline. It rejects technical artefacts
+            # cross-label (UUID, ObjectId, digests, versions...) plus the
+            # mechanically-impossible findings per pii_type (checksum / parse
+            # failures). Only invoked when the DB flag is ON (zero-overhead path
+            # otherwise). Rejections are exposed in the discarded_entities
+            # channel.
+            discarded_by_prefilter = []
+            if self._is_postfilter_enabled(detector_flags):
+                entities_before_prefilter = len(entities)
+                prefilter_start = time.monotonic()
+                entities, discarded_by_prefilter = self._apply_format_postfilter(
+                    entities, content, request_id
+                )
+                prefilter_elapsed = time.monotonic() - prefilter_start
+                self._log_throughput(
+                    "format_prefilter",
+                    request_id=request_id,
+                    chars=len(content),
+                    duration_s=prefilter_elapsed,
+                    entities_in=entities_before_prefilter,
+                    entities_kept=len(entities),
+                    entities_rejected=entities_before_prefilter - len(entities),
+                )
+                # Surface the pre-filter as a pseudo-detector so callers can see
+                # how many PII it discarded. entities_found = examined count,
+                # entities_discarded = rejected count. Only when it examined > 0.
+                if entities_before_prefilter > 0:
+                    detector_stats.append({
+                        "source": DetectorSource.POSTFILTER,
+                        "duration_ms": int(prefilter_elapsed * 1000),
+                        "entities_found": entities_before_prefilter,
+                        "entities_discarded": len(discarded_by_prefilter),
+                    })
+
+            # Phase 2: total elapsed time (chars/sec end-to-end).
+            self._log_throughput(
+                "total",
+                request_id=request_id,
+                chars=len(content),
+                duration_s=time.monotonic() - detection_start,
+                entities_final=len(entities),
+            )
+
+            response = self._build_detection_response(
+                content, entities, request_id,
+                discarded_by_prefilter,
+                detector_stats,
+            )
+            logger.info(
+                "[FINDING_TRACKER] [%s] step=GRPC_FINAL_RESPONSE count=%d",
+                request_id, len(response.entities) if hasattr(response, "entities") else len(entities),
+            )
             self._log_request_completion(request_id, start_time)
             self._perform_periodic_gc()
-            
+
             return response
             
         except Exception as e:
@@ -548,41 +440,35 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         """
         peer_info = context.peer() if hasattr(context, 'peer') else "unknown"
         
-        logger.info(f"[{request_id}] Received DetectPII request #{self.request_counter}")
-        logger.info(f"[{request_id}] Client: {peer_info}")
-        logger.info(f"[{request_id}] Content length: {len(content)} characters")
-        logger.info(f"[{request_id}] Threshold: {threshold}")
-        
-        if len(content) > 100:
-            logger.debug(f"[{request_id}] Content preview: {content[:100]}...")
-        else:
-            logger.debug(f"[{request_id}] Content: {content}")
+        logger.debug(f"[{request_id}] Received DetectPII request #{self.request_counter}")
+        logger.debug(f"[{request_id}] Client: {peer_info}")
+        logger.info(f"[{request_id}] gRPC content length: {len(content)} chars, threshold={threshold}")
 
-    def _fetch_and_apply_config(self, default_threshold: float, request_id: str) -> tuple[float, Optional[dict], Optional[dict], Optional[int]]:
+    def _fetch_and_apply_config(self, default_threshold: float, request_id: str) -> tuple[float, Optional[dict], Optional[dict]]:
         """
         Fetch configuration from database and apply to current detection.
-        
+
         Business rule: Configuration is fetched at scan start to ensure
         consistency throughout the entire scan. Detector flags are applied
         dynamically without service restart.
-        
+
         Args:
             default_threshold: Default threshold to use if fetch fails
             request_id: Request identifier for logging
-            
+
         Returns:
-            Tuple of (threshold, pii_type_configs, detector_flags, chunk_size) where:
+            Tuple of (threshold, pii_type_configs, detector_flags) where:
             - threshold: Default threshold value to use for detection
             - pii_type_configs: Dictionary of PII type configs or None
-            - detector_flags: Dictionary with gliner_enabled, presidio_enabled, regex_enabled or None
-            - chunk_size: Number of labels per pass for MultiPassGLiNER (or None)
+            - detector_flags: Dictionary with presidio_enabled, regex_enabled,
+              ministral_enabled, ministral_chunk_size/overlap, postfilter_enabled or None
         """
         try:
             from pii_detector.infrastructure.adapter.out.database_config_adapter import (
                 get_database_config_adapter,
             )
             
-            logger.info(f"[{request_id}] Fetching config from database...")
+            logger.debug(f"[{request_id}] Fetching config from database...")
             adapter = get_database_config_adapter()
             db_config = adapter.fetch_config()
             
@@ -590,48 +476,49 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             pii_type_configs = adapter.fetch_pii_type_configs()
             
             if db_config is None:
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Using default threshold {default_threshold} "
                     "(database config not available)"
                 )
-                return default_threshold, pii_type_configs, None, None
-            
+                return default_threshold, pii_type_configs, None
+
             # Extract threshold from database config
             threshold = float(db_config.get('default_threshold', default_threshold))
-            
-            # Extract chunk size (nb_of_label_by_pass)
-            chunk_size = db_config.get('nb_of_label_by_pass')
-            if chunk_size:
-                chunk_size = int(chunk_size)
-            
-            # Extract detector flags for dynamic activation
+
+            # Extract detector flags for dynamic activation.
             detector_flags = {
-                'gliner_enabled': db_config.get('gliner_enabled', True),
                 'presidio_enabled': db_config.get('presidio_enabled', True),
-                'regex_enabled': db_config.get('regex_enabled', False)
+                'regex_enabled': db_config.get('regex_enabled', False),
+                'ministral_enabled': db_config.get('ministral_enabled', False),
+                # Ministral-PII chunking knobs, threaded by _build_detection_kwargs
+                # into the composite's detect_pii_with_stats and routed on to the
+                # Ministral detector's detect_pii.
+                'ministral_chunk_size': db_config.get('ministral_chunk_size'),
+                'ministral_overlap': db_config.get('ministral_overlap'),
+                'postfilter_enabled': db_config.get('postfilter_enabled', False),
             }
-            
+
             logger.info(
                 f"[{request_id}] Applied database config: threshold={threshold}, "
-                f"gliner={detector_flags['gliner_enabled']}, "
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
-                f"chunk_size={chunk_size}"
+                f"ministral={detector_flags['ministral_enabled']}, "
+                f"postfilter={detector_flags['postfilter_enabled']}"
             )
-            
+
             if pii_type_configs:
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Loaded {len(pii_type_configs)} PII type-specific configs"
                 )
-            
-            return threshold, pii_type_configs, detector_flags, chunk_size
+
+            return threshold, pii_type_configs, detector_flags
             
         except Exception as e:
             logger.warning(
                 f"[{request_id}] Failed to fetch database config: {e}. "
                 f"Using default threshold {default_threshold}"
             )
-            return default_threshold, None, None, None
+            return default_threshold, None, None
 
     def _validate_content(self, content: str, request_id: str) -> Optional[str]:
         """Validate content against business rules.
@@ -664,104 +551,102 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         context.set_details(error_message)
 
     def _execute_detection(
-        self, 
-        content: str, 
-        threshold: float, 
-        request_id: str, 
+        self,
+        content: str,
+        threshold: float,
+        request_id: str,
         detector_flags: Optional[dict] = None,
         pii_type_configs: Optional[Dict] = None,
-        chunk_size: Optional[int] = None
-    ) -> List:
+    ) -> Tuple[List, List[Dict]]:
         """Execute PII detection with dynamic detector activation and log performance metrics.
-        
+
         Business rule: Detector activation flags from database override default configuration
         to enable runtime reconfiguration without service restart.
-        
-        Phase 3 fix: Fresh PII type configs are passed to Presidio detector to avoid
+
+        Fresh PII type configs are passed to the Presidio detector to avoid
         stale config cache issues when database configurations change.
-        
+
         Args:
             content: Text to analyze
             threshold: Detection confidence threshold
             request_id: Request identifier for logging
-            detector_flags: Optional dict with gliner_enabled, presidio_enabled, regex_enabled
+            detector_flags: Optional dict with presidio_enabled, regex_enabled, ministral_enabled
             pii_type_configs: Optional fresh PII type configs from database for Presidio
-            chunk_size: Optional limit for labels per pass (for MultiPassGLiNER)
-            
+
         Returns:
-            List of detected PII entities
+            Tuple of (detected PII entities, per-detector run stats). The stats
+            list is empty when the active detector path does not produce them,
+            keeping ``detector_stats`` empty and the response backward-compatible.
         """
         processing_start = time.time()
         logger.debug("[%s] Starting PII detection processing...", request_id)
-        
-        # Pass fresh configs to Presidio detector if available
-        self._pass_fresh_configs_to_presidio(pii_type_configs, request_id)
-        
-        # Determine if we should pass chunk_size
-        kwargs = {}
-        if hasattr(self.detector, 'detect_pii'):
-            import inspect
-            sig = inspect.signature(self.detector.detect_pii)
-            if 'chunk_size' in sig.parameters and chunk_size is not None:
-                kwargs['chunk_size'] = chunk_size
-                logger.debug(f"[{request_id}] Passing chunk_size={chunk_size} to detector")
 
-        # Apply detector flags if available (for CompositePIIDetector)
-        if detector_flags and hasattr(self.detector, 'detect_pii'):
-            # Check if detector supports dynamic configuration (CompositePIIDetector)
-            import inspect
-            sig = inspect.signature(self.detector.detect_pii)
-            supports_dynamic_config = 'enable_ml' in sig.parameters
-            supports_pii_configs = 'pii_type_configs' in sig.parameters
-            
-            if supports_dynamic_config:
-                logger.debug(
-                    f"[{request_id}] Applying dynamic detector flags: "
-                    f"ML={detector_flags.get('gliner_enabled')}, "
-                    f"Presidio={detector_flags.get('presidio_enabled')}, "
-                    f"Regex={detector_flags.get('regex_enabled')}"
-                )
-                
-                # Combine flags and configs
-                call_kwargs = {
-                    'enable_ml': detector_flags.get('gliner_enabled'),
-                    'enable_presidio': detector_flags.get('presidio_enabled'),
-                    'enable_regex': detector_flags.get('regex_enabled'),
-                    **kwargs
-                }
-                
-                # Pass pii_type_configs if detector supports it
-                if supports_pii_configs:
-                    call_kwargs['pii_type_configs'] = pii_type_configs
-                
-                entities = self.detector.detect_pii(content, threshold, **call_kwargs)
-            else:
-                # Simple detector - check if it supports pii_type_configs
-                call_kwargs = {**kwargs}
-                if supports_pii_configs:
-                    call_kwargs['pii_type_configs'] = pii_type_configs
-                
-                entities = self.detector.detect_pii(content, threshold, **call_kwargs)
+        self._pass_fresh_configs_to_presidio(pii_type_configs, request_id)
+
+        call_kwargs = self._build_detection_kwargs(
+            detector_flags, pii_type_configs, request_id
+        )
+        if self._worker_pool is not None:
+            # Delegate the CPU-bound inference to a pool worker; this gRPC
+            # thread just blocks on the result, so K concurrent requests run
+            # on K worker processes in parallel. Stats travel back through the
+            # process boundary (picklable dicts + DetectorSource Enum).
+            entities, detector_stats = self._worker_pool.detect_with_stats(
+                content, threshold, call_kwargs
+            )
+        elif hasattr(self.detector, 'detect_pii_with_stats'):
+            # In-process composite path: stats are returned by value (no shared
+            # mutable instance state), safe under concurrent gRPC threads.
+            entities, detector_stats = self.detector.detect_pii_with_stats(
+                content, threshold, **call_kwargs
+            )
         else:
-            # No detector flags - check if detector supports pii_type_configs
-            if hasattr(self.detector, 'detect_pii'):
-                import inspect
-                sig = inspect.signature(self.detector.detect_pii)
-                
-                call_kwargs = {**kwargs}
-                if 'pii_type_configs' in sig.parameters:
-                    call_kwargs['pii_type_configs'] = pii_type_configs
-                
-                entities = self.detector.detect_pii(content, threshold, **call_kwargs)
-            else:
-                entities = self.detector.detect_pii(content, threshold)
-        
+            entities = self.detector.detect_pii(content, threshold, **call_kwargs)
+            detector_stats = []
+
         processing_time = time.time() - processing_start
-        
         self._log_detection_metrics(request_id, content, entities, processing_time)
         self._log_detected_entities(request_id, entities)
-        
-        return entities
+
+        return entities, detector_stats
+
+    def _build_detection_kwargs(
+        self,
+        detector_flags: Optional[dict],
+        pii_type_configs: Optional[Dict],
+        request_id: str
+    ) -> dict:
+        """Build keyword arguments for detect_pii based on detector capabilities."""
+        if not hasattr(self.detector, 'detect_pii'):
+            return {}
+
+        import inspect
+        sig = inspect.signature(self.detector.detect_pii)
+        kwargs = {}
+
+        if 'pii_type_configs' in sig.parameters:
+            kwargs['pii_type_configs'] = pii_type_configs
+
+        if detector_flags and 'enable_presidio' in sig.parameters:
+            logger.debug(
+                f"[{request_id}] Applying dynamic detector flags: "
+                f"Presidio={detector_flags.get('presidio_enabled')}, "
+                f"Regex={detector_flags.get('regex_enabled')}, "
+                f"Ministral={detector_flags.get('ministral_enabled')}"
+            )
+            kwargs['enable_presidio'] = detector_flags.get('presidio_enabled')
+            kwargs['enable_regex'] = detector_flags.get('regex_enabled')
+            if 'enable_ministral' in sig.parameters:
+                kwargs['enable_ministral'] = detector_flags.get('ministral_enabled')
+            # Ministral-PII chunking knobs (DB columns ministral_chunk_size /
+            # ministral_overlap) forwarded so operator-configured values reach
+            # the detector.
+            if 'ministral_chunk_size' in sig.parameters:
+                kwargs['ministral_chunk_size'] = detector_flags.get('ministral_chunk_size')
+            if 'ministral_overlap' in sig.parameters:
+                kwargs['ministral_overlap'] = detector_flags.get('ministral_overlap')
+
+        return kwargs
     
     def _pass_fresh_configs_to_presidio(self, pii_type_configs: Optional[Dict], request_id: str) -> None:
         """
@@ -786,7 +671,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             
             # Case 1: Direct PresidioDetector
             if isinstance(self.detector, PresidioDetector):
-                logger.info(
+                logger.debug(
                     f"[{request_id}] Passing fresh configs to direct PresidioDetector "
                     f"({len(pii_type_configs)} types)"
                 )
@@ -799,7 +684,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 presidio_detector = getattr(self.detector, 'presidio_detector', None)
                 
                 if presidio_detector and isinstance(presidio_detector, PresidioDetector):
-                    logger.info(
+                    logger.debug(
                         f"[{request_id}] Passing fresh configs to Presidio inside CompositePIIDetector "
                         f"({len(pii_type_configs)} types)"
                     )
@@ -810,7 +695,7 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                         f"[{request_id}] CompositePIIDetector has no Presidio detector"
                     )
             
-            # Case 3: Other detector types (GLiNER, MultiModel, etc.)
+            # Case 3: Other detector types (e.g. Ministral) that don't use Presidio configs
             logger.debug(
                 f"[{request_id}] Detector type {type(self.detector).__name__} "
                 "doesn't use Presidio configs"
@@ -832,51 +717,145 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             entities: Detected entities
             processing_time: Processing duration in seconds
         """
-        if self.log_throughput:
-            throughput = len(content) / processing_time if processing_time > 0 else 0
-            # Throughput and per-request metrics are useful in diagnostics but
-            # too verbose for production traffic. Keep them at DEBUG level.
-            logger.debug(
-                "[%s] PII detection completed in %.3fs, found %s entities, throughput: %.0f chars/s",
-                request_id,
-                processing_time,
-                len(entities),
-                throughput,
-            )
-        else:
-            logger.debug(
-                "[%s] PII detection completed in %.3fs with %s entities",
-                request_id,
-                processing_time,
-                len(entities),
-            )
-
-        # Always enqueue detailed PII logs asynchronously to avoid
-        # impacting request latency.
-        self._log_pii_entities_async(request_id, entities)
+        chars = len(content) if content else 0
+        throughput = chars / processing_time if processing_time > 0 else 0.0
+        # [VELOCITY] tag makes per-request throughput grep-able for benchmark
+        # post-processing on both server-side stdout and the client-side log
+        # consumer. Emitted at INFO level (vs DEBUG previously) because the
+        # benchmark UI displays a corpus-wide ETA based on this metric and
+        # needs to consume it from the container log stream without changing
+        # the global log level.
+        logger.info(
+            "[VELOCITY] req=%s chars=%d duration_s=%.3f velocity_chars_per_s=%.0f entities=%d",
+            request_id,
+            chars,
+            processing_time,
+            throughput,
+            len(entities),
+        )
 
     def _log_detected_entities(self, request_id: str, entities: List) -> None:
-        """Log nbOfDetectedPIIBySeverity and sample of detected entities for debugging.
-        
+        """Log the per-type breakdown of detected entities for debugging.
+
+        Only aggregate counts are logged; raw PII values are never emitted.
+
         Args:
             request_id: Request identifier
             entities: Detected PII entities
         """
         if not entities:
             return
-        
+
         entity_types = {}
         for entity in entities:
             entity_type = entity['type_label']
             entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
-        
+
         logger.debug(f"[{request_id}] Entity types found: {dict(entity_types)}")
-        
-        for i, entity in enumerate(entities[:3]):
-            logger.debug(
-                f"[{request_id}] Entity {i+1}: {entity['type_label']} - "
-                f"'{entity['text']}' (score: {entity['score']:.3f})"
+
+    @staticmethod
+    def _log_throughput(
+        phase: str,
+        request_id: str,
+        chars: int,
+        duration_s: float,
+        **kwargs,
+    ) -> None:
+        """Forward a throughput record to the async logger (non-blocking).
+
+        Errors during enqueueing must never fail the request; defensive
+        ``except`` keeps the scan resilient against an observability
+        outage (spec section 3.1).
+        """
+        try:
+            from pii_detector.infrastructure.observability.throughput_logger import (
+                get_logger as get_throughput_logger,
             )
+
+            get_throughput_logger().log_phase(
+                phase,
+                request_id=request_id,
+                chars=chars,
+                duration_s=duration_s,
+                **kwargs,
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.debug(
+                "[THROUGHPUT] log_phase failed silently (phase=%s)",
+                phase,
+                exc_info=True,
+            )
+
+    @staticmethod
+    def _is_postfilter_enabled(detector_flags: Optional[dict]) -> bool:
+        """Return True iff the database flag activates the precision post-filter.
+
+        Defaults to False so the post-filter stays disabled when the DB
+        config is unavailable or pre-migration (PLAN.md section 1.6). The
+        flag keeps its historical ``postfilter_enabled`` name (no DB
+        migration): it now gates the final precision post-filter.
+        """
+        if detector_flags is None:
+            return False
+        return bool(detector_flags.get("postfilter_enabled", False))
+
+    def _apply_format_postfilter(
+        self, entities: List, content: str, request_id: str
+    ) -> tuple:
+        """Run the deterministic precision post-filter on the merged entity list.
+
+        The validator is built lazily via the singleton accessor so that
+        when ``postfilter_enabled=false`` the module is never imported and
+        nothing is allocated (zero overhead). An entity is rejected either
+        by the cross-label technical-artifact denylist (whatever its label)
+        or by the per-``pii_type`` checksum/parse strategy registered for
+        its normalised type; everything else passes through untouched.
+
+        Returns:
+            ``(kept_entities, rejections)`` where ``rejections`` is a list
+            of ``(entity, verdict)`` tuples for entities rejected as
+            FALSE_POSITIVE (surfaced in the response's
+            ``discarded_entities`` field).
+        """
+        if not entities:
+            return entities, []
+        try:
+            # Lazy import so the no-postfilter path never pulls the strategies
+            # / stdnum into hot code.
+            from pii_detector.infrastructure.postfilter.format_postfilter_validator import (
+                get_instance as get_format_prefilter,
+            )
+
+            validator = get_format_prefilter()
+            before_count = len(entities)
+            prefilter_start = time.monotonic()
+            filtered, rejections = validator.filter_with_verdicts(
+                content, entities
+            )
+            elapsed = time.monotonic() - prefilter_start
+            rejected = before_count - len(filtered)
+            logger.info(
+                "[%s] [PREFILTER] post-filter: %d->%d entities "
+                "(rejected=%d, elapsed=%.3fs)",
+                request_id,
+                before_count,
+                len(filtered),
+                rejected,
+                elapsed,
+            )
+            return filtered, rejections
+        except Exception as exc:
+            # Defense-in-depth: fail-open at the orchestrator level too. If
+            # the validator itself blows up (import error, configuration,
+            # ...) we keep the original entities and surface a WARN.
+            logger.warning(
+                "[%s] [PREFILTER] post-filter failed (%s: %s); "
+                "keeping original entities",
+                request_id,
+                exc.__class__.__name__,
+                exc,
+            )
+            return entities, []
 
     def _filter_entities_by_type_config(
         self, entities: List, pii_type_configs: dict, request_id: str
@@ -899,180 +878,206 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         """
         if not entities or not pii_type_configs:
             return entities
-        
-        # Log available config keys
-        logger.info(
+
+        logger.debug(
             f"[{request_id}] POST-FILTER START: {len(entities)} entities to filter"
         )
-        logger.info(
+        logger.debug(
             f"[{request_id}] Available PII type configs in DB: {sorted(pii_type_configs.keys())}"
         )
-        
-        filtered_entities = []
-        filtered_count = 0
+
         filter_reasons = {}
-        
+        filtered_entities = []
+
         for idx, entity in enumerate(entities):
-            # Normalize entity type to uppercase for matching
-            entity_type_raw = entity.get('type')
-            entity_type = _normalize_pii_type_for_grpc(entity_type_raw)
-            entity_type_upper = entity_type.upper()
-            entity_text_preview = entity.get('text', '')[:30]
-            entity_score = float(entity.get('score', 0.0))
-            
-            # Log each entity processing
-            logger.info(
-                f"[{request_id}] Entity #{idx+1}: raw_type='{entity_type_raw}' → "
-                f"normalized='{entity_type}' → uppercase='{entity_type_upper}' | "
-                f"text='{entity_text_preview}' | score={entity_score:.3f}"
-            )
-            
-            # Get config for this PII type (case-insensitive lookup)
-            type_config = pii_type_configs.get(entity_type_upper)
-            
-            # Log config lookup result
-            if type_config:
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): Config FOUND → "
-                    f"enabled={type_config.get('enabled')}, "
-                    f"threshold={type_config.get('threshold')}, "
-                    f"detector={type_config.get('detector')}, "
-                    f"detector_label={type_config.get('detector_label')}"
-                )
-            else:
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): Config NOT FOUND → "
-                    f"KEEPING by default (allow-by-default policy)"
-                )
-            
-            # If no config exists for this type, keep it (allow by default)
-            if not type_config:
+            kept, reason = self._evaluate_entity_filter(entity, pii_type_configs, idx, request_id)
+            if kept:
                 filtered_entities.append(entity)
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT (no config)"
-                )
-                continue
-            
-            # DETECTOR-SPECIFIC FILTERING: Check if config applies to this entity's detector
-            config_detector = type_config.get('detector', 'ALL')
-            entity_source = entity.get('source', 'UNKNOWN')
-            
-            # If config is detector-specific and doesn't match entity's source, skip this config
-            if config_detector != 'ALL' and config_detector != entity_source:
-                filtered_entities.append(entity)
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
-                    f"(config detector={config_detector} doesn't match entity source={entity_source})"
-                )
-                continue
-            
-            # Config applies to this detector - now check if type is enabled
-            if not type_config.get('enabled', True):
-                filtered_count += 1
-                reason = f"{entity_type_upper}:disabled"
+            elif reason:
                 filter_reasons[reason] = filter_reasons.get(reason, 0) + 1
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
-                    f"(disabled in config for detector={config_detector}) | text='{entity_text_preview}'"
-                )
-                continue
-            
-            # Apply type-specific threshold
-            type_threshold = float(type_config.get('threshold', 0.5))
-            
-            if entity_score < type_threshold:
-                filtered_count += 1
-                reason = f"{entity_type_upper}:below_threshold"
-                filter_reasons[reason] = filter_reasons.get(reason, 0) + 1
-                logger.info(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
-                    f"(score {entity_score:.3f} < threshold {type_threshold:.3f}) | "
-                    f"text='{entity_text_preview}'"
-                )
-                continue
-            
-            # Entity passed all filters
-            filtered_entities.append(entity)
-            logger.info(
-                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
-                f"(enabled=true, score {entity_score:.3f} >= threshold {type_threshold:.3f})"
-            )
-        
-        # Log filtering summary
-        logger.info(
+
+        filtered_count = len(entities) - len(filtered_entities)
+        logger.debug(
             f"[{request_id}] POST-FILTER COMPLETE: Filtered {filtered_count} of {len(entities)} entities. "
             f"Kept: {len(filtered_entities)}"
         )
         if filter_reasons:
-            logger.info(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
-        
+            logger.debug(f"[{request_id}] Filter reasons breakdown: {dict(filter_reasons)}")
+
+        # TEMPORARY: parity recall investigation — remove with git revert
+        in_per_type: Dict[str, int] = {}
+        in_per_source: Dict[str, int] = {}
+        out_per_type: Dict[str, int] = {}
+        for ent in entities:
+            t = _normalize_pii_type_for_grpc(ent.get('type'))
+            in_per_type[t] = in_per_type.get(t, 0) + 1
+            raw_source = ent.get('source', 'UNKNOWN')
+            src = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
+            in_per_source[src] = in_per_source.get(src, 0) + 1
+        for ent in filtered_entities:
+            t = _normalize_pii_type_for_grpc(ent.get('type'))
+            out_per_type[t] = out_per_type.get(t, 0) + 1
+        logger.info(
+            "[PARITY_DEBUG] [%s] POST_FILTER input=%d output=%d filtered=%d "
+            "in_per_type=%s in_per_source=%s out_per_type=%s reasons=%s",
+            request_id, len(entities), len(filtered_entities), filtered_count,
+            in_per_type, in_per_source, out_per_type, dict(filter_reasons)
+        )
+
         return filtered_entities
 
-    def _log_pii_entities_async(self, request_id: str, entities: List) -> None:
-        """Log each detected PII entity asynchronously.
+    def _evaluate_entity_filter(
+        self, entity: dict, pii_type_configs: dict, idx: int, request_id: str
+    ) -> tuple:
+        """Evaluate whether a single entity passes type-config filters.
 
-        Business rule: every PII detected must be logged with:
-        - raw value (text)
-        - normalized PII type
-        - confidence score when available
-        - detection source: GLINER, PRESIDIO, REGEX or UNKNOWN
-
-        Logging is enqueued in a background Queue handled by a QueueListener
-        to avoid slowing down the gRPC request flow.
+        Returns:
+            Tuple of (kept: bool, filter_reason: Optional[str])
         """
-        if not entities:
-            return
+        entity_type_raw = entity.get('type')
+        entity_type = _normalize_pii_type_for_grpc(entity_type_raw)
+        entity_type_upper = entity_type.upper()
+        entity_score = float(entity.get('score', 0.0))
+        raw_source = entity.get('source', 'UNKNOWN')
+        entity_source = raw_source.value if isinstance(raw_source, DetectorSource) else str(raw_source)
 
-        for entity in entities:
-            try:
-                text = str(entity.get("text", ""))
-                pii_type = _normalize_pii_type_for_grpc(entity.get("type"))
-                score = entity.get("score")
-                source = entity.get("source") or entity.get("detector") or "UNKNOWN"
+        logger.debug(
+            f"[{request_id}] Entity #{idx+1}: raw_type='{entity_type_raw}' → "
+            f"normalized='{entity_type}' → uppercase='{entity_type_upper}' | "
+            f"score={entity_score:.3f}"
+        )
 
-                # Best-effort non-blocking enqueue: drop if queue is full
-                if not _pii_log_queue.full():
-                    record = _pii_logger.makeRecord(
-                        _pii_logger.name,
-                        logging.INFO,
-                        fn="pii_service.py",
-                        lno=0,
-                        msg=(
-                            "[PII-DETECTED] request_id=%s source=%s "
-                            "type=%s score=%s value=%s"
-                        ),
-                        args=(request_id, source, pii_type, score, text),
-                        exc_info=None,
-                    )
-                    _pii_queue_handler.enqueue(record)
-            except Exception:
-                # Never impact detection flow due to logging issues
-                logger.debug("[%s] Failed to enqueue PII log", request_id, exc_info=True)
+        # Prefer detector-specific composite key (e.g. "REGEX:IP_ADDRESS"),
+        # fall back to plain pii_type key for backward compatibility.
+        type_config = pii_type_configs.get(f"{entity_source}:{entity_type_upper}")
+        if not type_config:
+            type_config = pii_type_configs.get(entity_type_upper)
+
+        if not type_config:
+            logger.debug(
+                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT (no config)"
+            )
+            return True, None
+
+        logger.debug(
+            f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): Config FOUND → "
+            f"enabled={type_config.get('enabled')}, "
+            f"threshold={type_config.get('threshold')}, "
+            f"detector={type_config.get('detector')}, "
+            f"detector_label={type_config.get('detector_label')}"
+        )
+
+        config_detector = type_config.get('detector', 'ALL')
+
+        if config_detector != 'ALL' and config_detector != entity_source:
+            logger.debug(
+                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
+                f"(config detector={config_detector} doesn't match entity source={entity_source})"
+            )
+            return True, None
+
+        if not type_config.get('enabled', True):
+            logger.debug(
+                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
+                f"(disabled in config for detector={config_detector})"
+            )
+            return False, f"{entity_type_upper}:disabled"
+
+        type_threshold = float(type_config.get('threshold', 0.5))
+        if entity_score < type_threshold:
+            logger.debug(
+                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
+                f"(score {entity_score:.3f} < threshold {type_threshold:.3f})"
+            )
+            return False, f"{entity_type_upper}:below_threshold"
+
+        logger.debug(
+            f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
+            f"(enabled=true, score {entity_score:.3f} >= threshold {type_threshold:.3f})"
+        )
+        return True, None
 
     def _build_detection_response(
-        self, content: str, entities: List, request_id: str
+        self, content: str, entities: List, request_id: str,
+        discarded_entities: Optional[List] = None,
+        detector_stats: Optional[List] = None
     ) -> pii_detection_pb2.PIIDetectionResponse:
         """Build complete detection response with entities, nbOfDetectedPIIBySeverity, and masked content.
-        
+
         Args:
             content: Original content
             entities: Detected PII entities
             request_id: Request identifier for logging
-            
+            discarded_entities: Optional list of ``(entity, verdict)`` tuples
+                rejected by the precision post-filter, exposed in ``discarded_entities``
+            detector_stats: Optional list of per-detector run-stats dicts
+                (``source``/``duration_ms``/``entities_found``) exposed in
+                ``detector_stats``. Empty for paths that don't produce them.
+
         Returns:
             Complete PIIDetectionResponse
         """
         logger.debug(f"[{request_id}] Building gRPC response...")
         response = pii_detection_pb2.PIIDetectionResponse()
-        
-        self._add_entities_to_response(response, entities, request_id)
+
+        self._add_entities_to_response(response, entities, request_id, content)
         self._add_summary_to_response(response, entities, request_id)
         self._add_masked_content_to_response(response, content, entities, request_id)
-        
+        if discarded_entities:
+            self._add_discarded_entities_to_response(
+                response, discarded_entities, request_id
+            )
+        if detector_stats:
+            self._add_detector_stats_to_response(
+                response, detector_stats, request_id
+            )
+
         return response
 
+    @staticmethod
+    def _add_detector_stats_to_response(
+        response: pii_detection_pb2.PIIDetectionResponse,
+        detector_stats: List, request_id: str
+    ) -> None:
+        """Add per-detector run stats to ``detector_stats``.
+
+        Each item is a dict ``{"source": DetectorSource, "duration_ms": int,
+        "entities_found": int}`` produced by the composite detector (one entry
+        per detector that actually ran for this request).
+
+        Args:
+            response: Response object to populate
+            detector_stats: Per-detector run-stats dicts
+            request_id: Request identifier for logging
+        """
+        for stat in detector_stats:
+            try:
+                proto_stat = response.detector_stats.add()
+                source = stat.get("source")
+                if isinstance(source, DetectorSource):
+                    proto_stat.source = getattr(
+                        pii_detection_pb2.DetectorSource, source.name,
+                        pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE,
+                    )
+                else:
+                    source_str = str(source or "UNKNOWN_SOURCE").upper()
+                    proto_stat.source = getattr(
+                        pii_detection_pb2.DetectorSource, source_str,
+                        pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE,
+                    )
+                proto_stat.duration_ms = int(stat.get("duration_ms", 0))
+                proto_stat.entities_found = int(stat.get("entities_found", 0))
+                proto_stat.entities_discarded = int(stat.get("entities_discarded", 0))
+            except (ValueError, TypeError) as e:
+                # Observability payload only: never fail the response because a
+                # single stats entry cannot be serialized.
+                logger.warning(
+                    f"[{request_id}] Failed to convert detector stat to "
+                    f"protobuf: {e}. Stat: {stat}"
+                )
+
     def _add_entities_to_response(
-        self, response: pii_detection_pb2.PIIDetectionResponse, entities: List, request_id: str
+        self, response: pii_detection_pb2.PIIDetectionResponse, entities: List, request_id: str, content: str = ""
     ) -> None:
         """Add detected entities to response, limiting to 1000 to avoid huge responses.
         
@@ -1090,36 +1095,86 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         
         for entity in entities[:1000]:
             try:
-                pii_entity = response.entities.add()
-                pii_entity.text = str(entity['text'])
-                # Normalize PII type to match Java enum (EMAIL not PIIType.EMAIL)
-                pii_entity.type = _normalize_pii_type_for_grpc(entity.get('type'))
-                pii_entity.type_label = str(entity['type_label'])
-                # Convert to native Python types for Protobuf compatibility
-                # (numpy.int64/float64 from Presidio/other detectors cause errors)
-                pii_entity.start = int(entity['start'])
-                pii_entity.end = int(entity['end'])
-                pii_entity.score = float(entity['score'])
-                # Detection source: Map Domain Enum to Proto Enum
-                domain_source = entity.get('source')
-                if isinstance(domain_source, DetectorSource):
-                    # Map directly using name if names match
-                    pii_entity.source = getattr(pii_detection_pb2.DetectorSource, domain_source.name, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
-                else:
-                    # Fallback for string or unknown
-                    source_str = str(domain_source or entity.get('detector') or 'UNKNOWN').upper()
-                    if source_str == 'UNKNOWN':
-                        source_str = 'UNKNOWN_SOURCE'
-                    pii_entity.source = getattr(pii_detection_pb2.DetectorSource, source_str, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+                self._populate_proto_entity(response.entities.add(), entity)
             except (ValueError, TypeError) as e:
                 logger.error(
-                    f"[{request_id}] Failed to convert entity to protobuf: {e}. "
-                    f"Entity: {entity}"
+                    f"[{request_id}] Failed to convert entity to protobuf: {e} "
+                    f"(type={entity.get('type')})"
                 )
                 raise
-        
+
         if len(entities) > 1000:
             logger.warning(f"[{request_id}] Truncated entities list from {len(entities)} to 1000")
+
+    @staticmethod
+    def _populate_proto_entity(pii_entity, entity) -> None:
+        """Fill a proto ``PIIEntity`` from a domain entity (dict-style access).
+
+        Business rule: Convert all numeric values to native Python types to
+        ensure Protobuf compatibility (numpy types cause serialization
+        errors). PII types are normalized to match Java PiiType enum.
+        """
+        pii_entity.text = str(entity['text'])
+        # Normalize PII type to match Java enum (EMAIL not PIIType.EMAIL)
+        pii_entity.type = _normalize_pii_type_for_grpc(entity.get('type'))
+        pii_entity.type_label = str(entity['type_label'])
+        # Convert to native Python types for Protobuf compatibility
+        # (numpy.int64/float64 from Presidio/other detectors cause errors)
+        pii_entity.start = int(entity['start'])
+        pii_entity.end = int(entity['end'])
+        pii_entity.score = float(entity['score'])
+
+        # Detection source: Map Domain Enum to Proto Enum
+        domain_source = entity.get('source')
+        if isinstance(domain_source, DetectorSource):
+            # Map directly using name if names match
+            pii_entity.source = getattr(pii_detection_pb2.DetectorSource, domain_source.name, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+        else:
+            # Fallback for string or unknown
+            source_str = str(domain_source or entity.get('detector') or 'UNKNOWN').upper()
+            if source_str == 'UNKNOWN':
+                source_str = 'UNKNOWN_SOURCE'
+            pii_entity.source = getattr(pii_detection_pb2.DetectorSource, source_str, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
+
+    def _add_discarded_entities_to_response(
+        self, response: pii_detection_pb2.PIIDetectionResponse,
+        discarded_entities: List, request_id: str
+    ) -> None:
+        """Add precision post-filter rejections to ``discarded_entities``.
+
+        Each item is a ``(entity, verdict)`` tuple produced by the format
+        post-filter's ``filter_with_verdicts``. Same 1000-entry cap as the kept
+        entities to bound the response size. The proto verdict fields keep the
+        historical ``judge_*`` names but carry the post-filter verdict.
+
+        Args:
+            response: Response object to populate
+            discarded_entities: ``(entity, verdict)`` tuples rejected by the post-filter
+            request_id: Request identifier for logging
+        """
+        to_add = min(len(discarded_entities), 1000)
+        logger.debug(
+            f"[{request_id}] Adding {to_add} post-filter-discarded entities to response"
+        )
+        for entity, verdict in discarded_entities[:1000]:
+            try:
+                discarded = response.discarded_entities.add()
+                self._populate_proto_entity(discarded.entity, entity)
+                discarded.judge_verdict = str(getattr(verdict, 'verdict', 'FALSE_POSITIVE'))
+                discarded.judge_confidence = float(getattr(verdict, 'confidence', 0.0) or 0.0)
+                discarded.judge_reason = str(getattr(verdict, 'reason', '') or '')
+            except (ValueError, TypeError) as e:
+                # Measurement payload only: never fail the whole response
+                # because one rejected entity cannot be serialized.
+                logger.warning(
+                    f"[{request_id}] Failed to convert discarded entity to "
+                    f"protobuf: {e} (type={entity.get('type')})"
+                )
+        if len(discarded_entities) > 1000:
+            logger.warning(
+                f"[{request_id}] Truncated discarded entities list from "
+                f"{len(discarded_entities)} to 1000"
+            )
 
     def _add_summary_to_response(
         self, response: pii_detection_pb2.PIIDetectionResponse, entities: List, request_id: str
@@ -1231,217 +1286,6 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         final_time = time.time() - start_time
         logger.debug(f"[{request_id}] Request cleanup completed, total time: {final_time:.3f}s")
 
-    def StreamDetectPII(self, request, context):
-        """
-        Stream progressive PII detection updates per chunk and a final nbOfDetectedPIIBySeverity.
-        """
-        start_time = time.time()
-        request_id = self._generate_stream_request_id(start_time)
-
-        try:
-            self.request_counter += 1
-
-            if not self._validate_stream_request(request, context, request_id):
-                return
-
-            content, threshold = request.content, self._get_threshold(request)
-            
-            for update in self._stream_detection_chunks(content, threshold, request_id, context):
-                yield update
-            
-            yield self._build_final_stream_update(content, threshold, request_id)
-
-        except Exception as e:
-            self._handle_stream_error(e, request_id, context)
-        finally:
-            self._cleanup_stream_resources()
-    
-    def _generate_stream_request_id(self, start_time: float) -> str:
-        """Generate unique request identifier for streaming."""
-        return f"stream_{self.request_counter + 1}_{int(start_time * 1000) % 10000}"
-    
-    def _get_threshold(self, request) -> float:
-        """Extract threshold from request with default."""
-        return request.threshold if request.threshold > 0 else 0.5
-    
-    def _validate_stream_request(self, request, context, request_id: str) -> bool:
-        """Validate streaming request parameters.
-        
-        Returns:
-            True if validation passed, False otherwise
-        """
-        if not request.content:
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details("Content cannot be empty")
-            return False
-
-        if len(request.content) > self.max_text_size:
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details(
-                f"Content too large: {len(request.content)} characters (max: {self.max_text_size})"
-            )
-            return False
-        
-        return True
-    
-    def _stream_detection_chunks(self, content: str, threshold: float, request_id: str, context):
-        """Stream detection updates for each chunk of content.
-        
-        Yields:
-            PIIDetectionUpdate messages for each processed chunk
-        """
-        cfg = self.detector.config
-        step = max(1, cfg.chunk_size - cfg.chunk_overlap)
-        total_chunks = max(1, (len(content) + step - 1) // step)
-
-        logger.info(f"[{request_id}] Starting streaming detection: len={len(content)}, step={step}, total_chunks={total_chunks}")
-
-        all_entities = []
-        chunk_index = 0
-
-        for start in range(0, len(content), step):
-            if self._should_stop_streaming(context, request_id, chunk_index):
-                return
-
-            chunk_entities = self._process_stream_chunk(content, start, cfg.chunk_size, threshold)
-            added_in_chunk = self._add_unique_entities(chunk_entities, start, all_entities)
-            
-            yield self._create_chunk_update(added_in_chunk, chunk_index, total_chunks)
-            
-            self._cleanup_chunk_resources()
-            chunk_index += 1
-        
-        # Store all_entities for final update
-        self._stream_all_entities = all_entities
-    
-    def _should_stop_streaming(self, context, request_id: str, chunk_index: int) -> bool:
-        """Check if streaming should stop due to client cancellation."""
-        if hasattr(context, 'is_active') and not context.is_active():
-            logger.info(f"[{request_id}] Client cancelled stream; stopping early at chunk {chunk_index}")
-            return True
-        return False
-    
-    def _process_stream_chunk(self, content: str, start: int, chunk_size: int, threshold: float) -> List:
-        """Process a single chunk and return detected entities."""
-        end = min(start + chunk_size, len(content))
-        chunk = content[start:end]
-
-        raw_results = self.detector.pipeline(chunk)
-        return self.detector.entity_processor.process_entities(raw_results, threshold)
-    
-    def _add_unique_entities(self, chunk_entities: List, start: int, all_entities: List) -> List:
-        """Add unique entities from chunk to all_entities, adjusting positions."""
-        added_in_chunk = []
-        for e in chunk_entities:
-            adj = DetectedPIIEntity(
-                text=e.text,
-                pii_type=e.pii_type,
-                type_label=e.type_label,
-                start=e.start + start,
-                end=e.end + start,
-                score=e.score,
-            )
-            if not self.detector._is_duplicate_entity(adj, all_entities):
-                all_entities.append(adj)
-                added_in_chunk.append(adj)
-        
-        return added_in_chunk
-    
-    def _create_chunk_update(self, added_entities: List, chunk_index: int, total_chunks: int):
-        """Create update message for processed chunk.
-        
-        Business rule: Convert all numeric values to native Python types to ensure
-        Protobuf compatibility (numpy types cause serialization errors).
-        PII types are normalized to match Java PiiType enum expectations.
-        """
-        progress = int(((chunk_index + 1) * 100) / total_chunks)
-        update = pii_detection_pb2.PIIDetectionUpdate(
-            chunk_index=chunk_index,
-            total_chunks=total_chunks,
-            progress_percent=progress,
-            final=False,
-        )
-        
-        for ae in added_entities:
-            # Map Domain Enum to Proto Enum for streaming
-            domain_source = ae.source if hasattr(ae, 'source') else None
-            proto_source = pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE
-            
-            if isinstance(domain_source, DetectorSource):
-                proto_source = getattr(pii_detection_pb2.DetectorSource, domain_source.name, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
-            else:
-                source_str = str(domain_source or 'UNKNOWN').upper()
-                if source_str == 'UNKNOWN':
-                    source_str = 'UNKNOWN_SOURCE'
-                proto_source = getattr(pii_detection_pb2.DetectorSource, source_str, pii_detection_pb2.DetectorSource.UNKNOWN_SOURCE)
-
-            update.entities.append(
-                pii_detection_pb2.PIIEntity(
-                    text=str(ae.text),
-                    # Normalize PII type to match Java enum (EMAIL not PIIType.EMAIL)
-                    type=_normalize_pii_type_for_grpc(ae.pii_type),
-                    type_label=str(ae.type_label),
-                    # Convert to native Python types for Protobuf compatibility
-                    start=int(ae.start),
-                    end=int(ae.end),
-                    score=float(ae.score),
-                    source=proto_source,
-                )
-            )
-        
-        return update
-    
-    def _cleanup_chunk_resources(self) -> None:
-        """Free memory resources after chunk processing."""
-        self.detector.memory_manager.clear_cache(self.detector.device)
-        gc.collect(0)
-    
-    def _build_final_stream_update(self, content: str, threshold: float, request_id: str):
-        """Build final update with masked content and nbOfDetectedPIIBySeverity."""
-        all_entities = getattr(self, '_stream_all_entities', [])
-        
-        masked_content = self.detector._apply_masks(content, all_entities)
-        summary = self._build_entity_summary(all_entities)
-        
-        cfg = self.detector.config
-        step = max(1, cfg.chunk_size - cfg.chunk_overlap)
-        total_chunks = max(1, (len(content) + step - 1) // step)
-        
-        final_update = pii_detection_pb2.PIIDetectionUpdate(
-            chunk_index=max(0, total_chunks - 1),
-            total_chunks=total_chunks,
-            progress_percent=100,
-            masked_content=masked_content,
-            final=True,
-        )
-        
-        for k, v in summary.items():
-            final_update.summary[k] = v
-        
-        return final_update
-    
-    def _build_entity_summary(self, all_entities: List) -> Dict[str, int]:
-        """Build nbOfDetectedPIIBySeverity dictionary of entity types and counts."""
-        summary: dict[str, int] = {}
-        for e in all_entities:
-            key = e.type_label
-            summary[key] = summary.get(key, 0) + 1
-        return summary
-    
-    def _handle_stream_error(self, exception: Exception, request_id: str, context) -> None:
-        """Handle streaming detection error."""
-        logger.error(f"[{request_id}] Streaming detection failed: {str(exception)}")
-        context.set_code(grpc.StatusCode.INTERNAL)
-        context.set_details(f"Streaming detection failed: {str(exception)}")
-    
-    def _cleanup_stream_resources(self) -> None:
-        """Cleanup resources after streaming."""
-        self.detector.memory_manager.clear_cache(self.detector.device)
-        gc.collect(0)
-        # Clean up temporary stream state
-        if hasattr(self, '_stream_all_entities'):
-            delattr(self, '_stream_all_entities')
-
 
 class MemoryLimitedServer:
     """
@@ -1474,11 +1318,8 @@ class MemoryLimitedServer:
     
     def stop(self, grace: int = 5):
         """
-        Stop the gRPC server gracefully and flush PII logs.
-        
-        Ensures that all queued PII detection logs are flushed before
-        the server fully shuts down, preventing loss of audit records.
-        
+        Stop the gRPC server gracefully.
+
         Args:
             grace: Grace period in seconds for pending requests to complete.
         """
@@ -1490,10 +1331,7 @@ class MemoryLimitedServer:
             logger.info("Shutting down thread pool executor...")
             self.executor.shutdown(wait=True)
             logger.info("Thread pool executor shut down")
-        
-        # Flush remaining PII logs before final shutdown
-        _shutdown_pii_log_listener()
-    
+
     def serve(self):
         """Start the gRPC server with memory limits."""
         # Create a custom thread pool executor with bounded queue
@@ -1502,13 +1340,32 @@ class MemoryLimitedServer:
             thread_name_prefix='grpc-worker'
         )
         
-        # Create server with custom executor
+        # Create server with custom executor.
+        # Keepalive options are critical for long-running PII scans (200+ seconds
+        # on 100k-char Excel docs). Without these, an HTTP/2 PING from the client
+        # at default cadence (Armeria 30s when enabled, or any client-side
+        # liveness probe) triggers GOAWAY ENHANCE_YOUR_CALM via the default
+        # `grpc.http2.max_pings_without_data=2` guard. We loosen those guards
+        # and explicitly accept long idle streams since each inference can hold
+        # a single stream open for several minutes with no DATA frames in transit.
         self.server = grpc.server(
             self.executor,
             options=[
                 ('grpc.max_receive_message_length', 10 * 1024 * 1024),  # 10MB max message size
                 ('grpc.max_send_message_length', 10 * 1024 * 1024),
                 ('grpc.max_concurrent_streams', 100),
+                # Accept PINGs without data (long inferences send no DATA frames
+                # for minutes, so the default max_pings_without_data=2 trips).
+                ('grpc.http2.max_pings_without_data', 0),
+                ('grpc.http2.min_time_between_pings_ms', 10_000),
+                # Allow clients to send keepalive pings even when there's no
+                # active RPC (some clients open the connection eagerly before
+                # the first call).
+                ('grpc.keepalive_permit_without_calls', 1),
+                # No server-initiated GOAWAY based on connection age; benchmark
+                # runs intentionally keep the same connection alive for an hour.
+                ('grpc.max_connection_age_ms', 0x7FFFFFFF),
+                ('grpc.max_connection_idle_ms', 0x7FFFFFFF),
             ]
         )
         
@@ -1575,8 +1432,10 @@ def _normalize_pii_type_for_grpc(pii_type) -> str:
     if isinstance(pii_type, PIIType):
         return pii_type.name
     
-    # If it's already a string, ensure it's uppercase
-    return str(pii_type).upper()
+    # If it's already a string, normalize to UPPER_SNAKE_CASE
+    # Zero-shot labels may contain spaces/hyphens (e.g., "person name" → "PERSON_NAME")
+    # which must be converted to underscores for valid token format [TYPE]
+    return str(pii_type).upper().replace(" ", "_").replace("-", "_")
 
 
 def serve(port: int = 50051, max_workers: int = 5):

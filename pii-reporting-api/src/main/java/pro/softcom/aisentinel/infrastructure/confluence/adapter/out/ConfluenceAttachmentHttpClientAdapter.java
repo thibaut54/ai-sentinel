@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
 import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.http.ConfluenceApiUrlBuilder;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -35,12 +37,13 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     private static final String TITLE_FIELD = "title";
 
     private final ConfluenceConnectionConfig config;
+    private final ConfluenceApiUrlBuilder urlBuilder;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final String authHeader;
 
     public ConfluenceAttachmentHttpClientAdapter(@Qualifier("confluenceConfig") ConfluenceConnectionConfig config, ObjectMapper objectMapper) {
         this.config = config;
+        this.urlBuilder = new ConfluenceApiUrlBuilder(config);
         this.objectMapper = objectMapper;
 
         var executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -50,18 +53,23 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+    }
 
-        this.authHeader = createAuthHeader(config.username(), config.apiToken());
+    private String getAuthHeader() {
+        if (config.deploymentType() == ConfluenceDeploymentType.DATA_CENTER) {
+            return "Bearer " + config.apiToken();
+        }
+        return createAuthHeader(config.username(), config.apiToken());
     }
 
 
     public CompletableFuture<List<AttachmentInfo>> getPageAttachments(String pageId) {
         logger.info("Récupération des pièces jointes de la page: {}", pageId);
 
-        var uri = URI.create(config.getRestApiUrl() + config.contentPath() + pageId + config.attachmentChildSuffix() + "?limit=200&expand=results._links,results.metadata");
+        var uri = urlBuilder.buildAttachmentListWithMetadataUri(pageId);
 
         var request = HttpRequest.newBuilder().uri(uri)
-            .header(AUTHORIZATION_HEADER_NAME, authHeader)
+            .header(AUTHORIZATION_HEADER_NAME, getAuthHeader())
             .header(ACCEPT_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
             .timeout(Duration.ofMillis(config.readTimeout())).GET().build();
 
@@ -178,12 +186,13 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
     }
 
     /**
-     * Resolves a Confluence download path against the configured base URL robustly.
+     * Resolves a Confluence download path against the configured base URL.
      * Business rules:
      * - If downloadPath is absolute (http/https), return as-is.
-     * - Confluence Cloud expects download paths under '/wiki/download/...'. If the path starts with '/download/',
-     * we prefix it with '/wiki' to avoid 404 on Cloud when base URL does not contain '/wiki'.
-     * - Otherwise, resolve the path against the base URL using URI resolution.
+     * - Otherwise, concatenate base URL with download path directly.
+     *   Cloud base URL already includes /wiki (e.g., <a href="https://domain.atlassian.net/wiki">...</a>),
+     *   Data Center base URL is the root (e.g., <a href="https://confluence.company.com">...</a>).
+     *   Direct concatenation produces correct URLs for both deployment types.
      */
     private URI resolveAgainstConfluenceBase(String base, String downloadPath) {
         if (isBlank(downloadPath)) {
@@ -193,13 +202,10 @@ public class ConfluenceAttachmentHttpClientAdapter implements ConfluenceAttachme
         if (dp.startsWith("http://") || dp.startsWith("https://")) {
             return URI.create(dp);
         }
-        String normalizedBase = buildNormalizedBaseUrl(base) + "/";
-        String path = dp;
-        // Only normalize Confluence Cloud attachment download endpoints
-        if (path.startsWith("/download/attachments/")) {
-            path = "/wiki" + path;
+        String normalizedBase = buildNormalizedBaseUrl(base);
+        if (!dp.startsWith("/")) {
+            normalizedBase += "/";
         }
-        URI baseUri = URI.create(normalizedBase);
-        return baseUri.resolve(path);
+        return URI.create(normalizedBase + dp);
     }
 }

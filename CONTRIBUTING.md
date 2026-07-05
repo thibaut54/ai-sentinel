@@ -142,21 +142,7 @@ cd ai-sentinel
 git remote add upstream https://github.com/Softcom-Technologies-Organization/ai-sentinel.git
 ```
 
-**2. Configure Environment**
-
-```bash
-# Copy example environment file
-cp .env.example .env
-
-# Edit .env with your credentials
-# At minimum, you need:
-# - HUGGING_FACE_API_KEY
-# - CONFLUENCE_BASE_URL
-# - CONFLUENCE_USERNAME
-# - CONFLUENCE_API_TOKEN
-```
-
-**3. Start Development Environment**
+**2. Start Development Environment**
 
 ```bash
 # Build and start all services
@@ -169,7 +155,7 @@ docker compose -f docker-compose.dev.yml ps
 docker compose -f docker-compose.dev.yml logs -f
 ```
 
-**4. Access Services**
+**3. Access Services**
 
 - Frontend (UI): http://localhost:4200
 - Backend API: http://localhost:8080/ai-sentinel
@@ -411,7 +397,7 @@ Fixes #123
 
 docs(readme): update installation instructions for Windows
 
-test(detector): add integration tests for GLiNER model
+test(detector): add integration tests for Ministral model
 ```
 
 ## Testing Requirements
@@ -434,7 +420,7 @@ cd pii-detector-service
 pytest --cov=pii_detector --cov-report=html --cov-report=term
 
 # Run specific test file
-pytest tests/unit/test_gliner_detector.py -v
+pytest tests/unit/test_regex_detector.py -v
 
 # Run tests in parallel
 pytest -n auto

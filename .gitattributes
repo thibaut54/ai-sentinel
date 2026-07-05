@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings: they are bind-mounted or COPYd into Linux
+# containers and run by `sh`. With core.autocrlf=true on Windows they would
+# otherwise be checked out as CRLF, making `sh` fail (e.g. `set -eu\r` ->
+# "illegal option -") and breaking Docker ENTRYPOINT scripts.
+*.sh text eol=lf

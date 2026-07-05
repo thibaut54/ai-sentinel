@@ -11,7 +11,7 @@ from enum import Enum
 class PIIType(Enum):
     """Enumeration of supported PII types with French labels."""
 
-    # Existing types (from original ML detector)
+    # Core PII types
     ACCOUNTNUM = "Numéro de compte"
     BUILDINGNUM = "Numéro de bâtiment"
     CITY = "Ville"
@@ -21,20 +21,20 @@ class PIIType(Enum):
     EMAIL = "Email"
     GIVENNAME = "Prénom"
     IDCARDNUM = "Numéro de carte d'identité"
-    PASSWORD = "Mot de passe"
+    PASSWORD = "Mot de passe ou code PIN"  # NOSONAR  # noqa: S105
     SOCIALNUM = "Numéro de sécurité sociale (format générique)"
     STREET = "Rue"
     SURNAME = "Nom de famille"
     TAXNUM = "Numéro fiscal"
     TELEPHONENUM = "Numéro de téléphone (format générique)"
-    USERNAME = "Nom d'utilisateur"
+    USERNAME = "Identifiant système ou compte de connexion"
     ZIPCODE = "Code postal"
     
     # Additional types for Presidio and Regex detectors
     PHONE = "Téléphone (format international)"
     URL = "URL"
     CREDIT_CARD = "Carte bancaire (format court)"
-    IBAN = "IBAN"
+    IBAN = "Identifiant bancaire international (IBAN)"
     CRYPTO_WALLET = "Portefeuille crypto"
     SSN = "Social Security Number (SSN standard)"
     NHS_NUMBER = "Numéro NHS"
@@ -116,7 +116,7 @@ class PIIType(Enum):
     SECRET_KEY = "Clé secrète"
     CONNECTION_STRING = "Chaîne de connexion"
 
-    # New GLiNER types (underscore variants)
+    # Additional types (underscore variants)
     DATE_OF_BIRTH = "Date de naissance"
     BANK_ACCOUNT = "Compte bancaire"
     ROUTING_NUMBER = "Numéro de routage"
@@ -128,7 +128,7 @@ class PIIType(Enum):
     COUNTRY = "Pays"
     AVS_NUMBER = "Numéro AVS"
 
-    # Healthcare (new GLiNER types)
+    # Healthcare types
     MEDICAL_RECORD = "Dossier médical"
     HEALTH_INSURANCE = "Assurance maladie"
     MEDICAL_CONDITION = "Condition médicale"

@@ -11,6 +11,7 @@ import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDe
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Persistence adapter for PII detection configuration.
@@ -21,6 +22,8 @@ import java.time.LocalDateTime;
 public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigRepository {
 
     private static final Integer CONFIG_ID = 1;
+    private static final int DEFAULT_MINISTRAL_CHUNK_SIZE = 2048;
+    private static final int DEFAULT_MINISTRAL_OVERLAP = 410;
 
     private final PiiDetectionConfigJpaRepository jpaRepository;
 
@@ -52,36 +55,38 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
             throw new IllegalArgumentException("Configuration cannot be null");
         }
         
-        log.info("Updating PII detection configuration: glinerEnabled={}, presidioEnabled={}, " +
-                "regexEnabled={}, threshold={}, nbOfLabelByPass={}, updatedBy={}",
-                config.glinerEnabled(), config.presidioEnabled(),
-                config.regexEnabled(), config.defaultThreshold(),
-                config.nbOfLabelByPass(), config.updatedBy());
-        
+        log.info("Updating PII detection configuration: presidioEnabled={}, " +
+                "regexEnabled={}, ministralEnabled={}, threshold={}, postfilterEnabled={}, updatedBy={}",
+                config.presidioEnabled(), config.regexEnabled(), config.ministralEnabled(),
+                config.defaultThreshold(), config.postfilterEnabled(), config.updatedBy());
+
+
         PiiDetectionConfigEntity entity = toEntity(config);
         jpaRepository.save(entity);
-        
+
         log.info("PII detection configuration updated successfully");
     }
 
     /**
      * Creates and persists default configuration.
-     * Default: All detectors enabled, threshold 0.75
+     * Default: Presidio and regex enabled, threshold 0.75, post-filter OFF.
      */
     private PiiDetectionConfig createDefaultConfig() {
         log.info("Creating default PII detection configuration");
-        
+
         PiiDetectionConfig defaultConfig = new PiiDetectionConfig(
                 CONFIG_ID,
-                true,  // glinerEnabled
                 true,  // presidioEnabled
                 true,  // regexEnabled
+                false, // ministralEnabled (explicit operator opt-in)
+                DEFAULT_MINISTRAL_CHUNK_SIZE, // ministralChunkSize
+                DEFAULT_MINISTRAL_OVERLAP, // ministralOverlap
                 new BigDecimal("0.75"),  // defaultThreshold
-                35, // nbOfLabelByPass
-                LocalDateTime.now(),
+                false, // postfilterEnabled (zero-effect rollout default)
+                LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
         );
-        
+
         self.updateConfig(defaultConfig);
         return defaultConfig;
     }
@@ -92,11 +97,13 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private PiiDetectionConfig toDomain(PiiDetectionConfigEntity entity) {
         return new PiiDetectionConfig(
                 entity.getId(),
-                entity.getGlinerEnabled(),
                 entity.getPresidioEnabled(),
                 entity.getRegexEnabled(),
+                entity.getMinistralEnabled() != null && entity.getMinistralEnabled(),
+                entity.getMinistralChunkSize() != null ? entity.getMinistralChunkSize() : DEFAULT_MINISTRAL_CHUNK_SIZE,
+                entity.getMinistralOverlap() != null ? entity.getMinistralOverlap() : DEFAULT_MINISTRAL_OVERLAP,
                 entity.getDefaultThreshold(),
-                entity.getNbOfLabelByPass() != null ? entity.getNbOfLabelByPass() : 35,
+                entity.getPostfilterEnabled() != null && entity.getPostfilterEnabled(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -108,12 +115,14 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private PiiDetectionConfigEntity toEntity(PiiDetectionConfig config) {
         return PiiDetectionConfigEntity.builder()
                 .id(CONFIG_ID)
-                .glinerEnabled(config.glinerEnabled())
                 .presidioEnabled(config.presidioEnabled())
                 .regexEnabled(config.regexEnabled())
+                .ministralEnabled(config.ministralEnabled())
+                .ministralChunkSize(config.ministralChunkSize())
+                .ministralOverlap(config.ministralOverlap())
                 .defaultThreshold(config.defaultThreshold())
-                .nbOfLabelByPass(config.nbOfLabelByPass())
-                .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now())
+                .postfilterEnabled(config.postfilterEnabled())
+                .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())
                 .build();
     }

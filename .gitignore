@@ -1,5 +1,6 @@
 # Environment variables and secrets (sensitive data)
 .env
+.mcp.json
 secrets/*.txt
 
 # IDE and build artifacts
@@ -10,6 +11,7 @@ secrets/*.txt
 /pii-detector-service/.scannerwork/
 /pii-reporting-ui/.scannerwork/
 /.idea/
+/.run/
 /**/.coverage
 /pii-reporting-ui/playwright-report/
 /pii-reporting-ui/test-results/
@@ -22,3 +24,20 @@ secrets/*.txt
 /pii-detector-service/pii-detector-service/pii-detector-service.iml
 
 personally-identifiable-information-scan-results/
+
+# Confluence scan corpus (real exported pages/attachments) — local test data, never versioned
+/pii-reporting-api/src/test/resources/corpus/
+
+# Logs
+**/logs/
+
+# Package manager caches (pnpm content-addressable store) — local cache, never versioned
+.pnpm-store/
+
+# IDE artefact: IntelliJ sometimes materialises an unresolved ${PROJECT_DIR} variable
+# as a literal directory. Always noise.
+${PROJECT_DIR}/
+
+# Top-level coverage / benchmark scratch artefacts produced by test runs
+/coverage.xml
+/bench-pii-scan.tsv

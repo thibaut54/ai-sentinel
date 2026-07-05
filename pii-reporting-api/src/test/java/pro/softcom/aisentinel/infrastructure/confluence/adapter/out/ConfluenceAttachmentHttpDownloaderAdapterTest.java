@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfig;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 import java.lang.reflect.Field;
 import java.net.http.HttpClient;
@@ -38,7 +38,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
         return r;
     }
 
-    private ConfluenceConfig config;
+    private ConfluenceConnectionConfig config;
     private ObjectMapper objectMapper;
     private ConfluenceAttachmentHttpDownloaderAdapter service;
     private HttpClient httpClient; // will be injected via reflection
@@ -46,16 +46,8 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @BeforeEach
     void setUp() throws Exception {
         objectMapper = new ObjectMapper();
-        config = new ConfluenceConfig(
-                "https://example.atlassian.net", // baseUrl
-                "user@example.com",
-                "token-123",
-                new ConfluenceConfig.ConnectionSettings(5_000, 5_000, 2, false, null),
-                new ConfluenceConfig.PaginationSettings(50, 5),
-                new ConfluenceConfig.ApiPaths("/content/", "/content/search", "/space", "/child/attachment", "body.storage,version", "permissions"),
-                new ConfluenceConfig.CacheSettings(300000, 5000),
-                new ConfluenceConfig.PollingSettings(60000)
-        );
+        config = mock(ConfluenceConnectionConfig.class);
+        when(config.connectTimeout()).thenReturn(5_000);
         service = new ConfluenceAttachmentHttpDownloaderAdapter(config, objectMapper);
 
         // replace private final httpClient with a mock using reflection
@@ -63,6 +55,18 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
         Field f = ConfluenceAttachmentHttpDownloaderAdapter.class.getDeclaredField("httpClient");
         f.setAccessible(true);
         f.set(service, httpClient);
+    }
+
+    private void givenListingConfig() {
+        when(config.baseUrl()).thenReturn("https://example.atlassian.net");
+        when(config.username()).thenReturn("user@example.com");
+        when(config.apiToken()).thenReturn("token-123");
+        when(config.readTimeout()).thenReturn(5_000);
+    }
+
+    private void givenDownloadConfig() {
+        givenListingConfig();
+        when(config.maxRetries()).thenReturn(2);
     }
 
     @Test
@@ -79,6 +83,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @Test
     @DisplayName("returns empty when listing status not 200")
     void shouldReturnEmptyWhenListStatusNot200() {
+        givenListingConfig();
         // arrange list call -> 500
         doReturn(CompletableFuture.completedFuture(mockStringResponse(500)))
                 .when(httpClient)
@@ -92,6 +97,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @Test
     @DisplayName("returns empty when results missing or not array")
     void shouldReturnEmptyWhenResultsMissingOrNotArray() {
+        givenListingConfig();
         // results missing
         doReturn(CompletableFuture.completedFuture(mockStringResponse(200)))
                 .when(httpClient)
@@ -108,6 +114,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @Test
     @DisplayName("returns empty when attachment title not found")
     void shouldReturnEmptyWhenAttachmentNotFound() {
+        givenListingConfig();
         doReturn(CompletableFuture.completedFuture(mockStringResponse(200)))
                 .when(httpClient)
                 .sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
@@ -118,7 +125,8 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    void downloadAttachmentContent_normalizesDownloadPathWithoutLeadingSlash() throws Exception {
+    void Should_NormalizeDownloadPath_When_PathWithoutLeadingSlash() throws Exception {
+        givenDownloadConfig();
         String okList = attachmentsJson(List.of(
                 attachment()
         ));
@@ -140,6 +148,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @Test
     @DisplayName("Should_ReturnEmpty_When_BytesStatusNot200")
     void Should_ReturnEmpty_When_BytesStatusNot200() {
+        givenDownloadConfig();
         String okList = attachmentsJson(List.of(attachment()));
         HttpResponse<String> listOk = mockResponse(200, okList);
         @SuppressWarnings("unchecked")
@@ -156,6 +165,7 @@ class ConfluenceAttachmentHttpDownloaderAdapterTest {
     @Test
     @DisplayName("Should_SucceedAfterRetry_When_FirstAttemptServerError")
     void Should_SucceedAfterRetry_When_FirstAttemptServerError() {
+        givenDownloadConfig();
         String okList = attachmentsJson(List.of(attachment()));
         HttpResponse<String> listOk = mockResponse(200, okList);
         @SuppressWarnings("unchecked")

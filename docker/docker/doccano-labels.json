@@ -1,0 +1,48 @@
+{
+  "_comment": "Source of truth: pii-reporting-api/src/main/resources/data.sql (detector='GLINER' AND enabled=true). See docs/gliner-enabled-pii.md. Keep this file in sync manually.",
+  "project": {
+    "name": "ai-sentinel-pii-eval",
+    "description": "PII annotation project for AI Sentinel evaluation. Labels mirror data.sql GLiNER-enabled types (30 entries). See docs/gliner-enabled-pii.md.",
+    "project_type": "SequenceLabeling"
+  },
+  "category_colors": {
+    "IDENTITY":       "#3B82F6",
+    "DIGITAL":        "#8B5CF6",
+    "FINANCIAL":      "#10B981",
+    "MEDICAL":        "#EF4444",
+    "IT_CREDENTIALS": "#F59E0B",
+    "LEGAL_ASSET":    "#6B7280"
+  },
+  "labels": [
+    { "text": "NATIONAL_ID",             "category": "IDENTITY",       "detector_label": "national identity number" },
+    { "text": "SSN",                     "category": "IDENTITY",       "detector_label": "social security number" },
+    { "text": "PASSPORT_NUMBER",         "category": "IDENTITY",       "detector_label": "passport number" },
+    { "text": "DRIVER_LICENSE_NUMBER",   "category": "IDENTITY",       "detector_label": "driver license number" },
+    { "text": "USERNAME",                "category": "DIGITAL",        "detector_label": "system account name" },
+    { "text": "ACCOUNT_ID",              "category": "DIGITAL",        "detector_label": "account id" },
+    { "text": "CREDIT_CARD_NUMBER",      "category": "FINANCIAL",      "detector_label": "credit card number" },
+    { "text": "BANK_ACCOUNT_NUMBER",     "category": "FINANCIAL",      "detector_label": "bank account number" },
+    { "text": "IBAN",                    "category": "FINANCIAL",      "detector_label": "international banking identifier" },
+    { "text": "BIC_SWIFT",               "category": "FINANCIAL",      "detector_label": "swift code" },
+    { "text": "TAX_ID",                  "category": "FINANCIAL",      "detector_label": "tax identification number" },
+    { "text": "AVS_NUMBER",              "category": "MEDICAL",        "detector_label": "avs number" },
+    { "text": "PATIENT_ID",              "category": "MEDICAL",        "detector_label": "patient id" },
+    { "text": "MEDICAL_RECORD_NUMBER",   "category": "MEDICAL",        "detector_label": "medical record number" },
+    { "text": "HEALTH_INSURANCE_NUMBER", "category": "MEDICAL",        "detector_label": "health insurance number" },
+    { "text": "DIAGNOSIS",               "category": "MEDICAL",        "detector_label": "medical diagnosis" },
+    { "text": "MEDICATION",              "category": "MEDICAL",        "detector_label": "medication name" },
+    { "text": "MAC_ADDRESS",             "category": "IT_CREDENTIALS", "detector_label": "mac address" },
+    { "text": "DEVICE_ID",               "category": "IT_CREDENTIALS", "detector_label": "device id" },
+    { "text": "PASSWORD",                "category": "IT_CREDENTIALS", "detector_label": "account password or PIN code" },
+    { "text": "API_KEY",                 "category": "IT_CREDENTIALS", "detector_label": "api key" },
+    { "text": "ACCESS_TOKEN",            "category": "IT_CREDENTIALS", "detector_label": "access token" },
+    { "text": "SESSION_ID",              "category": "IT_CREDENTIALS", "detector_label": "session id" },
+    { "text": "CASE_NUMBER",             "category": "LEGAL_ASSET",    "detector_label": "case number" },
+    { "text": "LICENSE_NUMBER",          "category": "LEGAL_ASSET",    "detector_label": "license number" },
+    { "text": "CRIMINAL_RECORD",         "category": "LEGAL_ASSET",    "detector_label": "criminal record" },
+    { "text": "VEHICLE_REGISTRATION",    "category": "LEGAL_ASSET",    "detector_label": "vehicle registration number" },
+    { "text": "LICENSE_PLATE",           "category": "LEGAL_ASSET",    "detector_label": "license plate number" },
+    { "text": "VIN",                     "category": "LEGAL_ASSET",    "detector_label": "vehicle identification number" },
+    { "text": "INSURANCE_POLICY_NUMBER", "category": "LEGAL_ASSET",    "detector_label": "insurance policy number" }
+  ]
+}

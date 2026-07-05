@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionCon
 import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * Use case for managing PII detection configuration.
@@ -31,18 +32,20 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
 
     @Override
     public PiiDetectionConfig updateConfig(UpdatePiiDetectionConfigCommand command) {
-        log.info("Updating PII detection configuration: gliner={}, presidio={}, regex={}, threshold={}, nbOfLabelByPass={}",
-                command.glinerEnabled(), command.presidioEnabled(), command.regexEnabled(),
-                command.defaultThreshold(), command.nbOfLabelByPass());
+        log.info("Updating PII detection configuration: presidio={}, regex={}, ministral={}, threshold={}, postfilterEnabled={}",
+                command.presidioEnabled(), command.regexEnabled(), command.ministralEnabled(),
+                command.defaultThreshold(), command.postfilterEnabled());
 
         PiiDetectionConfig newConfig = new PiiDetectionConfig(
                 CONFIG_ID,
-                command.glinerEnabled(),
                 command.presidioEnabled(),
                 command.regexEnabled(),
+                command.ministralEnabled(),
+                command.ministralChunkSize(),
+                command.ministralOverlap(),
                 command.defaultThreshold(),
-                command.nbOfLabelByPass(),
-                LocalDateTime.now(),
+                command.postfilterEnabled(),
+                LocalDateTime.now(ZoneId.systemDefault()),
                 command.updatedBy()
         );
 

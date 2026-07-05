@@ -6,20 +6,17 @@ package pii_detection;
 service PIIDetectionService {
   // Analyzes text content for PII and returns detailed results
   rpc DetectPII (PIIDetectionRequest) returns (PIIDetectionResponse) {}
-  
-  // Streams analysis updates chunk by chunk, with a final message containing summary and masked content
-  rpc StreamDetectPII (PIIDetectionRequest) returns (stream PIIDetectionUpdate) {}
 }
 
 // Request message containing the text content to analyze
 message PIIDetectionRequest {
   // The text content to analyze for PII
   string content = 1;
-  
+
   // Optional confidence threshold (0.0-1.0)
   // If not provided, a default value will be used
   float threshold = 2;
-  
+
   // Optional flag to fetch fresh configuration from database
   // When true, fetches latest config from PostgreSQL before processing
   // When false or not provided, uses default/cached configuration
@@ -30,55 +27,85 @@ message PIIDetectionRequest {
 message PIIDetectionResponse {
   // List of detected PII entities
   repeated PIIEntity entities = 1;
-  
+
   // Summary of detected PII types and counts
   map<string, int32> summary = 2;
-  
+
   // Optional masked version of the input text with PII replaced
   string masked_content = 3;
+
+  // Entities detected by the detectors but discarded by the deterministic
+  // precision post-filter (FALSE_POSITIVE verdicts). Empty when the post-filter
+  // is disabled. Exposed so callers can measure the post-filter's
+  // false-positive reduction per PII type and per detector while keeping the
+  // correlation with the analyzed content.
+  repeated DiscardedPIIEntity discarded_entities = 4;
+
+  // Per-detector execution stats for this request. Contains one entry per
+  // detector that actually ran (even when it found nothing), so callers can
+  // aggregate real per-detector busy time and throughput across a scan.
+  repeated DetectorRunStats detector_stats = 5;
 }
 
-// Update message emitted during streaming analysis
-message PIIDetectionUpdate {
-  // Index of the current chunk (0-based)
-  int32 chunk_index = 1;
-  
-  // Total number of chunks for this analysis
-  int32 total_chunks = 2;
-  
-  // Progress percentage (0-100)
-  int32 progress_percent = 3;
-  
-  // Entities detected in this chunk (positions adjusted to original text)
-  repeated PIIEntity entities = 4;
-  
-  // Present only in the final message
-  string masked_content = 5;
-  
-  // Present only in the final message
-  map<string, int32> summary = 6;
-  
-  // True if this is the final message of the stream
-  bool final = 7;
+// Execution stats of a single detector for one DetectPII request
+message DetectorRunStats {
+  // The detector these stats belong to
+  DetectorSource source = 1;
+
+  // Wall-clock duration of this detector's execution for this request, in
+  // milliseconds. Detectors run sequentially within a request, so this is
+  // the real time spent by this detector (safe to sum per detector across
+  // requests to obtain cumulated busy time).
+  int64 duration_ms = 2;
+
+  // For real detectors: number of raw entities found (pre-merge).
+  // For the PREFILTER post-filter: number of PII examined by the stage
+  // (i.e. its input count).
+  int32 entities_found = 3;
+
+  // Number of PII the stage discarded. Always 0 for real detectors; for the
+  // PREFILTER post-filter it is the count of PII it rejected.
+  int32 entities_discarded = 4;
+}
+
+// A PII entity rejected by the deterministic precision post-filter, with the
+// verdict that motivated the rejection
+message DiscardedPIIEntity {
+  // The entity as originally detected (before the post-filter discarded it)
+  PIIEntity entity = 1;
+
+  // Post-filter verdict that caused the rejection (e.g. FALSE_POSITIVE)
+  string judge_verdict = 2;
+
+  // Post-filter confidence in the verdict (0.0-1.0)
+  float judge_confidence = 3;
+
+  // Short natural-language justification produced by the post-filter
+  string judge_reason = 4;
 }
 
 // Represents a single detected PII entity
 message PIIEntity {
+  // Field 8 (judge_status) and the JudgeStatus enum were removed with the
+  // LLM-as-judge post-filter; reserved so the tag/name are never reused.
+  reserved 8;
+  reserved "judge_status";
+
   // The detected text
   string text = 1;
-  
+
   // The type of PII (e.g., EMAIL, PHONE, etc.)
   string type = 2;
-  
+
   // Human-readable label for the PII type (localized)
   string type_label = 3;
-  
+
   // Start position in the original text
   int32 start = 4;
-  
+
   // End position in the original text
   int32 end = 5;
-  
+
   // Confidence score (0.0-1.0)
   float score = 6;
 
@@ -86,10 +113,21 @@ message PIIEntity {
   DetectorSource source = 7;
 }
 
-// Source of the detected PII
+// Source of the detected PII.
+//
+// PREFILTER is not a PII detector but the deterministic precision post-filter.
+// It never labels a PIIEntity.source; it appears only in DetectorRunStats so
+// callers can measure how many PII it discarded: entities_found carries the
+// number of PII it examined and entities_discarded the number it rejected.
 enum DetectorSource {
+  // Tags/names of the removed GLINER, OPENMED, GLINER2 detectors and the
+  // JUDGE post-filter are reserved so they are never reused.
+  reserved 1, 4, 5, 6;
+  reserved "GLINER", "OPENMED", "GLINER2", "JUDGE";
   UNKNOWN_SOURCE = 0;
-  GLINER = 1;
   PRESIDIO = 2;
   REGEX = 3;
+  PREFILTER = 7;
+  // Specialised LLM PII detector (Ministral-PII).
+  MINISTRAL = 8;
 }

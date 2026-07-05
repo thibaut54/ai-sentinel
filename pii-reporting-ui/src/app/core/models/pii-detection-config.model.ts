@@ -1,12 +1,16 @@
+export type DetectorType = 'PRESIDIO' | 'REGEX' | 'MINISTRAL';
+
 /**
  * PII Detection Configuration model matching backend DTO.
  */
 export interface PiiDetectionConfig {
-  glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  postfilterEnabled: boolean;
+  ministralEnabled: boolean;
+  ministralChunkSize: number;
+  ministralOverlap: number;
   defaultThreshold: number;
-  nbOfLabelByPass: number;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -15,11 +19,13 @@ export interface PiiDetectionConfig {
  * Request DTO for updating PII detection configuration.
  */
 export interface UpdatePiiDetectionConfigRequest {
-  glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  postfilterEnabled: boolean;
+  ministralEnabled: boolean;
+  ministralChunkSize: number;
+  ministralOverlap: number;
   defaultThreshold: number;
-  nbOfLabelByPass: number;
 }
 
 /**
@@ -28,13 +34,30 @@ export interface UpdatePiiDetectionConfigRequest {
 export interface PiiTypeConfig {
   id: number;
   piiType: string;
-  detector: 'GLINER' | 'PRESIDIO' | 'REGEX';
+  detector: DetectorType;
   enabled: boolean;
   threshold: number;
   category: string;
   countryCode?: string;
+  isCustom?: boolean;
+  detectorLabel?: string;
+  severity?: string;
   updatedAt?: string;
   updatedBy?: string;
+}
+
+/**
+ * Request DTO for creating a custom PII type configuration.
+ */
+export interface CreatePiiTypeConfigRequest {
+  piiType: string;
+  detector: DetectorType;
+  enabled: boolean;
+  threshold: number;
+  category: string;
+  detectorLabel: string;
+  severity: string;
+  countryCode?: string;
 }
 
 /**
@@ -42,7 +65,7 @@ export interface PiiTypeConfig {
  */
 export interface UpdatePiiTypeConfigRequest {
   piiType: string;
-  detector: 'GLINER' | 'PRESIDIO' | 'REGEX';
+  detector: DetectorType;
   enabled: boolean;
   threshold: number;
 }
@@ -58,7 +81,7 @@ export interface BulkUpdatePiiTypeConfigRequest {
  * Grouped PII types by detector and category for UI display.
  */
 export interface GroupedPiiTypes {
-  detector: 'GLINER' | 'PRESIDIO';
+  detector: 'PRESIDIO' | 'MINISTRAL';
   categories: CategoryGroup[];
 }
 

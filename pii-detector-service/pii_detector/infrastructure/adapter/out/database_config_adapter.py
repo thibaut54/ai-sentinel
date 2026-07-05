@@ -46,10 +46,17 @@ class DatabaseConfigAdapter:
         Fetch PII detection configuration from database.
 
         Returns:
-            Dictionary with config keys: gliner_enabled, presidio_enabled,
-            regex_enabled, default_threshold. Returns None if fetch fails.
+            Dictionary with config keys: presidio_enabled, regex_enabled,
+            ministral_enabled, ministral_chunk_size, ministral_overlap,
+            default_threshold, postfilter_enabled.
+            Returns None if fetch fails.
 
-        Business Rule: Single-row configuration table with id=1
+        Business Rule: Single-row configuration table with id=1.
+
+        Note: the Ministral and ``postfilter_enabled`` columns are read
+        defensively via a UndefinedColumn fallback so the adapter stays
+        compatible with deployments that have not yet applied the migration
+        adding these columns.
         """
         connection = None
         cursor = None
@@ -58,20 +65,51 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # Query the single-row configuration table
+            # Query the single-row configuration table. The Ministral and
+            # postfilter columns are read defensively: a UndefinedColumn
+            # fallback keeps existing rows readable even if the columns have not
+            # been added yet by Hibernate DDL update on a freshly-pulled
+            # environment.
             query = """
-                SELECT 
-                    gliner_enabled,
-                    presidio_enabled,
-                    regex_enabled,
-                    default_threshold,
-                    nb_of_label_by_pass
-                FROM pii_detection_config
-                WHERE id = 1
-            """
+                    SELECT presidio_enabled,
+                        regex_enabled,
+                        ministral_enabled,
+                        ministral_chunk_size,
+                        ministral_overlap,
+                        default_threshold,
+                        postfilter_enabled
+                    FROM pii_detection_config
+                    WHERE id = 1 \
+                    """
 
-            cursor.execute(query)
-            result = cursor.fetchone()
+            try:
+                cursor.execute(query)
+                result = cursor.fetchone()
+            except psycopg2.errors.UndefinedColumn:
+                # Migration not yet applied for ministral_* or postfilter_enabled
+                # -- retry without the new columns. They all default downstream so
+                # the service stays usable on a freshly-pulled environment before
+                # Hibernate DDL update.
+                logger.warning(
+                    "ministral_* / postfilter_enabled column missing in "
+                    "pii_detection_config; falling back on defaults. "
+                    "Apply migration to enable."
+                )
+                connection.rollback()
+                cursor.execute(
+                    """
+                    SELECT
+                        presidio_enabled,
+                        regex_enabled,
+                        FALSE AS ministral_enabled,
+                        2048 AS ministral_chunk_size,
+                        410 AS ministral_overlap,
+                        default_threshold
+                    FROM pii_detection_config
+                    WHERE id = 1
+                    """
+                )
+                result = cursor.fetchone()
 
             if result is None:
                 logger.warning(
@@ -81,12 +119,30 @@ class DatabaseConfigAdapter:
                 return None
 
             config = dict(result)
+            # Normalise the flags so downstream code can assume they are always
+            # present (defaults applied when the migration is pending).
+            config.setdefault("postfilter_enabled", False)
+            if config["postfilter_enabled"] is None:
+                config["postfilter_enabled"] = False
+            # Ministral-PII detector flag + chunking knobs (added by migration
+            # 013). Absent / NULL -> the documented defaults so a pre-migration
+            # DB stays usable and the detector stays a no-op until opted in.
+            config.setdefault("ministral_enabled", False)
+            if config["ministral_enabled"] is None:
+                config["ministral_enabled"] = False
+            config.setdefault("ministral_chunk_size", 2048)
+            if config["ministral_chunk_size"] is None:
+                config["ministral_chunk_size"] = 2048
+            config.setdefault("ministral_overlap", 410)
+            if config["ministral_overlap"] is None:
+                config["ministral_overlap"] = 410
             logger.info(
                 "Successfully fetched config from database: "
-                f"gliner={config['gliner_enabled']}, "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
-                f"threshold={config['default_threshold']}"
+                f"ministral={config['ministral_enabled']}, "
+                f"threshold={config['default_threshold']}, "
+                f"postfilter={config['postfilter_enabled']}"
             )
             return config
 
@@ -123,22 +179,23 @@ class DatabaseConfigAdapter:
         Fetch PII type-specific configurations from database.
 
         Args:
-            detector: Optional detector filter ('GLINER', 'PRESIDIO', 'REGEX').
+            detector: Optional detector filter ('PRESIDIO', 'REGEX', 'MINISTRAL').
                      If None, fetches all PII type configs.
 
         Returns:
             Dictionary mapping PII type to config dict with keys:
             - enabled (bool): Whether this PII type is enabled
             - threshold (float): Detection threshold for this type (0.0-1.0)
-            - detector (str): Detector name (GLINER, PRESIDIO, REGEX)
-            - display_name (str): Human-readable name
+            - detector (str): Detector name (PRESIDIO, REGEX, MINISTRAL)
             - category (str): PII category
-            
+            - country_code (str): Optional country code
+            - detector_label (str): Detector-specific label
+
             Example: {
-                'EMAIL': {'enabled': True, 'threshold': 0.5, 'detector': 'GLINER', ...},
-                'CREDIT_CARD': {'enabled': False, 'threshold': 0.7, 'detector': 'PRESIDIO', ...}
+                'EMAIL': {'enabled': True, 'threshold': 0.5, 'detector': 'PRESIDIO', ...},
+                'CREDIT_CARD': {'enabled': False, 'threshold': 0.7, 'detector': 'REGEX', ...}
             }
-            
+
             Returns None if fetch fails.
 
         Business Rule: PII type configs control which types are detected and
@@ -153,40 +210,7 @@ class DatabaseConfigAdapter:
             connection = self._get_connection()
             cursor = connection.cursor(cursor_factory=RealDictCursor)
 
-            # Build query with optional detector filter
-            if detector:
-                self.logger.info(f"Detector filter: {detector}")
-                query = """
-                    SELECT 
-                        pii_type,
-                        detector,
-                        enabled,
-                        threshold,
-                        category,
-                        country_code,
-                        detector_label
-                    FROM pii_type_config
-                    WHERE detector = %s
-                    ORDER BY category, pii_type
-                """
-                cursor.execute(query, (detector,))
-            else:
-                self.logger.info("No Detector")
-                query = """
-                    SELECT 
-                        pii_type,
-                        detector,
-                        enabled,
-                        threshold,
-                        category,
-                        country_code,
-                        detector_label
-                    FROM pii_type_config
-                    ORDER BY category, pii_type
-                """
-                cursor.execute(query)
-
-            results = cursor.fetchall()
+            results = self._execute_pii_type_query(cursor, detector)
 
             if not results:
                 logger.warning(
@@ -200,20 +224,25 @@ class DatabaseConfigAdapter:
             configs = {}
             for row in results:
                 pii_type = row['pii_type']
-                configs[pii_type] = {
+                entry = {
                     'enabled': row['enabled'],
                     'threshold': float(row['threshold']),
                     'detector': row['detector'],
                     'category': row['category'],
                     'country_code': row['country_code'],
-                    'detector_label': row['detector_label']
+                    'detector_label': row['detector_label'],
                 }
+                # Primary key (may overwrite for duplicates across detectors)
+                configs[pii_type] = entry
+                # Composite key for precise per-detector lookup (always unique)
+                if not detector:
+                    configs[f"{row['detector']}:{pii_type}"] = entry
 
             logger.info(
                 f"Successfully fetched {len(configs)} PII type configs from database "
                 f"(detector={detector or 'ALL'})"
             )
-            
+
             # Log sample of configs for debugging
             sample_types = list(configs.keys())[:3]
             for pii_type in sample_types:
@@ -222,7 +251,7 @@ class DatabaseConfigAdapter:
                     f"  {pii_type}: enabled={cfg['enabled']}, "
                     f"threshold={cfg['threshold']}, detector={cfg['detector']}"
                 )
-            
+
             return configs
 
         except psycopg2.OperationalError as e:
@@ -252,6 +281,26 @@ class DatabaseConfigAdapter:
                 cursor.close()
             if connection:
                 connection.close()
+
+    def _execute_pii_type_query(self, cursor, detector: Optional[str]):
+        """Run the pii_type_config SELECT.
+
+        All selected columns (including ``detector_label``, added by init-script
+        007) are part of the base schema, so no optional-column fallback is
+        required.
+        """
+        columns = (
+            "pii_type, detector, enabled, threshold, "
+            "category, country_code, detector_label"
+        )
+        where_clause = "WHERE detector = %s\n" if detector else ""
+        params = (detector,) if detector else None
+        query = (
+            f"SELECT {columns}\n"
+            f"FROM pii_type_config\n{where_clause}ORDER BY category, pii_type"
+        )
+        cursor.execute(query, params)
+        return cursor.fetchall()
 
 
 # Global singleton instance for reuse

@@ -409,12 +409,6 @@ services:
         # Step 4: Create required secrets with auto-generated values
         echo "[infisical-config] Step 4/5: Creating required secrets in project...";
         
-        # Note: The following secrets must be created manually in Infisical UI:
-        # - HUGGING_FACE_API_KEY
-        # - CONFLUENCE_BASE_URL
-        # - CONFLUENCE_USERNAME
-        # - CONFLUENCE_API_TOKEN
-        
         # Create DB_USER secret with generated value
         echo "[infisical-config]   Creating secret: DB_USER";
         DB_USER=$$(cat /secrets/postgres_user.txt);
@@ -484,18 +478,7 @@ services:
           echo "[infisical-config]   ⚠ Failed to create PII_DATABASE_ENCRYPTION_KEY (HTTP $$HTTP_CODE); continuing";
         fi
 
-        # Create the 4 manually-configured secrets WITHOUT placeholder values
-        echo "[infisical-config]   Creating empty secrets (to be filled manually)...";
-        for secret_name in "HUGGING_FACE_API_KEY" "CONFLUENCE_BASE_URL" "CONFLUENCE_USERNAME" "CONFLUENCE_API_TOKEN"; do
-          echo "[infisical-config]   Creating secret: $$secret_name";
-          curl -sf -X POST "$${INFISICAL_URL}/api/v4/secrets/$$secret_name" \
-            -H "Authorization: Bearer $${ADMIN_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"projectId\":\"$${PROJECT_ID}\",\"environment\":\"$${ENV_NAME}\",\"secretPath\":\"/\",\"secretValue\":\"\",\"secretComment\":\"Created empty - must be filled manually with real value\",\"type\":\"shared\"}" \
-            > /dev/null 2>&1 && echo "[infisical-config]   ✓ $$secret_name created (empty)" || echo "[infisical-config]   ⚠ $$secret_name may already exist";
-        done;
-        
-        echo "[infisical-config] ✓ Secrets created with placeholder or real values";
+        echo "[infisical-config] ✓ Secrets created with auto-generated values";
         echo "";
         
         # Step 5: Display success summary
@@ -525,11 +508,7 @@ services:
         echo "[infisical-config]   ✓ PGADMIN_DEFAULT_PASSWORD";
         echo "[infisical-config]   ✓ PII_DATABASE_ENCRYPTION_KEY";
         echo "[infisical-config] ";
-        echo "[infisical-config] IMPORTANT: Create these secrets manually in Infisical UI:";
-        echo "[infisical-config]   ⚠ HUGGING_FACE_API_KEY (required for PII detection)";
-        echo "[infisical-config]   ⚠ CONFLUENCE_BASE_URL (required for Confluence integration)";
-        echo "[infisical-config]   ⚠ CONFLUENCE_USERNAME (required for Confluence integration)";
-        echo "[infisical-config]   ⚠ CONFLUENCE_API_TOKEN (required for Confluence integration)";
+        echo "[infisical-config] Note: Confluence credentials are managed via the AI Sentinel Settings UI";
         echo "";
         echo "[infisical-config] Access Infisical UI at: http://localhost:8082";
         echo "[infisical-config] ================================================";
@@ -578,7 +557,7 @@ services:
   # PII DETECTOR SERVICE (Python/gRPC) - PRE-BUILT IMAGE
   # ============================================================================
   pii-detector:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:1.0.0
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:v1.1.0-debug
     container_name: pii-detector-service
     restart: unless-stopped
     
@@ -610,6 +589,15 @@ services:
       # Static non-sensitive configuration
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
+
+      # Detection data-parallelism: N inference worker processes serving K
+      # concurrent DetectPII calls (fed by PII_SCAN_PAGE_CONCURRENCY on the API).
+      # HARD constraint: keep PII_WORKER_PROCESSES * TORCH_NUM_THREADS <= the CPU
+      # allocation below (deploy.resources.limits.cpus = 4.0). Default 3 leaves a
+      # core for the gRPC server. To go to 6, raise cpus
+      # to ~8.0 first, then set PII_WORKER_PROCESSES=6.
+      PII_WORKER_PROCESSES: ${PII_WORKER_PROCESSES:-3}
+      TORCH_NUM_THREADS: ${TORCH_NUM_THREADS:-1}
     volumes:
       - huggingface-cache:/app/.cache/huggingface
       - ./secrets:/secrets:ro
@@ -633,7 +621,7 @@ services:
   # PII REPORTING API (Spring Boot) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-api:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:1.0.0
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:v1.1.0-debug
     container_name: pii-reporting-api
     restart: unless-stopped
     ports:
@@ -655,15 +643,11 @@ services:
       PII_DETECTOR_CLIENT: armeria
       PII_DETECTOR_HOST: pii-detector
       PII_DETECTOR_PORT: 50051
-      
-      # Non-sensitive Confluence configuration (optional with defaults)
-      CONFLUENCE_ENABLE_PROXY: ${CONFLUENCE_ENABLE_PROXY:-false}
-      CONFLUENCE_PROXY_HOST: ${CONFLUENCE_PROXY_HOST:-}
-      CONFLUENCE_PROXY_PORT: ${CONFLUENCE_PROXY_PORT:-8080}
-      CONFLUENCE_PROXY_USERNAME: ${CONFLUENCE_PROXY_USERNAME:-}
-      CONFLUENCE_CACHE_REFRESH_INTERVAL: ${CONFLUENCE_CACHE_REFRESH_INTERVAL:-300000}
-      CONFLUENCE_CACHE_INITIAL_DELAY: ${CONFLUENCE_CACHE_INITIAL_DELAY:-5000}
-      CONFLUENCE_POLLING_INTERVAL: ${CONFLUENCE_POLLING_INTERVAL:-60000}
+      # Number of Confluence pages whose detection runs concurrently. Should
+      # match PII_WORKER_PROCESSES on the detector so the worker pool stays fed
+      # (1 = sequential, historical). Page events are still emitted in order.
+      PII_SCAN_PAGE_CONCURRENCY: ${PII_SCAN_PAGE_CONCURRENCY:-3}
+
     volumes:
       - ./secrets:/secrets:ro
       - ./personally-identifiable-information-scan-results:/personally-identifiable-information-scan-results
@@ -690,7 +674,7 @@ services:
   # PII REPORTING UI (Angular + Nginx) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-ui:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:1.0.0
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:v1.1.0-debug
     container_name: pii-reporting-ui
     restart: unless-stopped
     ports:
@@ -719,7 +703,9 @@ services:
       POSTGRES_PASSWORD_FILE: /secrets/infisical_db_password.txt
       POSTGRES_DB: infisical
     volumes:
-      - infisical-db-data:/var/lib/postgresql/data
+      # PG18 stores data in a version subdir of /var/lib/postgresql (mount the
+      # parent, not /var/lib/postgresql/data) — mirrors the healthy main db.
+      - infisical-db-data:/var/lib/postgresql
       - ./secrets:/secrets:ro
     networks:
       - ai-sentinel-network

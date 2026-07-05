@@ -6,7 +6,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,10 +34,6 @@ public class PiiDetectionConfigEntity {
     private Integer id;
 
     @NotNull
-    @Column(name = "gliner_enabled", nullable = false)
-    private Boolean glinerEnabled;
-
-    @NotNull
     @Column(name = "presidio_enabled", nullable = false)
     private Boolean presidioEnabled;
 
@@ -46,22 +41,48 @@ public class PiiDetectionConfigEntity {
     @Column(name = "regex_enabled", nullable = false)
     private Boolean regexEnabled;
 
+    /**
+     * Activates the Ministral-PII detector (specialised LLM source). Defaults to
+     * {@code false} for an explicit operator opt-in.
+     */
+    @NotNull
+    @Column(name = "ministral_enabled", nullable = false)
+    private Boolean ministralEnabled;
+
+    /**
+     * Sliding-window chunk size (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_chunk_size", nullable = false)
+    private Integer ministralChunkSize;
+
+    /**
+     * Sliding-window overlap (characters) used by the Ministral-PII detector.
+     */
+    @NotNull
+    @Column(name = "ministral_overlap", nullable = false)
+    private Integer ministralOverlap;
+
     @NotNull
     @DecimalMin(value = "0.0", message = "Default threshold must be at least 0.0")
     @DecimalMax(value = "1.0", message = "Default threshold must be at most 1.0")
     @Column(name = "default_threshold", nullable = false, precision = 3, scale = 2)
     private BigDecimal defaultThreshold;
 
-    @Column(name = "nb_of_label_by_pass", nullable = false)
+    /**
+     * Activates the deterministic format precision post-filter (IP/MAC/IBAN
+     * checksum) that runs after detection. Defaults to {@code false} for a
+     * zero-effect rollout.
+     */
     @NotNull
-    @Min(value = 1, message = "nbOfLabelByPass must be >= 1")
-    private Integer nbOfLabelByPass;
+    @Column(name = "postfilter_enabled", nullable = false)
+    private Boolean postfilterEnabled;
 
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "updated_by", length = 255)
+    @Column(name = "updated_by")
     private String updatedBy;
 
     protected PiiDetectionConfigEntity() {

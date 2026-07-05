@@ -145,8 +145,12 @@ public class ContentScanOrchestrator {
      */
     public void purgePreviousScanDataForSpaces(java.util.List<String> spaceKeys) {
         try {
-            log.info("[SCAN] Purging previous active scan data for selected spaces before starting new scan");
-            scanCheckpointService.deleteActiveScanCheckpointsForSpaces(spaceKeys);
+            log.info("[SCAN] Purging ALL previous scan data for selected spaces before starting new scan");
+            scanCheckpointService.deleteAllCheckpointsForSpaces(spaceKeys);
+            int resolved = scanCheckpointService.resolveStaleActiveCheckpoints(spaceKeys);
+            if (resolved > 0) {
+                log.info("[SCAN] Resolved {} stale RUNNING/PAUSED checkpoints from previous scans", resolved);
+            }
             log.info("[SCAN] Previous scan data for selected spaces purged successfully");
         } catch (Exception e) {
             log.error("[SCAN] Failed to purge previous scan data for selected spaces: {}", e.getMessage(), e);

@@ -61,23 +61,23 @@ class PiiDetectionConfigPersistenceAdapterTest {
 
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(config).isNotNull();
-        softly.assertThat(config.id()).isEqualTo(CONFIG_ID);
-        softly.assertThat(config.glinerEnabled()).isTrue();
+        softly.assertThat(config.id()).isOne();
         softly.assertThat(config.presidioEnabled()).isTrue();
         softly.assertThat(config.regexEnabled()).isTrue();
         softly.assertThat(config.defaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(config.postfilterEnabled()).isFalse();
         softly.assertThat(config.updatedAt()).isNotNull();
         softly.assertThat(config.updatedBy()).isEqualTo("system");
 
         PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElse(null);
         softly.assertThat(entity).isNotNull();
         assertThat(entity).isNotNull();
-        softly.assertThat(entity.getGlinerEnabled()).isTrue();
         softly.assertThat(entity.getPresidioEnabled()).isTrue();
         softly.assertThat(entity.getRegexEnabled()).isTrue();
         softly.assertThat(entity.getDefaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
+        softly.assertThat(entity.getPostfilterEnabled()).isFalse();
         softly.assertThat(entity.getUpdatedAt()).isNotNull();
         softly.assertThat(entity.getUpdatedBy()).isEqualTo("system");
 
@@ -97,10 +97,11 @@ class PiiDetectionConfigPersistenceAdapterTest {
         PiiDetectionConfig updatedConfig = new PiiDetectionConfig(
             existingConfig.id(),
             false,
-            existingConfig.presidioEnabled(),
             existingConfig.regexEnabled(),
+            false,
+            1024, 128,
             newThreshold,
-                30,
+            false,
             updateTime,
             "integration-test"
         );
@@ -110,10 +111,8 @@ class PiiDetectionConfigPersistenceAdapterTest {
         PiiDetectionConfig reloadedConfig = persistenceAdapter.findConfig();
 
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(reloadedConfig.id()).isEqualTo(CONFIG_ID);
-        softly.assertThat(reloadedConfig.glinerEnabled()).isFalse();
-        softly.assertThat(reloadedConfig.presidioEnabled())
-            .isEqualTo(existingConfig.presidioEnabled());
+        softly.assertThat(reloadedConfig.id()).isOne();
+        softly.assertThat(reloadedConfig.presidioEnabled()).isFalse();
         softly.assertThat(reloadedConfig.regexEnabled())
             .isEqualTo(existingConfig.regexEnabled());
         softly.assertThat(reloadedConfig.defaultThreshold())
@@ -124,11 +123,64 @@ class PiiDetectionConfigPersistenceAdapterTest {
         PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElse(null);
         softly.assertThat(entity).isNotNull();
         assertThat(entity).isNotNull();
-        softly.assertThat(entity.getGlinerEnabled()).isFalse();
+        softly.assertThat(entity.getPresidioEnabled()).isFalse();
         softly.assertThat(entity.getDefaultThreshold())
             .isEqualByComparingTo(newThreshold);
         softly.assertThat(entity.getUpdatedBy()).isEqualTo("integration-test");
 
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_PersistAndRetrievePostfilterEnabled_When_FlagIsEnabled() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig enabledConfig = new PiiDetectionConfig(
+            CONFIG_ID,
+            true,
+            true,
+            true,
+            1024, 128, new BigDecimal("0.75"),
+            true,
+            LocalDateTime.now(),
+            "postfilter-enabler"
+        );
+
+        persistenceAdapter.updateConfig(enabledConfig);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.postfilterEnabled()).isTrue();
+        softly.assertThat(entity.getPostfilterEnabled()).isTrue();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_RoundTripMinistralFields_When_Persisted() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            CONFIG_ID,
+            true, false, true, 2048, 256, new BigDecimal("0.75"),
+            false,
+            LocalDateTime.now(),
+            "ministral-enabler"
+        );
+
+        persistenceAdapter.updateConfig(config);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.ministralEnabled()).isTrue();
+        softly.assertThat(reloaded.ministralChunkSize()).isEqualTo(2048);
+        softly.assertThat(reloaded.ministralOverlap()).isEqualTo(256);
+        softly.assertThat(entity.getMinistralEnabled()).isTrue();
+        softly.assertThat(entity.getMinistralChunkSize()).isEqualTo(2048);
+        softly.assertThat(entity.getMinistralOverlap()).isEqualTo(256);
         softly.assertAll();
     }
 }

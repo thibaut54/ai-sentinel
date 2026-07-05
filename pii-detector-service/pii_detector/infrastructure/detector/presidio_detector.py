@@ -29,6 +29,22 @@ from pii_detector.domain.entity.pii_type import PIIType
 logger = logging.getLogger(__name__)
 
 
+class _RegistryLanguageNoiseFilter(logging.Filter):
+    """Drop expected per-recognizer 'language not supported' startup noise.
+
+    Presidio ships country-specific predefined recognizers (e.g. the Polish
+    CreditCardRecognizer variant) and logs one WARNING per recognizer skipped
+    because its language is not in our supported set — pure startup noise,
+    repeated for every worker process.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "Recognizer not added to registry" not in record.getMessage()
+
+
+logging.getLogger("presidio-analyzer").addFilter(_RegistryLanguageNoiseFilter())
+
+
 # Mapping from Presidio entity types to our PIIType
 PRESIDIO_TO_PII_TYPE_MAP: Dict[str, PIIType] = {
     # Contact Information
@@ -305,8 +321,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 if detector_label:
@@ -340,8 +356,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 threshold = config.get('threshold')
@@ -364,7 +380,7 @@ class PresidioDetector:
     def load_model(self) -> None:
         """
         Load Presidio analyzer with configuration.
-        
+
         Initializes the AnalyzerEngine with:
         - Selected recognizers based on configuration
         - Custom scoring overrides
@@ -373,97 +389,125 @@ class PresidioDetector:
         if self._analyzer is not None:
             self.logger.info("Presidio analyzer already loaded")
             return
-        
-        try:
-            # Build NLP engine without triggering spaCy downloads.
-            # If the config lists concrete model packages, we will let NlpEngineProvider handle it.
-            # If it lists placeholders like "blank:xx" or has no models, we inject spaCy.blank pipelines directly.
-            nlp_section = self.config.get("nlp", {}) if isinstance(self.config, dict) else {}
-            models_cfg = []
-            if isinstance(nlp_section, dict):
-                models_cfg = nlp_section.get("models", []) or []
 
-            use_provider = False
-            if models_cfg:
-                # Decide whether the models are real packages or placeholders
-                # Any model_name starting with "blank:" should NOT be sent to provider
-                has_placeholder = any(
-                    isinstance(m, dict) and str(m.get("model_name", "")).startswith("blank:")
-                    for m in models_cfg
-                )
-                use_provider = not has_placeholder
+        try:
+            use_provider, nlp_section = self._should_use_nlp_provider()
 
             if use_provider:
-                nlp_configuration = {**nlp_section}
-                
-                # Inject labels_to_ignore into ner_model_configuration
-                # This is the modern way to configure ignored labels for NlpEngine
-                if "ner_model_configuration" not in nlp_configuration:
-                    nlp_configuration["ner_model_configuration"] = {}
-                
-                ner_config = nlp_configuration["ner_model_configuration"]
-                if "labels_to_ignore" not in ner_config:
-                    ner_config["labels_to_ignore"] = self._labels_to_ignore
-
-                # Also inject into models for backward compatibility or specific engine versions
-                if "models" in nlp_configuration and isinstance(nlp_configuration["models"], list):
-                    for model in nlp_configuration["models"]:
-                        if isinstance(model, dict):
-                            # Add labels_to_ignore if not present
-                            if "labels_to_ignore" not in model:
-                                model["labels_to_ignore"] = self._labels_to_ignore
-                
-                provider = NlpEngineProvider(nlp_configuration=nlp_configuration)
-                nlp_engine = provider.create_engine()
-                supported_langs = self._languages
+                nlp_engine, supported_langs = self._create_nlp_engine_with_provider(nlp_section)
             else:
-                # Inject blank pipelines for requested languages
-                try:
-                    from presidio_analyzer.nlp_engine import SpacyNlpEngine  # type: ignore
-                    import spacy  # type: ignore
-                except Exception as imp_err:
-                    raise RuntimeError(f"spaCy not available for blank injection: {imp_err}")
+                nlp_engine, supported_langs = self._create_blank_nlp_engine()
 
-                # Configure NER to ignore labels even in fallback/blank mode
-                ner_config = NerModelConfiguration(labels_to_ignore=self._labels_to_ignore)
-                nlp_engine = SpacyNlpEngine(ner_model_configuration=ner_config)
-                # Ensure the engine has an 'nlp' mapping
-                if not hasattr(nlp_engine, "nlp") or getattr(nlp_engine, "nlp") is None:
-                    setattr(nlp_engine, "nlp", {})
-                loaded_langs: List[str] = []
-                for lang in self._languages:
-                    try:
-                        nlp_engine.nlp[lang] = spacy.blank(lang)
-                        loaded_langs.append(lang)
-                    except Exception as lang_err:
-                        self.logger.warning(f"Failed to initialize spaCy blank('{lang}'): {lang_err}")
-                supported_langs = loaded_langs if loaded_langs else ["en"]
-                if not loaded_langs and "en" in supported_langs:
-                    # Try at least English
-                    try:
-                        nlp_engine.nlp["en"] = spacy.blank("en")
-                    except Exception as en_err:
-                        self.logger.warning(f"Also failed to initialize spaCy blank('en'): {en_err}")
-
-            # Create analyzer with prepared NLP engine and supported languages
             self._analyzer = AnalyzerEngine(
                 nlp_engine=nlp_engine,
                 supported_languages=supported_langs,
             )
-
             self.logger.info(
                 "Presidio analyzer loaded without spaCy package downloads (blank pipelines or preinstalled models)."
             )
 
         except Exception as e:
             self.logger.error(f"Failed to load Presidio analyzer with configured NLP engine: {e}")
-            # Last resort fallback without NLP
+            self._fallback_to_basic_analyzer()
+
+    def _should_use_nlp_provider(self) -> tuple:
+        """Determine whether to use NlpEngineProvider or blank spaCy pipelines.
+
+        Returns:
+            Tuple of (use_provider: bool, nlp_section: dict).
+        """
+        nlp_section = self.config.get("nlp", {}) if isinstance(self.config, dict) else {}
+        models_cfg = nlp_section.get("models", []) or [] if isinstance(nlp_section, dict) else []
+
+        if not models_cfg:
+            return False, nlp_section
+
+        has_placeholder = any(
+            isinstance(m, dict) and str(m.get("model_name", "")).startswith("blank:")
+            for m in models_cfg
+        )
+        return not has_placeholder, nlp_section
+
+    def _create_nlp_engine_with_provider(self, nlp_section: dict) -> tuple:
+        """Create NLP engine using NlpEngineProvider with real model packages.
+
+        Returns:
+            Tuple of (nlp_engine, supported_languages).
+        """
+        nlp_configuration = {**nlp_section}
+
+        # Inject labels_to_ignore into ner_model_configuration
+        if "ner_model_configuration" not in nlp_configuration:
+            nlp_configuration["ner_model_configuration"] = {}
+        ner_config = nlp_configuration["ner_model_configuration"]
+        if "labels_to_ignore" not in ner_config:
+            ner_config["labels_to_ignore"] = self._labels_to_ignore
+
+        # Also inject into models for backward compatibility
+        self._inject_labels_to_ignore_into_models(nlp_configuration)
+
+        provider = NlpEngineProvider(nlp_configuration=nlp_configuration)
+        return provider.create_engine(), self._languages
+
+    def _inject_labels_to_ignore_into_models(self, nlp_configuration: dict) -> None:
+        """Inject labels_to_ignore into each model entry for backward compatibility."""
+        models = nlp_configuration.get("models")
+        if not isinstance(models, list):
+            return
+        for model in models:
+            if isinstance(model, dict) and "labels_to_ignore" not in model:
+                model["labels_to_ignore"] = self._labels_to_ignore
+
+    def _create_blank_nlp_engine(self) -> tuple:
+        """Create NLP engine with blank spaCy pipelines for requested languages.
+
+        Returns:
+            Tuple of (nlp_engine, supported_languages).
+        """
+        try:
+            from presidio_analyzer.nlp_engine import SpacyNlpEngine  # type: ignore
+            import spacy  # type: ignore
+        except Exception as imp_err:
+            raise RuntimeError(f"spaCy not available for blank injection: {imp_err}")
+
+        ner_config = NerModelConfiguration(labels_to_ignore=self._labels_to_ignore)
+        nlp_engine = SpacyNlpEngine(ner_model_configuration=ner_config)
+        if not hasattr(nlp_engine, "nlp") or getattr(nlp_engine, "nlp") is None:
+            setattr(nlp_engine, "nlp", {})
+
+        loaded_langs = self._load_blank_languages(nlp_engine, spacy)
+        supported_langs = loaded_langs if loaded_langs else ["en"]
+        return nlp_engine, supported_langs
+
+    def _load_blank_languages(self, nlp_engine, spacy) -> List[str]:
+        """Load blank spaCy pipelines for each configured language.
+
+        Returns:
+            List of successfully loaded language codes.
+        """
+        loaded_langs: List[str] = []
+        for lang in self._languages:
             try:
-                self._analyzer = AnalyzerEngine()
-                self.logger.warning("Using basic Presidio analyzer without NLP support")
-            except Exception as inner_e:
-                self.logger.error(f"AnalyzerEngine fallback failed: {inner_e}")
-                raise
+                nlp_engine.nlp[lang] = spacy.blank(lang)
+                loaded_langs.append(lang)
+            except Exception as lang_err:
+                self.logger.warning(f"Failed to initialize spaCy blank('{lang}'): {lang_err}")
+
+        if not loaded_langs:
+            try:
+                nlp_engine.nlp["en"] = spacy.blank("en")
+            except Exception as en_err:
+                self.logger.warning(f"Also failed to initialize spaCy blank('en'): {en_err}")
+        return loaded_langs
+
+    def _fallback_to_basic_analyzer(self) -> None:
+        """Last-resort fallback: create a basic AnalyzerEngine without NLP."""
+        try:
+            self._analyzer = AnalyzerEngine()
+            self.logger.warning("Using basic Presidio analyzer without NLP support")
+        except Exception as inner_e:
+            self.logger.error(f"AnalyzerEngine fallback failed: {inner_e}")
+            raise
     
     def _build_allowed_entities(self, fresh_configs: Optional[Dict] = None) -> List[str]:
         """
@@ -697,6 +741,24 @@ class PresidioDetector:
             self.logger.error(f"Presidio detection failed: {e}", exc_info=True)
             return []
     
+    def _resolve_scoring_overrides(self, fresh_configs: Optional[Dict] = None) -> Dict[str, float]:
+        """Resolve scoring overrides: fresh configs > database > TOML fallback."""
+        if fresh_configs is not None:
+            self.logger.info("Using fresh request-time configuration for post-filtering")
+            return self._build_scoring_overrides_from_database(fresh_configs)
+
+        if not self._db_adapter:
+            self.logger.warning("Database adapter not available, using TOML thresholds for post-filtering")
+            return self._scoring_overrides
+
+        self.logger.info("Fetching fresh configuration from database for post-filtering")
+        fresh_db_configs = self._load_pii_type_configs_from_database()
+        if fresh_db_configs:
+            return self._build_scoring_overrides_from_database(fresh_db_configs)
+
+        self.logger.warning("No configs found in database, using TOML thresholds for post-filtering")
+        return self._scoring_overrides
+
     def _convert_and_filter_results(
         self, text: str, results: List, fresh_configs: Optional[Dict] = None
     ) -> List[PIIEntity]:
@@ -716,24 +778,7 @@ class PresidioDetector:
         Returns:
             List of PIIEntity objects that pass threshold filtering
         """
-        # If fresh configs provided, use them
-        if fresh_configs is not None:
-            self.logger.info("Using fresh request-time configuration for post-filtering")
-            scoring_overrides = self._build_scoring_overrides_from_database(fresh_configs)
-        else:
-            # Otherwise, fetch fresh from database (no cache)
-            if self._db_adapter:
-                self.logger.info("Fetching fresh configuration from database for post-filtering")
-                fresh_db_configs = self._load_pii_type_configs_from_database()
-                
-                if fresh_db_configs:
-                    scoring_overrides = self._build_scoring_overrides_from_database(fresh_db_configs)
-                else:
-                    self.logger.warning("No configs found in database, using TOML thresholds for post-filtering")
-                    scoring_overrides = self._scoring_overrides
-            else:
-                self.logger.warning("Database adapter not available, using TOML thresholds for post-filtering")
-                scoring_overrides = self._scoring_overrides
+        scoring_overrides = self._resolve_scoring_overrides(fresh_configs)
         
         entities = []
         filtered_count = 0
@@ -767,11 +812,11 @@ class PresidioDetector:
             
             # Extract text
             entity_text = text[result.start:result.end]
-            
+
             # Use original Presidio score (no override)
             # The scoring values are used as minimum thresholds, not score replacements
             score = result.score
-            
+
             # Create PIIEntity with type_label
             entity = PIIEntity(
                 text=entity_text,
@@ -782,7 +827,7 @@ class PresidioDetector:
                 score=score,
                 source=DetectorSource.PRESIDIO
             )
-            
+
             entities.append(entity)
         
         if filtered_count > 0:

@@ -1,0 +1,177 @@
+# =============================================================================
+# label_mapping.toml — Versioned label normalization table for the PII benchmark
+# =============================================================================
+# Spec: my-files/integratoin-test-with-dataset/spec.md (étape 1)
+#
+# This file is the SINGLE SOURCE OF TRUTH for span-level scoring. It defines:
+#   1. [canonical]      — the canonical concept vocabulary we score against.
+#   2. [datasets.*.map] — dataset_label -> canonical_concept (what the gold
+#                         spans become).
+#   3. [datasets.*.exclude] — dataset labels with NO in-scope equivalent. Their
+#                         spans become "ignore zones": never counted as FN, and
+#                         a detector finding landing on them is NOT a FP either
+#                         (the dataset DID mark them PII, just out of our scope).
+#   4. [detectors.*]    — detector_emitted_pii_type -> canonical_concept. Needed
+#                         because each detector emits a different pii_type for the
+#                         same concept (PRESIDIO=CREDIT_CARD, REGEX=CREDIT_CARD_NUMBER, both -> CARD_NUMBER).
+#
+# `build_datasets.py` consumes this file and emits:
+#   - gold/<dataset>.jsonl                (text + canonical spans + ignore spans)
+#   - mappings/detector_concept_map.json  (flattened [detectors.*], read by Java)
+#
+# RULE (spec §"Points d'attention"): the canonical vocabulary = concepts that AT
+# LEAST ONE in-scope detector (PRESIDIO/REGEX) has an *enabled*
+# pii_type for, in the master seed data-presidio-regex.sql.
+# A dataset label whose concept no enabled detector can emit is EXCLUDED, so the
+# benchmark measures the detectors as actually configured, not an idealized one.
+# =============================================================================
+
+schema_version = "1"
+seed_reference = "pii-reporting-api/src/test/resources/sql/data-presidio-regex.sql"
+
+# -----------------------------------------------------------------------------
+# [canonical] — the concepts we score. Value = which enabled detectors can emit
+# it (documentation only; the runtime truth is [detectors.*] below).
+# -----------------------------------------------------------------------------
+[canonical]
+NATIONAL_ID_NUMBER     = "REGEX(SOCIALNUM)"
+IBAN                   = "PRESIDIO(IBAN_CODE)"
+CARD_NUMBER            = "PRESIDIO(CREDIT_CARD off), REGEX(CREDIT_CARD_NUMBER)"
+IP_ADDRESS             = "REGEX"
+PHONE_NUMBER           = "REGEX"
+API_KEY                = "REGEX"
+CRYPTO                 = "PRESIDIO"
+MAC_ADDRESS            = "PRESIDIO, REGEX"
+MEDICAL_LICENSE        = "PRESIDIO"
+AVS_NUMBER             = "REGEX (Swiss; no dataset gold)"
+NRP                    = "PRESIDIO (out-of-scope concept; findings count as FP unless on an ignore zone)"
+
+# =============================================================================
+# DATASETS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# gretelai/synthetic_pii_finance_multilingual
+#   pii_spans is a JSON *string* (json.loads) -> list of {start,end,label}.
+# -----------------------------------------------------------------------------
+[datasets.gretelai]
+hf_id        = "gretelai/synthetic_pii_finance_multilingual"
+revision     = "7b844d16738527a04264f50214cb426a4cea0897"
+split        = "test"
+text_field   = "generated_text"
+spans_field  = "pii_spans"
+spans_format = "json_string"   # value is a JSON string -> [{start,end,label}]
+languages    = ["English"]      # restrict to keep offsets BMP-safe & runtime bounded
+
+[datasets.gretelai.map]
+iban                       = "IBAN"
+credit_card_number         = "CARD_NUMBER"
+api_key                    = "API_KEY"
+ssn                        = "NATIONAL_ID_NUMBER"
+ipv4                       = "IP_ADDRESS"
+ipv6                       = "IP_ADDRESS"
+phone_number               = "PHONE_NUMBER"
+
+[datasets.gretelai.exclude]
+swift_bic_code            = "BIC_SWIFT is not emitted by any ENABLED detector (PRESIDIO none, REGEX none) -> ignore zone"
+bban                      = "BANK_ACCOUNT concept dropped: no enabled detector emits it -> ignore zone"
+bank_routing_number       = "ROUTING_NUMBER concept dropped: no enabled detector emits it -> ignore zone"
+credit_card_security_code = "CARD_CVV concept dropped: no enabled detector emits it -> ignore zone"
+account_pin               = "PIN concept dropped: no enabled detector emits it -> ignore zone"
+customer_id               = "ACCOUNT_ID concept dropped: no enabled detector emits it -> ignore zone"
+employee_id               = "ACCOUNT_ID concept dropped: no enabled detector emits it -> ignore zone"
+password                  = "PASSWORD concept dropped: no enabled detector emits it -> ignore zone"
+passport_number           = "PASSPORT_NUMBER concept dropped: no enabled detector emits it -> ignore zone"
+driver_license_number     = "DRIVERS_LICENSE_NUMBER concept dropped: no enabled detector emits it -> ignore zone"
+user_name                 = "USERNAME concept dropped: no enabled detector emits it -> ignore zone"
+email                     = "no enabled detector emits EMAIL in this seed -> ignore zone"
+name                      = "person name: all PERSON/NAME types disabled in seed -> ignore zone"
+first_name                = "see name"
+last_name                 = "see name"
+company                   = "no app concept -> ignore zone"
+street_address            = "ADDRESS disabled in seed -> ignore zone"
+date                      = "temporal: disabled -> ignore zone"
+date_of_birth             = "temporal: disabled -> ignore zone"
+time                      = "temporal: disabled -> ignore zone"
+date_time                 = "temporal: disabled -> ignore zone"
+local_latlng              = "geo coordinates: no app concept -> ignore zone"
+
+# -----------------------------------------------------------------------------
+# ai4privacy/pii-masking-300k (OpenPII + FinPII merge, config "default")
+#   privacy_mask is a native list of {value,start,end,label}.
+# -----------------------------------------------------------------------------
+[datasets.ai4privacy]
+hf_id        = "ai4privacy/pii-masking-300k"
+revision     = "c8c77895a005822682b66ab547fc0422579bc1d3"
+split        = "validation"
+text_field   = "source_text"
+spans_field  = "privacy_mask"
+spans_format = "object_list"    # list of {value,start,end,label}
+languages    = ["en"]           # BMP-safe, runtime bounded
+
+[datasets.ai4privacy.map]
+SOCIALNUMBER  = "NATIONAL_ID_NUMBER"
+IP            = "IP_ADDRESS"
+TEL           = "PHONE_NUMBER"
+
+[datasets.ai4privacy.exclude]
+IDCARD        = "GOVERNMENT_ID concept dropped: no enabled detector emits it -> ignore zone"
+PASSPORT      = "PASSPORT_NUMBER concept dropped: no enabled detector emits it -> ignore zone"
+DRIVERLICENSE = "DRIVERS_LICENSE_NUMBER concept dropped: no enabled detector emits it -> ignore zone"
+USERNAME      = "USERNAME concept dropped: no enabled detector emits it -> ignore zone"
+PASS          = "PASSWORD concept dropped: no enabled detector emits it -> ignore zone"
+EMAIL      = "no enabled detector emits EMAIL -> ignore zone"
+BOD        = "date of birth: temporal disabled -> ignore zone"
+SEX        = "no app concept -> ignore zone"
+TITLE      = "no app concept -> ignore zone"
+GIVENNAME  = "person name disabled -> ignore zone"
+GIVENNAME1 = "person name disabled -> ignore zone"
+GIVENNAME2 = "person name disabled -> ignore zone"
+LASTNAME   = "person name disabled -> ignore zone"
+LASTNAME1  = "person name disabled -> ignore zone"
+LASTNAME2  = "person name disabled -> ignore zone"
+LASTNAME3  = "person name disabled -> ignore zone"
+STREET     = "address disabled -> ignore zone"
+BUILDING   = "address disabled -> ignore zone"
+CITY       = "address disabled -> ignore zone"
+STATE      = "address disabled -> ignore zone"
+COUNTRY    = "no app concept -> ignore zone"
+POSTCODE   = "address disabled -> ignore zone"
+SECADDRESS = "address disabled -> ignore zone"
+GEOCOORD   = "geo coordinates -> ignore zone"
+TIME       = "temporal disabled -> ignore zone"
+DATE       = "temporal disabled -> ignore zone"
+
+# =============================================================================
+# DETECTORS — emitted pii_type -> canonical concept (flattened to JSON for Java)
+# Keys are the UPPER_SNAKE pii_type returned by the detector (== pii_type_config
+# .pii_type seeded in the master seed). Only ENABLED types can actually fire;
+# disabled ones are listed for completeness and are harmless.
+# =============================================================================
+[detectors.PRESIDIO]
+IBAN_CODE       = "IBAN"
+CRYPTO          = "CRYPTO"
+MAC_ADDRESS     = "MAC_ADDRESS"
+MEDICAL_LICENSE = "MEDICAL_LICENSE"
+NRP             = "NRP"
+CREDIT_CARD     = "CARD_NUMBER"
+
+[detectors.REGEX]
+AVS_NUMBER         = "AVS_NUMBER"
+SOCIALNUM          = "NATIONAL_ID_NUMBER"
+CREDIT_CARD_NUMBER = "CARD_NUMBER"
+PHONE_NUMBER       = "PHONE_NUMBER"
+IP_ADDRESS         = "IP_ADDRESS"
+MAC_ADDRESS        = "MAC_ADDRESS"
+API_KEY            = "API_KEY"
+
+# =============================================================================
+# [ambiguous] — documented non-1:1 decisions (spec étape 1 "documente les choix
+# ambigus"). These are the calls a reviewer should sanity-check.
+# =============================================================================
+[ambiguous]
+ssn_socialnumber       = "gretelai ssn + ai4privacy SOCIALNUMBER -> NATIONAL_ID_NUMBER, merged with REGEX SOCIALNUM so both emissions score against the same gold concept."
+swift_bic_code         = "EXCLUDED: no enabled detector emits a BIC/SWIFT concept in this seed -> ignore zone (not FN)."
+card_concepts          = "PRESIDIO CREDIT_CARD / REGEX CREDIT_CARD_NUMBER -> CARD_NUMBER (single canonical card concept)."
+crypto_concepts        = "PRESIDIO CRYPTO -> CRYPTO (no dataset gold)."
+email_person_temporal  = "EMAIL, person names, addresses, dates: EXCLUDED because the master seed disables every detector type for them; counting them would unfairly inflate FN for the as-configured pipeline."

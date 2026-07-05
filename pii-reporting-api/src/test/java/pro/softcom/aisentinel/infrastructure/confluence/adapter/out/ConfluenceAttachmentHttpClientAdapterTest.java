@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceAttachmentClient;
-import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConfig;
+import pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config.ConfluenceConnectionConfig;
 
 import java.lang.reflect.Field;
 import java.net.http.HttpClient;
@@ -32,27 +32,16 @@ class ConfluenceAttachmentHttpClientAdapterTest {
 
     private ConfluenceAttachmentClient confluenceAttachmentService;
 
+    ConfluenceConnectionConfig config = mock(ConfluenceConnectionConfig.class);
+
     @BeforeEach
     void setUp() throws Exception {
-        // Build a real config record instead of mocking the final record (Mockito can't mock records reliably)
-        ConfluenceConfig config = new ConfluenceConfig(
-            "https://confluence.test.com/",
-            "testuser",
-            "testtoken",
-            new ConfluenceConfig.ConnectionSettings(10_000, 10_000, 0, false, null),
-            new ConfluenceConfig.PaginationSettings(50, 5),
-            new ConfluenceConfig.ApiPaths(
-                "/content/",
-                "/content/search",
-                "/space",
-                "/child/attachment",
-                "body.storage,version,metadata,ancestors",
-                "permissions,metadata"
-            ),
-            new ConfluenceConfig.CacheSettings(300000, 5000),
-            new ConfluenceConfig.PollingSettings(60000)
-        );
-        // No stubbing needed for record accessors; we built a concrete config above.
+        when(config.baseUrl()).thenReturn("https://confluence.test.com");
+        when(config.username()).thenReturn("testuser");
+        when(config.apiToken()).thenReturn("testtoken");
+        when(config.connectTimeout()).thenReturn(10_000);
+        when(config.readTimeout()).thenReturn(10_000);
+        when(config.maxRetries()).thenReturn(0);
 
         final ObjectMapper mapper = new ObjectMapper();
         ConfluenceAttachmentHttpClientAdapter service = new ConfluenceAttachmentHttpClientAdapter(config, mapper);
@@ -65,7 +54,7 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_success_mapping_and_url() throws Exception {
+    void Should_MapAttachmentsAndBuildUrl_When_ResponseSuccess() throws Exception {
         String body = attachmentsJson(List.of(
             attachment("/download/path/file.pdf")
         ));
@@ -74,6 +63,8 @@ class ConfluenceAttachmentHttpClientAdapterTest {
         when(r.body()).thenReturn(body);
         when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
             .thenReturn(CompletableFuture.completedFuture(r));
+        when(config.baseUrl()).thenReturn("https://confluence.test.com/");
+
 
         var list = confluenceAttachmentService.getPageAttachments("123").get();
         SoftAssertions softly = new SoftAssertions();
@@ -85,7 +76,7 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_404_500_and_parseError_returnEmpty() throws Exception {
+    void Should_ReturnEmpty_When_ResponseErrorOrParseFailure() throws Exception {
         var r404 = mock(HttpResponse.class);
         when(r404.statusCode()).thenReturn(404);
         var r500 = mock(HttpResponse.class);
@@ -127,11 +118,13 @@ class ConfluenceAttachmentHttpClientAdapterTest {
     }
 
     @Test
-    void getPageAttachments_normalizesDownloadPathWithoutLeadingSlash() throws Exception {
+    void Should_NormalizeDownloadPath_When_PathWithoutLeadingSlash() throws Exception {
         String body = attachmentsJson(List.of(
             attachment("download/path/file.pdf") // no leading slash
         ));
         var r = mock(HttpResponse.class);
+        when(config.baseUrl()).thenReturn("https://confluence.test.com/");
+
         when(r.statusCode()).thenReturn(200);
         when(r.body()).thenReturn(body);
         when(httpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))

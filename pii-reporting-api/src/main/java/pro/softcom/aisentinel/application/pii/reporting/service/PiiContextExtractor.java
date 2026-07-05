@@ -7,8 +7,12 @@ import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentPa
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 
@@ -140,9 +144,20 @@ public class PiiContextExtractor {
         int lineEndInSource = parser.findLineEnd(source, Math.clamp(end, 0, source.length()));
         String lineContext = source.substring(lineStartInSource, lineEndInSource);
 
+        // DIAGNOSTIC: Log positions and redacted PII info for debugging offset issues
+        if (maskPii) {
+            String piiSlice = (start >= lineStartInSource && end <= lineEndInSource)
+                ? source.substring(start, end) : null;
+            String redactedSlice = piiSlice != null ? redactValue(piiSlice) : "<BOUNDS_ERROR>";
+            log.debug("MASKING DIAGNOSTIC: type={} | start={} end={} lineStart={} lineEnd={} | pii={} | lineContext.length={}",
+                type, start, end, lineStartInSource, lineEndInSource, redactedSlice, lineContext.length());
+        }
+
         // Apply masking if requested
         if (maskPii) {
             lineContext = maskLineWithEntities(lineContext, lineStartInSource, start, end, type, allEntities);
+            // DIAGNOSTIC: Log masked result length only (no content)
+            log.debug("MASKED RESULT: type={} | maskedContext.length={}", type, lineContext.length());
         }
 
         // Note: HTML cleaning is now done BEFORE detection in AbstractStreamConfluenceScanUseCase,
@@ -228,7 +243,14 @@ public class PiiContextExtractor {
     }
 
     /**
+     * Maximum number of trailing characters to keep after the last masked entity.
+     * Limits data leakage when undetected PII follows detected entities on the same line.
+     */
+    static final int MAX_TRAILING_CHARS = 3;
+
+    /**
      * Builds the masked text by replacing entity ranges with tokens.
+     * Trailing text after the last entity is truncated to prevent leaking undetected PII.
      */
     private String buildMaskedText(String lineContext, List<TempEntity> sortedEntities) {
         int lineLen = lineContext.length();
@@ -244,11 +266,34 @@ public class PiiContextExtractor {
             idx = Math.max(idx, e);
         }
 
+        // Limit trailing text after the last detected entity to prevent
+        // undetected PII from leaking in the masked context
         if (idx < lineLen) {
-            out.append(lineContext, idx, lineLen);
+            int trailingEnd = Math.min(idx + MAX_TRAILING_CHARS, lineLen);
+            out.append(lineContext, idx, trailingEnd);
+            if (trailingEnd < lineLen) {
+                out.append("…");
+            }
         }
 
         return out.toString();
+    }
+
+    /**
+     * Redacts a sensitive value by replacing it with a truncated SHA-256 hash and its length.
+     */
+    static String redactValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return "<empty>";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            String hexHash = HexFormat.of().formatHex(hash);
+            return "sha256=%s, length=%d".formatted(hexHash.substring(0, 8), value.length());
+        } catch (NoSuchAlgorithmException _) {
+            return "length=%d".formatted(value.length());
+        }
     }
 
     private static final class TempEntity {

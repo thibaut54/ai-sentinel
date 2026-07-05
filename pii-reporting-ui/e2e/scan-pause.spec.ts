@@ -11,6 +11,11 @@ import { TestIds } from '../src/app/features/test-ids.constants';
 test.describe('Scan Pause Functionality', () => {
   const testIds = TestIds.dashboard;
 
+  // This spec drives a full live scan and waits for RUNNING/PAUSED states
+  // (internal waits up to ~85s cumulatively). The global 30s per-test cap
+  // would kill it before those states can be reached, so raise it.
+  test.describe.configure({ timeout: 150_000 });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for the dashboard to load

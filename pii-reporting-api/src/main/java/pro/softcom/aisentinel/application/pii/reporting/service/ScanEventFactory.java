@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.pii.reporting.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReportingEventType;
@@ -12,7 +13,11 @@ import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiabl
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,6 +26,7 @@ import java.util.stream.Collectors;
  * Factory for creating scan event results. Business intent: Centralizes event creation logic to
  * ensure consistency across scan workflows.
  */
+@Slf4j
 @RequiredArgsConstructor
 public class ScanEventFactory {
 
@@ -72,7 +78,7 @@ public class ScanEventFactory {
             .pageIndex(pageIndex)
             .pageId(page.id())
             .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -90,7 +96,7 @@ public class ScanEventFactory {
             .eventType(DetectionReportingEventType.PAGE_COMPLETE.getLabel())
             .pageId(page.id())
             .pageTitle(page.title())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -113,7 +119,7 @@ public class ScanEventFactory {
             .detectedPIIList(List.of())
             .nbOfDetectedPIIBySeverity(Map.of())
             .nbOfDetectedPIIByType(Map.of())
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
@@ -144,11 +150,12 @@ public class ScanEventFactory {
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
             .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
             .severity(severity)
+            .detectorRunStats(detection != null ? detection.detectorRunStats() : null)
             .build();
     }
 
@@ -175,7 +182,7 @@ public class ScanEventFactory {
             .nbOfDetectedPIIBySeverity(summary)
             .nbOfDetectedPIIByType(piiTypeSummary)
             .sourceContent(content)
-            .pageUrl(buildPageUrl(page.id()))
+            .pageUrl(buildAttachmentsUrl(spaceKey, page.id()))
             .attachmentName(attachment.name())
             .attachmentType(attachment.mimeType())
             .attachmentUrl(attachment.url())
@@ -183,6 +190,7 @@ public class ScanEventFactory {
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
             .severity(severity)
+            .detectorRunStats(detection != null ? detection.detectorRunStats() : null)
             .build();
     }
 
@@ -197,7 +205,7 @@ public class ScanEventFactory {
             .eventType(DetectionReportingEventType.ERROR.getLabel())
             .pageId(pageId)
             .message(errorMessage)
-            .pageUrl(buildPageUrl(pageId))
+            .pageUrl(buildPageUrl(spaceKey, pageId))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.FAILED)
@@ -212,6 +220,17 @@ public class ScanEventFactory {
         if (detection == null || detection.sensitiveDataFound() == null) {
             return List.of();
         }
+        // DIAGNOSTIC: Log content fingerprint (hash only, no raw content)
+        if (content != null) {
+            log.debug("JAVA CONTENT FINGERPRINT: len={} sha256={}",
+                content.length(), truncatedSha256(content));
+            // Check for BOM or leading whitespace
+            if (!content.isEmpty() && (content.charAt(0) == '\uFEFF' || content.charAt(0) == ' '
+                    || content.charAt(0) == '\t' || content.charAt(0) == '\n' || content.charAt(0) == '\r')) {
+                log.warn("JAVA CONTENT STARTS WITH SPECIAL CHAR: codepoint={}",
+                    (int) content.charAt(0));
+            }
+        }
         return detection.sensitiveDataFound().stream()
             .map(sensitiveData -> this.mapSensitiveDataToEntity(sensitiveData, content, detection))
             .toList();
@@ -220,23 +239,36 @@ public class ScanEventFactory {
     private DetectedPersonallyIdentifiableInformation mapSensitiveDataToEntity(
         ContentPiiDetection.SensitiveData data, String sourceContent,
         ContentPiiDetection detection) {
-        String type = (data.type() != null ? data.type().name() : null);
-        String typeLabel = (data.type() != null ? data.type().getLabel() : null);
+
+        // DIAGNOSTIC: Verify positions against source content (redacted values only)
+        if (sourceContent != null
+                && data.position() >= 0
+                && data.position() <= sourceContent.length()
+                && data.end() >= data.position()
+                && data.end() <= sourceContent.length()) {
+            String actualSlice = sourceContent.substring(data.position(), data.end());
+            if (!actualSlice.equals(data.value())) {
+                log.debug("JAVA POSITION MISMATCH: type={} | value={} | content[{}:{}]={} | source={}",
+                    data.type(), PiiContextExtractor.redactValue(data.value()),
+                    data.position(), data.end(), PiiContextExtractor.redactValue(actualSlice),
+                    data.source());
+            } else {
+                log.debug("JAVA POSITION OK: type={} | position=[{}:{}] | source={}",
+                    data.type(), data.position(), data.end(), data.source());
+            }
+        }
+
+        String type = data.type();
+        String typeLabel = data.typeLabel();
         // Build a lightweight list of entities to ensure other PIIs in the same line are also masked in context
         List<DetectedPersonallyIdentifiableInformation> all =
             detection == null || detection.sensitiveDataFound() == null ? List.of() :
                 detection.sensitiveDataFound().stream()
-                    .map(sd -> {
-                        String sdType = null;
-                        if (sd.type() != null) {
-                            sdType = sd.type().name();
-                        }
-                        return DetectedPersonallyIdentifiableInformation.builder()
+                    .map(sd -> DetectedPersonallyIdentifiableInformation.builder()
                             .startPosition(sd.position())
                             .endPosition(sd.end())
-                            .piiType(sdType)
-                            .build();
-                    })
+                            .piiType(sd.type())
+                            .build())
                     .toList();
 
         // Extract masked context (for immediate display, stored in clear)
@@ -335,10 +367,21 @@ public class ScanEventFactory {
         return highest; // Returns "HIGH", "MEDIUM", or "LOW"
     }
 
-    private String buildPageUrl(String pageId) {
-        if (confluenceUrlProvider == null || pageId == null) {
-            return null;
+    private static String truncatedSha256(String content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash).substring(0, 16);
+        } catch (NoSuchAlgorithmException _) {
+            return "<unavailable>";
         }
-        return confluenceUrlProvider.pageUrl(pageId);
+    }
+
+    private String buildPageUrl(String spaceKey, String pageId) {
+        return confluenceUrlProvider.pageUrl(spaceKey, pageId);
+    }
+
+    private String buildAttachmentsUrl(String spaceKey, String pageId) {
+        return confluenceUrlProvider.attachmentsUrl(spaceKey, pageId);
     }
 }

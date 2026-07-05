@@ -2,7 +2,7 @@ spring:
   application:
     name: ai-sentinel
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ai-sentinel}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/${DB_NAME:ai-sentinel}}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -27,46 +27,27 @@ spring:
       # Continue on error (already inserted data with ON CONFLICT DO NOTHING)
       continue-on-error: false
   mvc:
+    problemdetails:
+      enabled: true
     async:
       request-timeout: 300000  # 5 minutes for async requests
   autoconfigure:
     exclude:
       - com.linecorp.armeria.spring.ArmeriaAutoConfiguration
 
-# Confluence Configuration
-# Environment variables determine the targeted Confluence instance
-confluence:
-  base-url: ${CONFLUENCE_BASE_URL}
-  username: ${CONFLUENCE_USERNAME}
-  api-token: ${CONFLUENCE_API_TOKEN}
-  connection-settings:
-    connect-timeout: 30000
-    read-timeout: 60000
-    max-retries: 3
-    enable-proxy: ${CONFLUENCE_ENABLE_PROXY:false}
-    proxy-settings:
-      host: ${CONFLUENCE_PROXY_HOST}
-      port: ${CONFLUENCE_PROXY_PORT:8080}
-      username: ${CONFLUENCE_PROXY_USERNAME}
-      password: ${CONFLUENCE_PROXY_PASSWORD}
-  pagination-settings:
-    pages-limit: 50
-    max-pages: 100
-  api-paths:
-    content-path: /content/
-    search-content-path: /content/search
-    space-path: /space
-    attachment-child-suffix: /child/attachment
-    default-page-expands: body.storage,version,metadata,ancestors
-    default-space-expands: permissions,metadata
-  cache:
-    refresh-interval-ms: ${CONFLUENCE_CACHE_REFRESH_INTERVAL:300000}  # 5 minutes default
-    initial-delay-ms: ${CONFLUENCE_CACHE_INITIAL_DELAY:5000}  # 5 seconds default
-  polling:
-    interval-ms: ${CONFLUENCE_POLLING_INTERVAL:60000}  # 1 minute default
+# Confluence cache/polling settings (connection config is DB-backed)
+ai-sentinel:
+  confluence:
+    cache:
+      refresh-interval-ms: ${CONFLUENCE_CACHE_REFRESH_INTERVAL:300000}  # 5 minutes default
+      initial-delay-ms: ${CONFLUENCE_CACHE_INITIAL_DELAY:5000}  # 5 seconds default
+    polling:
+      interval-ms: ${CONFLUENCE_POLLING_INTERVAL:60000}  # 1 minute default
 
 # Logging Configuration
 logging:
+  file:
+    path: ${LOG_PATH:pii-reporting-api/logs}
   level:
     pro.softcom.aisentinel.infrastructure.confluence: DEBUG
     pro.softcom.aisentinel.infrastructure.pii: DEBUG
@@ -78,13 +59,17 @@ pii-detector:
   host: localhost
   port: 50051
   default-threshold: 0.75
-  connection-timeout-ms: 300000  # 5 minutes to handle large attachments (e.g., CSV files)
-  request-timeout-ms: 300000      # 5 minutes to handle large attachments (e.g., CSV files)
+  connection-timeout-ms: ${PII_DETECTOR_CONNECTION_TIMEOUT_MS:1800000}  # 30 min — investigation parity recall: anciennement 5 min, suspect de couper les longues detections sur machines CPU-bound
+  request-timeout-ms: ${PII_DETECTOR_REQUEST_TIMEOUT_MS:1800000}        # 30 min — investigation parity recall: anciennement 5 min, suspect de couper les longues detections sur machines CPU-bound
 
 # Scan Timeouts Configuration
 scan:
   timeouts:
-    pii-detection: 305s  # Should be > gRPC timeout (300s) to let gRPC exception trigger first
+    pii-detection: ${SCAN_PII_DETECTION_TIMEOUT:1810s}  # Should be > gRPC timeout to let gRPC exception trigger first
+  # Number of Confluence pages whose PII detection runs concurrently. 1 = sequential
+  # (historical behaviour). Raise in prod to feed the detector worker pool
+  # (PII_WORKER_PROCESSES); keep it <= the detector's CPU allocation.
+  page-concurrency: ${PII_SCAN_PAGE_CONCURRENCY:1}
 
 pii-encryption:
   kek-pii-encryption-key: ${PII_DATABASE_ENCRYPTION_KEY}
@@ -117,6 +102,14 @@ armeria:
   internal-services:
     include: docs, health, metrics, actuator
     port: 8090
+
+# Actuator exposure — Prometheus endpoint to scrape pii.scan.chars.total and
+# pii.scan.duration metrics tagged phase=grpc.client.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
 
 # Server Configuration
 server:

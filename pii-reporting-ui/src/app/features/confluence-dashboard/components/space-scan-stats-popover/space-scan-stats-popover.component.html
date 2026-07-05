@@ -1,0 +1,145 @@
+<p-button icon="pi pi-chart-bar"
+          styleClass="p-button-text"
+          (click)="toggle($event)"
+          (keydown.enter)="toggle($event)"
+          (keydown.space)="$event.preventDefault(); toggle($event)"
+          [ariaLabel]="'dashboard.scanStats.buttonAriaLabel' | transloco"
+          [attr.data-testid]="'space-scan-stats-button'"></p-button>
+
+<p-popover #popover (onShow)="onShow()">
+  <section class="scan-stats-panel"
+       [attr.aria-label]="'dashboard.scanStats.title' | transloco">
+
+    @switch (state()) {
+      @case ('loading') {
+        <output class="scan-stats-status">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>{{ 'dashboard.scanStats.loading' | transloco }}</span>
+        </output>
+      }
+      @case ('notFound') {
+        <output class="scan-stats-status">
+          <i class="pi pi-info-circle" aria-hidden="true"></i>
+          <span>{{ 'dashboard.scanStats.notAvailable' | transloco }}</span>
+        </output>
+      }
+      @case ('error') {
+        <div class="scan-stats-status scan-stats-error" role="alert">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <span>{{ 'dashboard.scanStats.error' | transloco }}</span>
+        </div>
+      }
+      @case ('loaded') {
+        @if (stats(); as data) {
+          <h3 class="scan-stats-title">{{ 'dashboard.scanStats.title' | transloco }}</h3>
+
+          <dl class="scan-stats-summary">
+            <div class="scan-stats-row">
+              <dt>{{ 'dashboard.scanStats.duration' | transloco }}</dt>
+              <dd>
+                @if (isScanInProgress()) {
+                  {{ 'dashboard.scanStats.inProgress' | transloco }}
+                } @else {
+                  {{ formatDuration(data.durationMs ?? 0) }}
+                }
+              </dd>
+            </div>
+          </dl>
+
+          <table class="scan-stats-table">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">{{ 'dashboard.scanStats.scanned' | transloco }}</th>
+                <th scope="col">{{ 'dashboard.scanStats.failed' | transloco }}</th>
+                <th scope="col">{{ 'dashboard.scanStats.chars' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">{{ 'dashboard.scanStats.pages' | transloco }}</th>
+                <td>{{ data.pagesScanned }}</td>
+                <td>{{ data.pagesFailed }}</td>
+                <td>{{ formatChars(data.pageChars) }}</td>
+              </tr>
+              <tr>
+                <th scope="row">{{ 'dashboard.scanStats.attachments' | transloco }}</th>
+                <td>{{ data.attachmentsScanned }}</td>
+                <td>{{ data.attachmentsFailed }}</td>
+                <td>{{ formatChars(data.attachmentChars) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          @if (data.failedItems.length > 0) {
+            <section class="scan-stats-failed">
+              <h4>{{ 'dashboard.scanStats.failedItems' | transloco }}</h4>
+              <ul>
+                @for (item of data.failedItems; track $index) {
+                  <li>
+                    <i class="pi"
+                       [class.pi-file]="item.itemType === 'PAGE'"
+                       [class.pi-paperclip]="item.itemType === 'ATTACHMENT'"
+                       aria-hidden="true"></i>
+                    <span>{{ item.title }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (data.detectorStats.length > 0) {
+            <section class="scan-stats-detectors">
+              <h4>{{ 'dashboard.scanStats.detectors' | transloco }}</h4>
+              <table class="scan-stats-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ 'dashboard.scanStats.detector' | transloco }}</th>
+                    <th scope="col">{{ 'dashboard.scanStats.detections' | transloco }}</th>
+                    <th scope="col">{{ 'dashboard.scanStats.discarded' | transloco }}</th>
+                    <th scope="col">{{ 'dashboard.scanStats.rate' | transloco }}</th>
+                    <th scope="col">{{ 'dashboard.scanStats.busy' | transloco }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detector of data.detectorStats; track detector.detector) {
+                    <tr>
+                      <th scope="row">
+                        @if (isPrefilter(detector.detector)) {
+                          {{ 'dashboard.scanStats.postfilterLabel' | transloco }}
+                        } @else {
+                          {{ detector.detector }}
+                        }
+                      </th>
+                      <td>{{ detector.detections }}</td>
+                      <td>
+                        @if (isPrefilter(detector.detector)) {
+                          {{ detector.discarded }}
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td>
+                        @if (isPrefilter(detector.detector)) {
+                          —
+                        } @else {
+                          @if (detector.charsPerSecond !== null) {
+                            {{ formatRate(detector.charsPerSecond) }}&nbsp;{{ 'dashboard.scanStats.rateUnit' | transloco }}
+                          } @else {
+                            —
+                          }
+                        }
+                      </td>
+                      <td>{{ formatDuration(detector.busyMs) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <p class="scan-stats-note">{{ 'dashboard.scanStats.busyNote' | transloco }}</p>
+            </section>
+          }
+        }
+      }
+    }
+  </section>
+</p-popover>

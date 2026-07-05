@@ -10,6 +10,8 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+# Ancien lockfile npm (remplace par pnpm-lock.yaml qui DOIT etre versionne)
+package-lock.json
 
 # IDEs and editors
 .idea/

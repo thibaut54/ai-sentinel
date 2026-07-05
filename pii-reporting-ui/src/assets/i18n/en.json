@@ -8,6 +8,7 @@
     "close": "Close",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "error": "Error",
     "yes": "Yes",
     "no": "No",
     "loading": "Loading...",
@@ -22,6 +23,17 @@
     "fr": "Français",
     "en": "English"
   },
+  "severity": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "total": "Total",
+    "badgeHigh": "high severity PIIs",
+    "badgeMedium": "medium severity PIIs",
+    "badgeLow": "low severity PIIs",
+    "badgeTotal": "PIIs detected"
+  },
   "dashboard": {
     "title": "AI Sentinel",
     "table": {
@@ -31,17 +43,21 @@
         "progress": "Progress",
         "lastScan": "Last scan",
         "pii": "Personally Identifiable Information Severity Level (PII)",
+        "riskScore": "Risk score",
         "actions": "Actions"
       },
       "emptyMessage": "No items to display",
+      "paginatorReport": "Showing {first} to {last} of {totalRecords} entries",
       "expand": "Expand",
-      "collapse": "Collapse"
+      "collapse": "Collapse",
+      "pageIndicator": "Page {{current}} of {{total}}"
     },
     "status": {
       "running": "Running",
       "ok": "Finished",
       "failed": "Failed",
       "pending": "Pending",
+      "notStarted": "Not started",
       "paused": "Paused"
     },
     "actions": {
@@ -51,14 +67,22 @@
       "openInConfluence": "Open in Confluence",
       "confluenceUnavailable": "URL unavailable (not provided by backend)",
       "settings": "Settings",
+      "darkMode": "Switch to dark mode",
+      "lightMode": "Switch to light mode",
       "scanSelected": "Scan Selected Spaces ({{count}})",
-      "scanSelectedLabel": "({{count}})"
+      "scanSelectedLabel": "({{count}})",
+      "purgeData": "Delete all scan data"
     },
     "filters": {
       "modifiedOnly": "Show only modified spaces",
       "modifiedOnlyLabel": "Spaces to rescan"
     },
     "notifications": {
+      "confluenceConfig": {
+        "message": "Confluence credentials are not configured. Please configure your connection settings before starting a scan.",
+        "settingsButton": "Configure",
+        "closeAriaLabel": "Close notification"
+      },
       "newSpaces": {
         "message": "{{count}} new Confluence space(s) available",
         "refreshButton": "Refresh",
@@ -75,9 +99,42 @@
         }
       }
     },
+    "pagination": {
+      "previous": "Previous page",
+      "refresh": "Refresh",
+      "next": "Next page"
+    },
+    "sources": {
+      "confluence": "Confluence"
+    },
     "scanStatus": {
       "active": "Scanning",
-      "inactive": "Scan Inactive"
+      "inactive": "Scan Inactive",
+      "loading": "Loading..."
+    },
+    "scanStats": {
+      "buttonAriaLabel": "View last scan statistics",
+      "title": "Last scan statistics",
+      "loading": "Loading statistics...",
+      "notAvailable": "Statistics not available for this scan",
+      "error": "Failed to load statistics",
+      "duration": "Scan duration",
+      "inProgress": "Scan in progress",
+      "scanned": "Scanned",
+      "failed": "Failed",
+      "chars": "Characters",
+      "pages": "Pages",
+      "attachments": "Attachments",
+      "failedItems": "Failed items",
+      "detectors": "Detectors",
+      "detector": "Detector",
+      "detections": "Detections",
+      "discarded": "Discarded",
+      "rate": "Avg. throughput",
+      "rateUnit": "char/s",
+      "busy": "Cumulative time",
+      "postfilterLabel": "Post-filter",
+      "busyNote": "Per-detector time is cumulative compute time; it may exceed the total scan duration due to parallelism. Throughput is in characters per second."
     },
     "logs": {
       "purging": "[ui] Purging previous results...",
@@ -85,6 +142,9 @@
       "sseError": "[ui] SSE connection error: {{error}}. The scan continues on the server.",
       "purgeError": "[ui] Error while purging previous scans: {{error}}",
       "scanCancelled": "[ui] Global scan cancelled by user",
+      "purgeManualOk": "[ui] All scan data has been successfully deleted",
+      "purgeManualError": "[ui] Error while deleting data: {{error}}",
+      "purgeManualCancelled": "[ui] Data deletion cancelled by user",
       "resumeRequest": "[ui] Requesting resume of scan {{scanId}}...",
       "resumeAccepted": "[ui] Resume accepted (HTTP 202). Connecting to event stream...",
       "resumeError": "[ui] Resume failed: {{error}}",
@@ -108,6 +168,12 @@
       "header": "Selected spaces scan confirmation",
       "message": "<p>Are you sure you want to start scanning <b>{{count}}</b> selected space(s)?</p>\n<p><b>Previous results will be overwritten.</b></p>",
       "acceptLabel": "Yes, start",
+      "rejectLabel": "Cancel"
+    },
+    "purgeData": {
+      "header": "Delete all data",
+      "message": "<p>Are you sure you want to <b>permanently delete</b> all Confluence scan data?</p>\n<p>This action is <b>irreversible</b>. All scan results, PII detections, and checkpoints will be removed.</p>",
+      "acceptLabel": "Yes, delete all",
       "rejectLabel": "Cancel"
     }
   },
@@ -137,18 +203,91 @@
     }
   },
   "settings": {
-    "title": "PII Detection Settings",
+    "title": "Settings",
     "back": "Back to dashboard",
+    "nav": {
+      "detectors": "Detection Engines",
+      "thresholds": "Thresholds & Performance",
+      "piiTypes": "PII Types",
+      "confluence": "Confluence Connection"
+    },
+    "subtitle": "Configure detection engines, thresholds and types of information to detect",
+    "tabs": {
+      "detection": "PII Detection",
+      "confluence": "Confluence Connection"
+    },
+    "confluence": {
+      "title": "Confluence Connection Configuration",
+      "connection": {
+        "title": "Connection",
+        "deploymentType": "Deployment Type",
+        "deploymentCloud": "Confluence Cloud",
+        "deploymentCloudDesc": "Instances hosted by Atlassian (*.atlassian.net) — REST API v1, Basic Auth",
+        "deploymentDataCenter": "Confluence Data Center / Server",
+        "deploymentDataCenterDesc": "Self-hosted instances — REST API v1, Bearer Token (PAT)",
+        "baseUrl": "Base URL",
+        "username": "Username",
+        "usernameCloud": "Email",
+        "usernameDc": "Username",
+        "apiToken": "API Token",
+        "apiTokenCloud": "API Token",
+        "apiTokenDc": "Personal Access Token (PAT)",
+        "apiTokenHint": "Current token:"
+      },
+      "timeouts": {
+        "title": "Timeouts",
+        "connectTimeout": "Connect Timeout",
+        "connectTimeoutDesc": "Maximum time to establish a connection to the Confluence server (in milliseconds)",
+        "readTimeout": "Read Timeout",
+        "readTimeoutDesc": "Maximum time to receive a response from the Confluence server (in milliseconds)",
+        "maxRetries": "Max Retries",
+        "maxRetriesDesc": "Maximum number of retry attempts on connection failure"
+      },
+      "pagination": {
+        "title": "Pagination",
+        "pagesLimit": "Pages per Request",
+        "pagesLimitDesc": "Number of Confluence pages fetched per API request",
+        "maxPages": "Maximum Pages",
+        "maxPagesDesc": "Maximum number of pages to scan per Confluence space"
+      },
+      "buttons": {
+        "save": "Save",
+        "test": "Test Connection",
+        "reset": "Reset"
+      },
+      "placeholders": {
+        "baseUrl": "https://your-instance.atlassian.net/wiki",
+        "baseUrlCloud": "https://your-domain.atlassian.net/wiki",
+        "baseUrlDc": "https://confluence.your-company.com",
+        "username": "your.email@domain.com",
+        "usernameCloud": "user@company.com",
+        "usernameDc": "admin",
+        "apiToken": "Enter your Confluence API token",
+        "apiTokenCloud": "Generated from id.atlassian.com",
+        "apiTokenDc": "Generated from your Confluence instance",
+        "apiTokenExisting": "Leave empty to keep current token"
+      },
+      "validation": {
+        "baseUrlRequired": "Base URL is required and must start with http:// or https://",
+        "usernameRequired": "Email address is required",
+        "usernameEmail": "Please enter a valid email address",
+        "apiTokenRequired": "API token is required for new connections"
+      },
+      "messages": {
+        "saveSuccess": "Confluence connection configuration saved successfully",
+        "saveError": "Error saving configuration: {{error}}",
+        "loadError": "Error loading Confluence configuration: {{error}}",
+        "testSuccess": "Successfully connected to Confluence",
+        "testError": "Connection test failed: {{error}}",
+        "testFailed": "Confluence connection failed: {{message}}"
+      }
+    },
     "sections": {
       "detectors": "Detection Engines",
       "threshold": "Detection Threshold",
       "performance": "Performance Optimization"
     },
     "detectors": {
-      "gliner": {
-        "label": "GLiNER Detector",
-        "description": "AI-based entity recognition using the Piiranha model for detecting personal information"
-      },
       "presidio": {
         "label": "Presidio Detector",
         "description": "Microsoft's PII detection framework with pattern matching and NLP"
@@ -156,15 +295,26 @@
       "regex": {
         "label": "Regex Detector",
         "description": "Pattern-based detection using regular expressions for structured data"
-      }
+      },
+      "ministral": {
+        "label": "Ministral-PII",
+        "description": "Generative LLM detector (Ministral) that scans long documents in overlapping chunks. Complements the other detectors as an additional source (disabled by default).",
+        "advancedParams": "Advanced parameters",
+        "chunkSize": "Chunk size",
+        "chunkSizeHint": "Number of tokens processed per chunk (256-4096). Larger chunks give more context but slower inference.",
+        "overlap": "Overlap",
+        "overlapHint": "Number of tokens shared between consecutive chunks (0-512). Must stay smaller than the chunk size.",
+        "overlapError": "Overlap must be smaller than the chunk size."
+      },
+      "postfilter": {
+        "label": "Deterministic pre-filter",
+        "description": "Rejects values whose format is mechanically invalid (IP, MAC, IBAN)."
+      },
+      "detectorLabel": "Detector"
     },
     "threshold": {
       "label": "Default Confidence Threshold",
       "description": "Minimum confidence score (0.0-1.0) required for a detection to be reported. Lower values = more detections but potentially more false positives"
-    },
-    "nbLabels": {
-      "label": "Labels per Pass (GLiNER)",
-      "description": "Maximum number of labels processed in a single pass. Higher values improve speed but might reduce accuracy. Default is 35."
     },
     "validation": {
       "atLeastOneDetector": "At least one detector must be enabled"
@@ -185,10 +335,16 @@
       "threshold": "Confidence Threshold",
       "toggle": "Toggle {{type}}",
       "detectors": {
-        "gliner": "GLiNER Detector",
-        "presidio": "Presidio Detector"
+        "presidio": "Presidio Detector",
+        "ministral": "Ministral-PII Detector"
+      },
+      "detectorNames": {
+        "PRESIDIO": "Presidio",
+        "REGEX": "Regex",
+        "MINISTRAL": "Ministral-PII"
       },
       "categoryNames": {
+        "TEMPORAL": "Sensitive dates",
         "CONTACT": "Contact Information",
         "IDENTITY": "Identity & Names",
         "FINANCIAL": "Financial Data",
@@ -207,9 +363,39 @@
         "Security": "Security Credentials",
         "Network": "Network Identifiers",
         "Medical": "Medical Information",
-        "Business": "Business Identifiers"
+        "Business": "Business Identifiers",
+        "Personal": "Personal Information",
+        "LEGAL_ASSET": "Legal Assets",
+        "IT_CREDENTIALS": "IT Credentials",
+        "CUSTOM": "Custom Labels",
+        "EMPLOYMENT": "Employment & Education",
+        "GOV_ID": "Government Identifications"
       },
       "typeNames": {
+        "FULL_NAME": "Full name",
+        "FIRST_NAME": "First name",
+        "LAST_NAME": "Last name",
+        "COUNTRY": "Country",
+        "GOVERNMENT_ID": "Government ID",
+        "MIDDLE_NAME": "Middle name",
+        "STREET_ADDRESS": "Street address",
+        "STATE_OR_REGION": "State / region",
+        "NATIONAL_ID_NUMBER": "National ID number",
+        "DRIVERS_LICENSE_NUMBER": "Driver's license number",
+        "TAX_NUMBER": "Tax number",
+        "ACCOUNT_NUMBER": "Account number",
+        "ROUTING_NUMBER": "Routing number",
+        "PAYMENT_CARD": "Payment card",
+        "CARD_NUMBER": "Card number",
+        "CARD_EXPIRY": "Card expiry date",
+        "CARD_CVV": "Card security code (CVV)",
+        "SENSITIVE_ACCOUNT_ID": "Sensitive account ID",
+        "SECRET": "Secret",
+        "RECOVERY_CODE": "Recovery code",
+        "SENSITIVE_DATE": "Sensitive date",
+        "DOCUMENT_DATE": "Document date",
+        "EXPIRATION_DATE": "Expiration date",
+        "TRANSACTION_DATE": "Transaction date",
         "EMAIL": "Email Address",
         "PHONE": "Phone Number",
         "TELEPHONENUM": "Telephone Number",
@@ -218,11 +404,11 @@
         "PERSON_NAME": "Person Name",
         "PERSONNAME": "Person Name",
         "FULLNAME": "Full Name",
-        "USERNAME": "Username",
+        "USERNAME": "Login / System Identifier",
         "ACCOUNTNUM": "Account Number",
         "CREDIT_CARD": "Credit Card Number",
         "CREDITCARDNUMBER": "Credit Card Number",
-        "IBAN": "IBAN (International Bank Account)",
+        "IBAN": "International Banking Identifier (IBAN)",
         "CRYPTO_WALLET": "Cryptocurrency Wallet",
         "CRYPTOWALLET": "Cryptocurrency Wallet",
         "US_BANK_NUMBER": "US Bank Account Number",
@@ -271,7 +457,7 @@
         "BUILDINGNUM": "Building Number",
         "ZIPCODE": "Zip/Postal Code",
         "ZIP_CODE": "Zip Code",
-        "PASSWORD": "Password",
+        "PASSWORD": "Account Password / PIN",
         "API_KEY": "API Key",
         "JWT_TOKEN": "JWT Token",
         "GITHUB_TOKEN": "GitHub Token",
@@ -284,6 +470,7 @@
         "DATEOFBIRTH": "Date of Birth",
         "AGE": "Age",
         "PERSON": "Person Name",
+        "DATE": "Date",
         "DATE_TIME": "Date and Time",
         "NRP": "Nationality/Religion/Politics Group",
         "NHS_NUMBER": "NHS Number",
@@ -356,9 +543,89 @@
         "MEDICAL_RECORD_NUMBER": "Medical Record Number",
         "HEALTH_INSURANCE_NUMBER": "Health Insurance Number",
         "DIAGNOSIS": "Diagnosis",
-        "MEDICATION": "Medication"
+        "MEDICATION": "Medication",
+        "ACCOUNT_NAME": "Account name",
+        "BANK_ACCOUNT": "Bank account",
+        "CREDIT_CARD_ISSUER": "Card issuer",
+        "PIN": "PIN code",
+        "MASKED_NUMBER": "Masked number",
+        "AMOUNT": "Amount",
+        "CURRENCY": "Currency",
+        "CURRENCY_CODE": "Currency code",
+        "CURRENCY_NAME": "Currency name",
+        "CURRENCY_SYMBOL": "Currency symbol",
+        "BITCOIN_ADDRESS": "Bitcoin address",
+        "ETHEREUM_ADDRESS": "Ethereum address",
+        "LITECOIN_ADDRESS": "Litecoin address",
+        "VEHICLE_VIN": "Vehicle VIN",
+        "IMEI": "IMEI",
+        "EYE_COLOR": "Eye color",
+        "FAX_NUMBER": "Fax number",
+        "BUILDING_NUMBER": "Building number",
+        "COUNTY": "County / district",
+        "STATE": "State / province",
+        "POSTCODE": "Postal code",
+        "COORDINATE": "Geographic coordinates",
+        "IPV4": "IPv4 address",
+        "IPV6": "IPv6 address",
+        "USER_NAME": "Username",
+        "HTTP_COOKIE": "HTTP cookie",
+        "DEVICE_IDENTIFIER": "Device identifier",
+        "OCCUPATION": "Occupation",
+        "EMPLOYMENT_STATUS": "Employment status",
+        "EMPLOYEE_ID": "Employee ID",
+        "EDUCATION_LEVEL": "Education level",
+        "ORGANIZATION": "Organization",
+        "COMPANY_NAME": "Company name",
+        "CUSTOMER_ID": "Customer ID",
+        "CREDIT_DEBIT_CARD": "Credit/debit card",
+        "BANK_ROUTING_NUMBER": "Bank routing number",
+        "SWIFT_BIC": "SWIFT/BIC code",
+        "SOCIAL_SECURITY_NUMBER": "Social security number",
+        "VEHICLE_IDENTIFIER": "Vehicle identifier",
+        "CERTIFICATE_LICENSE_NUMBER": "Certificate / license number",
+        "UNIQUE_ID": "Unique identifier",
+        "TITLE": "Title / salutation",
+        "RACE": "Race",
+        "ETHNICITY": "Ethnicity",
+        "RACE_ETHNICITY": "Race or ethnicity",
+        "RELIGION": "Religion",
+        "RELIGIOUS_BELIEF": "Religious belief",
+        "MARITAL_STATUS": "Marital status",
+        "SEXUALITY": "Sexual orientation",
+        "POLITICAL_VIEW": "Political view",
+        "LANGUAGE": "Language",
+        "BIOMETRIC_IDENTIFIER": "Biometric identifier",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Health plan beneficiary number",
+        "BLOOD_TYPE": "Blood type",
+        "TIME": "Time"
       },
       "typeDescriptions": {
+        "FULL_NAME": "A person's full name (first + last)",
+        "FIRST_NAME": "A person's first name",
+        "LAST_NAME": "A person's last name",
+        "COUNTRY": "Country name",
+        "GOVERNMENT_ID": "Identification number issued by a public authority",
+        "BANK_ACCOUNT": "Bank account",
+        "MIDDLE_NAME": "A person's middle name",
+        "STREET_ADDRESS": "Street and number of a postal address",
+        "STATE_OR_REGION": "State, canton or region",
+        "NATIONAL_ID_NUMBER": "National identity card number",
+        "DRIVERS_LICENSE_NUMBER": "Driver's license number",
+        "TAX_NUMBER": "Tax number (e.g. Swiss UID/VAT)",
+        "ACCOUNT_NUMBER": "Bank account number",
+        "ROUTING_NUMBER": "Bank routing number (clearing/ABA)",
+        "PAYMENT_CARD": "Payment card (credit or debit)",
+        "CARD_NUMBER": "Payment card number (PAN)",
+        "CARD_EXPIRY": "Payment card expiry date (MM/YY)",
+        "CARD_CVV": "Card security code (CVV/CVC, 3-4 digits)",
+        "SENSITIVE_ACCOUNT_ID": "Sensitive account identifier (banking, health, etc.)",
+        "SECRET": "Secret or confidential value",
+        "RECOVERY_CODE": "Account recovery or backup code",
+        "SENSITIVE_DATE": "Sensitive date linked to a person or record",
+        "DOCUMENT_DATE": "Document issue or drafting date",
+        "EXPIRATION_DATE": "Expiration date of a document or right",
+        "TRANSACTION_DATE": "Transaction date",
         "EMAIL": "Email addresses in standard format (e.g., user@domain.com)",
         "PHONE": "Phone numbers in various international formats",
         "TELEPHONENUM": "Telephone numbers with country codes and extensions",
@@ -367,11 +634,11 @@
         "PERSON_NAME": "Full person name (first + last)",
         "PERSONNAME": "Generic person name (not split into first/last)",
         "FULLNAME": "Complete person name",
-        "USERNAME": "User account names and login identifiers",
+        "USERNAME": "System user identifiers and account login names",
         "ACCOUNTNUM": "Generic account numbers for various services",
         "CREDIT_CARD": "Credit card numbers (Visa, MasterCard, Amex, etc.)",
         "CREDITCARDNUMBER": "Payment card numbers with validation",
-        "IBAN": "International Bank Account Number for European banking",
+        "IBAN": "International banking identifiers (IBAN) for European and Swiss banking",
         "CRYPTO_WALLET": "Cryptocurrency wallet addresses (Bitcoin, Ethereum, etc.)",
         "CRYPTOWALLET": "Cryptocurrency wallet addresses (Bitcoin, Ethereum, etc.)",
         "US_BANK_NUMBER": "United States bank account routing and account numbers",
@@ -420,7 +687,7 @@
         "BUILDINGNUM": "Building, house, or apartment numbers",
         "ZIPCODE": "Postal codes and ZIP codes",
         "ZIP_CODE": "Postal codes and ZIP codes",
-        "PASSWORD": "Password strings and authentication credentials",
+        "PASSWORD": "Account passwords, PIN codes and authentication credentials",
         "API_KEY": "API keys and service tokens",
         "JWT_TOKEN": "JSON Web Tokens for authentication",
         "GITHUB_TOKEN": "GitHub personal access tokens",
@@ -499,7 +766,54 @@
         "MEDICAL_RECORD_NUMBER": "Electronic medical record number",
         "HEALTH_INSURANCE_NUMBER": "Health insurance card number",
         "DIAGNOSIS": "Medical diagnosis or health condition",
-        "MEDICATION": "Medication name or prescription"
+        "MEDICATION": "Medication name or prescription",
+        "PHONE_NUMBER": "Phone numbers in various international formats with country codes",
+        "URL": "Web addresses and URLs (Uniform Resource Locators) including HTTP/HTTPS links",
+        "EMAIL_ADDRESS": "Email addresses in standard format (e.g., user@domain.com)",
+        "IBAN_CODE": "International Bank Account Number (IBAN) for European and international banking operations",
+        "CRYPTO": "Cryptocurrency wallet addresses for various blockchains (Bitcoin, Ethereum, etc.)",
+        "UK_NHS": "United Kingdom National Health Service patient identification numbers",
+        "UK_NINO": "United Kingdom National Insurance Number used for taxation and social security",
+        "FAX_NUMBER": "Fax numbers in various international formats",
+        "BUILDING_NUMBER": "Building, house or apartment numbers",
+        "COUNTY": "County, district or administrative subdivision",
+        "STATE": "Names of states, provinces or regions",
+        "POSTCODE": "Postal codes",
+        "COORDINATE": "Geographic coordinates (latitude and longitude)",
+        "IPV4": "IPv4 network addresses",
+        "IPV6": "IPv6 network addresses",
+        "USER_NAME": "System identifiers and login account names",
+        "HTTP_COOKIE": "HTTP cookies and session tokens",
+        "DEVICE_IDENTIFIER": "Unique device identifier",
+        "OCCUPATION": "A person's occupation or profession",
+        "EMPLOYMENT_STATUS": "Employment status (employed, self-employed, unemployed, etc.)",
+        "EMPLOYEE_ID": "Employee identification number",
+        "EDUCATION_LEVEL": "Education level or degree",
+        "ORGANIZATION": "Name of an organization or institution",
+        "COMPANY_NAME": "Name of a company or business",
+        "CUSTOMER_ID": "Customer identification number",
+        "CREDIT_DEBIT_CARD": "Credit or debit card numbers",
+        "BANK_ROUTING_NUMBER": "Bank routing number (clearing/ABA)",
+        "SWIFT_BIC": "International bank identifier code (SWIFT/BIC)",
+        "SOCIAL_SECURITY_NUMBER": "Generic social security number format",
+        "VEHICLE_IDENTIFIER": "Vehicle identification number (VIN) or license plate",
+        "CERTIFICATE_LICENSE_NUMBER": "Certificate or professional license number",
+        "UNIQUE_ID": "Generic unique identifier",
+        "TITLE": "A person's title or salutation (Mr., Mrs., Dr., etc.)",
+        "RACE": "Information about a person's racial origin",
+        "ETHNICITY": "Information about a person's ethnic origin",
+        "RACE_ETHNICITY": "Information about a person's racial or ethnic origin",
+        "RELIGION": "Religious affiliation or belief",
+        "RELIGIOUS_BELIEF": "A person's religious belief or conviction",
+        "MARITAL_STATUS": "Marital status (married, single, divorced, widowed, etc.)",
+        "SEXUALITY": "Information about a person's sexual orientation",
+        "POLITICAL_VIEW": "A person's political opinions or affiliations",
+        "LANGUAGE": "A person's spoken or native language",
+        "BIOMETRIC_IDENTIFIER": "Biometric identifier (fingerprint, facial recognition, etc.)",
+        "HEALTH_PLAN_BENEFICIARY_NUMBER": "Health insurance plan beneficiary number",
+        "BLOOD_TYPE": "Blood types (A, B, AB, O with Rh +/- factors)",
+        "TIME": "Time information in various formats",
+        "PIN": "PIN code used for authentication or security"
       },
       "actions": {
         "saveAll": "Save",
@@ -513,6 +827,38 @@
         "placeholder": "Search by name, description or country code...",
         "clear": "Clear search",
         "noResults": "No results found for \"{{term}}\""
+      }
+    },
+    "customLabels": {
+      "addButton": "Add custom label",
+      "deleteButton": "Delete custom label",
+      "createButton": "Create",
+      "customBadge": "Custom",
+      "dialogTitle": "Add a custom label",
+      "fields": {
+        "detectorLabel": "Detector Label",
+        "detectorLabelPlaceholder": "e.g. employee badge number",
+        "piiType": "PII Type Code",
+        "piiTypePlaceholder": "e.g. EMPLOYEE_BADGE_NUMBER",
+        "category": "Category",
+        "severity": "Severity",
+        "threshold": "Confidence Threshold",
+        "countryCode": "Country Code (optional)",
+        "countryCodePlaceholder": "e.g. CH, FR"
+      },
+      "validation": {
+        "detectorLabelRequired": "Detector label is required (min. 2 characters)",
+        "piiTypeInvalid": "Must start with a letter, uppercase with underscores only (e.g. EMPLOYEE_BADGE)"
+      },
+      "deleteConfirm": {
+        "header": "Delete custom label",
+        "message": "Are you sure you want to delete the custom label \"{{label}}\"? This action cannot be undone."
+      },
+      "messages": {
+        "createSuccess": "Custom label \"{{label}}\" created successfully",
+        "createError": "Error creating custom label: {{error}}",
+        "deleteSuccess": "Custom label \"{{label}}\" deleted successfully",
+        "deleteError": "Error deleting custom label: {{error}}"
       }
     },
     "actions": {
@@ -535,12 +881,24 @@
       "saveAllError": "Error saving configurations: {{error}}"
     }
   },
+  "piiPageCard": {
+    "detections": "detections",
+    "types": "types",
+    "openInConfluence": "Open in Confluence",
+    "filter": {
+      "all": "All",
+      "selectedItems": "{0} types selected"
+    },
+    "table": {
+      "type": "Type",
+      "value": "Value",
+      "confidence": "Confidence",
+      "detector": "Detector"
+    }
+  },
   "piiItem": {
     "severity": {
-      "label": "Severity: {{value}}",
-      "high": "High",
-      "medium": "Medium",
-      "low": "Low"
+      "label": "Severity: {{value}}"
     },
     "fallback": {
       "page": "Page",
@@ -581,7 +939,50 @@
     "scanError": "Scan error",
     "connectionError": "Connection error",
     "timeout": "Timeout",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "confluence": {
+      "authFailed": "Confluence authentication failed. Check your credentials in Settings > Confluence.",
+      "connectionFailed": "Unable to connect to Confluence. Verify that the server is reachable.",
+      "resourceNotFound": "The requested Confluence resource was not found.",
+      "apiError": "Error communicating with the Confluence API.",
+      "dateParseFailed": "Date format error in the Confluence response.",
+      "deserializationFailed": "Error reading the Confluence response.",
+      "spaceNotFound": "The requested Confluence space was not found.",
+      "spaceCacheError": "Error refreshing the spaces cache. Please try again shortly."
+    },
+    "pii": {
+      "detectionConnectionFailed": "The PII analysis service is unreachable. Verify that the service is running.",
+      "detectionServiceError": "PII analysis service error.",
+      "detectionTimeout": "The PII analysis service did not respond in time.",
+      "detectorError": "Error during PII detection."
+    },
+    "encryption": {
+      "failed": "Encryption error. Contact the administrator."
+    },
+    "crypto": {
+      "operationFailed": "Cryptographic error. Contact the administrator."
+    },
+    "access": {
+      "denied": "Access denied. You do not have the required permissions for this operation."
+    },
+    "scan": {
+      "invalidStatusTransition": "Invalid scan status transition.",
+      "notFound": "The requested scan was not found."
+    },
+    "export": {
+      "failed": "Report export failed. Please try again.",
+      "contextNotFound": "Export context not found for this source.",
+      "unsupportedSourceType": "Unsupported source type for export."
+    },
+    "validation": {
+      "invalidArgument": "Invalid data. Please check the form fields.",
+      "constraintViolation": "Invalid data. Please check the required fields and expected formats.",
+      "malformedRequest": "The request is malformed. Please check the data format."
+    },
+    "state": {
+      "invalid": "Operation not possible in the current state."
+    },
+    "internal": "An unexpected error occurred. Contact the administrator if the issue persists."
   },
   "piiTypes": {
     "PERSON_NAME": "Person Name",
@@ -597,12 +998,12 @@
     "PHONE_NUMBER": "Phone Number",
     "ADDRESS": "Address",
     "POSTAL_CODE": "Postal Code",
-    "USERNAME": "Username",
+    "USERNAME": "Login / System Identifier",
     "ACCOUNT_ID": "Account ID",
     "URL": "URL",
     "CREDIT_CARD_NUMBER": "Credit Card Number",
     "BANK_ACCOUNT_NUMBER": "Bank Account Number",
-    "IBAN": "IBAN",
+    "IBAN": "International Banking Identifier (IBAN)",
     "BIC_SWIFT": "BIC/SWIFT Code",
     "TAX_ID": "Tax ID",
     "SALARY": "Salary",
@@ -616,7 +1017,7 @@
     "MAC_ADDRESS": "MAC Address",
     "HOSTNAME": "Hostname",
     "DEVICE_ID": "Device ID",
-    "PASSWORD": "Password",
+    "PASSWORD": "Account Password / PIN",
     "API_KEY": "API Key",
     "ACCESS_TOKEN": "Access Token",
     "SECRET_KEY": "Secret Key",
@@ -675,6 +1076,70 @@
     "US_DRIVER_LICENSE": "US Driver License",
     "US_BANK_NUMBER": "US Bank Account Number",
     "AU_MEDICARE": "Australian Medicare",
-    "IN_AADHAAR": "Indian Aadhaar"
+    "IN_AADHAAR": "Indian Aadhaar",
+    "CRYPTO_WALLET": "Crypto Wallet",
+    "NHS_NUMBER": "NHS Number",
+    "NRIC": "NRIC",
+    "ABN": "ABN",
+    "ACN": "ACN",
+    "TFN": "TFN",
+    "MEDICARE": "Medicare",
+    "VEHICLEREG": "Vehicle Registration",
+    "VOTERID": "Voter ID",
+    "DATE": "Date",
+    "MEDICAL_LICENSE": "Medical License",
+    "ITIN": "ITIN",
+    "NRP": "Nationality/Religion/Politics Group",
+    "US_ITIN": "US ITIN",
+    "UK_NHS": "UK NHS Number",
+    "UK_NINO": "UK NINO",
+    "ES_NIF": "Spanish NIF",
+    "ES_NIE": "Spanish NIE",
+    "IT_FISCAL_CODE": "Italian Fiscal Code",
+    "IT_DRIVER_LICENSE": "Italian Driver License",
+    "IT_VAT_CODE": "Italian VAT Code",
+    "IT_PASSPORT": "Italian Passport",
+    "IT_IDENTITY_CARD": "Italian Identity Card",
+    "PL_PESEL": "Polish PESEL",
+    "SG_NRIC_FIN": "Singapore NRIC/FIN",
+    "SG_UEN": "Singapore UEN",
+    "AU_ABN": "Australian ABN",
+    "AU_ACN": "Australian ACN",
+    "AU_TFN": "Australian TFN",
+    "IN_PAN": "Indian PAN",
+    "IN_VEHICLE_REGISTRATION": "Indian Vehicle Registration",
+    "IN_VOTER": "Indian Voter ID",
+    "IN_PASSPORT": "Indian Passport",
+    "FI_PERSONAL_IDENTITY_CODE": "Finnish Personal Identity Code",
+    "KR_RRN": "Korean RRN",
+    "TH_TNIN": "Thai TNIN",
+    "JWT_TOKEN": "JWT Token",
+    "GITHUB_TOKEN": "GitHub Token",
+    "AWS_KEY": "AWS Key",
+    "ROUTINGNUM": "Routing Number",
+    "CREDITCARDEXP": "Credit Card Expiration",
+    "CVV": "CVV",
+    "CREDITCARD": "Credit Card",
+    "MONEY": "Money Amount",
+    "DRIVERLICENSE": "Driver License",
+    "SSN_SHORT": "SSN (Short)",
+    "MEDICALPROFNAME": "Medical Professional",
+    "HEALTHCARENUM": "Healthcare Number",
+    "MEDICALCONDITION": "Medical Condition",
+    "MEDICALPROCESS": "Medical Procedure",
+    "DRUG": "Drug/Medication",
+    "DOSE": "Dosage",
+    "BLOODTYPE": "Blood Type",
+    "INJURY": "Injury",
+    "MEDICALFACILITY": "Medical Facility",
+    "MEDICALCODE": "Medical Code",
+    "VEHICLEID": "Vehicle ID",
+    "MARITALSTATUS": "Marital Status",
+    "LOCATIONZIP": "ZIP Code",
+    "LOCATIONADDRESS": "Address",
+    "LOCATIONSTREET": "Street",
+    "LOCATIONCITY": "City",
+    "LOCATIONSTATE": "State/Province",
+    "LOCATIONCOUNTRY": "Country"
   }
 }

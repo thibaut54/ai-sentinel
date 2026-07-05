@@ -13,6 +13,11 @@ import { TestIds } from '../src/app/features/test-ids.constants';
 test.describe('Scan et expansion des résultats PII', () => {
   const testIds = TestIds.dashboard;
 
+  // This spec drives a full live scan and contains internal waits up to 60s
+  // (PII detection). The global 30s per-test cap would kill it before those
+  // waits can elapse, so raise it to cover the intended workflow.
+  test.describe.configure({ timeout: 150_000 });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });

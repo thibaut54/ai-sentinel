@@ -1,19 +1,17 @@
-import { Component, computed, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
+import { Component, computed, input, OnInit, output, SecurityContext, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import {
-  AbstractControlOptions,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators
+    AbstractControlOptions,
+    FormBuilder,
+    FormGroup,
+    FormsModule,
+    ReactiveFormsModule,
+    Validators
 } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageModule } from 'primeng/message';
@@ -22,10 +20,22 @@ import { ToastModule } from 'primeng/toast';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
-import { MessageService } from 'primeng/api';
+import { SelectModule } from 'primeng/select';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DialogModule } from 'primeng/dialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { PiiDetectionConfigService } from '../../core/services/pii-detection-config.service';
-import { GroupedPiiTypes, PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detection-config.model';
-import { forkJoin } from 'rxjs';
+import {
+    CreatePiiTypeConfigRequest,
+    GroupedPiiTypes,
+    PiiDetectionConfig,
+    PiiTypeConfig,
+    UpdatePiiTypeConfigRequest
+} from '../../core/models/pii-detection-config.model';
+import { forkJoin, Observable } from 'rxjs';
+import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
+
+type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
 
 /**
  * Settings page for PII detection configuration.
@@ -34,40 +44,36 @@ import { forkJoin } from 'rxjs';
 @Component({
   selector: 'app-pii-settings',
   templateUrl: './pii-settings.component.html',
-  styleUrl: './pii-settings.component.scss',
+  styleUrl: './pii-settings.component.css',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    RouterLink,
-    TranslocoModule,
-    AccordionModule,
-    ButtonModule,
-    CardModule,
-    ToggleSwitchModule,
-    InputNumberModule,
-    MessageModule,
-    ProgressSpinnerModule,
-    ToastModule,
-    IconFieldModule,
-    InputIconModule,
-    InputTextModule
-  ],
-  providers: [MessageService]
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        TranslocoModule,
+        ButtonModule,
+        ToggleSwitchModule,
+        InputNumberModule,
+        MessageModule,
+        ProgressSpinnerModule,
+        ToastModule,
+        IconFieldModule,
+        InputIconModule,
+        InputTextModule,
+        SelectModule,
+        ConfirmDialogModule,
+        DialogModule,
+        ConfluenceSettingsComponent
+    ],
+  providers: [MessageService, ConfirmationService]
 })
 export class PiiSettingsComponent implements OnInit {
-  /**
-   * Dialog mode flag.
-   * When true, component is displayed inside a modal dialog.
-   * When false, component is displayed as standalone page.
-   */
-  @Input() dialogMode: boolean = false;
+  readonly dialogMode = input(false);
+  readonly initialTab = input(0);
+  readonly closeDialog = output();
+  readonly settingsSaved = output();
 
-  /**
-   * Event emitted when user closes the dialog (only in dialog mode).
-   */
-  @Output() closeDialog = new EventEmitter<void>();
+  readonly confluenceSettings = viewChild(ConfluenceSettingsComponent);
 
   configForm!: FormGroup;
   loading = signal(false);
@@ -78,6 +84,12 @@ export class PiiSettingsComponent implements OnInit {
   groupedPiiTypes = signal<GroupedPiiTypes[]>([]);
   originalPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
   modifiedPiiTypes = signal<Map<string, PiiTypeConfig>>(new Map());
+
+  // Sidebar navigation
+  activeSection = signal<SettingsSection>('detectors');
+
+  // Collapsible detector groups in PII types section
+  collapsedDetectors = signal<Set<string>>(new Set());
 
   // Search functionality
   searchTerm = signal<string>('');
@@ -132,43 +144,241 @@ export class PiiSettingsComponent implements OnInit {
   // Computed signal for unsaved changes
   hasUnsavedTypeChanges = computed(() => this.modifiedPiiTypes().size > 0);
 
+  // Custom label management
+  showAddCustomLabelDialog = signal(false);
+  customLabelForm!: FormGroup;
+  creatingCustomType = signal(false);
+
+  categoryOptions = [
+    { label: 'CONTACT', value: 'CONTACT' },
+    { label: 'IDENTITY', value: 'IDENTITY' },
+    { label: 'FINANCIAL', value: 'FINANCIAL' },
+    { label: 'GOVERNMENT_ID', value: 'GOVERNMENT_ID' },
+    { label: 'LOCATION', value: 'LOCATION' },
+    { label: 'SECURITY', value: 'SECURITY' },
+    { label: 'NETWORK', value: 'NETWORK' },
+    { label: 'MEDICAL', value: 'MEDICAL' },
+    { label: 'BUSINESS', value: 'BUSINESS' },
+    { label: 'DIGITAL', value: 'DIGITAL' },
+    { label: 'CUSTOM', value: 'CUSTOM' }
+  ];
+
+  severityOptions = [
+    { label: 'HIGH', value: 'HIGH' },
+    { label: 'MEDIUM', value: 'MEDIUM' },
+    { label: 'LOW', value: 'LOW' }
+  ];
+
   constructor(
     private readonly fb: FormBuilder,
     private readonly configService: PiiDetectionConfigService,
     private readonly messageService: MessageService,
+    private readonly confirmationService: ConfirmationService,
     private readonly translocoService: TranslocoService,
     private readonly router: Router,
     private readonly sanitizer: DomSanitizer
   ) {
     this.initForm();
+    this.initCustomLabelForm();
   }
 
+  /** Maps tab indices to sidebar section identifiers. */
+  private static readonly TAB_TO_SECTION: ReadonlyArray<SettingsSection> = [
+    'detectors', 'thresholds', 'pii_types', 'confluence'
+  ];
+
+  /**
+   * Maps a "Types d'IPI" detector group to its master toggle in the
+   * "Moteur de détection" section. The PII-type rows of a detector are
+   * derived (disabled + collapsed) from the state of this control so the
+   * two sections stay consistent without ever overwriting the per-type
+   * stored values (customisations are preserved by construction).
+   */
+  private static readonly DETECTOR_MASTER_CONTROL: Readonly<Record<string, string>> = {
+    PRESIDIO: 'presidioEnabled',
+    REGEX: 'regexEnabled',
+    MINISTRAL: 'ministralEnabled'
+  };
+
   ngOnInit(): void {
+    const tabIndex = this.initialTab();
+    const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
+    if (section) {
+      this.activeSection.set(section);
+    }
+
     this.loadAllConfigs();
   }
 
   private initForm(): void {
     this.configForm = this.fb.group({
-      glinerEnabled: [true],
       presidioEnabled: [true],
       regexEnabled: [true],
-      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
-      nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
+      postfilterEnabled: [false],
+      ministralEnabled: [false],
+      ministralChunkSize: [2048, [Validators.required, Validators.min(256), Validators.max(4096)]],
+      ministralOverlap: [410, [Validators.required, Validators.min(0), Validators.max(512)]],
+      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]]
     }, {
-      validators: [this.atLeastOneDetectorValidator]
+      validators: [this.atLeastOneDetectorValidator, this.overlapLessThanChunkSizeValidator]
     } as AbstractControlOptions);
+  }
+
+  private initCustomLabelForm(): void {
+    this.customLabelForm = this.fb.group({
+      detectorLabel: ['', [Validators.required, Validators.minLength(2)]],
+      piiType: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]*$/)]],
+      category: ['CUSTOM', [Validators.required]],
+      severity: ['MEDIUM', [Validators.required]],
+      threshold: [0.8, [Validators.required, Validators.min(0), Validators.max(1)]],
+      countryCode: ['']
+    });
+  }
+
+  /**
+   * Auto-generate PII type code from detector label.
+   * "employee badge number" -> "EMPLOYEE_BADGE_NUMBER"
+   * "Numéro de badge" -> "NUMERO_DE_BADGE"
+   */
+  onDetectorLabelChange(label: string): void {
+    const piiType = label
+      .trim()
+      .normalize('NFD')
+      .replaceAll(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replaceAll(/[^A-Z0-9\s]/g, '')
+      .replaceAll(/\s+/g, '_');
+    this.customLabelForm.patchValue({ piiType });
+  }
+
+  openAddCustomLabelDialog(): void {
+    this.customLabelForm.reset({
+      detectorLabel: '',
+      piiType: '',
+      category: 'CUSTOM',
+      severity: 'MEDIUM',
+      threshold: 0.8,
+      countryCode: ''
+    });
+    this.showAddCustomLabelDialog.set(true);
+  }
+
+  closeAddCustomLabelDialog(): void {
+    this.customLabelForm.reset({
+      detectorLabel: '',
+      piiType: '',
+      category: 'CUSTOM',
+      severity: 'MEDIUM',
+      threshold: 0.8,
+      countryCode: ''
+    });
+    this.showAddCustomLabelDialog.set(false);
+  }
+
+  createCustomType(): void {
+    if (this.customLabelForm.invalid) {
+      this.customLabelForm.markAllAsTouched();
+      return;
+    }
+
+    this.creatingCustomType.set(true);
+    const formValue = this.customLabelForm.value;
+
+    const request: CreatePiiTypeConfigRequest = {
+      piiType: formValue.piiType,
+      detector: 'MINISTRAL',
+      enabled: true,
+      threshold: formValue.threshold,
+      category: formValue.category,
+      detectorLabel: formValue.detectorLabel,
+      severity: formValue.severity,
+      countryCode: formValue.countryCode || undefined
+    };
+
+    this.configService.createPiiTypeConfig(request).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translocoService.translate('common.success'),
+          detail: this.translocoService.translate('settings.customLabels.messages.createSuccess', { label: formValue.detectorLabel }),
+          life: 3000
+        });
+        this.creatingCustomType.set(false);
+        this.showAddCustomLabelDialog.set(false);
+        this.loadAllConfigs();
+      },
+      error: (err) => {
+        console.error('Failed to create custom PII type:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translocoService.translate('common.error'),
+          detail: this.translocoService.translate('settings.customLabels.messages.createError', { error: err.error?.message || err.message || 'Unknown error' }),
+          life: 5000
+        });
+        this.creatingCustomType.set(false);
+      }
+    });
+  }
+
+  confirmDeleteCustomType(type: PiiTypeConfig): void {
+    const typeName = type.detectorLabel || type.piiType;
+    this.confirmationService.confirm({
+      header: this.translocoService.translate('settings.customLabels.deleteConfirm.header'),
+      message: this.translocoService.translate('settings.customLabels.deleteConfirm.message', { label: typeName }),
+      acceptLabel: this.translocoService.translate('common.yes'),
+      rejectLabel: this.translocoService.translate('common.no'),
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.deleteCustomType(type)
+    });
+  }
+
+  private deleteCustomType(type: PiiTypeConfig): void {
+    this.configService.deletePiiTypeConfig(type.detector, type.piiType).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translocoService.translate('common.success'),
+          detail: this.translocoService.translate('settings.customLabels.messages.deleteSuccess', { label: type.detectorLabel || type.piiType }),
+          life: 3000
+        });
+        this.loadAllConfigs();
+      },
+      error: (err) => {
+        console.error('Failed to delete custom PII type:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translocoService.translate('common.error'),
+          detail: this.translocoService.translate('settings.customLabels.messages.deleteError', { error: err.error?.message || err.message || 'Unknown error' }),
+          life: 5000
+        });
+      }
+    });
   }
 
   /**
    * Custom validator: at least one detector must be enabled.
    */
   private atLeastOneDetectorValidator(group: FormGroup): {[key: string]: boolean} | null {
-    const gliner = group.get('glinerEnabled')?.value;
     const presidio = group.get('presidioEnabled')?.value;
     const regex = group.get('regexEnabled')?.value;
+    const ministral = group.get('ministralEnabled')?.value;
 
-    if (!gliner && !presidio && !regex) {
+    if (!presidio && !regex && !ministral) {
       return {atLeastOneDetector: true};
+    }
+    return null;
+  }
+
+  /**
+   * Cross-field validator: the Ministral overlap must stay strictly below the
+   * chunk size, otherwise consecutive chunks would never advance.
+   */
+  private overlapLessThanChunkSizeValidator(group: FormGroup): {[key: string]: boolean} | null {
+    const chunkSize = group.get('ministralChunkSize')?.value;
+    const overlap = group.get('ministralOverlap')?.value;
+
+    if (chunkSize != null && overlap != null && overlap >= chunkSize) {
+      return {ministralOverlapGteChunkSize: true};
     }
     return null;
   }
@@ -187,16 +397,22 @@ export class PiiSettingsComponent implements OnInit {
         // Set detector config
         this.currentConfig.set(detectorConfig);
         this.configForm.patchValue({
-          glinerEnabled: detectorConfig.glinerEnabled,
           presidioEnabled: detectorConfig.presidioEnabled,
           regexEnabled: detectorConfig.regexEnabled,
-          defaultThreshold: detectorConfig.defaultThreshold,
-          nbOfLabelByPass: detectorConfig.nbOfLabelByPass
+          postfilterEnabled: detectorConfig.postfilterEnabled,
+          ministralEnabled: detectorConfig.ministralEnabled,
+          ministralChunkSize: detectorConfig.ministralChunkSize,
+          ministralOverlap: detectorConfig.ministralOverlap,
+          defaultThreshold: detectorConfig.defaultThreshold
         });
 
         // Set PII types
         this.groupedPiiTypes.set(piiTypes);
         this.initializeOriginalPiiTypes(piiTypes);
+
+        // Collapse the sub-sections of detectors that are disabled, so the
+        // "Types d'IPI" view reflects the "Moteur de détection" state on load.
+        this.syncCollapsedWithDetectorState();
 
         this.loading.set(false);
       },
@@ -255,15 +471,7 @@ export class PiiSettingsComponent implements OnInit {
       enabled
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
-      this.modifiedPiiTypes().set(key, modified);
-    } else {
-      this.modifiedPiiTypes().delete(key);
-    }
-
-    // Trigger change detection
-    this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+    this.trackPiiTypeModification(key, original, modified);
 
     // Update the grouped data to reflect changes
     this.updateGroupedPiiTypes(type.detector, type.piiType, {enabled});
@@ -284,18 +492,45 @@ export class PiiSettingsComponent implements OnInit {
       threshold
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
+    this.trackPiiTypeModification(key, original, modified);
+
+    // Update the grouped data to reflect changes
+    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  }
+
+  /**
+   * Track a PII-type row modification: record it when it differs from the
+   * original (enabled or threshold), drop it when it matches again.
+   * Always emits a new Map reference so the signal recomputes.
+   */
+  private trackPiiTypeModification(
+    key: string,
+    original: PiiTypeConfig,
+    modified: PiiTypeConfig
+  ): void {
+    const changed =
+      modified.enabled !== original.enabled ||
+      modified.threshold !== original.threshold;
+
+    if (changed) {
       this.modifiedPiiTypes().set(key, modified);
     } else {
       this.modifiedPiiTypes().delete(key);
     }
 
-    // Trigger change detection
     this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+  }
 
-    // Update the grouped data to reflect changes
-    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  /**
+   * Build a bulk-update payload entry.
+   */
+  private toUpdateRequest(type: PiiTypeConfig): UpdatePiiTypeConfigRequest {
+    return {
+      piiType: type.piiType,
+      detector: type.detector,
+      enabled: type.enabled,
+      threshold: type.threshold
+    };
   }
 
   /**
@@ -370,12 +605,7 @@ export class PiiSettingsComponent implements OnInit {
 
     this.saving.set(true);
 
-    const updates = modifications.map(type => ({
-      piiType: type.piiType,
-      detector: type.detector,
-      enabled: type.enabled,
-      threshold: type.threshold
-    }));
+    const updates = modifications.map(type => this.toUpdateRequest(type));
 
     this.configService.bulkUpdatePiiTypeConfigs(updates).subscribe({
       next: (updatedConfigs) => {
@@ -417,14 +647,24 @@ export class PiiSettingsComponent implements OnInit {
   onSaveAll(): void {
     const hasDetectorChanges = this.configForm.dirty;
     const hasTypeChanges = this.hasUnsavedTypeChanges();
+    const hasConfluenceChanges = this.confluenceSettings()?.hasUnsavedChanges ?? false;
 
+    if (!hasDetectorChanges && !hasTypeChanges && !hasConfluenceChanges) {
+      return;
+    }
+
+    if (hasConfluenceChanges) {
+      this.confluenceSettings()!.onSave();
+    }
+
+    // If only Confluence changed, it handles its own saving signal — nothing else to do
     if (!hasDetectorChanges && !hasTypeChanges) {
       return;
     }
 
     this.saving.set(true);
 
-    const requests: any[] = [];
+    const requests: Observable<any>[] = [];
     let detectorRequestIndex = -1;
     let typesRequestIndex = -1;
 
@@ -435,12 +675,7 @@ export class PiiSettingsComponent implements OnInit {
 
     if (hasTypeChanges) {
       const modifications = Array.from(this.modifiedPiiTypes().values());
-      const updates = modifications.map(type => ({
-        piiType: type.piiType,
-        detector: type.detector,
-        enabled: type.enabled,
-        threshold: type.threshold
-      }));
+      const updates = modifications.map(type => this.toUpdateRequest(type));
       typesRequestIndex = requests.length;
       requests.push(this.configService.bulkUpdatePiiTypeConfigs(updates));
     }
@@ -471,6 +706,7 @@ export class PiiSettingsComponent implements OnInit {
         });
 
         this.saving.set(false);
+        this.settingsSaved.emit();
       },
       error: (err) => {
         console.error('Failed to save configurations:', err);
@@ -491,7 +727,8 @@ export class PiiSettingsComponent implements OnInit {
    * In dialog mode, emits close event. In standalone mode, navigates to home.
    */
   onCancel(): void {
-    if (this.dialogMode) {
+    this.onResetAll();
+    if (this.dialogMode()) {
       this.closeDialog.emit();
     } else {
       this.router.navigate(['/']);
@@ -504,13 +741,17 @@ export class PiiSettingsComponent implements OnInit {
   onResetDetectorConfig(): void {
     if (this.currentConfig()) {
       this.configForm.patchValue({
-        glinerEnabled: this.currentConfig()!.glinerEnabled,
         presidioEnabled: this.currentConfig()!.presidioEnabled,
         regexEnabled: this.currentConfig()!.regexEnabled,
-        defaultThreshold: this.currentConfig()!.defaultThreshold,
-        nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
+        postfilterEnabled: this.currentConfig()!.postfilterEnabled,
+        ministralEnabled: this.currentConfig()!.ministralEnabled,
+        ministralChunkSize: this.currentConfig()!.ministralChunkSize,
+        ministralOverlap: this.currentConfig()!.ministralOverlap,
+        defaultThreshold: this.currentConfig()!.defaultThreshold
       });
       this.configForm.markAsPristine();
+      // Restore the collapse state to match the reset detector toggles.
+      this.syncCollapsedWithDetectorState();
     }
   }
 
@@ -544,10 +785,15 @@ export class PiiSettingsComponent implements OnInit {
   onResetAll(): void {
     this.onResetDetectorConfig();
     this.onResetPiiTypes();
+    this.confluenceSettings()?.onReset();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.configForm.dirty || this.hasUnsavedTypeChanges();
+    return this.configForm.dirty || this.hasUnsavedTypeChanges() || (this.confluenceSettings()?.hasUnsavedChanges ?? false);
+  }
+
+  get isFormValid(): boolean {
+    return this.configForm.valid && (this.confluenceSettings()?.isFormValid ?? true);
   }
 
   get hasDetectorChanges(): boolean {
@@ -556,6 +802,10 @@ export class PiiSettingsComponent implements OnInit {
 
   get atLeastOneDetectorError(): boolean {
     return this.configForm.hasError('atLeastOneDetector') && this.configForm.touched;
+  }
+
+  get ministralOverlapError(): boolean {
+    return this.configForm.hasError('ministralOverlapGteChunkSize');
   }
 
   /**
@@ -582,23 +832,96 @@ export class PiiSettingsComponent implements OnInit {
   /**
    * Highlight search term in text.
    */
-  highlightText(text: string, originalKey: string): SafeHtml {
+  highlightText(text: string, originalKey: string): string {
     // Get translated text first
     const translatedText = this.translocoService.translate(originalKey);
 
     const term = this.searchTerm().trim();
     if (!term) {
       // No search term, return plain translated text
-      return this.sanitizer.sanitize(1, translatedText) || translatedText;
+      return this.sanitizer.sanitize(SecurityContext.HTML, translatedText) || translatedText;
     }
 
     // Escape special regex characters
-    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    const escapedTerm = term.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
     const regex = new RegExp(`(${escapedTerm})`, 'gi');
 
     // Replace matches with highlighted version
     const highlighted = translatedText.replaceAll(regex, '<mark class="search-highlight">$1</mark>');
 
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+    return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) || '';
+  }
+
+  /**
+   * Set the active sidebar section.
+   */
+  setActiveSection(section: SettingsSection): void {
+    this.activeSection.set(section);
+  }
+
+  /**
+   * Toggle collapse state of a detector group.
+   */
+  toggleDetectorCollapse(detector: string): void {
+    const current = new Set(this.collapsedDetectors());
+    if (current.has(detector)) {
+      current.delete(detector);
+    } else {
+      current.add(detector);
+    }
+    this.collapsedDetectors.set(current);
+  }
+
+  /**
+   * Check if a detector group is collapsed.
+   */
+  isDetectorCollapsed(detector: string): boolean {
+    return this.collapsedDetectors().has(detector);
+  }
+
+  /**
+   * Whether the detector that owns a "Types d'IPI" sub-section is enabled
+   * in the "Moteur de détection" section. Drives the disabled state of the
+   * per-type toggles so a disabled detector cannot be edited there.
+   * Unknown detectors (no master toggle) default to enabled.
+   */
+  isDetectorEnabled(detector: string): boolean {
+    const control = PiiSettingsComponent.DETECTOR_MASTER_CONTROL[detector];
+    if (!control) {
+      return true;
+    }
+    return !!this.configForm.get(control)?.value;
+  }
+
+  /**
+   * React to a detector master toggle in "Moteur de détection": collapse its
+   * "Types d'IPI" sub-section when disabled, expand it when re-enabled. The
+   * per-type values are never touched — only the visual state is derived.
+   */
+  onDetectorMasterToggle(detector: string): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    if (this.isDetectorEnabled(detector)) {
+      collapsed.delete(detector);
+    } else {
+      collapsed.add(detector);
+    }
+    this.collapsedDetectors.set(collapsed);
+  }
+
+  /**
+   * Collapse every detector sub-section whose master toggle is currently
+   * disabled, leaving enabled ones in their current state. Called after a
+   * config load so the two sections start consistent.
+   */
+  private syncCollapsedWithDetectorState(): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    for (const detector of Object.keys(PiiSettingsComponent.DETECTOR_MASTER_CONTROL)) {
+      if (this.isDetectorEnabled(detector)) {
+        collapsed.delete(detector);
+      } else {
+        collapsed.add(detector);
+      }
+    }
+    this.collapsedDetectors.set(collapsed);
   }
 }

@@ -1,14 +1,8 @@
 package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import lombok.extern.slf4j.Slf4j;
-import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceScanPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
-import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
-import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
-import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
-import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
-import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import reactor.core.publisher.Flux;
@@ -31,15 +25,10 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
     private final PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort;
 
     public StreamConfluenceScanUseCase(
-        ConfluenceAccessor confluenceAccessor,
-        PiiDetectorClient piiDetectorClient,
-        ContentScanOrchestrator contentScanOrchestrator,
-        AttachmentProcessor attachmentProcessor,
-        ScanTimeOutConfig scanTimeoutConfig,
-        HtmlContentParser htmlContentParser,
+        ScanPipelineDependencies dependencies,
         PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort
     ) {
-        super(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor, scanTimeoutConfig, htmlContentParser);
+        super(dependencies);
         this.personallyIdentifiableInformationScanExecutionOrchestratorPort = personallyIdentifiableInformationScanExecutionOrchestratorPort;
     }
 
@@ -89,7 +78,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                                      .scanId(scanId)
                                      .spaceKey(spaceKey)
                                      .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                     .message(exception.getMessage())
+                                     .message(resolveErrorMessage(exception))
                                      .emittedAt(Instant.now().toString())
                                      .build());
             });
@@ -192,7 +181,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                 return Flux.just(ConfluenceContentScanResult.builder()
                     .scanId(scanId)
                     .eventType(DetectionReportingEventType.ERROR.getLabel())
-                    .message(exception.getMessage())
+                    .message(resolveErrorMessage(exception))
                     .emittedAt(Instant.now().toString())
                     .build());
             });
@@ -225,7 +214,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                 return Flux.just(ConfluenceContentScanResult.builder()
                                      .scanId(scanId)
                                      .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                     .message(exception.getMessage())
+                                     .message(resolveErrorMessage(exception))
                                      .emittedAt(Instant.now().toString())
                                      .build());
             });
@@ -257,7 +246,7 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                                 .scanId(scanId)
                                 .spaceKey(space.key())
                                 .eventType(DetectionReportingEventType.ERROR.getLabel())
-                                .message(exception.getMessage())
+                                .message(resolveErrorMessage(exception))
                                 .emittedAt(Instant.now().toString())
                                 .build());
                     }));

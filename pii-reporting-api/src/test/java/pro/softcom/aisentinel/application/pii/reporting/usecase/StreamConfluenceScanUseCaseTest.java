@@ -27,13 +27,13 @@ import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
-import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.PersonallyIdentifiableInformationType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.ScanEventType;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.JpaScanEventStoreAdapter;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.out.event.ScanEventPublisherAdapter;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -90,22 +90,17 @@ class StreamConfluenceScanUseCaseTest {
 
     private StreamConfluenceScanUseCase streamConfluenceScanUseCase;
 
+    // Collaborators promoted to fields so tests can rebuild the use case with a
+    // custom page concurrency (see useCaseWithConcurrency).
+    private ConfluenceAccessor confluenceAccessor;
+    private ContentScanOrchestrator contentScanOrchestrator;
+    private AttachmentProcessor attachmentProcessor;
+    private HtmlContentParser htmlContentParser;
+    private ScanSpaceStatsCollector scanSpaceStatsCollector;
+
     @BeforeEach
     void setUp() {
-        // Keep only baseUrl relevant for URL building
-        final ConfluenceUrlProvider confluenceUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "http://confluence.example"; }
-            @Override public String pageUrl(String pageId) {
-                if (pageId == null || pageId.isBlank()) return null;
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        final ConfluenceUrlProvider confluenceUrlProvider = stubDataCenterUrlProvider("http://confluence.example");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -119,24 +114,29 @@ class StreamConfluenceScanUseCaseTest {
                                                                           Runnable::run);
 
         // Create parameter objects
-        ConfluenceAccessor confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
-        ContentScanOrchestrator contentScanOrchestrator = new ContentScanOrchestrator(
+        confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
+        contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
                 severityCalculationService, scanSeverityCountService
         );
-        AttachmentProcessor attachmentProcessor = new AttachmentProcessor(
+        attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,
                 attachmentTextExtractionService
         );
-        HtmlContentParser htmlContentParser = new HtmlContentParser();
+        htmlContentParser = new HtmlContentParser();
+        scanSpaceStatsCollector = Mockito.mock(ScanSpaceStatsCollector.class);
 
-        streamConfluenceScanUseCase = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
                 confluenceAccessor,
                 piiDetectorClient,
                 contentScanOrchestrator,
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
+                scanSpaceStatsCollector
+        );
+        streamConfluenceScanUseCase = new StreamConfluenceScanUseCase(
+                pipelineDependencies,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -158,6 +158,62 @@ class StreamConfluenceScanUseCaseTest {
                 })
                 .when(personallyIdentifiableInformationScanExecutionOrchestratorPort)
                 .startScan(any(), any());
+    }
+
+    /** Rebuilds the use case with a custom page concurrency, reusing the shared collaborators. */
+    private StreamConfluenceScanUseCase useCaseWithConcurrency(int concurrency) {
+        ScanPipelineDependencies deps = new ScanPipelineDependencies(
+                confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor,
+                scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, concurrency);
+        return new StreamConfluenceScanUseCase(
+                deps, personallyIdentifiableInformationScanExecutionOrchestratorPort);
+    }
+
+    @Test
+    @DisplayName("streamSpace - with pageConcurrency>1, page events are still emitted in source order")
+    void streamSpace_concurrentPages_preserveOrder() {
+        String spaceKey = "S-CONC";
+        ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t", "http://test.com", "d",
+                ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(confluenceService.getSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(Optional.of(space)));
+
+        int pageCount = 5;
+        java.util.List<ConfluencePage> pages = new java.util.ArrayList<>();
+        for (int i = 1; i <= pageCount; i++) {
+            pages.add(ConfluencePage.builder()
+                .id("p-" + i)
+                .title("T" + i)
+                .spaceKey(spaceKey)
+                .content(new ConfluencePage.HtmlContent("scan marker P" + i + " end"))
+                .build());
+            when(confluenceAttachmentService.getPageAttachments("p-" + i))
+                .thenReturn(CompletableFuture.completedFuture(List.of()));
+        }
+        when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(pages));
+        when(scanTimeoutConfig.getPiiDetection()).thenReturn(Duration.ofSeconds(30));
+
+        // Inverse-latency detection: page 1 is SLOWEST. An unordered flatMap would
+        // emit later (faster) pages first; flatMapSequential must still emit in
+        // source order p-1..p-5. The differing sleeps run concurrently because
+        // pageConcurrency = pageCount, proving both concurrency AND ordering.
+        when(piiDetectorClient.analyzeContent(any())).thenAnswer(invocation -> {
+            String text = invocation.getArgument(0);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("P(\\d+)").matcher(text);
+            int pageNum = matcher.find() ? Integer.parseInt(matcher.group(1)) : 0;
+            Thread.sleep((pageCount + 1 - pageNum) * 40L);
+            return ContentPiiDetection.builder().statistics(Map.of()).sensitiveDataFound(List.of()).build();
+        });
+
+        StreamConfluenceScanUseCase useCase = useCaseWithConcurrency(pageCount);
+
+        List<String> pageStartOrder = useCase.streamSpace(spaceKey)
+                .filter(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()))
+                .map(ConfluenceContentScanResult::pageId)
+                .timeout(Duration.ofSeconds(15))
+                .collectList()
+                .block();
+
+        assertThat(pageStartOrder).containsExactly("p-1", "p-2", "p-3", "p-4", "p-5");
     }
 
     @Test
@@ -237,7 +293,7 @@ class StreamConfluenceScanUseCaseTest {
         ContentPiiDetection resp = ContentPiiDetection.builder()
                 .statistics(Map.of("EMAIL", 1))
                 .sensitiveDataFound(List.of(
-                        new ContentPiiDetection.SensitiveData(PersonallyIdentifiableInformationType.EMAIL, "john@doe.com", "", 0, 16, 0.95, "sel", DetectorSource.UNKNOWN_SOURCE)
+                        new ContentPiiDetection.SensitiveData("EMAIL", "Email", "john@doe.com", "", 0, 16, 0.95, "sel", DetectorSource.UNKNOWN_SOURCE)
                 ))
                 .build();
         when(piiDetectorClient.analyzeContent(any())).thenReturn(resp);
@@ -557,20 +613,9 @@ class StreamConfluenceScanUseCaseTest {
     @Test
     @DisplayName("buildPageUrl - null when baseUrl is blank")
     void Should_UseNullPageUrl_When_BaseUrlIsBlank() {
-        // Build a dedicated service with blank base URL
-        final ConfluenceUrlProvider blankUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "   "; }
-            @Override public String pageUrl(String pageId) {
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                if (pageId == null || pageId.isBlank()) return null;
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        // Blank base URL -> provider returns null for every URL (mimics adapter behavior).
+        final ConfluenceUrlProvider blankUrlProvider = Mockito.mock(ConfluenceUrlProvider.class);
+        Mockito.lenient().when(blankUrlProvider.baseUrl()).thenReturn("   ");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -595,13 +640,17 @@ class StreamConfluenceScanUseCaseTest {
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
 
-        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
             confluenceAccessor,
             piiDetectorClient,
             contentScanOrchestrator,
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
+            Mockito.mock(ScanSpaceStatsCollector.class)
+        );
+        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+            pipelineDependencies,
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -634,20 +683,8 @@ class StreamConfluenceScanUseCaseTest {
     @Test
     @DisplayName("buildPageUrl - trims trailing slash in baseUrl (dedicated provider)")
     void Should_BuildPageUrlWithoutDoubleSlash_When_ProviderEndsWithSlash() {
-        // Build a dedicated service with trailing slash
-        final ConfluenceUrlProvider confluenceUrlProvider = new ConfluenceUrlProvider() {
-            @Override public String baseUrl() { return "http://confluence.example/"; }
-            @Override public String pageUrl(String pageId) {
-                if (pageId == null || pageId.isBlank()) return null;
-                String base = baseUrl();
-                if (base.isBlank()) {
-                    return null;
-                }
-                base = base.trim();
-                if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                return base + "/pages/viewpage.action?pageId=" + pageId;
-            }
-        };
+        // Trailing slash is normalized by the helper so the stubbed URL has no double slash.
+        final ConfluenceUrlProvider confluenceUrlProvider = stubDataCenterUrlProvider("http://confluence.example/");
 
         // Create service instances
         var applicationEventPublisher = Mockito.mock(ApplicationEventPublisher.class);
@@ -672,13 +709,17 @@ class StreamConfluenceScanUseCaseTest {
         );
         HtmlContentParser htmlContentParser = new HtmlContentParser();
 
-        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+        ScanPipelineDependencies pipelineDependencies = new ScanPipelineDependencies(
             confluenceAccessor,
             piiDetectorClient,
             contentScanOrchestrator,
             attachmentProcessor,
             scanTimeoutConfig,
             htmlContentParser,
+            Mockito.mock(ScanSpaceStatsCollector.class)
+        );
+        StreamConfluenceScanUseCase svc = new StreamConfluenceScanUseCase(
+            pipelineDependencies,
             personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
 
@@ -792,6 +833,60 @@ class StreamConfluenceScanUseCaseTest {
     }
 
     @Test
+    @DisplayName("streamAllSpaces - ConnectException with null message emits descriptive error, not null")
+    void Should_EmitDescriptiveErrorMessage_When_ConnectExceptionHasNullMessage() {
+        ConfluenceSpace space = new ConfluenceSpace("id", "CCAEI", "t", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(spaceRepository.findAll()).thenReturn(List.of());
+        when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
+
+        CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
+        failing.completeExceptionally(new ConnectException());
+        when(confluenceService.getAllPagesInSpace("CCAEI")).thenReturn(failing);
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamAllSpaces().timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux)
+            .expectNextMatches(ev -> ScanEventType.MULTI_START.toJson().equals(ev.eventType()))
+            .assertNext(ev -> {
+                assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
+                assertThat(ev.spaceKey()).isEqualTo("CCAEI");
+                assertThat(ev.message())
+                        .isNotEmpty()
+                        .doesNotContain("null")
+                        .containsIgnoringCase("connect");
+            })
+            .expectNextMatches(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
+            .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("streamSpace - ConnectException with null message emits descriptive error event")
+    void Should_EmitDescriptiveErrorEvent_When_StreamSpaceGetsConnectException() {
+        String spaceKey = "CONN-ERR";
+        ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(confluenceService.getSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(Optional.of(space)));
+
+        CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
+        failing.completeExceptionally(new ConnectException());
+        when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(failing);
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceScanUseCase.streamSpace(spaceKey).timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux)
+            .assertNext(ev -> {
+                assertThat(ev.eventType()).isEqualTo(ScanEventType.ERROR.toJson());
+                assertThat(ev.spaceKey()).isEqualTo(spaceKey);
+                assertThat(ev.message())
+                        .isNotEmpty()
+                        .doesNotContain("null")
+                        .containsIgnoringCase("connect");
+            })
+            .verifyComplete();
+    }
+
+    @Test
     @DisplayName("streamAllSpaces - AHVIV at first position scans all spaces")
     void Should_ScanAllSpaces_When_AhvivIsFirstSpace() {
         ConfluenceSpace space1 = new ConfluenceSpace("id1", "AHVIV", "AHV/IV e-Form","http://test.com", "d",
@@ -835,6 +930,34 @@ class StreamConfluenceScanUseCaseTest {
         // Verify both spaces were scanned
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("AHVIV");
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("XYZ");
+    }
+
+    /**
+     * Builds a Mockito stub of {@link ConfluenceUrlProvider} that mimics the Data Center
+     * adapter output. The base URL is normalized (trimmed + trailing slash removed) so the
+     * assertions in this file can compare against a clean canonical shape.
+     */
+    private static ConfluenceUrlProvider stubDataCenterUrlProvider(String rawBaseUrl) {
+        String normalizedBase = normalizeBaseUrl(rawBaseUrl);
+        ConfluenceUrlProvider provider = Mockito.mock(ConfluenceUrlProvider.class);
+        Mockito.lenient().when(provider.baseUrl()).thenReturn(rawBaseUrl);
+        Mockito.lenient().when(provider.pageUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank() || normalizedBase == null) return null;
+            return normalizedBase + "/pages/viewpage.action?pageId=" + pageId;
+        });
+        Mockito.lenient().when(provider.attachmentsUrl(any(), any())).thenAnswer(invocation -> {
+            String pageId = invocation.getArgument(1);
+            if (pageId == null || pageId.isBlank() || normalizedBase == null) return null;
+            return normalizedBase + "/pages/viewpageattachments.action?pageId=" + pageId;
+        });
+        return provider;
+    }
+
+    private static String normalizeBaseUrl(String rawBaseUrl) {
+        if (rawBaseUrl == null || rawBaseUrl.isBlank()) return null;
+        String trimmed = rawBaseUrl.trim();
+        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 
 }

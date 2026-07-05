@@ -1,45 +1,31 @@
 package pro.softcom.aisentinel.infrastructure.confluence.adapter.out.config;
 
+import pro.softcom.aisentinel.domain.confluence.ConfluenceDeploymentType;
+
 /**
- * Vendor-agnostic contract for Confluence connection and API settings.
- * Exposes scalar values to avoid coupling with vendor-specific config records.
+ * Contract for user-configurable Confluence connection settings.
+ * API paths and URL construction are handled by {@code ConfluenceApiUrlBuilder}.
  */
 public interface ConfluenceConnectionConfig {
-    // Core connection
+
     String baseUrl();
     String username();
     String apiToken();
 
-    // Timeouts, retries and proxy
     int connectTimeout();
     int readTimeout();
     int maxRetries();
-    boolean enableProxy();
-    String proxyHost();
-    int proxyPort();
-    String proxyUsername();
-    String proxyPassword();
 
-    // Pagination
     int pagesLimit();
     int maxPages();
 
-    // API paths
-    String contentPath();
-    String searchContentPath();
-    String spacePath();
-    String attachmentChildSuffix();
-    String defaultPageExpands();
-    String defaultSpaceExpands();
+    ConfluenceDeploymentType deploymentType();
 
-    // Convenience
     default boolean isValid() {
-        return notBlank(baseUrl()) && notBlank(username()) && notBlank(apiToken());
-    }
-
-    default String getRestApiUrl() {
-        var base = baseUrl();
-        return base.endsWith("/") ? base + "rest/api" : base + "/rest/api";
+        if (!notBlank(baseUrl()) || !notBlank(apiToken())) {
+            return false;
+        }
+        return deploymentType() == ConfluenceDeploymentType.DATA_CENTER || notBlank(username());
     }
 
     private static boolean notBlank(String s) {
