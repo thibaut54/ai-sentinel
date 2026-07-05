@@ -1,10 +1,10 @@
 package pro.softcom.aisentinel.application.pii.reporting.service;
 
+import pro.softcom.aisentinel.domain.pii.remediation.RedactionToken;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Small shared masking helpers used by both context extraction and presentation mappers.
@@ -19,8 +19,7 @@ public final class PiiMaskingUtils {
     }
 
     public static String token(String type) {
-        String t = (type == null || type.isBlank() || Objects.equals("null", type)) ? "UNKNOWN" : type;
-        return "[" + t + "]";
+        return RedactionToken.forType(type);
     }
 
     public static String safeSub(String s, int start, int end) {
