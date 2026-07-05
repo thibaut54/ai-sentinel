@@ -1,14 +1,16 @@
-export type DetectorType = 'GLINER' | 'PRESIDIO' | 'REGEX';
+export type DetectorType = 'PRESIDIO' | 'REGEX' | 'MINISTRAL';
 
 /**
  * PII Detection Configuration model matching backend DTO.
  */
 export interface PiiDetectionConfig {
-  glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  postfilterEnabled: boolean;
+  ministralEnabled: boolean;
+  ministralChunkSize: number;
+  ministralOverlap: number;
   defaultThreshold: number;
-  nbOfLabelByPass: number;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -17,11 +19,13 @@ export interface PiiDetectionConfig {
  * Request DTO for updating PII detection configuration.
  */
 export interface UpdatePiiDetectionConfigRequest {
-  glinerEnabled: boolean;
   presidioEnabled: boolean;
   regexEnabled: boolean;
+  postfilterEnabled: boolean;
+  ministralEnabled: boolean;
+  ministralChunkSize: number;
+  ministralOverlap: number;
   defaultThreshold: number;
-  nbOfLabelByPass: number;
 }
 
 /**
@@ -77,7 +81,7 @@ export interface BulkUpdatePiiTypeConfigRequest {
  * Grouped PII types by detector and category for UI display.
  */
 export interface GroupedPiiTypes {
-  detector: 'GLINER' | 'PRESIDIO';
+  detector: 'PRESIDIO' | 'MINISTRAL';
   categories: CategoryGroup[];
 }
 

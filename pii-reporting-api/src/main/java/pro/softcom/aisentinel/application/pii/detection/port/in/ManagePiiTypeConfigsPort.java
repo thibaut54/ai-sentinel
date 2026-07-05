@@ -9,7 +9,7 @@ import java.util.Map;
  * Port IN for managing PII type-specific configurations.
  * <p>
  * Allows clients to retrieve and update configuration for individual PII types
- * per detector (GLiNER, Presidio, Regex).
+ * per detector (Presidio, Regex, Ministral).
  */
 public interface ManagePiiTypeConfigsPort {
 
@@ -23,7 +23,7 @@ public interface ManagePiiTypeConfigsPort {
     /**
      * Retrieves PII type configurations for a specific detector.
      *
-     * @param detector the detector name (GLINER, PRESIDIO, or REGEX)
+     * @param detector the detector name (PRESIDIO, REGEX, or MINISTRAL)
      * @return list of configurations for the specified detector
      * @throws IllegalArgumentException if detector is invalid
      */

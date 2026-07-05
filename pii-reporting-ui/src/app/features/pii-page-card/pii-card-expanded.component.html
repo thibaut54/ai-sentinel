@@ -76,6 +76,26 @@
     </div>
   }
 
+  <!-- Top reveal action (duplicate of footer button) -->
+  @if (sentinelleApi.revealAllowed()) {
+    <div class="card-header-actions">
+      <button class="btn-reveal"
+              type="button"
+              (click)="revealRequested.emit()"
+              [disabled]="isRevealing()"
+              [attr.aria-label]="revealed()
+                ? ('piiItem.actions.maskAriaLabel' | transloco)
+                : ('piiItem.actions.revealAriaLabel' | transloco)">
+        @if (isRevealing()) {
+          <span class="spinner" aria-hidden="true"></span>
+        }
+        {{ revealed()
+          ? ('piiItem.actions.mask' | transloco)
+          : ('piiItem.actions.reveal' | transloco) }}
+      </button>
+    </div>
+  }
+
   <!-- Detail table -->
   <div class="detail-table-wrapper">
     <table class="detail-table">

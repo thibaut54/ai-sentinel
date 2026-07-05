@@ -34,11 +34,11 @@ class ManagePiiTypeConfigsUseCaseTest {
     @DisplayName("Should_CreateConfig_When_ValidInputProvided")
     void Should_CreateConfig_When_ValidInputProvided() {
         // Arrange
-        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "GLINER")).thenReturn(Optional.empty());
+        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "REGEX")).thenReturn(Optional.empty());
         PiiTypeConfig saved = PiiTypeConfig.builder()
                 .id(1L)
                 .piiType("CUSTOM_LABEL")
-                .detector("GLINER")
+                .detector("REGEX")
                 .enabled(true)
                 .threshold(0.5)
                 .category("Custom")
@@ -50,7 +50,7 @@ class ManagePiiTypeConfigsUseCaseTest {
 
         // Act
         PiiTypeConfig result = useCase.createConfig(new CreatePiiTypeConfigCommand(
-                "CUSTOM_LABEL", "GLINER", true, 0.5,
+                "CUSTOM_LABEL", "REGEX", true, 0.5,
                 "Custom", "custom label", null, "HIGH", "admin"
         ));
 
@@ -71,13 +71,13 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Arrange
         PiiTypeConfig existing = PiiTypeConfig.builder()
                 .piiType("EXISTING_TYPE")
-                .detector("GLINER")
+                .detector("REGEX")
                 .build();
-        when(repository.findByPiiTypeAndDetector("EXISTING_TYPE", "GLINER")).thenReturn(Optional.of(existing));
+        when(repository.findByPiiTypeAndDetector("EXISTING_TYPE", "REGEX")).thenReturn(Optional.of(existing));
 
         // Act & Assert
         var command = new CreatePiiTypeConfigCommand(
-                "EXISTING_TYPE", "GLINER", true, 0.5,
+                "EXISTING_TYPE", "REGEX", true, 0.5,
                 "Custom", "existing type", null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
@@ -91,7 +91,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     @DisplayName("Should_ThrowException_When_InvalidPiiTypeFormat")
     void Should_ThrowException_When_InvalidPiiTypeFormat() {
         var command = new CreatePiiTypeConfigCommand(
-                "invalid-type", "GLINER", true, 0.5,
+                "invalid-type", "REGEX", true, 0.5,
                 "Custom", "label", null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
@@ -110,21 +110,7 @@ class ManagePiiTypeConfigsUseCaseTest {
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("GLINER, PRESIDIO, REGEX");
-
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Should_ThrowException_When_GlinerDetectorLabelBlank")
-    void Should_ThrowException_When_GlinerDetectorLabelBlank() {
-        var command = new CreatePiiTypeConfigCommand(
-                "CUSTOM_LABEL", "GLINER", true, 0.5,
-                "Custom", "", null, null, "admin"
-        );
-        assertThatThrownBy(() -> useCase.createConfig(command))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Detector label is required");
+                .hasMessageContaining("PRESIDIO, REGEX, MINISTRAL");
 
         verify(repository, never()).save(any());
     }
@@ -133,7 +119,7 @@ class ManagePiiTypeConfigsUseCaseTest {
     @DisplayName("Should_ThrowException_When_ThresholdOutOfRange")
     void Should_ThrowException_When_ThresholdOutOfRange() {
         var command = new CreatePiiTypeConfigCommand(
-                "CUSTOM_LABEL", "GLINER", true, 1.5,
+                "CUSTOM_LABEL", "REGEX", true, 1.5,
                 "Custom", "label", null, null, "admin"
         );
         assertThatThrownBy(() -> useCase.createConfig(command))
@@ -179,16 +165,16 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Arrange
         PiiTypeConfig customConfig = PiiTypeConfig.builder()
                 .piiType("CUSTOM_LABEL")
-                .detector("GLINER")
+                .detector("REGEX")
                 .custom(true)
                 .build();
-        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "GLINER")).thenReturn(Optional.of(customConfig));
+        when(repository.findByPiiTypeAndDetector("CUSTOM_LABEL", "REGEX")).thenReturn(Optional.of(customConfig));
 
         // Act
-        useCase.deleteConfig("CUSTOM_LABEL", "GLINER");
+        useCase.deleteConfig("CUSTOM_LABEL", "REGEX");
 
         // Assert
-        verify(repository).deleteByPiiTypeAndDetector("CUSTOM_LABEL", "GLINER");
+        verify(repository).deleteByPiiTypeAndDetector("CUSTOM_LABEL", "REGEX");
     }
 
     @Test
@@ -197,13 +183,13 @@ class ManagePiiTypeConfigsUseCaseTest {
         // Arrange
         PiiTypeConfig systemConfig = PiiTypeConfig.builder()
                 .piiType("EMAIL")
-                .detector("GLINER")
+                .detector("REGEX")
                 .custom(false)
                 .build();
-        when(repository.findByPiiTypeAndDetector("EMAIL", "GLINER")).thenReturn(Optional.of(systemConfig));
+        when(repository.findByPiiTypeAndDetector("EMAIL", "REGEX")).thenReturn(Optional.of(systemConfig));
 
         // Act & Assert
-        assertThatThrownBy(() -> useCase.deleteConfig("EMAIL", "GLINER"))
+        assertThatThrownBy(() -> useCase.deleteConfig("EMAIL", "REGEX"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Cannot delete system-defined");
 
@@ -214,13 +200,36 @@ class ManagePiiTypeConfigsUseCaseTest {
     @DisplayName("Should_ThrowException_When_ConfigNotFoundForDelete")
     void Should_ThrowException_When_ConfigNotFoundForDelete() {
         // Arrange
-        when(repository.findByPiiTypeAndDetector("NONEXISTENT", "GLINER")).thenReturn(Optional.empty());
+        when(repository.findByPiiTypeAndDetector("NONEXISTENT", "REGEX")).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThatThrownBy(() -> useCase.deleteConfig("NONEXISTENT", "GLINER"))
+        assertThatThrownBy(() -> useCase.deleteConfig("NONEXISTENT", "REGEX"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not found");
 
         verify(repository, never()).deleteByPiiTypeAndDetector(any(), any());
+    }
+
+    // ====== updateConfig detector validation ======
+
+    @Test
+    @DisplayName("Should_AcceptMinistralDetector_When_Validating")
+    void Should_AcceptMinistralDetector_When_Validating() {
+        when(repository.updateAtomically("EMAIL", "MINISTRAL", true, 0.5, "admin"))
+                .thenReturn(PiiTypeConfig.builder()
+                        .piiType("EMAIL").detector("MINISTRAL").enabled(true).threshold(0.5).build());
+
+        PiiTypeConfig result = useCase.updateConfig("EMAIL", "MINISTRAL", true, 0.5, "admin");
+
+        assertThat(result.getDetector()).isEqualTo("MINISTRAL");
+        verify(repository).updateAtomically("EMAIL", "MINISTRAL", true, 0.5, "admin");
+    }
+
+    @Test
+    @DisplayName("Should_RejectUnknownDetector_When_Validating")
+    void Should_RejectUnknownDetector_When_Validating() {
+        assertThatThrownBy(() -> useCase.updateConfig("EMAIL", "UNKNOWN", true, 0.5, "admin"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("MINISTRAL");
     }
 }

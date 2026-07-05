@@ -45,7 +45,7 @@ export class PiiDetectionConfigService {
   /**
    * Get PII type configurations for a specific detector.
    */
-  getPiiTypeConfigsByDetector(detector: 'GLINER' | 'PRESIDIO' | 'REGEX'): Observable<PiiTypeConfig[]> {
+  getPiiTypeConfigsByDetector(detector: 'PRESIDIO' | 'REGEX'): Observable<PiiTypeConfig[]> {
     return this.http.get<PiiTypeConfig[]>(`${this.typesApiUrl}/${detector}`);
   }
 

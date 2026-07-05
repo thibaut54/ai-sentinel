@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * Business rules:
  * - Each PII type + detector combination is unique
  * - Threshold must be between 0.0 and 1.0
- * - Detector must be GLINER, PRESIDIO, or REGEX
+ * - Detector must be PRESIDIO, REGEX, or MINISTRAL
  * - Updates are transactional
  */
 public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
@@ -33,10 +33,6 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         validatePiiTypeFormat(command.piiType());
         validateDetector(command.detector());
         validateThreshold(command.threshold());
-
-        if ("GLINER".equals(command.detector()) && (command.detectorLabel() == null || command.detectorLabel().isBlank())) {
-            throw new IllegalArgumentException("Detector label is required for GLINER detector");
-        }
 
         repository.findByPiiTypeAndDetector(command.piiType(), command.detector()).ifPresent(_ -> {
             throw new IllegalArgumentException(
@@ -137,9 +133,10 @@ public class ManagePiiTypeConfigsUseCase implements ManagePiiTypeConfigsPort {
         if (detector == null) {
             throw new IllegalArgumentException("Detector cannot be null");
         }
-        if (!detector.equals("GLINER") && !detector.equals("PRESIDIO") && !detector.equals("REGEX")) {
+        if (!detector.equals("PRESIDIO") && !detector.equals("REGEX")
+                && !detector.equals("MINISTRAL")) {
             throw new IllegalArgumentException(
-                    "Detector must be one of: GLINER, PRESIDIO, REGEX. Got: " + detector
+                    "Detector must be one of: PRESIDIO, REGEX, MINISTRAL. Got: " + detector
             );
         }
     }

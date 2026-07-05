@@ -21,7 +21,6 @@ export class DetectorTagComponent {
 
   private detectorVariant(): string {
     switch (this.detector()) {
-      case 'GLINER': return 'detector-gliner';
       case 'PRESIDIO': return 'detector-presidio';
       case 'REGEX': return 'detector-regex';
       default: return 'detector-unknown';

@@ -10,6 +10,12 @@
     <!-- Expected errors in tests will not be logged with stacktrace -->
     <logger name="pro.softcom.aisentinel.infrastructure.confluence.adapter.in" level="WARN"/>
 
+    <!-- POI/PDFBox émettent des milliers de WARN de fidélité de style sur les
+         fichiers legacy du corpus ; sans impact sur le texte extrait -> bruit. -->
+    <logger name="org.apache.poi" level="ERROR"/>
+    <logger name="org.apache.pdfbox" level="ERROR"/>
+    <logger name="org.apache.fontbox" level="ERROR"/>
+
     <!-- Default configuration for other packages -->
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

@@ -394,7 +394,7 @@ class SeverityCalculationServiceTest {
             // Arrange - create a service with DB-configured severity
             PiiTypeConfig customConfig = PiiTypeConfig.builder()
                     .piiType("EMPLOYEE_BADGE")
-                    .detector("GLINER")
+                    .detector("MINISTRAL")
                     .enabled(true)
                     .threshold(0.80)
                     .category("CUSTOM")
@@ -420,7 +420,7 @@ class SeverityCalculationServiceTest {
             // Arrange - DB says EMAIL is MEDIUM (static rules say LOW)
             PiiTypeConfig emailConfig = PiiTypeConfig.builder()
                     .piiType("EMAIL")
-                    .detector("GLINER")
+                    .detector("MINISTRAL")
                     .enabled(true)
                     .threshold(0.80)
                     .category("CONTACT")
@@ -445,7 +445,7 @@ class SeverityCalculationServiceTest {
             // Arrange - config exists but severity is null
             PiiTypeConfig configNoSeverity = PiiTypeConfig.builder()
                     .piiType("PASSWORD")
-                    .detector("GLINER")
+                    .detector("MINISTRAL")
                     .enabled(true)
                     .threshold(0.80)
                     .category("IT_CREDENTIALS")
@@ -494,7 +494,7 @@ class SeverityCalculationServiceTest {
             // Now add it to DB and refresh
             PiiTypeConfig newConfig = PiiTypeConfig.builder()
                     .piiType("NEW_CUSTOM_TYPE")
-                    .detector("GLINER")
+                    .detector("MINISTRAL")
                     .enabled(true)
                     .threshold(0.80)
                     .category("CUSTOM")

@@ -59,13 +59,17 @@ pii-detector:
   host: localhost
   port: 50051
   default-threshold: 0.75
-  connection-timeout-ms: 300000  # 5 minutes to handle large attachments (e.g., CSV files)
-  request-timeout-ms: 300000      # 5 minutes to handle large attachments (e.g., CSV files)
+  connection-timeout-ms: ${PII_DETECTOR_CONNECTION_TIMEOUT_MS:1800000}  # 30 min — investigation parity recall: anciennement 5 min, suspect de couper les longues detections sur machines CPU-bound
+  request-timeout-ms: ${PII_DETECTOR_REQUEST_TIMEOUT_MS:1800000}        # 30 min — investigation parity recall: anciennement 5 min, suspect de couper les longues detections sur machines CPU-bound
 
 # Scan Timeouts Configuration
 scan:
   timeouts:
-    pii-detection: 305s  # Should be > gRPC timeout (300s) to let gRPC exception trigger first
+    pii-detection: ${SCAN_PII_DETECTION_TIMEOUT:1810s}  # Should be > gRPC timeout to let gRPC exception trigger first
+  # Number of Confluence pages whose PII detection runs concurrently. 1 = sequential
+  # (historical behaviour). Raise in prod to feed the detector worker pool
+  # (PII_WORKER_PROCESSES); keep it <= the detector's CPU allocation.
+  page-concurrency: ${PII_SCAN_PAGE_CONCURRENCY:1}
 
 pii-encryption:
   kek-pii-encryption-key: ${PII_DATABASE_ENCRYPTION_KEY}
@@ -98,6 +102,14 @@ armeria:
   internal-services:
     include: docs, health, metrics, actuator
     port: 8090
+
+# Actuator exposure — Prometheus endpoint to scrape pii.scan.chars.total and
+# pii.scan.duration metrics tagged phase=grpc.client.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
 
 # Server Configuration
 server:

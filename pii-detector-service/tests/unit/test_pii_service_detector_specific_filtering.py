@@ -1,7 +1,7 @@
 """
 Unit tests for detector-specific PII type filtering in gRPC service.
 
-Business Rule: PII type configs with a specific detector (GLINER, PRESIDIO, REGEX)
+Business Rule: PII type configs with a specific detector (MINISTRAL, PRESIDIO, REGEX)
 should only apply to entities detected by that detector, not to entities from other sources.
 """
 
@@ -24,11 +24,11 @@ class TestDetectorSpecificFiltering:
         self.servicer = PIIDetectionServicer()
         self.request_id = "test_req_001"
 
-    def test_should_keep_presidio_email_when_gliner_email_disabled(self):
+    def test_should_keep_presidio_email_when_ministral_email_disabled(self):
         """
         BUG REPRODUCTION TEST
 
-        Given: EMAIL config with enabled=False, detector=GLINER
+        Given: EMAIL config with enabled=False, detector=MINISTRAL
         When: An EMAIL is detected by PRESIDIO with score=1.0
         Then: The EMAIL should be KEPT (config doesn't apply to PRESIDIO)
 
@@ -51,7 +51,7 @@ class TestDetectorSpecificFiltering:
             'EMAIL': {
                 'enabled': False,  # Disabled
                 'threshold': 0.3,
-                'detector': 'GLINER',  # But only for GLINER
+                'detector': 'MINISTRAL',  # But only for MINISTRAL
                 'detector_label': 'email',
                 'display_name': 'Email Address',
                 'category': 'contact',
@@ -67,17 +67,17 @@ class TestDetectorSpecificFiltering:
 
         # Assert
         assert len(filtered) == 1, (
-            "EMAIL detected by PRESIDIO should be KEPT when only GLINER detector is disabled. "
+            "EMAIL detected by PRESIDIO should be KEPT when only MINISTRAL detector is disabled. "
             f"Expected 1 entity, got {len(filtered)}"
         )
         assert filtered[0]['text'] == 'marie.dupont@example.fr'
         assert filtered[0]['source'] == DetectorSource.PRESIDIO
 
-    def test_should_filter_gliner_email_when_gliner_email_disabled(self):
+    def test_should_filter_ministral_email_when_ministral_email_disabled(self):
         """
-        Given: EMAIL config with enabled=False, detector=GLINER
-        When: An EMAIL is detected by GLINER
-        Then: The EMAIL should be FILTERED OUT (config applies to GLINER)
+        Given: EMAIL config with enabled=False, detector=MINISTRAL
+        When: An EMAIL is detected by MINISTRAL
+        Then: The EMAIL should be FILTERED OUT (config applies to MINISTRAL)
         """
         # Arrange
         entities = [
@@ -88,7 +88,7 @@ class TestDetectorSpecificFiltering:
                 start=0,
                 end=18,
                 score=0.95,
-                source=DetectorSource.GLINER
+                source=DetectorSource.MINISTRAL
             )
         ]
 
@@ -96,7 +96,7 @@ class TestDetectorSpecificFiltering:
             'EMAIL': {
                 'enabled': False,
                 'threshold': 0.3,
-                'detector': 'GLINER',
+                'detector': 'MINISTRAL',
                 'detector_label': 'email',
                 'display_name': 'Email Address',
                 'category': 'contact',
@@ -112,26 +112,26 @@ class TestDetectorSpecificFiltering:
 
         # Assert
         assert len(filtered) == 0, (
-            "EMAIL detected by GLINER should be FILTERED when GLINER detector is disabled. "
+            "EMAIL detected by MINISTRAL should be FILTERED when MINISTRAL detector is disabled. "
             f"Expected 0 entities, got {len(filtered)}"
         )
 
     def test_should_filter_all_detectors_when_config_detector_is_all(self):
         """
         Given: EMAIL config with enabled=False, detector=ALL
-        When: EMAILS are detected by multiple detectors (GLINER, PRESIDIO, REGEX)
+        When: EMAILS are detected by multiple detectors (MINISTRAL, PRESIDIO, REGEX)
         Then: ALL EMAILS should be FILTERED OUT
         """
         # Arrange
         entities = [
             PIIEntity(
-                text='gliner@example.com',
+                text='ministral@example.com',
                 pii_type='EMAIL',
                 type_label='EMAIL',
                 start=0,
                 end=18,
                 score=0.9,
-                source=DetectorSource.GLINER
+                source=DetectorSource.MINISTRAL
             ),
             PIIEntity(
                 text='presidio@example.com',
@@ -177,9 +177,9 @@ class TestDetectorSpecificFiltering:
             f"Expected 0 entities, got {len(filtered)}"
         )
 
-    def test_should_keep_presidio_phone_when_gliner_phone_disabled(self):
+    def test_should_keep_presidio_phone_when_ministral_phone_disabled(self):
         """
-        Given: PHONE_NUMBER config with enabled=False, detector=GLINER
+        Given: PHONE_NUMBER config with enabled=False, detector=MINISTRAL
         When: A PHONE_NUMBER is detected by PRESIDIO
         Then: The PHONE_NUMBER should be KEPT
         """
@@ -200,7 +200,7 @@ class TestDetectorSpecificFiltering:
             'PHONE_NUMBER': {
                 'enabled': False,
                 'threshold': 0.5,
-                'detector': 'GLINER',
+                'detector': 'MINISTRAL',
                 'detector_label': 'phone',
                 'display_name': 'Phone Number',
                 'category': 'contact',
@@ -223,7 +223,7 @@ class TestDetectorSpecificFiltering:
         Complex scenario with multiple PII types and mixed detector configs.
 
         Given:
-        - EMAIL disabled for GLINER only
+        - EMAIL disabled for MINISTRAL only
         - PHONE disabled for ALL
         - CREDIT_CARD enabled for ALL
 
@@ -239,7 +239,7 @@ class TestDetectorSpecificFiltering:
                 start=0,
                 end=15,
                 score=0.9,
-                source=DetectorSource.GLINER  # Should be filtered
+                source=DetectorSource.MINISTRAL  # Should be filtered
             ),
             PIIEntity(
                 text='email2@test.com',
@@ -274,7 +274,7 @@ class TestDetectorSpecificFiltering:
             'EMAIL': {
                 'enabled': False,
                 'threshold': 0.3,
-                'detector': 'GLINER',  # Only GLINER
+                'detector': 'MINISTRAL',  # Only MINISTRAL
                 'detector_label': 'email',
                 'display_name': 'Email',
                 'category': 'contact',
@@ -323,8 +323,8 @@ class TestDetectorSpecificFiltering:
         """
         REGRESSION TEST for the original bug (NATIONAL_ID at 45% with threshold 80%).
 
-        Given: NATIONAL_ID config with threshold=0.80, detector=GLINER
-        When: A NATIONAL_ID is detected by GLINER with score=0.45
+        Given: NATIONAL_ID config with threshold=0.80, detector=MINISTRAL
+        When: A NATIONAL_ID is detected by MINISTRAL with score=0.45
         Then: The NATIONAL_ID should be FILTERED OUT (score < threshold)
         """
         # Arrange
@@ -336,7 +336,7 @@ class TestDetectorSpecificFiltering:
                 start=0,
                 end=11,
                 score=0.45,
-                source=DetectorSource.GLINER
+                source=DetectorSource.MINISTRAL
             )
         ]
 
@@ -344,7 +344,7 @@ class TestDetectorSpecificFiltering:
             'NATIONAL_ID': {
                 'enabled': True,
                 'threshold': 0.80,
-                'detector': 'GLINER',
+                'detector': 'MINISTRAL',
                 'detector_label': 'national identity number',
                 'display_name': 'National ID',
                 'category': 'identity',
@@ -366,8 +366,8 @@ class TestDetectorSpecificFiltering:
 
     def test_should_keep_entity_when_score_above_threshold(self):
         """
-        Given: NATIONAL_ID config with threshold=0.80, detector=GLINER
-        When: A NATIONAL_ID is detected by GLINER with score=0.92
+        Given: NATIONAL_ID config with threshold=0.80, detector=MINISTRAL
+        When: A NATIONAL_ID is detected by MINISTRAL with score=0.92
         Then: The NATIONAL_ID should be KEPT (score >= threshold)
         """
         # Arrange
@@ -379,7 +379,7 @@ class TestDetectorSpecificFiltering:
                 start=0,
                 end=11,
                 score=0.92,
-                source=DetectorSource.GLINER
+                source=DetectorSource.MINISTRAL
             )
         ]
 
@@ -387,7 +387,7 @@ class TestDetectorSpecificFiltering:
             'NATIONAL_ID': {
                 'enabled': True,
                 'threshold': 0.80,
-                'detector': 'GLINER',
+                'detector': 'MINISTRAL',
                 'detector_label': 'national identity number',
                 'display_name': 'National ID',
                 'category': 'identity',
@@ -406,4 +406,4 @@ class TestDetectorSpecificFiltering:
             "NATIONAL_ID with score 0.92 should be KEPT when threshold is 0.80. "
             f"Expected 1 entity, got {len(filtered)}"
         )
-        assert filtered[0]['source'] == DetectorSource.GLINER
+        assert filtered[0]['source'] == DetectorSource.MINISTRAL

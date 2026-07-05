@@ -1,0 +1,53 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits"
+  ],
+  "timezone": "Europe/Zurich",
+  "prConcurrentLimit": 20,
+  "prHourlyLimit": 0,
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": []
+  },
+  "packageRules": [
+    {
+      "description": "Toutes les montees MAJEURES: isolees et declenchees a la main via le Dependency Dashboard (aucun merge surprise de breaking change)",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Front npm (le tail non couvert par les groupes monorepo Angular/jest/playwright): minor+patch+pin+digest en une seule PR",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "npm frontend"
+    },
+    {
+      "description": "Maven (le tail non couvert par les groupes monorepo mockito/grpc/protobuf/tika): minor+patch en une seule PR",
+      "matchManagers": ["maven"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "maven backend"
+    },
+    {
+      "description": "Python (poetry / pyproject): minor+patch en une seule PR",
+      "matchManagers": ["poetry", "pep621", "pip_requirements", "pip-compile"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "python"
+    },
+    {
+      "description": "Images Docker (Dockerfile + docker-compose): minor+patch+digest en une seule PR",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "docker images"
+    },
+    {
+      "description": "GitHub Actions: minor+patch+digest+pin en une seule PR (les majors d'actions restent en attente d'approbation)",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
+      "groupName": "github-actions"
+    }
+  ]
+}

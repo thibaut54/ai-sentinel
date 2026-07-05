@@ -29,7 +29,8 @@ import {
     CreatePiiTypeConfigRequest,
     GroupedPiiTypes,
     PiiDetectionConfig,
-    PiiTypeConfig
+    PiiTypeConfig,
+    UpdatePiiTypeConfigRequest
 } from '../../core/models/pii-detection-config.model';
 import { forkJoin, Observable } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
@@ -186,6 +187,19 @@ export class PiiSettingsComponent implements OnInit {
     'detectors', 'thresholds', 'pii_types', 'confluence'
   ];
 
+  /**
+   * Maps a "Types d'IPI" detector group to its master toggle in the
+   * "Moteur de détection" section. The PII-type rows of a detector are
+   * derived (disabled + collapsed) from the state of this control so the
+   * two sections stay consistent without ever overwriting the per-type
+   * stored values (customisations are preserved by construction).
+   */
+  private static readonly DETECTOR_MASTER_CONTROL: Readonly<Record<string, string>> = {
+    PRESIDIO: 'presidioEnabled',
+    REGEX: 'regexEnabled',
+    MINISTRAL: 'ministralEnabled'
+  };
+
   ngOnInit(): void {
     const tabIndex = this.initialTab();
     const section = PiiSettingsComponent.TAB_TO_SECTION[tabIndex];
@@ -198,13 +212,15 @@ export class PiiSettingsComponent implements OnInit {
 
   private initForm(): void {
     this.configForm = this.fb.group({
-      glinerEnabled: [true],
       presidioEnabled: [true],
       regexEnabled: [true],
-      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
-      nbOfLabelByPass: [35, [Validators.required, Validators.min(1), Validators.max(100)]]
+      postfilterEnabled: [false],
+      ministralEnabled: [false],
+      ministralChunkSize: [2048, [Validators.required, Validators.min(256), Validators.max(4096)]],
+      ministralOverlap: [410, [Validators.required, Validators.min(0), Validators.max(512)]],
+      defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]]
     }, {
-      validators: [this.atLeastOneDetectorValidator]
+      validators: [this.atLeastOneDetectorValidator, this.overlapLessThanChunkSizeValidator]
     } as AbstractControlOptions);
   }
 
@@ -270,7 +286,7 @@ export class PiiSettingsComponent implements OnInit {
 
     const request: CreatePiiTypeConfigRequest = {
       piiType: formValue.piiType,
-      detector: 'GLINER',
+      detector: 'MINISTRAL',
       enabled: true,
       threshold: formValue.threshold,
       category: formValue.category,
@@ -343,12 +359,26 @@ export class PiiSettingsComponent implements OnInit {
    * Custom validator: at least one detector must be enabled.
    */
   private atLeastOneDetectorValidator(group: FormGroup): {[key: string]: boolean} | null {
-    const gliner = group.get('glinerEnabled')?.value;
     const presidio = group.get('presidioEnabled')?.value;
     const regex = group.get('regexEnabled')?.value;
+    const ministral = group.get('ministralEnabled')?.value;
 
-    if (!gliner && !presidio && !regex) {
+    if (!presidio && !regex && !ministral) {
       return {atLeastOneDetector: true};
+    }
+    return null;
+  }
+
+  /**
+   * Cross-field validator: the Ministral overlap must stay strictly below the
+   * chunk size, otherwise consecutive chunks would never advance.
+   */
+  private overlapLessThanChunkSizeValidator(group: FormGroup): {[key: string]: boolean} | null {
+    const chunkSize = group.get('ministralChunkSize')?.value;
+    const overlap = group.get('ministralOverlap')?.value;
+
+    if (chunkSize != null && overlap != null && overlap >= chunkSize) {
+      return {ministralOverlapGteChunkSize: true};
     }
     return null;
   }
@@ -367,16 +397,22 @@ export class PiiSettingsComponent implements OnInit {
         // Set detector config
         this.currentConfig.set(detectorConfig);
         this.configForm.patchValue({
-          glinerEnabled: detectorConfig.glinerEnabled,
           presidioEnabled: detectorConfig.presidioEnabled,
           regexEnabled: detectorConfig.regexEnabled,
-          defaultThreshold: detectorConfig.defaultThreshold,
-          nbOfLabelByPass: detectorConfig.nbOfLabelByPass
+          postfilterEnabled: detectorConfig.postfilterEnabled,
+          ministralEnabled: detectorConfig.ministralEnabled,
+          ministralChunkSize: detectorConfig.ministralChunkSize,
+          ministralOverlap: detectorConfig.ministralOverlap,
+          defaultThreshold: detectorConfig.defaultThreshold
         });
 
         // Set PII types
         this.groupedPiiTypes.set(piiTypes);
         this.initializeOriginalPiiTypes(piiTypes);
+
+        // Collapse the sub-sections of detectors that are disabled, so the
+        // "Types d'IPI" view reflects the "Moteur de détection" state on load.
+        this.syncCollapsedWithDetectorState();
 
         this.loading.set(false);
       },
@@ -435,15 +471,7 @@ export class PiiSettingsComponent implements OnInit {
       enabled
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
-      this.modifiedPiiTypes().set(key, modified);
-    } else {
-      this.modifiedPiiTypes().delete(key);
-    }
-
-    // Trigger change detection
-    this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+    this.trackPiiTypeModification(key, original, modified);
 
     // Update the grouped data to reflect changes
     this.updateGroupedPiiTypes(type.detector, type.piiType, {enabled});
@@ -464,18 +492,45 @@ export class PiiSettingsComponent implements OnInit {
       threshold
     };
 
-    // Check if different from original
-    if (modified.enabled !== original.enabled || modified.threshold !== original.threshold) {
+    this.trackPiiTypeModification(key, original, modified);
+
+    // Update the grouped data to reflect changes
+    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  }
+
+  /**
+   * Track a PII-type row modification: record it when it differs from the
+   * original (enabled or threshold), drop it when it matches again.
+   * Always emits a new Map reference so the signal recomputes.
+   */
+  private trackPiiTypeModification(
+    key: string,
+    original: PiiTypeConfig,
+    modified: PiiTypeConfig
+  ): void {
+    const changed =
+      modified.enabled !== original.enabled ||
+      modified.threshold !== original.threshold;
+
+    if (changed) {
       this.modifiedPiiTypes().set(key, modified);
     } else {
       this.modifiedPiiTypes().delete(key);
     }
 
-    // Trigger change detection
     this.modifiedPiiTypes.set(new Map(this.modifiedPiiTypes()));
+  }
 
-    // Update the grouped data to reflect changes
-    this.updateGroupedPiiTypes(type.detector, type.piiType, {threshold});
+  /**
+   * Build a bulk-update payload entry.
+   */
+  private toUpdateRequest(type: PiiTypeConfig): UpdatePiiTypeConfigRequest {
+    return {
+      piiType: type.piiType,
+      detector: type.detector,
+      enabled: type.enabled,
+      threshold: type.threshold
+    };
   }
 
   /**
@@ -550,12 +605,7 @@ export class PiiSettingsComponent implements OnInit {
 
     this.saving.set(true);
 
-    const updates = modifications.map(type => ({
-      piiType: type.piiType,
-      detector: type.detector,
-      enabled: type.enabled,
-      threshold: type.threshold
-    }));
+    const updates = modifications.map(type => this.toUpdateRequest(type));
 
     this.configService.bulkUpdatePiiTypeConfigs(updates).subscribe({
       next: (updatedConfigs) => {
@@ -625,12 +675,7 @@ export class PiiSettingsComponent implements OnInit {
 
     if (hasTypeChanges) {
       const modifications = Array.from(this.modifiedPiiTypes().values());
-      const updates = modifications.map(type => ({
-        piiType: type.piiType,
-        detector: type.detector,
-        enabled: type.enabled,
-        threshold: type.threshold
-      }));
+      const updates = modifications.map(type => this.toUpdateRequest(type));
       typesRequestIndex = requests.length;
       requests.push(this.configService.bulkUpdatePiiTypeConfigs(updates));
     }
@@ -696,13 +741,17 @@ export class PiiSettingsComponent implements OnInit {
   onResetDetectorConfig(): void {
     if (this.currentConfig()) {
       this.configForm.patchValue({
-        glinerEnabled: this.currentConfig()!.glinerEnabled,
         presidioEnabled: this.currentConfig()!.presidioEnabled,
         regexEnabled: this.currentConfig()!.regexEnabled,
-        defaultThreshold: this.currentConfig()!.defaultThreshold,
-        nbOfLabelByPass: this.currentConfig()!.nbOfLabelByPass
+        postfilterEnabled: this.currentConfig()!.postfilterEnabled,
+        ministralEnabled: this.currentConfig()!.ministralEnabled,
+        ministralChunkSize: this.currentConfig()!.ministralChunkSize,
+        ministralOverlap: this.currentConfig()!.ministralOverlap,
+        defaultThreshold: this.currentConfig()!.defaultThreshold
       });
       this.configForm.markAsPristine();
+      // Restore the collapse state to match the reset detector toggles.
+      this.syncCollapsedWithDetectorState();
     }
   }
 
@@ -753,6 +802,10 @@ export class PiiSettingsComponent implements OnInit {
 
   get atLeastOneDetectorError(): boolean {
     return this.configForm.hasError('atLeastOneDetector') && this.configForm.touched;
+  }
+
+  get ministralOverlapError(): boolean {
+    return this.configForm.hasError('ministralOverlapGteChunkSize');
   }
 
   /**
@@ -824,5 +877,51 @@ export class PiiSettingsComponent implements OnInit {
    */
   isDetectorCollapsed(detector: string): boolean {
     return this.collapsedDetectors().has(detector);
+  }
+
+  /**
+   * Whether the detector that owns a "Types d'IPI" sub-section is enabled
+   * in the "Moteur de détection" section. Drives the disabled state of the
+   * per-type toggles so a disabled detector cannot be edited there.
+   * Unknown detectors (no master toggle) default to enabled.
+   */
+  isDetectorEnabled(detector: string): boolean {
+    const control = PiiSettingsComponent.DETECTOR_MASTER_CONTROL[detector];
+    if (!control) {
+      return true;
+    }
+    return !!this.configForm.get(control)?.value;
+  }
+
+  /**
+   * React to a detector master toggle in "Moteur de détection": collapse its
+   * "Types d'IPI" sub-section when disabled, expand it when re-enabled. The
+   * per-type values are never touched — only the visual state is derived.
+   */
+  onDetectorMasterToggle(detector: string): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    if (this.isDetectorEnabled(detector)) {
+      collapsed.delete(detector);
+    } else {
+      collapsed.add(detector);
+    }
+    this.collapsedDetectors.set(collapsed);
+  }
+
+  /**
+   * Collapse every detector sub-section whose master toggle is currently
+   * disabled, leaving enabled ones in their current state. Called after a
+   * config load so the two sections start consistent.
+   */
+  private syncCollapsedWithDetectorState(): void {
+    const collapsed = new Set(this.collapsedDetectors());
+    for (const detector of Object.keys(PiiSettingsComponent.DETECTOR_MASTER_CONTROL)) {
+      if (this.isDetectorEnabled(detector)) {
+        collapsed.delete(detector);
+      } else {
+        collapsed.add(detector);
+      }
+    }
+    this.collapsedDetectors.set(collapsed);
   }
 }

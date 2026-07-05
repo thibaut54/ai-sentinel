@@ -82,16 +82,8 @@
   --sentinel-severity-total-card: #22c55e; /* green-500 -- total severity card */
 
   /* ---------------------------------------------------------------------------
-     Detector Colors (GLiNER, Presidio, Regex)
+     Detector Colors (Presidio, Regex, Ministral)
      --------------------------------------------------------------------------- */
-  /* GLiNER -- purple */
-  --sentinel-gliner-bg: #f3f0ff;           /* violet-50 -- badge/card background */
-  --sentinel-gliner-color: #7c3aed;        /* violet-600 -- text color */
-  --sentinel-gliner-color-alt: #6d28d9;    /* violet-700 -- detector tag text */
-  --sentinel-gliner-border: #e0d6ff;       /* custom -- border */
-  --sentinel-gliner-avatar-bg: #f3edfd;    /* custom -- avatar background */
-  --sentinel-gliner-avatar-border: #e6dafc; /* custom -- avatar border */
-
   /* Presidio -- blue */
   --sentinel-presidio-bg: #eff6ff;         /* blue-50 -- badge/card background */
   --sentinel-presidio-color: #1d4ed8;      /* blue-700 -- text color */
@@ -106,6 +98,13 @@
   --sentinel-regex-border: #fde68a;        /* amber-200 -- border */
   --sentinel-regex-avatar-bg: #f8efe9;     /* custom -- avatar background */
   --sentinel-regex-avatar-border: #f1ded0; /* custom -- avatar border */
+
+  /* Ministral -- amber (distinct from Presidio blue) */
+  --sentinel-ministral-bg: #fef3c7;          /* amber-100 -- badge/card background */
+  --sentinel-ministral-fg: #78350f;          /* amber-900 -- text color (contrast >= 4.5:1) */
+  --sentinel-ministral-border: #f59e0b;      /* amber-500 -- border */
+  --sentinel-ministral-avatar-bg: #fffbeb;   /* amber-50 -- avatar background */
+  --sentinel-ministral-avatar-border: #fde68a; /* amber-200 -- avatar border */
 
   /* Unknown detector */
   --sentinel-detector-unknown-bg: #f4f4f5;
@@ -308,20 +307,12 @@
   --sentinel-severity-total-card: #4ade80; /* green-400 -- total severity card */
 
   /* ---------------------------------------------------------------------------
-     Detector Colors (GLiNER, Presidio, Regex)
+     Detector Colors (Presidio, Regex, Ministral)
      ---------------------------------------------------------------------------
      Backgrounds are very low-opacity tints of each detector color on the dark
      base. Text colors are the lighter variants (300-400 range) for legibility.
      Borders are muted mid-tones of each hue.
      --------------------------------------------------------------------------- */
-  /* GLiNER -- purple */
-  --sentinel-gliner-bg: #1a1428;           /* very dark violet tint */
-  --sentinel-gliner-color: #a78bfa;        /* violet-400 -- brighter for dark bg */
-  --sentinel-gliner-color-alt: #c4b5fd;    /* violet-300 -- detector tag text */
-  --sentinel-gliner-border: #3b2d5e;       /* muted dark violet */
-  --sentinel-gliner-avatar-bg: #1f1833;    /* slightly lifted violet tint */
-  --sentinel-gliner-avatar-border: #4c3578; /* mid violet */
-
   /* Presidio -- blue */
   --sentinel-presidio-bg: #0f1724;         /* very dark blue tint */
   --sentinel-presidio-color: #60a5fa;      /* blue-400 -- brighter for dark bg */
@@ -336,6 +327,13 @@
   --sentinel-regex-border: #5c4a1a;        /* muted dark amber */
   --sentinel-regex-avatar-bg: #201a10;     /* slightly lifted amber tint */
   --sentinel-regex-avatar-border: #6b5520; /* mid amber */
+
+  /* Ministral -- amber (dark theme override, mirrors the light palette) */
+  --sentinel-ministral-bg: #291a08;          /* very dark amber tint */
+  --sentinel-ministral-fg: #fcd34d;          /* amber-300 -- readable on dark (contrast >= 4.5:1) */
+  --sentinel-ministral-border: #92400e;      /* amber-800 -- muted border */
+  --sentinel-ministral-avatar-bg: #3a2710;   /* slightly lifted amber tint */
+  --sentinel-ministral-avatar-border: #b45309; /* amber-700 -- mid amber */
 
   /* Unknown detector */
   --sentinel-detector-unknown-bg: #1e2736; /* neutral dark surface */

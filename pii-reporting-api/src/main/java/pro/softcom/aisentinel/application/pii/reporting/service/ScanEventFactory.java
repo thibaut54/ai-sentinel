@@ -155,6 +155,7 @@ public class ScanEventFactory {
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
             .severity(severity)
+            .detectorRunStats(detection != null ? detection.detectorRunStats() : null)
             .build();
     }
 
@@ -189,6 +190,7 @@ public class ScanEventFactory {
             .analysisProgressPercentage(progress)
             .scanStatus(ScanStatus.RUNNING)
             .severity(severity)
+            .detectorRunStats(detection != null ? detection.detectorRunStats() : null)
             .build();
     }
 

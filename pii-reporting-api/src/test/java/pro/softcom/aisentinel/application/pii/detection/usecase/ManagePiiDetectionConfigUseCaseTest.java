@@ -13,6 +13,7 @@ import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,7 +38,8 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ReturnConfig_When_GetConfigCalled() {
         // Arrange
         PiiDetectionConfig expectedConfig = new PiiDetectionConfig(
-            1, true, true, false, new BigDecimal("0.75"),30, LocalDateTime.now(), "system"
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false,
+            LocalDateTime.now(ZoneId.systemDefault()), "system"
         );
         when(repository.findConfig()).thenReturn(expectedConfig);
 
@@ -53,7 +55,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateAndReturnConfig_When_ValidCommand() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, true, new BigDecimal("0.80"),30, "testuser"
+            false, true, false, 1024, 128, new BigDecimal("0.80"), false, "testuser"
         );
 
         // Act
@@ -65,23 +67,65 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         PiiDetectionConfig savedConfig = captor.getValue();
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(savedConfig.id()).isEqualTo(1);
-        softly.assertThat(savedConfig.glinerEnabled()).isTrue();
+        softly.assertThat(savedConfig.id()).isOne();
         softly.assertThat(savedConfig.presidioEnabled()).isFalse();
         softly.assertThat(savedConfig.regexEnabled()).isTrue();
         softly.assertThat(savedConfig.defaultThreshold()).isEqualByComparingTo(new BigDecimal("0.80"));
         softly.assertThat(savedConfig.updatedBy()).isEqualTo("testuser");
         softly.assertThat(savedConfig.updatedAt()).isNotNull();
+        softly.assertThat(savedConfig.postfilterEnabled()).isFalse();
         softly.assertAll();
 
         assertThat(result).isEqualTo(savedConfig);
     }
 
     @Test
+    void Should_PassPostfilterEnabledFlagThroughUseCase_When_CommandEnablesIt() {
+        // Arrange
+        UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
+            true, false, true, 1024, 128, new BigDecimal("0.80"), true, "testuser"
+        );
+
+        // Act
+        PiiDetectionConfig result = useCase.updateConfig(command);
+
+        // Assert
+        ArgumentCaptor<PiiDetectionConfig> captor = ArgumentCaptor.forClass(PiiDetectionConfig.class);
+        verify(repository).updateConfig(captor.capture());
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(captor.getValue().postfilterEnabled()).isTrue();
+        softly.assertThat(result.postfilterEnabled()).isTrue();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_PassMinistralFieldsThroughUseCase_When_CommandEnablesIt() {
+        // Arrange
+        UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
+            true, false, true, 2048, 256, new BigDecimal("0.80"), false, "testuser"
+        );
+
+        // Act
+        PiiDetectionConfig result = useCase.updateConfig(command);
+
+        // Assert
+        ArgumentCaptor<PiiDetectionConfig> captor = ArgumentCaptor.forClass(PiiDetectionConfig.class);
+        verify(repository).updateConfig(captor.capture());
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(captor.getValue().ministralEnabled()).isTrue();
+        softly.assertThat(captor.getValue().ministralChunkSize()).isEqualTo(2048);
+        softly.assertThat(captor.getValue().ministralOverlap()).isEqualTo(256);
+        softly.assertThat(result.ministralEnabled()).isTrue();
+        softly.assertThat(result.ministralChunkSize()).isEqualTo(2048);
+        softly.assertThat(result.ministralOverlap()).isEqualTo(256);
+        softly.assertAll();
+    }
+
+    @Test
     void Should_ThrowException_When_CommandHasInvalidThreshold() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, true, false, new BigDecimal("1.5"),30, "testuser"
+            true, true, false, 1024, 128, new BigDecimal("1.5"), false, "testuser"
         );
 
         // Act & Assert
@@ -94,7 +138,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ThrowException_When_CommandHasNegativeThreshold() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, true, false, new BigDecimal("-0.1"), 30,"testuser"
+            true, true, false, 1024, 128, new BigDecimal("-0.1"), false, "testuser"
         );
 
         // Act & Assert
@@ -107,7 +151,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_ThrowException_When_NoDetectorsEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            false, false, false, new BigDecimal("0.75"), 30,"testuser"
+            false, false, false, 1024, 128, new BigDecimal("0.75"), false, "testuser"
         );
 
         // Act & Assert
@@ -117,28 +161,10 @@ class ManagePiiDetectionConfigUseCaseTest {
     }
 
     @Test
-    void Should_UpdateConfig_When_OnlyGlinerEnabled() {
-        // Arrange
-        UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, false, new BigDecimal("0.75"), 30,"testuser"
-        );
-
-        // Act
-        PiiDetectionConfig result = useCase.updateConfig(command);
-
-        // Assert
-        SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(result.glinerEnabled()).isTrue();
-        softly.assertThat(result.presidioEnabled()).isFalse();
-        softly.assertThat(result.regexEnabled()).isFalse();
-        softly.assertAll();
-    }
-
-    @Test
     void Should_UpdateConfig_When_OnlyPresidioEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            false, true, false, new BigDecimal("0.75"), 30,"testuser"
+            true, false, false, 1024, 128, new BigDecimal("0.75"), false, "testuser"
         );
 
         // Act
@@ -146,9 +172,9 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Assert
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(result.glinerEnabled()).isFalse();
         softly.assertThat(result.presidioEnabled()).isTrue();
         softly.assertThat(result.regexEnabled()).isFalse();
+        softly.assertThat(result.ministralEnabled()).isFalse();
         softly.assertAll();
     }
 
@@ -156,7 +182,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_UpdateConfig_When_OnlyRegexEnabled() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            false, false, true, new BigDecimal("0.75"), 30,"testuser"
+            false, true, false, 1024, 128, new BigDecimal("0.75"), false, "testuser"
         );
 
         // Act
@@ -164,9 +190,27 @@ class ManagePiiDetectionConfigUseCaseTest {
 
         // Assert
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(result.glinerEnabled()).isFalse();
         softly.assertThat(result.presidioEnabled()).isFalse();
         softly.assertThat(result.regexEnabled()).isTrue();
+        softly.assertThat(result.ministralEnabled()).isFalse();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_UpdateConfig_When_OnlyMinistralEnabled() {
+        // Arrange
+        UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
+            false, false, true, 1024, 128, new BigDecimal("0.75"), false, "testuser"
+        );
+
+        // Act
+        PiiDetectionConfig result = useCase.updateConfig(command);
+
+        // Assert
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(result.presidioEnabled()).isFalse();
+        softly.assertThat(result.regexEnabled()).isFalse();
+        softly.assertThat(result.ministralEnabled()).isTrue();
         softly.assertAll();
     }
 
@@ -174,7 +218,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_AcceptBoundaryThreshold_When_ThresholdIsZero() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, false, BigDecimal.ZERO, 30,"testuser"
+            true, false, false, 1024, 128, BigDecimal.ZERO, false, "testuser"
         );
 
         // Act
@@ -188,7 +232,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_AcceptBoundaryThreshold_When_ThresholdIsOne() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, false, false, BigDecimal.ONE, 30,"testuser"
+            true, false, false, 1024, 128, BigDecimal.ONE, false, "testuser"
         );
 
         // Act
@@ -202,7 +246,7 @@ class ManagePiiDetectionConfigUseCaseTest {
     void Should_SetConfigIdToOne_When_UpdatingConfig() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, true, false, new BigDecimal("0.75"), 30,"testuser"
+            true, true, false, 1024, 128, new BigDecimal("0.75"), false, "testuser"
         );
 
         // Act
@@ -211,14 +255,14 @@ class ManagePiiDetectionConfigUseCaseTest {
         // Assert
         ArgumentCaptor<PiiDetectionConfig> captor = ArgumentCaptor.forClass(PiiDetectionConfig.class);
         verify(repository).updateConfig(captor.capture());
-        assertThat(captor.getValue().id()).isEqualTo(1);
+        assertThat(captor.getValue().id()).isOne();
     }
 
     @Test
     void Should_PropagateException_When_RepositoryThrowsException() {
         // Arrange
         UpdatePiiDetectionConfigCommand command = new UpdatePiiDetectionConfigCommand(
-            true, true, false, new BigDecimal("0.75"), 30,"testuser"
+            true, true, false, 1024, 128, new BigDecimal("0.75"), false, "testuser"
         );
         doThrow(new RuntimeException("Database error"))
             .when(repository).updateConfig(any());

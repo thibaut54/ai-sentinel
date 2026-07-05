@@ -86,11 +86,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'      # Max 4 CPU cores (adjust based on host)
-          memory: 8G       # Max 8GB RAM for NLP/ML models
+          cpus: '8.0'       # <= host CPU count; covers PII_WORKER_PROCESSES (6) + headroom
+          memory: 16G       # NLP/ML models x workers
         reservations:
-          cpus: '2.0'      # Guaranteed 2 CPU cores
-          memory: 4G       # Guaranteed 4GB RAM
+          cpus: '2.0'       # guaranteed minimum
+          memory: 16G       # guaranteed for model load
     
     ports:
       - "50051:50051"
@@ -110,6 +110,13 @@ services:
       # Static non-sensitive configuration
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
+
+      # Detection data-parallelism (dev box has 12 CPU / 16G, so higher than
+      # prod's 3). N inference worker processes serving the K concurrent
+      # DetectPII calls driven by PII_SCAN_PAGE_CONCURRENCY on the API. Keep
+      # PII_WORKER_PROCESSES * TORCH_NUM_THREADS <= cpus limit below.
+      PII_WORKER_PROCESSES: ${PII_WORKER_PROCESSES:-6}
+      TORCH_NUM_THREADS: ${TORCH_NUM_THREADS:-1}
     volumes:
       - huggingface-cache:/app/.cache/huggingface
       - ./secrets:/secrets:ro
@@ -157,7 +164,10 @@ services:
       PII_DETECTOR_CLIENT: armeria
       PII_DETECTOR_HOST: pii-detector
       PII_DETECTOR_PORT: 50051
-      
+      # Pages scanned concurrently — match PII_WORKER_PROCESSES on the detector
+      # so the worker pool stays fed. Page events stay ordered.
+      PII_SCAN_PAGE_CONCURRENCY: ${PII_SCAN_PAGE_CONCURRENCY:-6}
+
       PII_DATABASE_ENCRYPTION_KEY_FILE: /secrets/pii_database_encryption_key.txt
     volumes:
       - ./personally-identifiable-information-scan-results:/personally-identifiable-information-scan-results
@@ -274,7 +284,9 @@ services:
       POSTGRES_PASSWORD_FILE: /secrets/infisical_db_password.txt
       POSTGRES_DB: infisical
     volumes:
-      - infisical-db-data:/var/lib/postgresql/data
+      # PG18 stores data in a version subdir of /var/lib/postgresql (mount the
+      # parent, not /var/lib/postgresql/data) — mirrors the healthy main db.
+      - infisical-db-data:/var/lib/postgresql
       - ./secrets:/secrets:ro
     depends_on:
       secrets-bootstrap:

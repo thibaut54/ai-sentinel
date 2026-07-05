@@ -88,9 +88,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                         "Configuration not found for PII type: " + piiType + " and detector: " + detector
                 ));
 
-        entity.setEnabled(enabled);
-        entity.setThreshold(threshold);
-        entity.setUpdatedBy(updatedBy);
+        applyUpdate(entity, enabled, threshold, updatedBy);
 
         PiiTypeConfigEntity saved = jpaRepository.save(entity);
         return saved.toDomain();
@@ -112,9 +110,7 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
                                     " and detector: " + update.detector()
                     ));
 
-                    entity.setEnabled(update.enabled());
-                    entity.setThreshold(update.threshold());
-                    entity.setUpdatedBy(updatedBy);
+                    applyUpdate(entity, update.enabled(), update.threshold(), updatedBy);
 
                     return entity;
                 })
@@ -124,5 +120,19 @@ public class PiiTypeConfigPersistenceAdapter implements PiiTypeConfigRepository 
         return saved.stream()
                 .map(PiiTypeConfigEntity::toDomain)
                 .toList();
+    }
+
+    /**
+     * Applies an update to an entity in place.
+     */
+    private void applyUpdate(
+            PiiTypeConfigEntity entity,
+            boolean enabled,
+            double threshold,
+            String updatedBy
+    ) {
+        entity.setEnabled(enabled);
+        entity.setThreshold(threshold);
+        entity.setUpdatedBy(updatedBy);
     }
 }

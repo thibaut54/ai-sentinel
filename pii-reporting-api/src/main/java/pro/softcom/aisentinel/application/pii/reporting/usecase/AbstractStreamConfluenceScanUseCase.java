@@ -2,13 +2,13 @@ package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentTextExtracted;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
+import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * progress calculation, checkpoint persistence, and attachment processing. Returns a reactive
  * stream of scan events that the presentation layer can convert to SSE.
  */
-@RequiredArgsConstructor
 @Slf4j
 public abstract class AbstractStreamConfluenceScanUseCase {
 
@@ -46,6 +45,25 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     protected final AttachmentProcessor attachmentProcessor;
     protected final ScanTimeOutConfig scanTimeoutConfig;
     protected final HtmlContentParser htmlContentParser;
+    protected final ScanSpaceStatsCollector scanSpaceStatsCollector;
+
+    /** Number of pages detected concurrently (>=1); feeds the detector worker pool. */
+    protected final int pageConcurrency;
+
+    /** Live count of in-flight {@code detectPii} calls, surfaced in throughput logs
+     *  so operators can confirm the configured page concurrency is effective. */
+    private final AtomicInteger inflightDetections = new AtomicInteger(0);
+
+    protected AbstractStreamConfluenceScanUseCase(ScanPipelineDependencies dependencies) {
+        this.confluenceAccessor = dependencies.confluenceAccessor();
+        this.piiDetectorClient = dependencies.piiDetectorClient();
+        this.contentScanOrchestrator = dependencies.contentScanOrchestrator();
+        this.attachmentProcessor = dependencies.attachmentProcessor();
+        this.scanTimeoutConfig = dependencies.scanTimeoutConfig();
+        this.htmlContentParser = dependencies.htmlContentParser();
+        this.scanSpaceStatsCollector = dependencies.scanSpaceStatsCollector();
+        this.pageConcurrency = Math.max(1, dependencies.pageConcurrency());
+    }
 
     protected record ConfluencePageContext(String scanId, String spaceKey, String pageId,
                                            String pageTitle) {
@@ -56,13 +74,12 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                             List<ConfluencePage> pages, int analyzedOffset,
                                                             int originalTotal) {
         int total = pages.size();
-        AtomicInteger pageIndex = new AtomicInteger(0);
 
         Flux<ConfluenceContentScanResult> startEvent = createStartEvent(scanId, spaceKey, total, analyzedOffset,
                                                                         originalTotal);
         Flux<ConfluenceContentScanResult> pageEvents = buildScanResultFluxBody(scanId, spaceKey, pages,
                                                                                analyzedOffset,
-                                                                               originalTotal, pageIndex, total);
+                                                                               originalTotal, total);
         Flux<ConfluenceContentScanResult> completeEvent = createCompleteEvent(scanId, spaceKey);
 
         return Flux.concat(startEvent, pageEvents, completeEvent)
@@ -86,6 +103,17 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                             return Mono.empty();
                         })
                         .subscribe();
+
+                    // Per-space scan statistics: additive, atomic at the SQL level, and
+                    // self-contained (errors swallowed inside the collector) so a stats
+                    // failure can never make the scan itself fail.
+                    Mono.fromRunnable(() -> scanSpaceStatsCollector.recordEvent(event))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .onErrorResume(e -> {
+                            log.warn("[SPACE_STATS] Failed to record scan space stats: {}", e.getMessage());
+                            return Mono.empty();
+                        })
+                        .subscribe();
                 }
             });
     }
@@ -104,30 +132,41 @@ public abstract class AbstractStreamConfluenceScanUseCase {
 
     private Flux<ConfluenceContentScanResult> buildScanResultFluxBody(String scanId, String spaceKey,
                                                                       List<ConfluencePage> pages, int analyzedOffset,
-                                                                      int originalTotal, AtomicInteger index,
-                                                                      int total) {
+                                                                      int originalTotal, int total) {
+        log.info("[SCAN][CONCURRENCY] space={} pages={} pageConcurrency={}", spaceKey, total, pageConcurrency);
         return Flux.fromIterable(pages)
+            // index() stamps each page with its deterministic 0-based position in
+            // SOURCE order BEFORE the concurrent region, so the per-page progress
+            // index stays stable regardless of pageConcurrency. flatMapSequential
+            // runs up to pageConcurrency mappers at once (feeding the detector
+            // worker pool) yet EMITS strictly in source order — preserving the
+            // checkpoint/SSE ordering that concatMap previously guaranteed.
+            // pageConcurrency=1 is functionally identical to the former concatMap.
+            .index()
             .publishOn(Schedulers.boundedElastic())
-            .concatMap(page -> toAttachmentsMono(page.id())
-                .flatMapMany(attachments -> {
-                    ConfluencePageContext confluencePageContext = new ConfluencePageContext(scanId,
-                                                                                            spaceKey,
-                                                                                            page.id(),
-                                                                                            page.title());
-                    int currentIndex = index.incrementAndGet();
-                    ScanProgress scanProgress = new ScanProgress(currentIndex, analyzedOffset,
-                                                                originalTotal, total);
-                    return processPageStream(confluencePageContext, page, attachments,
-                                             scanProgress);
-                })
-                .onErrorResume(exception -> {
-                    log.error(
-                        "[ATTACHMENTS][USECASE] Erreur récupération pièces jointes page {}: {}",
-                        page.id(), exception.getMessage());
-                    ScanProgress scanProgress = new ScanProgress(index.get(), analyzedOffset,
-                                                                originalTotal, total);
-                    return processOnePage(scanId, spaceKey, page, scanProgress);
-                }))
+            .flatMapSequential(indexed -> {
+                int currentIndex = (int) (indexed.getT1() + 1);
+                ConfluencePage page = indexed.getT2();
+                return toAttachmentsMono(page.id())
+                    .flatMapMany(attachments -> {
+                        ConfluencePageContext confluencePageContext = new ConfluencePageContext(scanId,
+                                                                                                spaceKey,
+                                                                                                page.id(),
+                                                                                                page.title());
+                        ScanProgress scanProgress = new ScanProgress(currentIndex, analyzedOffset,
+                                                                    originalTotal, total);
+                        return processPageStream(confluencePageContext, page, attachments,
+                                                 scanProgress);
+                    })
+                    .onErrorResume(exception -> {
+                        log.error(
+                            "[ATTACHMENTS][USECASE] Erreur récupération pièces jointes page {}: {}",
+                            page.id(), exception.getMessage());
+                        ScanProgress scanProgress = new ScanProgress(currentIndex, analyzedOffset,
+                                                                    originalTotal, total);
+                        return processOnePage(scanId, spaceKey, page, scanProgress);
+                    });
+            }, pageConcurrency)
             .onErrorContinue((exception, ignoredElement) -> log.error(
                 "[USECASE] Erreur lors du traitement d'une page: {}", exception.getMessage(),
                 exception));
@@ -350,25 +389,38 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     private ContentPiiDetection detectPii(String content) {
         String safeContent = content != null ? content : "";
         int charCount = safeContent.length();
+        // Snapshot the concurrent detection count for this call so the throughput
+        // log shows whether pageConcurrency is actually exercised (should approach
+        // the configured value once the worker pool is fed in parallel).
+        int observedInflight = inflightDetections.incrementAndGet();
         long startTime = System.currentTimeMillis();
-        ContentPiiDetection contentPiiDetection = piiDetectorClient.analyzeContent(safeContent);
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-
-        if (log.isDebugEnabled()){
-            Mono.fromRunnable(() -> {
-                        log.debug("Content: {}", safeContent);
-                        log.debug("Time to send and received content pii scan result: {}", duration);
-                        log.debug("Pii content: {}", contentPiiDetection);
-                        double charsPerSecond = duration > 0 ? (charCount * 1000.0) / duration : 0;
-                        log.debug("[PERFORMANCE] Scan throughput: {} chars/sec ({} chars scanned in {} ms)",
-                                String.format(Locale.ROOT, "%.2f", charsPerSecond), charCount, duration);
-                    })
-                    .subscribeOn(Schedulers.parallel())
-                    .subscribe();
+        ContentPiiDetection contentPiiDetection;
+        try {
+            contentPiiDetection = piiDetectorClient.analyzeContent(safeContent);
+        } finally {
+            inflightDetections.decrementAndGet();
         }
+        long duration = System.currentTimeMillis() - startTime;
 
-        
+        // Structured [THROUGHPUT] tag, aligned with the Python format
+        // ([THROUGHPUT] phase=detection ...). Emitted on a parallel scheduler so
+        // the Reactor pipeline never blocks on logging.
+        ContentPiiDetection detectionForLog = contentPiiDetection;
+        Mono.fromRunnable(() -> {
+                    double charsPerSecond = duration > 0 ? (charCount * 1000.0) / duration : 0;
+                    log.info("[THROUGHPUT] phase=detection chars={} duration_ms={} chars_per_s={} inflight={}",
+                            charCount,
+                            duration,
+                            String.format(Locale.ROOT, "%.2f", charsPerSecond),
+                            observedInflight);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Content: {}", safeContent);
+                        log.debug("Pii content: {}", detectionForLog);
+                    }
+                })
+                .subscribeOn(Schedulers.parallel())
+                .subscribe();
+
         return contentPiiDetection;
     }
 

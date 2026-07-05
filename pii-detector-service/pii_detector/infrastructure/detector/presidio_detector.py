@@ -29,6 +29,22 @@ from pii_detector.domain.entity.pii_type import PIIType
 logger = logging.getLogger(__name__)
 
 
+class _RegistryLanguageNoiseFilter(logging.Filter):
+    """Drop expected per-recognizer 'language not supported' startup noise.
+
+    Presidio ships country-specific predefined recognizers (e.g. the Polish
+    CreditCardRecognizer variant) and logs one WARNING per recognizer skipped
+    because its language is not in our supported set — pure startup noise,
+    repeated for every worker process.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "Recognizer not added to registry" not in record.getMessage()
+
+
+logging.getLogger("presidio-analyzer").addFilter(_RegistryLanguageNoiseFilter())
+
+
 # Mapping from Presidio entity types to our PIIType
 PRESIDIO_TO_PII_TYPE_MAP: Dict[str, PIIType] = {
     # Contact Information
@@ -305,8 +321,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 if detector_label:
@@ -340,8 +356,8 @@ class PresidioDetector:
             # Filter by detector: only process PRESIDIO or ALL configs
             config_detector = config.get('detector', 'ALL')
             if config_detector not in ('PRESIDIO', 'ALL'):
-                continue  # Skip configs for other detectors (GLINER, REGEX)
-            
+                continue  # Skip configs for other detectors (REGEX, MINISTRAL)
+
             if config.get('enabled', False):
                 detector_label = config.get('detector_label')
                 threshold = config.get('threshold')

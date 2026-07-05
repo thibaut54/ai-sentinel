@@ -54,15 +54,15 @@ class PiiTypeConfigConsistencyTest {
                 .as("Database should not be empty")
                 .isNotEmpty();
 
-        // Check that we have coverage for the critical GLiNER detector
-        List<String> glinerTypes = allConfigs.stream()
-                .filter(config -> "GLINER".equals(config.getDetector()))
+        // Check that we have coverage for the critical MINISTRAL detector
+        List<String> ministralTypes = allConfigs.stream()
+                .filter(config -> "MINISTRAL".equals(config.getDetector()))
                 .map(PiiTypeConfigEntity::getPiiType)
                 .toList();
 
-        assertThat(glinerTypes)
+        assertThat(ministralTypes)
                 .as("Should contain basic types")
-                .contains("PERSON_NAME", "EMAIL", "PHONE_NUMBER");
+                .contains("FIRST_NAME", "EMAIL", "PHONE_NUMBER");
     }
 
     @Test

@@ -16,8 +16,8 @@ class PIIDetectorProtocol(Protocol):
     
     This protocol formalizes the Strategy pattern by defining the contract
     that all PII detector implementations must follow. It enables:
-    - Interchangeable detector strategies (GLiNER, transformer-based, regex, etc.)
-    - Composite orchestration in MultiModelPIIDetector
+    - Interchangeable detector strategies (Ministral, Presidio, Regex, etc.)
+    - Composite orchestration in CompositePIIDetector
     - Type-safe detector composition
     
     Implementations must provide:
@@ -37,7 +37,7 @@ class PIIDetectorProtocol(Protocol):
         Get the unique identifier for this detector.
         
         Returns:
-            Model identifier string (e.g., 'gliner-pii', 'piiranha-v1')
+            Model identifier string (e.g., 'ministral-pii', 'presidio')
         """
         ...
 

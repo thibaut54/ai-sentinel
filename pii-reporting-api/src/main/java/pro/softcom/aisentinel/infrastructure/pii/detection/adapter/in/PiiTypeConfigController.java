@@ -90,7 +90,7 @@ public class PiiTypeConfigController {
      * <p>
      * GET /api/v1/pii-detection/types/{detector}
      *
-     * @param detector the detector name (GLINER, PRESIDIO, or REGEX)
+     * @param detector the detector name (PRESIDIO, REGEX, or MINISTRAL)
      * @return list of configurations for the detector
      */
     @GetMapping("/{detector}")
@@ -215,7 +215,7 @@ public class PiiTypeConfigController {
     /**
      * Get PII type configurations grouped by detector and category for UI display.
      * Returns a nested structure: detector → categories → types.
-     * Includes GLINER, PRESIDIO and REGEX detectors.
+     * Includes PRESIDIO, REGEX and MINISTRAL detectors.
      * <p>
      * GET /api/v1/pii-detection/pii-types/grouped
      *

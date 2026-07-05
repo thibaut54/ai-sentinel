@@ -12,7 +12,7 @@ import java.util.Objects;
  * Business rules:
  * - Each PII type + detector combination must be unique
  * - Threshold must be between 0.0 and 1.0
- * - Detector must be one of: GLINER, PRESIDIO, REGEX
+ * - Detector must be one of: PRESIDIO, REGEX, MINISTRAL
  */
 @Getter
 @Builder
@@ -30,7 +30,7 @@ public class PiiTypeConfig {
      * Natural language label used by the detector for PII identification.
      * <p>
      * Business purpose: Decouples internal PII type codes from detector-specific labels.
-     * For example, GLINER uses "email" while our system uses "EMAIL".
+     * For example, Presidio uses "EMAIL_ADDRESS" while our system uses "EMAIL".
      * This enables runtime configuration of detector behavior without code changes.
      * <p>
      * Examples:

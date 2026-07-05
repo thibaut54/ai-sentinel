@@ -29,18 +29,23 @@ public interface ManagePiiDetectionConfigPort {
     /**
      * Command to update PII detection configuration.
      *
-     * @param glinerEnabled    Whether GLiNER detector should be enabled
      * @param presidioEnabled  Whether Presidio detector should be enabled
      * @param regexEnabled     Whether custom regex detector should be enabled
+     * @param ministralEnabled    Whether the Ministral-PII detector should be enabled
+     * @param ministralChunkSize  Sliding-window chunk size (characters) for the Ministral-PII detector
+     * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
-     * @param updatedBy        User identifier who is updating the configuration
+     * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled
+     * @param updatedBy           User identifier who is updating the configuration
      */
     record UpdatePiiDetectionConfigCommand(
-            boolean glinerEnabled,
             boolean presidioEnabled,
             boolean regexEnabled,
+            boolean ministralEnabled,
+            Integer ministralChunkSize,
+            Integer ministralOverlap,
             BigDecimal defaultThreshold,
-            Integer nbOfLabelByPass,
+            boolean postfilterEnabled,
             String updatedBy
     ) {
     }

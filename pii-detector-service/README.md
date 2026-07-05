@@ -32,7 +32,7 @@ The **PII Detector Service** is a production-ready gRPC microservice designed to
 
 **Problem Solved**: Manual PII detection is time-consuming, error-prone, and doesn't scale. Traditional rule-based systems miss context-dependent PII, while pure ML approaches generate false positives.
 
-**Solution**: This service combines the best of both worlds - advanced ML models (GLiNER) for context-aware detection, Microsoft's Presidio for production-grade rule-based detection, and regex patterns for structured data. The result is high accuracy with low false positives.
+**Solution**: This service combines the best of both worlds - a specialised LLM extractor (Ministral-PII) for context-aware detection, Microsoft's Presidio for production-grade rule-based detection, and regex patterns for structured data. The result is high accuracy with low false positives.
 
 **Value Proposition**: 
 - **Multilingual support**: Detects PII in 17+ entity types across multiple languages
@@ -42,7 +42,7 @@ The **PII Detector Service** is a production-ready gRPC microservice designed to
 
 ## Features
 
-- ✅ **Multi-Model Detection**: Combines GLiNER, Presidio, and Regex detectors
+- ✅ **Multi-Model Detection**: Combines Ministral, Presidio, and Regex detectors
 - ✅ **17+ PII Entity Types**: Names, emails, phone numbers, addresses, financial data, and more
 - ✅ **Multilingual Support**: Works with English, French, German, Spanish, and other languages
 - ✅ **gRPC API**: High-performance protocol with synchronous and streaming modes
@@ -153,7 +153,6 @@ The service uses TOML configuration files located in the `config/` directory.
 | Setting | Description | Default | Required |
 |---------|-------------|---------|----------|
 | `default_threshold` | Confidence threshold (0.0-1.0) | `0.7` | No |
-| `llm_detection_enabled` | Enable ML models | `true` | Yes |
 | `regex_detection_enabled` | Enable regex patterns | `false` | Yes |
 | `presidio_detection_enabled` | Enable Presidio | `true` | Yes |
 | `log_provenance` | Log detection source | `true` | No |
@@ -163,28 +162,12 @@ The service uses TOML configuration files located in the `config/` directory.
 
 ### Model-Specific Configuration
 
-Each model has its own configuration file in `config/models/`:
+Presidio and Regex each have their own configuration file in `config/models/`:
 
-- **gliner-pii.toml**: GLiNER PII Large v1.0 configuration
 - **presidio-detector.toml**: Microsoft Presidio configuration
 - **regex-patterns.toml**: Regex-based detection patterns
-- **multilang-pii-ner.toml**: Multilingual NER model
 
-**Example**: Configuring GLiNER model
-
-```toml
-# config/models/gliner-pii.toml
-enabled = true
-model_id = "nvidia/gliner-pii"
-device = "cpu"
-max_length = 720
-threshold = 0.7
-
-[scoring]
-GIVENNAME = 0.75
-EMAIL = 0.80
-TELEPHONENUM = 0.80
-```
+Ministral-PII is configured via the database (`pii_detection_config` table: `ministral_enabled`, `ministral_chunk_size`, `ministral_overlap`) and its LM Studio endpoint, not via a TOML file in `config/models/`.
 
 ### Environment Variables
 
@@ -225,7 +208,7 @@ python -m pii_detector.server --debug
 
 ```
 2025-11-08 11:30:00 - INFO - PII Detection gRPC Server starting...
-2025-11-08 11:30:05 - INFO - Model downloaded successfully: knowledgator/gliner-pii-large-v1.0
+2025-11-08 11:30:05 - INFO - Presidio analyzer loaded (languages: en, fr, de, it)
 2025-11-08 11:30:12 - INFO - Server started on port 50051
 2025-11-08 11:30:12 - INFO - Ready to accept requests
 ```
@@ -310,7 +293,7 @@ pii-detector-service/
 │   │   └── orchestration/                # Orchestration logic & workflows
 │   ├── infrastructure/                   # Infrastructure Layer - External adapters
 │   │   ├── adapter/                      # Inbound/outbound adapters
-│   │   ├── detector/                     # Detection strategies (GLiNER, Presidio, Regex)
+│   │   ├── detector/                     # Detection strategies (Ministral, Presidio, Regex)
 │   │   ├── model_management/             # Model loading and management
 │   │   └── text_processing/              # Text processing and utilities
 │   ├── proto/                            # Protocol Buffer definitions (gRPC)
@@ -343,12 +326,12 @@ pii-detector-service/
 │  │   (Composite Pattern)                   │    │
 │  ├────────────────────────────────────────┤    │
 │  │                                          │    │
-│  │  ┌──────────────┐  ┌─────────────────┐ │    │
-│  │  │ GLiNERDetector│  │PresidioDetector│ │    │
-│  │  └──────────────┘  └─────────────────┘ │    │
-│  │  ┌──────────────┐                       │    │
-│  │  │ RegexDetector │                       │    │
-│  │  └──────────────┘                       │    │
+│  │  ┌─────────────────┐  ┌────────────────┐    │
+│  │  │MinistralDetector│  │PresidioDetector│    │
+│  │  └─────────────────┘  └────────────────┘    │
+│  │  ┌──────────────┐                            │
+│  │  │ RegexDetector │                            │
+│  │  └──────────────┘                            │
 │  └────────────────────────────────────────┘    │
 │                                                  │
 │  ┌────────────────────────────────────────┐    │
@@ -364,7 +347,7 @@ pii-detector-service/
 ### Key Design Patterns
 
 - **Composite Pattern**: `CompositePIIDetector` aggregates multiple detection strategies
-- **Strategy Pattern**: Pluggable detectors (GLiNER, Presidio, Regex)
+- **Strategy Pattern**: Pluggable detectors (Ministral, Presidio, Regex)
 - **Factory Pattern**: Model loading and initialization
 - **Template Method**: Common detection workflow with customizable steps
 - **Observer Pattern**: Memory monitoring and metrics collection
@@ -374,7 +357,7 @@ pii-detector-service/
 - **Backend**: Python 3.9+
 - **RPC Framework**: gRPC 1.60+, Protocol Buffers 4.25+
 - **ML Framework**: PyTorch 2.0+, Transformers 4.35+
-- **PII Detection**: GLiNER 0.2+, Presidio 2.2+
+- **PII Detection**: Ministral-PII (via LM Studio, OpenAI-compatible API), Presidio 2.2+
 - **Configuration**: TOML
 - **Testing**: pytest 8.0+, pytest-grpc
 - **Containerization**: Docker, Docker Compose
@@ -382,17 +365,17 @@ pii-detector-service/
 
 ## Detection Models
 
-### GLiNER PII Large v1.0
+### Ministral-PII
 
-**Type**: Zero-shot Named Entity Recognition  
-**Source**: [knowledgator/gliner-pii-large-v1.0](https://huggingface.co/knowledgator/gliner-pii-large-v1.0)  
-**Languages**: Multilingual (17+ languages)  
-**Entities**: 17 PII types including names, emails, addresses, financial data
+**Type**: Generative LLM extraction (open vocabulary)  
+**Source**: [OpenMed/Ministral-3B-PII-Preview](https://huggingface.co/OpenMed/Ministral-3B-PII-Preview) tokenizer, served behind an OpenAI-compatible `/chat/completions` endpoint (LM Studio)  
+**Languages**: Multilingual (model-dependent)  
+**Entities**: Open vocabulary - the model infers labels rather than picking from a fixed taxonomy; labels are mapped to canonical `pii_type` values via DB-configured resolution, with passthrough for unmapped labels
 
 **Advantages**:
 - Context-aware detection
-- High accuracy for informal text
-- No training required for new entity types
+- No fixed label set - adapts to entity types not explicitly configured
+- Long documents handled via token-based chunking with global offset rebasing
 
 **Best For**: User-generated content, multilingual documents, informal text
 
@@ -459,7 +442,7 @@ Tested on Intel Core i7-11800H @ 2.30GHz with 32GB RAM:
 | Long text | 50,000 chars | 89 | 2,800 ms | 17,857 chars/s |
 | Parallel (5 texts) | 2,500 chars each | 8 avg | 980 ms | 12,755 chars/s |
 
-**Configuration**: GLiNER + Presidio enabled, 10 workers, CPU-only
+**Configuration**: Presidio enabled, 10 workers, CPU-only
 
 ### Optimization Tips
 
@@ -472,7 +455,6 @@ Tested on Intel Core i7-11800H @ 2.30GHz with 32GB RAM:
 
 ### Memory Usage
 
-- **GLiNER model**: ~500MB RAM
 - **Presidio**: ~50MB RAM
 - **Per request overhead**: ~10-20MB (temporary)
 - **Recommended**: Minimum 2GB RAM, 4GB+ for production
@@ -581,7 +563,6 @@ Additional documentation is available in the `docs/` directory:
 
 - **[GRPC_SERVER_ARCHITECTURE.md](docs/GRPC_SERVER_ARCHITECTURE.md)**: Server architecture and request flow
 - **[PRESIDIO_INTEGRATION.md](docs/PRESIDIO_INTEGRATION.md)**: Presidio detector integration details
-- **[GLINER_INTEGRATION_STATUS.md](docs/GLINER_INTEGRATION_STATUS.md)**: GLiNER model integration
 - **[PARALLEL_PROCESSING_CONFIG.md](docs/PARALLEL_PROCESSING_CONFIG.md)**: Parallel processing configuration
 - **[CPU_GPU_OPTIMIZATION.md](docs/CPU_GPU_OPTIMIZATION.md)**: Performance optimization guide
 - **[REFACTORING_SUMMARY.md](docs/REFACTORING_SUMMARY.md)**: Architecture refactoring history
@@ -653,6 +634,6 @@ Copyright © 2025 Softcom Technologies Organization
 ## Acknowledgments
 
 - [Microsoft Presidio](https://microsoft.github.io/presidio/) - Production-grade PII detection framework
-- [GLiNER](https://github.com/urchade/GLiNER) - Zero-shot NER model
+- [Mistral AI](https://mistral.ai/) - Ministral base model
 - [Hugging Face](https://huggingface.co/) - Model hosting and Transformers library
 - All [contributors](https://github.com/Softcom-Technologies-Organization/ai-sentinel/graphs/contributors) to the AI Sentinel project

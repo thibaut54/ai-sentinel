@@ -2,7 +2,7 @@
 Unit tests for Presidio detector's database configuration filtering.
 
 Business Rule: Presidio detector should only process PII type configs where
-detector field is 'PRESIDIO' or 'ALL', ignoring configs for GLINER and REGEX.
+detector field is 'PRESIDIO' or 'ALL', ignoring configs for MINISTRAL and REGEX.
 
 This ensures that Presidio's whitelist and scoring thresholds are built only
 from relevant configurations, preventing incorrect detection behavior.
@@ -25,7 +25,7 @@ class TestPresidioDetectorConfigFiltering:
     
     def test_should_build_allowed_entities_only_from_presidio_and_all_configs(self):
         """
-        Given: Database configs with mixed detector values (GLINER, PRESIDIO, REGEX, ALL)
+        Given: Database configs with mixed detector values (MINISTRAL, PRESIDIO, REGEX, ALL)
         When: _build_allowed_entities_from_database is called
         Then: Only configs with detector=PRESIDIO or detector=ALL should be included
         
@@ -44,7 +44,7 @@ class TestPresidioDetectorConfigFiltering:
             'PHONE_NUMBER': {
                 'enabled': True,
                 'threshold': 0.5,
-                'detector': 'GLINER',  # Should be EXCLUDED
+                'detector': 'MINISTRAL',  # Should be EXCLUDED
                 'detector_label': 'phone',
                 'display_name': 'Phone Number',
                 'category': 'contact'
@@ -86,8 +86,8 @@ class TestPresidioDetectorConfigFiltering:
         assert 'CREDIT_CARD' in allowed_entities, "ALL CREDIT_CARD should be included"
         assert 'PERSON' in allowed_entities, "PRESIDIO PERSON should be included"
         
-        # Should NOT include GLINER or REGEX configs
-        assert 'phone' not in allowed_entities, "GLINER phone should be excluded"
+        # Should NOT include MINISTRAL or REGEX configs
+        assert 'phone' not in allowed_entities, "MINISTRAL phone should be excluded"
         assert r'\d+\.\d+\.\d+\.\d+' not in allowed_entities, "REGEX IP should be excluded"
     
     def test_should_exclude_disabled_configs_regardless_of_detector(self):
@@ -197,7 +197,7 @@ class TestPresidioDetectorConfigFiltering:
             'PHONE_NUMBER': {
                 'enabled': True,
                 'threshold': 0.55,
-                'detector': 'GLINER',  # Should be EXCLUDED
+                'detector': 'MINISTRAL',  # Should be EXCLUDED
                 'detector_label': 'phone',
                 'display_name': 'Phone'
             },
@@ -229,8 +229,8 @@ class TestPresidioDetectorConfigFiltering:
         assert 'CREDIT_CARD' in scoring_overrides
         assert scoring_overrides['CREDIT_CARD'] == 0.75
         
-        # Should NOT include GLINER or REGEX
-        assert 'phone' not in scoring_overrides, "GLINER config should be excluded"
+        # Should NOT include MINISTRAL or REGEX
+        assert 'phone' not in scoring_overrides, "MINISTRAL config should be excluded"
         assert 'IP_ADDRESS' not in scoring_overrides, "REGEX config should be excluded"
     
     def test_should_exclude_disabled_configs_from_scoring_overrides(self):
@@ -349,25 +349,25 @@ class TestPresidioDetectorConfigFiltering:
         Integration test with realistic mixed detector configuration.
         
         Simulates a database with:
-        - 5 GLINER configs (should be excluded)
+        - 5 MINISTRAL configs (should be excluded)
         - 3 PRESIDIO configs (should be included)
         - 2 REGEX configs (should be excluded)
         - 4 ALL configs (should be included)
         """
         # Arrange
         db_configs = {
-            # GLINER configs - should be excluded
-            'EMAIL_GLINER': {
-                'enabled': True, 'threshold': 0.3, 'detector': 'GLINER',
-                'detector_label': 'email', 'display_name': 'Email (GLiNER)'
+            # MINISTRAL configs - should be excluded
+            'EMAIL_MINISTRAL': {
+                'enabled': True, 'threshold': 0.3, 'detector': 'MINISTRAL',
+                'detector_label': 'email', 'display_name': 'Email (Ministral)'
             },
-            'PHONE_GLINER': {
-                'enabled': True, 'threshold': 0.5, 'detector': 'GLINER',
-                'detector_label': 'phone', 'display_name': 'Phone (GLiNER)'
+            'PHONE_MINISTRAL': {
+                'enabled': True, 'threshold': 0.5, 'detector': 'MINISTRAL',
+                'detector_label': 'phone', 'display_name': 'Phone (Ministral)'
             },
-            'PERSON_GLINER': {
-                'enabled': True, 'threshold': 0.4, 'detector': 'GLINER',
-                'detector_label': 'person', 'display_name': 'Person (GLiNER)'
+            'PERSON_MINISTRAL': {
+                'enabled': True, 'threshold': 0.4, 'detector': 'MINISTRAL',
+                'detector_label': 'person', 'display_name': 'Person (Ministral)'
             },
             
             # PRESIDIO configs - should be included
@@ -434,8 +434,8 @@ class TestPresidioDetectorConfigFiltering:
         assert 'URL' in allowed_entities
         assert 'AGE' not in allowed_entities, "Disabled AGE should be excluded"
         
-        # Check GLINER entities excluded
-        assert 'email' not in allowed_entities  # GLiNER label
+        # Check MINISTRAL entities excluded
+        assert 'email' not in allowed_entities  # Ministral label
         assert 'phone' not in allowed_entities
         assert 'person' not in allowed_entities
         
@@ -451,7 +451,7 @@ class TestPresidioDetectorConfigFiltering:
         assert scoring_overrides['DATE_TIME'] == 0.5
         assert scoring_overrides['URL'] == 0.3
         
-        # Check GLINER and REGEX not in scoring
+        # Check MINISTRAL and REGEX not in scoring
         assert 'email' not in scoring_overrides
         assert 'phone' not in scoring_overrides
         assert r'\d+\.\d+\.\d+\.\d+' not in scoring_overrides

@@ -138,43 +138,57 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
-    public StreamConfluenceScanPort streamConfluenceScanUseCase(
+    public ScanSpaceStatsCollector scanSpaceStatsCollector(ScanSpaceStatsRepository scanSpaceStatsRepository) {
+        return new ScanSpaceStatsCollector(scanSpaceStatsRepository);
+    }
+
+    @Bean
+    public GetScanSpaceStatsPort getScanSpaceStatsPort(
+            ScanCheckpointRepository scanCheckpointRepository,
+            ScanSpaceStatsRepository scanSpaceStatsRepository,
+            FailedScanItemQuery failedScanItemQuery) {
+        return new GetScanSpaceStatsUseCase(scanCheckpointRepository, scanSpaceStatsRepository, failedScanItemQuery);
+    }
+
+    @Bean
+    public ScanPipelineDependencies scanPipelineDependencies(
             ConfluenceAccessor confluenceAccessor,
             PiiDetectorClient piiDetectorClient,
             ContentScanOrchestrator contentScanOrchestrator,
             AttachmentProcessor attachmentProcessor,
             ScanTimeOutConfig scanTimeoutConfig,
             HtmlContentParser htmlContentParser,
-            PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort,
-            ScanCheckpointRepository scanCheckpointRepository) {
-        return new StreamConfluenceScanUseCase(
+            ScanSpaceStatsCollector scanSpaceStatsCollector,
+            @Value("${scan.page-concurrency:1}") int pageConcurrency) {
+        return new ScanPipelineDependencies(
                 confluenceAccessor,
                 piiDetectorClient,
                 contentScanOrchestrator,
                 attachmentProcessor,
                 scanTimeoutConfig,
                 htmlContentParser,
+                scanSpaceStatsCollector,
+                pageConcurrency
+        );
+    }
+
+    @Bean
+    public StreamConfluenceScanPort streamConfluenceScanUseCase(
+            ScanPipelineDependencies scanPipelineDependencies,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort) {
+        return new StreamConfluenceScanUseCase(
+                scanPipelineDependencies,
                 personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
     }
 
     @Bean
     public StreamConfluenceResumeScanPort streamConfluenceResumeScanUseCase(
-            ConfluenceAccessor confluenceAccessor,
-            PiiDetectorClient piiDetectorClient,
-            ContentScanOrchestrator contentScanOrchestrator,
-            AttachmentProcessor attachmentProcessor,
-            ScanCheckpointRepository scanCheckpointRepository,
-            ScanTimeOutConfig scanTimeoutConfig,
-            HtmlContentParser htmlContentParser) {
+            ScanPipelineDependencies scanPipelineDependencies,
+            ScanCheckpointRepository scanCheckpointRepository) {
         return new StreamConfluenceResumeScanUseCase(
-                confluenceAccessor,
-                piiDetectorClient,
-                contentScanOrchestrator,
-                attachmentProcessor,
-                scanCheckpointRepository,
-                scanTimeoutConfig,
-                htmlContentParser
+                scanPipelineDependencies,
+                scanCheckpointRepository
         );
     }
 

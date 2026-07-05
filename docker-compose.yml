@@ -557,7 +557,7 @@ services:
   # PII DETECTOR SERVICE (Python/gRPC) - PRE-BUILT IMAGE
   # ============================================================================
   pii-detector:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-pii-detector:v1.1.0-debug
     container_name: pii-detector-service
     restart: unless-stopped
     
@@ -589,6 +589,15 @@ services:
       # Static non-sensitive configuration
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
+
+      # Detection data-parallelism: N inference worker processes serving K
+      # concurrent DetectPII calls (fed by PII_SCAN_PAGE_CONCURRENCY on the API).
+      # HARD constraint: keep PII_WORKER_PROCESSES * TORCH_NUM_THREADS <= the CPU
+      # allocation below (deploy.resources.limits.cpus = 4.0). Default 3 leaves a
+      # core for the gRPC server. To go to 6, raise cpus
+      # to ~8.0 first, then set PII_WORKER_PROCESSES=6.
+      PII_WORKER_PROCESSES: ${PII_WORKER_PROCESSES:-3}
+      TORCH_NUM_THREADS: ${TORCH_NUM_THREADS:-1}
     volumes:
       - huggingface-cache:/app/.cache/huggingface
       - ./secrets:/secrets:ro
@@ -612,7 +621,7 @@ services:
   # PII REPORTING API (Spring Boot) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-api:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-api:v1.1.0-debug
     container_name: pii-reporting-api
     restart: unless-stopped
     ports:
@@ -634,7 +643,11 @@ services:
       PII_DETECTOR_CLIENT: armeria
       PII_DETECTOR_HOST: pii-detector
       PII_DETECTOR_PORT: 50051
-      
+      # Number of Confluence pages whose detection runs concurrently. Should
+      # match PII_WORKER_PROCESSES on the detector so the worker pool stays fed
+      # (1 = sequential, historical). Page events are still emitted in order.
+      PII_SCAN_PAGE_CONCURRENCY: ${PII_SCAN_PAGE_CONCURRENCY:-3}
+
     volumes:
       - ./secrets:/secrets:ro
       - ./personally-identifiable-information-scan-results:/personally-identifiable-information-scan-results
@@ -661,7 +674,7 @@ services:
   # PII REPORTING UI (Angular + Nginx) - PRE-BUILT IMAGE
   # ============================================================================
   pii-reporting-ui:
-    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:v1.1.0-rc.1
+    image: ghcr.io/softcom-technologies-organization/ai-sentinel-reporting-ui:v1.1.0-debug
     container_name: pii-reporting-ui
     restart: unless-stopped
     ports:
@@ -690,7 +703,9 @@ services:
       POSTGRES_PASSWORD_FILE: /secrets/infisical_db_password.txt
       POSTGRES_DB: infisical
     volumes:
-      - infisical-db-data:/var/lib/postgresql/data
+      # PG18 stores data in a version subdir of /var/lib/postgresql (mount the
+      # parent, not /var/lib/postgresql/data) — mirrors the healthy main db.
+      - infisical-db-data:/var/lib/postgresql
       - ./secrets:/secrets:ro
     networks:
       - ai-sentinel-network

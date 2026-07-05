@@ -7,7 +7,7 @@ import { SpacesDashboardUtils } from '../../features/confluence-dashboard/spaces
 import { ScanProgressService } from './scan-progress.service';
 import { DashboardUiStateService } from '../../features/confluence-dashboard/services/dashboard-ui-state.service';
 import { SpaceDataManagementService } from '../../features/confluence-dashboard/services/space-data-management.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('ScanStatusPollingService', () => {
   let service: ScanStatusPollingService;
@@ -193,5 +193,67 @@ describe('ScanStatusPollingService', () => {
     expect(service.scanActive()).toBe(false);
     expect(service.scanPaused()).toBe(false);
     expect(service.scanIdle()).toBe(true);
+  });
+
+  it('Should_SetScanPaused_When_AllSpacesPausedAndNoneRunning', () => {
+    const pausedSummary: ScanReportingSummaryDto = {
+      ...mockSummary,
+      spaces: mockSummary.spaces.map((space) => ({ ...space, status: 'PAUSED' }))
+    };
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(pausedSummary));
+
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    expect(service.scanPaused()).toBe(true);
+    expect(service.scanActive()).toBe(false);
+    expect(service.scanIdle()).toBe(false);
+  });
+
+  it('Should_OnlyDeriveStateFromInScopeSpaces_When_ScanScopeRestricted', () => {
+    dataManagementMock.currentScanSpaceKeys.set(['SPACE2']);
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(mockSummary));
+
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    // SPACE1 is RUNNING but out of scope -> scan should not be considered active by running
+    expect(service.scanActive()).toBe(true); // transitioning (polling active) keeps it true
+    expect(uiStateMock.upsertScanHistory).toHaveBeenCalledWith('SPACE2', 'completed');
+    expect(uiStateMock.upsertScanHistory).not.toHaveBeenCalledWith('SPACE1', 'running');
+  });
+
+  it('Should_MarkUnreportedSpacesAsPending_When_ScanActive', () => {
+    dataManagementMock.spaces.set([{ key: 'SPACE1' }, { key: 'SPACE3' }]);
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(mockSummary));
+
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    expect(utilsMock.updateSpace).toHaveBeenCalledWith('SPACE3', { status: 'PENDING' });
+  });
+
+  it('Should_ApplyStatuses_When_ForceRefreshSucceeds', async () => {
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(mockSummary));
+
+    await service.forceRefresh();
+
+    expect(utilsMock.updateSpace).toHaveBeenCalledWith('SPACE1', expect.objectContaining({ status: 'RUNNING' }));
+  });
+
+  it('Should_SwallowError_When_ForceRefreshFails', async () => {
+    apiMock.getDashboardSpacesSummary.mockReturnValue(throwError(() => new Error('network')));
+
+    await expect(service.forceRefresh()).resolves.toBeUndefined();
+  });
+
+  it('Should_ClearActionPending_When_BackendReportsRunning', () => {
+    service.actionPending.set(true);
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of(mockSummary));
+
+    service.start(3000);
+    vi.advanceTimersByTime(0);
+
+    expect(service.actionPending()).toBe(false);
   });
 });

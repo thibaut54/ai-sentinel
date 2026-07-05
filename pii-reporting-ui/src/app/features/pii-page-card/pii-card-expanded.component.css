@@ -269,6 +269,13 @@ button.expanded-header {
   font-size: 10px;
 }
 
+/* Top reveal action row */
+.card-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 20px 0;
+}
+
 /* Detail table */
 .detail-table-wrapper {
   padding: 0 20px;

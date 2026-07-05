@@ -230,7 +230,7 @@ class PiiContextExtractorTest {
     @Test
     @DisplayName("Should_TruncateTrailingText_When_UndetectedPiiFollowsLastEntity")
     void Should_TruncateTrailingText_When_UndetectedPiiFollowsLastEntity() {
-        // Given: 3 person names on the same line, but only 2 detected by GLINER
+        // Given: 3 person names on the same line, but only 2 detected by MINISTRAL
         String source = "Person Name: Jean Dupont Laurent";
         String pii1 = "Jean";
         String pii2 = "Dupont";

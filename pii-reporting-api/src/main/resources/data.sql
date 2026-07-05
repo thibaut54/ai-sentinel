@@ -8,9 +8,11 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 
 -- ============================================================================
 -- PII Detection Global Config (Singleton with id=1)
+-- postfilter_enabled defaults to false (zero-effect rollout, deterministic format post-filter).
+-- ministral_enabled defaults to false (explicit operator opt-in).
 -- ============================================================================
-INSERT INTO pii_detection_config (id, gliner_enabled, presidio_enabled, regex_enabled, default_threshold, nb_of_label_by_pass, updated_at, updated_by)
-VALUES (1, true, true, true, 0.30, 35, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, presidio_enabled, regex_enabled, default_threshold, postfilter_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, updated_at, updated_by)
+VALUES (1, true, true, 0.30, false, false, 2048, 410, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -33,126 +35,6 @@ VALUES (1, true, true, true, 0.30, 35, CURRENT_TIMESTAMP, 'system')
 -- Thresholds above 0.80 reflect higher-confidence requirements for types that
 -- are prone to false positives on short tokens (vehicle IDs, login names, etc.).
 -- ============================================================================
-
--- ============================================================================
--- GLINER PII TYPES
--- ============================================================================
--- IMPORTANT: detector_label values MUST match the official label vocabulary
--- the nvidia/gliner-PII model was trained on (Nemotron-PII dataset, snake_case).
--- Source: https://build.nvidia.com/nvidia/gliner-pii (UI label list)
---
--- pii_types without an exact NVIDIA label are disabled here (REGEX/PRESIDIO
--- handle them when applicable). Inventing descriptive labels yields
--- unpredictable embeddings and hurts precision.
--- ============================================================================
-
--- Category 1: IDENTITY
--- ✅ enabled  : NATIONAL_ID, SSN, DRIVER_LICENSE_NUMBER
--- ⛔ disabled : PERSON_NAME (commonly accepted PII), DATE_OF_BIRTH, GENDER, AGE
--- ⛔ unmapped : PASSPORT_NUMBER, NATIONALITY (no NVIDIA label — disabled)
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('PERSON_NAME',           'GLINER', false, 0.80, 'IDENTITY', 'name',                      'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('NATIONAL_ID',           'GLINER', true,  0.80, 'IDENTITY', 'national_id',               'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SSN',                   'GLINER', true,  0.80, 'IDENTITY', 'ssn',                       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PASSPORT_NUMBER',       'GLINER', false, 0.80, 'IDENTITY', NULL,                        'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DRIVER_LICENSE_NUMBER', 'GLINER', true,  0.80, 'IDENTITY', 'certificate_license_number','MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DATE_OF_BIRTH',         'GLINER', false, 0.80, 'IDENTITY', 'date_of_birth',             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('GENDER',                'GLINER', false, 0.80, 'IDENTITY', 'gender',                    'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('NATIONALITY',           'GLINER', false, 0.80, 'IDENTITY', NULL,                        'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('AGE',                   'GLINER', false, 0.80, 'IDENTITY', 'age',                       'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 2: CONTACT
--- ⛔ ALL disabled — email, phone and address coordinates are standard in
---    professional documents and should only be flagged when explicitly enabled.
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('EMAIL',        'GLINER', false, 0.80, 'CONTACT', 'email',         'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PHONE_NUMBER', 'GLINER', false, 0.80, 'CONTACT', 'phone_number',  'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ADDRESS',      'GLINER', false, 0.80, 'CONTACT', 'address',       'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('CITY',         'GLINER', false, 0.80, 'CONTACT', 'city',          'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ZIP_CODE',     'GLINER', false, 0.80, 'CONTACT', 'postcode',      'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 3: DIGITAL
--- ✅ enabled  : USERNAME (threshold 0.90 — short tokens, higher confidence needed),
---               ACCOUNT_ID
--- ⛔ disabled : URL — extremely common in technical documentation
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('USERNAME',   'GLINER', false,  1, 'DIGITAL', 'user_name',   'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ACCOUNT_ID', 'GLINER', true,  0.80, 'DIGITAL', 'customer_id', 'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('URL',        'GLINER', false, 0.80, 'DIGITAL', 'url',         'LOW', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 4: FINANCIAL
--- ⛔ SALARY disabled — no NVIDIA label, salary figures acceptable in HR/payroll docs
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('CREDIT_CARD_NUMBER',  'GLINER', false, 0.80, 'FINANCIAL', 'credit_debit_card', 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('BANK_ACCOUNT_NUMBER', 'GLINER', true,  0.80, 'FINANCIAL', 'account_number',    'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('IBAN',                'GLINER', false, 0.80, 'FINANCIAL', 'iban',              'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('BIC_SWIFT',           'GLINER', true,  0.80, 'FINANCIAL', 'swift_bic',         'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('TAX_ID',              'GLINER', false, 0.80, 'FINANCIAL', 'tax_id',            'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SALARY',              'GLINER', false, 0.80, 'FINANCIAL', NULL,                'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 5: MEDICAL
--- ✅ enabled  : MEDICAL_RECORD_NUMBER, HEALTH_INSURANCE_NUMBER
--- ⛔ unmapped : AVS_NUMBER (REGEX handles it), PATIENT_ID, DIAGNOSIS, MEDICATION
---              (no NVIDIA label — domain-specific entities not in Nemotron-PII vocabulary)
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('AVS_NUMBER',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PATIENT_ID',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MEDICAL_RECORD_NUMBER',  'GLINER', true,  0.80, 'MEDICAL', 'medical_record_number',          'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('HEALTH_INSURANCE_NUMBER','GLINER', true,  0.80, 'MEDICAL', 'health_plan_beneficiary_number', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DIAGNOSIS',              'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MEDICATION',             'GLINER', false, 0.80, 'MEDICAL', NULL,                             'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 6: IT_CREDENTIALS
--- ✅ enabled  : DEVICE_ID, PASSWORD, API_KEY, SESSION_ID (mapped to http_cookie)
--- ⛔ disabled : IP_ADDRESS (REGEX handles it), MAC_ADDRESS (REGEX handles it)
--- ⛔ unmapped : HOSTNAME, ACCESS_TOKEN, SECRET_KEY (would collide with api_key)
---              SESSION_ID approximated to http_cookie (closest NVIDIA label)
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('IP_ADDRESS',   'GLINER', false, 0.80, 'IT_CREDENTIALS', 'ipv4',              'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MAC_ADDRESS',  'GLINER', false, 0.80, 'IT_CREDENTIALS', 'mac_address',       'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('HOSTNAME',     'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DEVICE_ID',    'GLINER', true,  0.80, 'IT_CREDENTIALS', 'device_identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PASSWORD',     'GLINER', true,  0.80, 'IT_CREDENTIALS', 'password',          'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('API_KEY',      'GLINER', true,  0.80, 'IT_CREDENTIALS', 'api_key',           'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('ACCESS_TOKEN', 'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SECRET_KEY',   'GLINER', false, 0.80, 'IT_CREDENTIALS', NULL,                'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('SESSION_ID',   'GLINER', true,  1, 'IT_CREDENTIALS', 'http_cookie',       'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
-
--- Category 7: LEGAL_ASSET
--- ✅ enabled  : VEHICLE_REGISTRATION, LICENSE_PLATE
--- ⛔ unmapped : CASE_NUMBER, CRIMINAL_RECORD, INSURANCE_POLICY_NUMBER (no NVIDIA label)
---              LICENSE_NUMBER (would collide with DRIVER_LICENSE_NUMBER on certificate_license_number)
---              VIN (would collide with VEHICLE_REGISTRATION on vehicle_identifier)
--- Threshold 0.90 for vehicle-related types (short tokens, high false-positive risk)
-INSERT INTO pii_type_config
-(pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, created_at, updated_at, updated_by)
-VALUES
-    ('CASE_NUMBER',             'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('LICENSE_NUMBER',          'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('CRIMINAL_RECORD',         'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'HIGH',   false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('VEHICLE_REGISTRATION',    'GLINER', true,  0.90, 'LEGAL_ASSET', 'vehicle_identifier', 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('LICENSE_PLATE',           'GLINER', false,  1, 'LEGAL_ASSET', 'license_plate',      'LOW',    false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('VIN',                     'GLINER', false, 0.90, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('INSURANCE_POLICY_NUMBER', 'GLINER', false, 0.80, 'LEGAL_ASSET', NULL,                 'MEDIUM', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
-    ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- ============================================================================
 -- PRESIDIO PII TYPES
@@ -297,6 +179,128 @@ VALUES
     ('IP_ADDRESS',         'REGEX', true, 0.95, 'IT_CREDENTIALS','ip address',          'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('MAC_ADDRESS',        'REGEX', true, 0.95, 'IT_CREDENTIALS','mac address',         'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('API_KEY',            'REGEX', true, 0.95, 'IT_CREDENTIALS','api key',             'HIGH', false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- ============================================================================
+-- Ministral-PII detector seed (69 entities, 8 categories).
+-- Specialised LLM detector: enabled by default at first install (all types active), threshold 0.50 neutral (no exploitable per-entity score).
+-- ============================================================================
+
+-- Category: IDENTITY (Identity & demographics) -- 17 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('FIRST_NAME',           'MINISTRAL', true, 0.50, 'IDENTITY', 'first_name',           false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LAST_NAME',            'MINISTRAL', true, 0.50, 'IDENTITY', 'last_name',            false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TITLE',                'MINISTRAL', true, 0.50, 'IDENTITY', 'title',                false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_OF_BIRTH',        'MINISTRAL', true, 0.50, 'IDENTITY', 'date_of_birth',        false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('AGE',                  'MINISTRAL', true, 0.50, 'IDENTITY', 'age',                  false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('GENDER',               'MINISTRAL', true, 0.50, 'IDENTITY', 'gender',               false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONALITY',          'MINISTRAL', true, 0.50, 'IDENTITY', 'nationality',          false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RACE',                 'MINISTRAL', true, 0.50, 'IDENTITY', 'race',                 false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ETHNICITY',            'MINISTRAL', true, 0.50, 'IDENTITY', 'ethnicity',            false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RACE_ETHNICITY',       'MINISTRAL', true, 0.50, 'IDENTITY', 'race_ethnicity',       false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RELIGION',             'MINISTRAL', true, 0.50, 'IDENTITY', 'religion',             false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('RELIGIOUS_BELIEF',     'MINISTRAL', true, 0.50, 'IDENTITY', 'religious_belief',     false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MARITAL_STATUS',       'MINISTRAL', true, 0.50, 'IDENTITY', 'marital_status',       false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SEXUALITY',            'MINISTRAL', true, 0.50, 'IDENTITY', 'sexuality',            false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('POLITICAL_VIEW',       'MINISTRAL', true, 0.50, 'IDENTITY', 'political_view',       false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LANGUAGE',             'MINISTRAL', true, 0.50, 'IDENTITY', 'language',             false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BIOMETRIC_IDENTIFIER', 'MINISTRAL', true, 0.50, 'IDENTITY', 'biometric_identifier', false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: CONTACT (Contact & address) -- 12 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('EMAIL',           'MINISTRAL', true, 0.50, 'CONTACT', 'email',           false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PHONE_NUMBER',    'MINISTRAL', true, 0.50, 'CONTACT', 'phone_number',    false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('FAX_NUMBER',      'MINISTRAL', true, 0.50, 'CONTACT', 'fax_number',      false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STREET_ADDRESS',  'MINISTRAL', true, 0.50, 'CONTACT', 'street_address',  false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BUILDING_NUMBER', 'MINISTRAL', true, 0.50, 'CONTACT', 'building_number', false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CITY',            'MINISTRAL', true, 0.50, 'CONTACT', 'city',            false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COUNTY',          'MINISTRAL', true, 0.50, 'CONTACT', 'county',          false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('STATE',           'MINISTRAL', true, 0.50, 'CONTACT', 'state',           false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('POSTCODE',        'MINISTRAL', true, 0.50, 'CONTACT', 'postcode',        false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ZIP_CODE',        'MINISTRAL', true, 0.50, 'CONTACT', 'zip_code',        false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COUNTRY',         'MINISTRAL', true, 0.50, 'CONTACT', 'country',         false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COORDINATE',      'MINISTRAL', true, 0.50, 'CONTACT', 'coordinate',      false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: GOV_ID (Government & legal IDs) -- 9 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('SOCIAL_SECURITY_NUMBER',     'MINISTRAL', true, 0.50, 'GOV_ID', 'social_security_number',     false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SSN',                        'MINISTRAL', true, 0.50, 'GOV_ID', 'ssn',                        false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('NATIONAL_ID',                'MINISTRAL', true, 0.50, 'GOV_ID', 'national_id',                false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DRIVER_LICENSE_NUMBER',      'MINISTRAL', true, 0.50, 'GOV_ID', 'driver_license_number',      false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TAX_ID',                     'MINISTRAL', true, 0.50, 'GOV_ID', 'tax_id',                     false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('LICENSE_PLATE',              'MINISTRAL', true, 0.50, 'GOV_ID', 'license_plate',              false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('VEHICLE_IDENTIFIER',         'MINISTRAL', true, 0.50, 'GOV_ID', 'vehicle_identifier',         false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CERTIFICATE_LICENSE_NUMBER', 'MINISTRAL', true, 0.50, 'GOV_ID', 'certificate_license_number', false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('UNIQUE_ID',                  'MINISTRAL', true, 0.50, 'GOV_ID', 'unique_id',                  false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: MEDICAL (Healthcare) -- 3 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('MEDICAL_RECORD_NUMBER',          'MINISTRAL', true, 0.50, 'MEDICAL', 'medical_record_number',          false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HEALTH_PLAN_BENEFICIARY_NUMBER', 'MINISTRAL', true, 0.50, 'MEDICAL', 'health_plan_beneficiary_number', false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BLOOD_TYPE',                     'MINISTRAL', true, 0.50, 'MEDICAL', 'blood_type',                     false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: FINANCIAL (Financial) -- 8 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('CREDIT_DEBIT_CARD',   'MINISTRAL', true, 0.50, 'FINANCIAL', 'credit_debit_card',   false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CVV',                 'MINISTRAL', true, 0.50, 'FINANCIAL', 'cvv',                 false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PIN',                 'MINISTRAL', true, 0.50, 'FINANCIAL', 'pin',                 false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCOUNT_NUMBER',      'MINISTRAL', true, 0.50, 'FINANCIAL', 'account_number',      false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('BANK_ROUTING_NUMBER', 'MINISTRAL', true, 0.50, 'FINANCIAL', 'bank_routing_number', false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IBAN',                'MINISTRAL', true, 0.50, 'FINANCIAL', 'iban',                false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SWIFT_BIC',           'MINISTRAL', true, 0.50, 'FINANCIAL', 'swift_bic',           false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SALARY',              'MINISTRAL', true, 0.50, 'FINANCIAL', 'salary',              false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: EMPLOYMENT (Employment & org) -- 7 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('OCCUPATION',        'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'occupation',        false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMPLOYMENT_STATUS', 'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'employment_status', false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EMPLOYEE_ID',       'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'employee_id',       false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('EDUCATION_LEVEL',   'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'education_level',   false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ORGANIZATION',      'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'organization',      false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('COMPANY_NAME',      'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'company_name',      false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CUSTOMER_ID',       'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'customer_id',       false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: DIGITAL (Digital & network) -- 10 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('IP_ADDRESS',        'MINISTRAL', true, 0.50, 'DIGITAL', 'ip_address',        false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IPV4',              'MINISTRAL', true, 0.50, 'DIGITAL', 'ipv4',              false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('IPV6',              'MINISTRAL', true, 0.50, 'DIGITAL', 'ipv6',              false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('MAC_ADDRESS',       'MINISTRAL', true, 0.50, 'DIGITAL', 'mac_address',       false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('URL',               'MINISTRAL', true, 0.50, 'DIGITAL', 'url',               false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('USER_NAME',         'MINISTRAL', true, 0.50, 'DIGITAL', 'user_name',         false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSWORD',          'MINISTRAL', true, 0.50, 'DIGITAL', 'password',          false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('HTTP_COOKIE',       'MINISTRAL', true, 0.50, 'DIGITAL', 'http_cookie',       false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('API_KEY',           'MINISTRAL', true, 0.50, 'DIGITAL', 'api_key',           false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DEVICE_IDENTIFIER', 'MINISTRAL', true, 0.50, 'DIGITAL', 'device_identifier', false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ON CONFLICT (pii_type, detector) DO NOTHING;
+
+-- Category: TEMPORAL (Temporal) -- 3 entities
+INSERT INTO pii_type_config
+(pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
+VALUES
+    ('DATE',      'MINISTRAL', true, 0.50, 'TEMPORAL', 'date',      false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('DATE_TIME', 'MINISTRAL', true, 0.50, 'TEMPORAL', 'date_time', false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('TIME',      'MINISTRAL', true, 0.50, 'TEMPORAL', 'time',      false, 'LOW',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 COMMIT;

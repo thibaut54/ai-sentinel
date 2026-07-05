@@ -277,4 +277,149 @@ describe('SpaceDataManagementService', () => {
     expect(service.hasNewSpaces()).toBe(false);
     expect(service.currentScanSpaceKeys()).toBeNull();
   });
+
+  // ========== loadLastSpaceStatuses with items ==========
+
+  it('Should_LoadItems_When_AlsoLoadItemsTrue', () => {
+    let completed = false;
+    service.loadLastSpaceStatuses(true).subscribe({ complete: () => (completed = true) });
+
+    expect(apiMock.getLastScanItems).toHaveBeenCalled();
+    expect(completed).toBe(true);
+  });
+
+  it('Should_ApplyHundredPercent_When_SpaceCompleted', () => {
+    apiMock.getDashboardSpacesSummary.mockReturnValue(of({
+      scanId: 'scan-1',
+      lastUpdated: '',
+      spacesCount: 1,
+      spaces: [
+        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 80, pagesDone: 10, attachmentsDone: 5, lastEventTs: '2026-01-01', severityCounts: null }
+      ]
+    }));
+
+    service.loadLastSpaceStatuses(false).subscribe();
+
+    expect(progressMock.updateProgress).toHaveBeenCalledWith('SPACE1', { percent: 100 });
+  });
+
+  // ========== loadLastItems ==========
+
+  it('Should_StoreItemAndAttachmentEvents_When_LoadLastItems', () => {
+    apiMock.getLastScanItems.mockReturnValue(of([
+      { eventType: 'item', spaceKey: 'SPACE1', pageId: 1 },
+      { eventType: 'attachmentItem', spaceKey: 'SPACE2', pageId: 2 },
+      { eventType: 'pageComplete', spaceKey: 'SPACE1' },
+      { eventType: 'item', pageId: 3 }
+    ]));
+
+    service.loadLastItems().subscribe();
+
+    expect(storageMock.addPiiItemToSpace).toHaveBeenCalledTimes(2);
+    expect(storageMock.addPiiItemToSpace).toHaveBeenCalledWith('SPACE1', expect.objectContaining({ pageId: 1 }));
+    expect(storageMock.addPiiItemToSpace).toHaveBeenCalledWith('SPACE2', expect.objectContaining({ pageId: 2 }));
+  });
+
+  it('Should_CompleteSilently_When_LoadLastItemsFails', () => {
+    apiMock.getLastScanItems.mockReturnValue(throwError(() => new Error('fail')));
+
+    let completed = false;
+    service.loadLastItems().subscribe({ complete: () => (completed = true) });
+
+    expect(completed).toBe(true);
+    expect(storageMock.addPiiItemToSpace).not.toHaveBeenCalled();
+  });
+
+  // ========== reapplyLastScanUi via fetchSpaces ==========
+
+  it('Should_ReapplyCachedStatuses_When_FetchSpacesAfterStatusesLoaded', () => {
+    service.lastSpaceStatuses.set([
+      { spaceKey: 'SPACE1', status: 'COMPLETED', pagesDone: 1, attachmentsDone: 0, lastEventTs: '2026-01-01', progressPercentage: 90 }
+    ]);
+
+    service.fetchSpaces().subscribe();
+
+    expect(utilsMock.updateSpace).toHaveBeenCalledWith('SPACE1', expect.objectContaining({ status: 'OK' }));
+    expect(progressMock.updateProgress).toHaveBeenCalledWith('SPACE1', { percent: 90 });
+  });
+
+  // ========== refreshSpaces ==========
+
+  it('Should_ClearNotification_When_RefreshSpaces', () => {
+    service.hasNewSpaces.set(true);
+    service.newSpacesCount.set(3);
+
+    service.refreshSpaces();
+
+    expect(service.hasNewSpaces()).toBe(false);
+    expect(service.newSpacesCount()).toBe(0);
+  });
+
+  // ========== Background polling new-spaces detection ==========
+
+  it('Should_RaiseNotification_When_PollingDetectsNewSpaces', () => {
+    pollingMock.startPolling.mockReturnValue(of({ hasNewSpaces: true, newSpacesCount: 4 }));
+
+    service.startBackgroundPolling();
+
+    expect(service.hasNewSpaces()).toBe(true);
+    expect(service.newSpacesCount()).toBe(4);
+  });
+
+  // ========== getSpaceUpdateTooltip branches ==========
+
+  it('Should_ListPagesAndAttachmentsWithOverflow_When_TooltipForUpdatedSpace', () => {
+    service.spacesUpdateInfo.set([{
+      spaceKey: 'SPACE1',
+      spaceName: 'Space 1',
+      hasBeenUpdated: true,
+      updatedPages: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
+      updatedAttachments: ['A1', 'A2'],
+      lastModified: '2026-01-15T10:00:00Z',
+      lastScanDate: null
+    }]);
+
+    const tooltip = service.getSpaceUpdateTooltip('SPACE1');
+
+    expect(tooltip).toContain('- P1');
+    expect(tooltip).toContain('- A1');
+    expect(translocoMock.translate).toHaveBeenCalledWith(
+      'dashboard.notifications.spaceUpdated.tooltip.andMore',
+      { count: 1 }
+    );
+  });
+
+  it('Should_ReturnContentModifiedFallback_When_NoSpecificListsProvided', () => {
+    service.spacesUpdateInfo.set([{
+      spaceKey: 'SPACE1',
+      spaceName: 'Space 1',
+      hasBeenUpdated: true,
+      updatedPages: [],
+      updatedAttachments: [],
+      lastModified: null,
+      lastScanDate: null
+    }]);
+
+    const tooltip = service.getSpaceUpdateTooltip('SPACE1');
+
+    expect(tooltip).toBe('dashboard.notifications.spaceUpdated.tooltip.contentModified');
+  });
+
+  it('Should_UseEnglishLocale_When_ActiveLangIsEnglish', () => {
+    translocoMock.getActiveLang.mockReturnValue('en');
+    service.spacesUpdateInfo.set([{
+      spaceKey: 'SPACE1',
+      spaceName: 'Space 1',
+      hasBeenUpdated: true,
+      updatedPages: ['P1'],
+      updatedAttachments: [],
+      lastModified: '2026-01-15T10:00:00Z',
+      lastScanDate: null
+    }]);
+
+    const tooltip = service.getSpaceUpdateTooltip('SPACE1');
+
+    expect(tooltip).toContain('- P1');
+    expect(translocoMock.getActiveLang).toHaveBeenCalled();
+  });
 });

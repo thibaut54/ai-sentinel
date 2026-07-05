@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/d2c633d6-3209-4b2f-b80a-88fe2e41f945
 
 **Problem Solved:** AI Sentinel automates PII detection in Confluence spaces, identifying names, emails, addresses, phone numbers, credit cards, and other sensitive data.
 
-**Solution:** The application uses a multi-model approach (GLiNER, Presidio, regex patterns) with a modern microservices architecture to scan, analyze, and report detected PII.
+**Solution:** The application uses a multi-model approach (Presidio, regex patterns, Ministral) with a modern microservices architecture to scan, analyze, and report detected PII.
 
 **Added Value:**
 - ✅ Multi-language detection (FR, EN, etc.)
@@ -49,7 +49,7 @@ https://github.com/user-attachments/assets/d2c633d6-3209-4b2f-b80a-88fe2e41f945
 
 ## Features
 
-- ✅ **Multi-model PII detection**: Combines GLiNER, Presidio, and regex patterns for accurate detection
+- ✅ **Multi-model PII detection**: Combines Presidio, regex patterns, and Ministral for accurate detection
 - ✅ **Confluence support**: Automatic scanning of Confluence spaces, pages, and content
 - ✅ **Modern Web interface**: Angular dashboard with real-time scan visualization
 - ✅ **Detailed reports**: Report generation with statistics and PII location
@@ -100,7 +100,7 @@ ai-sentinel/
 - **Detector**: Python 3.13, gRPC, Hugging Face Transformers
 - **Database**: PostgreSQL 18
 - **Infrastructure**: Docker, Docker Compose
-- **AI Models**: GLiNER, Presidio, regex patterns
+- **AI Models**: Presidio, regex patterns, Ministral
 
 ## Prerequisites
 
@@ -209,7 +209,7 @@ Access the application at:
 
 **Configure your Confluence connection** directly in the AI Sentinel Settings UI (http://localhost:4200 > Settings).
 
-**AI models** (nvidia/gliner-PII, Presidio, etc.) are public and downloaded automatically on first startup. No API key is required.
+**AI models** (Presidio, Ministral, etc.) are public and downloaded automatically on first startup. No API key is required.
 
 ### Optional: Advanced Configuration
 
@@ -231,16 +231,6 @@ Models are configured in `pii-detector-service/config/models/`:
 
 This project uses pre-trained AI models from external sources:
 
-- **nvidia/gliner-PII** (Hugging Face)
-  - **License**: NVIDIA Open Model License Agreement
-  - **Usage**: The model is downloaded at runtime from Hugging Face
-  - **License Link**: https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/
-
-#### Compliance
-
-When deploying this application, users accept the terms of the NVIDIA Open Model License for the GLiNER-PII model. Refer to the model's [Hugging Face page](https://huggingface.co/nvidia/gliner-PII) for details.
-
-- **GLiNER**: `gliner-pii.toml` - Main detection model
 - **Presidio**: `presidio-detector.toml` - Microsoft Presidio detector
 - **Regex**: `regex-patterns.toml` - Regex patterns for emails, phones, etc.
 
@@ -464,7 +454,7 @@ cd pii-detector-service
 pytest --cov=pii_detector --cov-report=html
 
 # Specific tests
-pytest tests/unit/test_gliner_detector.py -v
+pytest tests/unit/test_regex_detector.py -v
 
 # Parallel tests
 pytest -n auto
@@ -597,7 +587,6 @@ Copyright © 2025 Softcom Technologies
 
 - [Hugging Face](https://huggingface.co/) - For AI models and platform
 - [Microsoft Presidio](https://github.com/microsoft/presidio) - For the PII detection framework
-- [GLiNER](https://github.com/urchade/GLiNER) - For the generalist NER model
 - [Spring Boot](https://spring.io/projects/spring-boot) - Backend framework
 - [Angular](https://angular.io/) - Frontend framework
 - All [contributors](https://github.com/Softcom-Technologies-Organization/ai-sentinel/graphs/contributors)
