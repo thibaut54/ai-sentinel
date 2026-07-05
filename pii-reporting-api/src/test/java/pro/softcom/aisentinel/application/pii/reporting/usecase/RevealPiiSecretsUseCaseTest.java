@@ -166,7 +166,7 @@ class RevealPiiSecretsUseCaseTest {
         ((TestReadPiiConfigPort) readPiiConfigPort).setAllow(true);
 
         DetectedPersonallyIdentifiableInformation entity = new DetectedPersonallyIdentifiableInformation(0, 5, "EMAIL", "Email", 0.99,
-                                                                                                         "secret@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE);
+                                                                                                         "secret@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE, null);
         ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
             .scanId(scanId)
             .spaceKey("SPACE-1")

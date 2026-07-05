@@ -86,7 +86,8 @@ class ConfluenceContentScanResultToScanEventMapperTest {
             null,  // detectedValue
             null,  // context
             null,  // maskedContext
-            DetectorSource.UNKNOWN_SOURCE
+            DetectorSource.UNKNOWN_SOURCE,
+            null   // valueFingerprint
         );
     }
 }
