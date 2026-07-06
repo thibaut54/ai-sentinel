@@ -309,9 +309,9 @@ describe('PiiObfuscationComponent', () => {
 
     const dto = selectionService().buildSelectionDto();
     expect([...dto.severities].sort((a, b) => a.localeCompare(b))).toEqual([
-      'high',
-      'low',
-      'medium',
+      'HIGH',
+      'LOW',
+      'MEDIUM',
     ]);
     expect(lastSearchRequest().selection.severities.length).toBe(3);
     const banner = query('obfuscation-entry-banner');
@@ -376,6 +376,39 @@ describe('PiiObfuscationComponent', () => {
     fixture.componentInstance.onMasterToggled(group({ masterState: 'all' }));
 
     expect(selectionService().checkedTypes().size).toBe(0);
+  });
+
+  it('Should_UncheckSeverity_When_SeverityMasterToggledWithUppercaseBackendKey', () => {
+    createEnabledComponent();
+    fixture.componentInstance.setGroupBy('severity');
+    selectionService().checkSeverity('HIGH');
+
+    fixture.componentInstance.onMasterToggled(
+      group({ key: 'HIGH', masterState: 'all' })
+    );
+
+    expect(selectionService().checkedSeverities().size).toBe(0);
+  });
+
+  it('Should_DeselectTypeGroupViaCrossAxis_When_SelectionDrivenBySeverities', () => {
+    api.searchFindings.mockReturnValue(
+      of(
+        searchResponse({
+          groups: [
+            group({ key: 'EMAIL', masterState: 'all' }),
+            group({ key: 'PHONE', masterState: 'all' }),
+            group({ key: 'IBAN', masterState: 'all' }),
+          ],
+        })
+      )
+    );
+    createEnabledComponent({ spaceKey: 'SPACE', preselect: 'true' });
+
+    fixture.componentInstance.onMasterToggled(group({ key: 'EMAIL', masterState: 'all' }));
+
+    const dto = selectionService().buildSelectionDto();
+    expect(dto.severities).toEqual([]);
+    expect([...dto.piiTypes].sort()).toEqual(['IBAN', 'PHONE']);
   });
 
   it('Should_IncludeFinding_When_UnselectedPendingRowChecked', () => {

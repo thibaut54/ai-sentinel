@@ -32,12 +32,20 @@ export class ObfuscationSelectionService {
     this.checkedTypesState.update((types) => withRemoved(types, piiType));
   }
 
+  setCheckedTypes(piiTypes: readonly string[]): void {
+    this.checkedTypesState.set(new Set(piiTypes));
+  }
+
   checkSeverity(severity: string): void {
     this.checkedSeveritiesState.update((severities) => withAdded(severities, severity));
   }
 
   uncheckSeverity(severity: string): void {
     this.checkedSeveritiesState.update((severities) => withRemoved(severities, severity));
+  }
+
+  setCheckedSeverities(severities: readonly string[]): void {
+    this.checkedSeveritiesState.set(new Set(severities));
   }
 
   excludeFinding(findingId: string): void {

@@ -25,7 +25,7 @@ import { ObfuscationGroupListComponent } from './components/obfuscation-group-li
 import { ObfuscationJobProgressComponent } from './components/obfuscation-job-progress/obfuscation-job-progress.component';
 import { TestIds } from '../test-ids.constants';
 
-const ALL_SEVERITIES = ['high', 'medium', 'low'];
+const ALL_SEVERITIES = ['HIGH', 'MEDIUM', 'LOW'];
 const PAGE_SIZES = [20, 50, 100];
 
 interface StatusFilterOption {
@@ -419,18 +419,41 @@ export class PiiObfuscationComponent {
   }
 
   private toggleTypeCriterion(group: RemediationGroupDto): void {
-    if (group.masterState === 'all') {
+    if (group.masterState !== 'all') {
+      this.selection.checkType(group.key);
+    } else if (this.selection.checkedTypes().has(group.key)) {
       this.selection.uncheckType(group.key);
     } else {
-      this.selection.checkType(group.key);
+      this.deselectGroupCrossAxis('type', group.key);
     }
   }
 
   private toggleSeverityCriterion(group: RemediationGroupDto): void {
-    if (group.masterState === 'all') {
+    if (group.masterState !== 'all') {
+      this.selection.checkSeverity(group.key);
+    } else if (this.selection.checkedSeverities().has(group.key)) {
       this.selection.uncheckSeverity(group.key);
     } else {
-      this.selection.checkSeverity(group.key);
+      this.deselectGroupCrossAxis('severity', group.key);
+    }
+  }
+
+  /**
+   * A group can be fully selected through the other axis (e.g. every type group is
+   * "all" because all severities are checked). Unchecking such a group is materialised
+   * by pinning the current-axis criteria to the still-selected groups, minus this one,
+   * so the deselection survives the backend re-resolution.
+   */
+  private deselectGroupCrossAxis(axis: RemediationGroupBy, key: string): void {
+    const remainingKeys = this.groups()
+      .filter((group) => group.masterState !== 'none' && group.key !== key)
+      .map((group) => group.key);
+    if (axis === 'type') {
+      this.selection.setCheckedTypes(remainingKeys);
+      this.selection.setCheckedSeverities([]);
+    } else {
+      this.selection.setCheckedSeverities(remainingKeys);
+      this.selection.setCheckedTypes([]);
     }
   }
 
