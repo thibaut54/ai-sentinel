@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_pii_redaction_job_space_status
 COMMENT ON TABLE pii_redaction_job IS
     'Audit journal of mass-redaction jobs: submitted selection criteria, frozen resolved finding ids, progression and per-finding outcomes. Never contains PII values.';
 COMMENT ON COLUMN pii_redaction_job.status IS
-    'Job status: RUNNING | COMPLETED | FAILED | INTERRUPTED. RUNNING jobs are marked INTERRUPTED at application boot.';
+    'Job status: RUNNING | COMPLETED | COMPLETED_WITH_ERRORS | FAILED | INTERRUPTED. RUNNING jobs are marked INTERRUPTED at application boot.';
 COMMENT ON COLUMN pii_redaction_job.resolved_finding_ids IS
     'Finding ids frozen at submission; execution never re-evaluates the selection criteria.';
 COMMENT ON COLUMN pii_redaction_job.outcomes IS

@@ -6,9 +6,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.ObfuscationJobStore;
+import org.springframework.dao.DataIntegrityViolationException;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingRedactionOutcome;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJob;
+import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobAlreadyRunningException;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobStatus;
-import pro.softcom.aisentinel.domain.pii.remediation.RedactionOutcome;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out.jpa.ObfuscationJobRepository;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out.jpa.entity.ObfuscationJobEntity;
@@ -28,16 +30,24 @@ public class JpaObfuscationJobAdapter implements ObfuscationJobStore {
 
     private static final TypeReference<List<String>> FINDING_IDS_TYPE = new TypeReference<>() {
     };
-    private static final TypeReference<Map<String, RedactionOutcome>> OUTCOMES_TYPE = new TypeReference<>() {
+    private static final TypeReference<Map<String, FindingRedactionOutcome>> OUTCOMES_TYPE = new TypeReference<>() {
     };
 
     private final ObfuscationJobRepository repository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * @throws ObfuscationJobAlreadyRunningException when the partial unique index on
+     *                                               RUNNING jobs per space rejects the insert
+     */
     @Override
     @Transactional
     public void create(ObfuscationJob job) {
-        repository.save(toEntity(job));
+        try {
+            repository.saveAndFlush(toEntity(job));
+        } catch (DataIntegrityViolationException e) {
+            throw new ObfuscationJobAlreadyRunningException(job.spaceKey());
+        }
     }
 
     @Override

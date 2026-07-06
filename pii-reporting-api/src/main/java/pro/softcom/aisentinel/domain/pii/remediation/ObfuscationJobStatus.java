@@ -8,6 +8,7 @@ package pro.softcom.aisentinel.domain.pii.remediation;
 public enum ObfuscationJobStatus {
     RUNNING,
     COMPLETED,
+    COMPLETED_WITH_ERRORS,
     FAILED,
     INTERRUPTED
 }

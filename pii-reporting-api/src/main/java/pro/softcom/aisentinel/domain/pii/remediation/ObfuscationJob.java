@@ -20,7 +20,7 @@ public record ObfuscationJob(
         List<String> resolvedFindingIds,
         int processed,
         int total,
-        Map<String, RedactionOutcome> outcomes,
+        Map<String, FindingRedactionOutcome> outcomes,
         String actor,
         Instant createdAt,
         Instant updatedAt
