@@ -13,7 +13,9 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFin
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.StatusFilter;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsResult;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationTotals;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.FindingStatusChangeRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.FindingStatusChangeRequestDto.FindingStatusChangeDto;
@@ -245,6 +247,36 @@ class RemediationDtoMapperTest {
                     .selected(true)
                     .eligibleForRedaction(true)
                     .build();
+        }
+    }
+
+    @Nested
+    @DisplayName("toSelectionCommand() method tests")
+    class ToSelectionCommandTests {
+
+        @Test
+        @DisplayName("Should_BuildCommandWithParsedStatus_When_TargetStatusValid")
+        void Should_BuildCommandWithParsedStatus_When_TargetStatusValid() {
+            RemediationSelection selection = RemediationSelection.builder().spaceKey("SPACE").build();
+
+            SelectionStatusChangeCommand command =
+                    mapper.toSelectionCommand(selection, "manually_handled", "alice");
+
+            assertSoftly(softly -> {
+                softly.assertThat(command.selection()).isSameAs(selection);
+                softly.assertThat(command.targetStatus())
+                        .isEqualTo(FindingRemediationStatus.MANUALLY_HANDLED);
+                softly.assertThat(command.actor()).isEqualTo("alice");
+            });
+        }
+
+        @Test
+        @DisplayName("Should_Throw_When_TargetStatusMissing")
+        void Should_Throw_When_TargetStatusMissing() {
+            RemediationSelection selection = RemediationSelection.builder().spaceKey("SPACE").build();
+
+            assertThatThrownBy(() -> mapper.toSelectionCommand(selection, " ", "alice"))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

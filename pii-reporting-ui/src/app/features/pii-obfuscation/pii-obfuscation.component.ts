@@ -280,18 +280,19 @@ export class PiiObfuscationComponent {
   }
 
   markSelectionTreated(): void {
-    const changes = this.visibleSelectedFindings().map((finding) => ({
-      findingId: finding.findingId,
-      targetStatus: 'MANUALLY_HANDLED' as FindingTargetStatus
-    }));
-    if (changes.length === 0) {
+    if (!this.hasSelectionCriteria()) {
       return;
     }
-    this.remediationApi.changeFindingsStatus({ changes }).subscribe((result) => {
-      this.notify('success', 'obfuscation.toast.treated', { count: result.applied.length });
-      this.selection.clear();
-      this.refreshAll();
-    });
+    this.remediationApi
+      .changeFindingsStatusBySelection({
+        selection: this.selection.buildSelectionDto(),
+        targetStatus: 'MANUALLY_HANDLED'
+      })
+      .subscribe((result) => {
+        this.notify('success', 'obfuscation.toast.treated', { count: result.applied.length });
+        this.selection.clear();
+        this.refreshAll();
+      });
   }
 
   openConfirmDialog(): void {
@@ -405,12 +406,6 @@ export class PiiObfuscationComponent {
     this.remediationApi
       .changeFindingsStatus({ changes: [{ findingId, targetStatus }] })
       .subscribe(() => this.refreshAll());
-  }
-
-  private visibleSelectedFindings(): RemediationFindingDto[] {
-    return this.groups()
-      .flatMap((group) => group.findings)
-      .filter((finding) => finding.selected);
   }
 
   private startJob(jobId: string): void {

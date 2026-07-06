@@ -9,6 +9,7 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFin
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.GroupBy;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.StatusFilter;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsResult;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
@@ -59,6 +60,15 @@ public class RemediationDtoMapper {
                 .map(this::toStatusChange)
                 .toList();
         return new FindingStatusChangeCommand(changes, actor);
+    }
+
+    public SelectionStatusChangeCommand toSelectionCommand(RemediationSelection selection,
+                                                           String targetStatus, String actor) {
+        if (targetStatus == null || targetStatus.isBlank()) {
+            throw new IllegalArgumentException("targetStatus is required");
+        }
+        return new SelectionStatusChangeCommand(selection,
+                FindingRemediationStatus.valueOf(targetStatus.toUpperCase(Locale.ROOT)), actor);
     }
 
     public RemediationSearchResponseDto toDto(RemediationFindingsResult result) {

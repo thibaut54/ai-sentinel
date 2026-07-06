@@ -60,9 +60,10 @@ public class RemediationUseCasesConfig {
             RemediationConfigPort remediationConfigPort,
             ScanResultQuery scanResultQuery,
             FindingRemediationStore findingRemediationStore,
-            ScanEventFindingResolver scanEventFindingResolver) {
+            ScanEventFindingResolver scanEventFindingResolver,
+            SelectionResolver selectionResolver) {
         return new ChangeFindingStatusUseCase(remediationConfigPort, scanResultQuery,
-                findingRemediationStore, scanEventFindingResolver, Clock.systemUTC());
+                findingRemediationStore, scanEventFindingResolver, selectionResolver, Clock.systemUTC());
     }
 
     @Bean

@@ -18,4 +18,14 @@ public interface ChangeFindingStatusPort {
      *         when the feature flag is off
      */
     FindingStatusChangeResult changeStatuses(FindingStatusChangeCommand command);
+
+    /**
+     * Resolves the selection into its PENDING findings server-side and transitions all of
+     * them to the command's target status, so bulk actions cover the whole selection
+     * regardless of pagination. Each resulting transition is validated individually.
+     *
+     * @throws pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException
+     *         when the feature flag is off
+     */
+    FindingStatusChangeResult changeStatusesBySelection(SelectionStatusChangeCommand command);
 }

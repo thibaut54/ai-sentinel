@@ -150,6 +150,7 @@ interface ApiMock {
   createJob: Mock;
   getJob: Mock;
   changeFindingsStatus: Mock;
+  changeFindingsStatusBySelection: Mock;
 }
 
 describe('PiiObfuscationComponent', () => {
@@ -168,6 +169,7 @@ describe('PiiObfuscationComponent', () => {
       createJob: vi.fn().mockReturnValue(of({ jobId: 'job-1' })),
       getJob: vi.fn().mockReturnValue(of(runningJob())),
       changeFindingsStatus: vi.fn().mockReturnValue(of({ applied: ['f1'], rejected: [] })),
+      changeFindingsStatusBySelection: vi.fn().mockReturnValue(of({ applied: ['f1'], rejected: [] })),
     };
     messageService = { add: vi.fn() };
 
@@ -537,35 +539,37 @@ describe('PiiObfuscationComponent', () => {
     expect(toast.severity).toBe('warn');
   });
 
-  it('Should_MarkOnlyVisiblySelectedFindings_When_BulkMarkTreated', () => {
-    api.searchFindings.mockReturnValue(
-      of(
-        searchResponse({
-          groups: [
-            group({
-              findings: [
-                finding({ findingId: 'f1', selected: true }),
-                finding({ findingId: 'f2', selected: false }),
-                finding({ findingId: 'f3', selected: true }),
-              ],
-            }),
-          ],
-        })
-      )
-    );
+  it('Should_MarkEntireSelectionServerSide_When_BulkMarkTreated', () => {
     createEnabledComponent();
-    api.changeFindingsStatus.mockReturnValue(of({ applied: ['f1', 'f3'], rejected: [] }));
+    selectionService().checkType('EMAIL');
+    api.changeFindingsStatusBySelection.mockReturnValue(
+      of({ applied: ['f1', 'f2', 'f3'], rejected: [] })
+    );
 
     fixture.componentInstance.markSelectionTreated();
 
-    expect(api.changeFindingsStatus).toHaveBeenCalledWith({
-      changes: [
-        { findingId: 'f1', targetStatus: 'MANUALLY_HANDLED' },
-        { findingId: 'f3', targetStatus: 'MANUALLY_HANDLED' },
-      ],
+    expect(api.changeFindingsStatusBySelection).toHaveBeenCalledWith({
+      selection: {
+        scope: { spaceKey: 'SPACE' },
+        piiTypes: ['EMAIL'],
+        severities: [],
+        excludedFindingIds: [],
+        includedFindingIds: [],
+      },
+      targetStatus: 'MANUALLY_HANDLED',
     });
+    expect(api.changeFindingsStatus).not.toHaveBeenCalled();
+    expect(selectionService().checkedTypes().size).toBe(0);
     const toast = messageService.add.mock.calls[0][0];
-    expect(toast.detail).toContain('2 finding(s) marqué(s) traité(s)');
+    expect(toast.detail).toContain('3 finding(s) marqué(s) traité(s)');
+  });
+
+  it('Should_NotCallBackend_When_BulkMarkTreatedWithoutSelectionCriteria', () => {
+    createEnabledComponent();
+
+    fixture.componentInstance.markSelectionTreated();
+
+    expect(api.changeFindingsStatusBySelection).not.toHaveBeenCalled();
   });
 
   it('Should_ClearSelectionAndDropPlan_When_BulkCleared', () => {

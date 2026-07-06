@@ -141,6 +141,11 @@ export interface ChangeFindingsStatusRequest {
   changes: FindingStatusChange[];
 }
 
+export interface SelectionStatusChangeRequest {
+  selection: RemediationSelectionDto;
+  targetStatus: FindingTargetStatus;
+}
+
 export interface RejectedStatusChange {
   findingId: string;
   reason: string;

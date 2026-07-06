@@ -11,7 +11,8 @@ import {
   RemediationConfigDto,
   RemediationFindingsSearchRequest,
   RemediationFindingsSearchResponse,
-  RemediationSelectionDto
+  RemediationSelectionDto,
+  SelectionStatusChangeRequest
 } from '../models/remediation.model';
 
 /**
@@ -69,5 +70,18 @@ export class RemediationApiService {
    */
   changeFindingsStatus(request: ChangeFindingsStatusRequest): Observable<ChangeFindingsStatusResponse> {
     return this.http.post<ChangeFindingsStatusResponse>(`${this.apiUrl}/findings/status`, request);
+  }
+
+  /**
+   * Transition every PENDING finding of a selection to a target status server-side,
+   * so bulk actions cover the whole selection instead of the current page slice.
+   */
+  changeFindingsStatusBySelection(
+    request: SelectionStatusChangeRequest
+  ): Observable<ChangeFindingsStatusResponse> {
+    return this.http.post<ChangeFindingsStatusResponse>(
+      `${this.apiUrl}/findings/status/by-selection`,
+      request
+    );
   }
 }

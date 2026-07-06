@@ -6,10 +6,13 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusC
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeCommand.StatusChange;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeResult;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeResult.RejectedChange;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
 import pro.softcom.aisentinel.application.pii.remediation.service.EligibleFinding;
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.SelectionResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.SelectionResolver.ResolvedSelection;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediation;
@@ -27,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Batch finding lifecycle transitions: false-positive reporting (immediate), manual
@@ -47,7 +51,19 @@ public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
     private final ScanResultQuery scanResultQuery;
     private final FindingRemediationStore findingRemediationStore;
     private final ScanEventFindingResolver findingResolver;
+    private final SelectionResolver selectionResolver;
     private final Clock clock;
+
+    @Override
+    public FindingStatusChangeResult changeStatusesBySelection(SelectionStatusChangeCommand command) {
+        requireEnabled();
+        ResolvedSelection resolved = selectionResolver.resolve(command.selection());
+        List<StatusChange> changes = Stream.concat(
+                        resolved.pageFindings().stream(), resolved.attachmentFindings().stream())
+                .map(finding -> new StatusChange(finding.findingId(), command.targetStatus()))
+                .toList();
+        return changeStatuses(new FindingStatusChangeCommand(changes, command.actor()));
+    }
 
     @Override
     public FindingStatusChangeResult changeStatuses(FindingStatusChangeCommand command) {

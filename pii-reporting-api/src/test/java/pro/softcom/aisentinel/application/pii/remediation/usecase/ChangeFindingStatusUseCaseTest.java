@@ -12,15 +12,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeCommand.StatusChange;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeResult;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
+import pro.softcom.aisentinel.application.pii.remediation.service.EligibleFinding;
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.SelectionResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.SelectionResolver.ResolvedSelection;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediation;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
@@ -65,6 +70,9 @@ class ChangeFindingStatusUseCaseTest {
     @Mock
     private SeverityCalculationService severityCalculationService;
 
+    @Mock
+    private SelectionResolver selectionResolver;
+
     @Captor
     private ArgumentCaptor<Collection<FindingRemediation>> upsertCaptor;
 
@@ -76,7 +84,7 @@ class ChangeFindingStatusUseCaseTest {
     void setUp() {
         useCase = new ChangeFindingStatusUseCase(remediationConfigPort, scanResultQuery,
                 findingRemediationStore, new ScanEventFindingResolver(severityCalculationService),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                selectionResolver, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(remediationConfigPort.isRemediationEnabled()).thenReturn(true);
         lenient().when(severityCalculationService.calculateSeverity("EMAIL"))
                 .thenReturn(PersonallyIdentifiableInformationSeverity.MEDIUM);
@@ -250,6 +258,77 @@ class ChangeFindingStatusUseCaseTest {
                 softly.assertThat(upsertCaptor.getValue()).hasSize(1);
             });
         }
+    }
+
+    @Nested
+    @DisplayName("changeStatusesBySelection()")
+    class BySelectionTests {
+
+        @Test
+        @DisplayName("Should_TransitionEveryResolvedPendingFinding_When_SelectionMarkedTreated")
+        void Should_TransitionEveryResolvedPendingFinding_When_SelectionMarkedTreated() {
+            RemediationSelection selection = RemediationSelection.builder()
+                    .spaceKey(SPACE)
+                    .severities(List.of(PersonallyIdentifiableInformationSeverity.MEDIUM))
+                    .build();
+            when(selectionResolver.resolve(selection)).thenReturn(new ResolvedSelection(SCAN_ID,
+                    List.of(eligible("f-1"), eligible("f-2")), List.of(eligible("f-3")), 0));
+            when(findingRemediationStore.findByIds(anyCollection())).thenReturn(List.of(
+                    rowWithId("f-1", FindingRemediationStatus.PENDING),
+                    rowWithId("f-2", FindingRemediationStatus.PENDING),
+                    rowWithId("f-3", FindingRemediationStatus.PENDING)));
+
+            FindingStatusChangeResult result = useCase.changeStatusesBySelection(
+                    new SelectionStatusChangeCommand(selection,
+                            FindingRemediationStatus.MANUALLY_HANDLED, ACTOR));
+
+            verify(findingRemediationStore).upsertAll(upsertCaptor.capture());
+            assertSoftly(softly -> {
+                softly.assertThat(result.applied()).containsExactlyInAnyOrder("f-1", "f-2", "f-3");
+                softly.assertThat(upsertCaptor.getValue()).hasSize(3);
+                softly.assertThat(upsertCaptor.getValue()).allSatisfy(row ->
+                        assertThat(row.status()).isEqualTo(FindingRemediationStatus.MANUALLY_HANDLED));
+            });
+        }
+
+        @Test
+        @DisplayName("Should_ThrowRemediationDisabledException_When_FeatureFlagOff")
+        void Should_ThrowRemediationDisabledException_When_FeatureFlagOff() {
+            when(remediationConfigPort.isRemediationEnabled()).thenReturn(false);
+            RemediationSelection selection = RemediationSelection.builder().spaceKey(SPACE).build();
+
+            assertThatThrownBy(() -> useCase.changeStatusesBySelection(
+                    new SelectionStatusChangeCommand(selection,
+                            FindingRemediationStatus.MANUALLY_HANDLED, ACTOR)))
+                    .isInstanceOf(RemediationDisabledException.class);
+            verifyNoInteractions(selectionResolver, findingRemediationStore);
+        }
+    }
+
+    private static EligibleFinding eligible(String findingId) {
+        return EligibleFinding.builder()
+                .findingId(findingId)
+                .reference(emailReference())
+                .confidence(0.9)
+                .piiTypeLabel("Email Address")
+                .maskedContext("masked-email")
+                .pageTitle("Alpha Page")
+                .build();
+    }
+
+    private FindingRemediation rowWithId(String findingId, FindingRemediationStatus status) {
+        return FindingRemediation.builder()
+                .findingId(findingId)
+                .scanId(SCAN_ID)
+                .spaceKey(SPACE)
+                .pageId("p1")
+                .piiType("EMAIL")
+                .severity(PersonallyIdentifiableInformationSeverity.MEDIUM)
+                .detector("PRESIDIO")
+                .status(status)
+                .actor("bob")
+                .occurredAt(NOW.minusSeconds(3600))
+                .build();
     }
 
     private static FindingStatusChangeCommand command(StatusChange... changes) {

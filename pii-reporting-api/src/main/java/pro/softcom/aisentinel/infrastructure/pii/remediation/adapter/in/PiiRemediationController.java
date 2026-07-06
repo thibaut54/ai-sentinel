@@ -22,6 +22,7 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.QueryRemediati
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsResult;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.TrackObfuscationJobPort;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationPlan;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.FindingStatusChangeRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.FindingStatusChangeResponseDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.ObfuscationJobCreatedDto;
@@ -32,6 +33,7 @@ import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.Reme
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationSearchRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationSearchResponseDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationSelectionDto;
+import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.SelectionStatusChangeRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.mapper.RemediationDtoMapper;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.mapper.RemediationJobDtoMapper;
 
@@ -90,6 +92,22 @@ public class PiiRemediationController {
         FindingStatusChangeResult result = changeFindingStatusPort.changeStatuses(
                 mapper.toCommand(request, actor));
         log.info("[PII_REMEDIATION] Status batch by actor={}: {} applied, {} rejected",
+                actor, result.applied().size(), result.rejected().size());
+        return ResponseEntity.ok(mapper.toDto(result));
+    }
+
+    @PostMapping("/findings/status/by-selection")
+    @Operation(summary = "Transitions every PENDING finding of a selection to a target status")
+    @PreAuthorize("@environment.getProperty('pii.remediation.enabled', 'false') == 'true'")
+    @ApiResponse(responseCode = "200", description = "Selection resolved and transitioned")
+    @ApiResponse(responseCode = "403", description = "Remediation disabled by configuration")
+    public ResponseEntity<@NonNull FindingStatusChangeResponseDto> changeFindingStatusesBySelection(
+            @RequestBody SelectionStatusChangeRequestDto request, Principal principal) {
+        String actor = principal != null ? principal.getName() : SYSTEM_ACTOR;
+        RemediationSelection selection = jobMapper.toSelection(request.selection());
+        FindingStatusChangeResult result = changeFindingStatusPort.changeStatusesBySelection(
+                mapper.toSelectionCommand(selection, request.targetStatus(), actor));
+        log.info("[PII_REMEDIATION] Selection status change by actor={}: {} applied, {} rejected",
                 actor, result.applied().size(), result.rejected().size());
         return ResponseEntity.ok(mapper.toDto(result));
     }

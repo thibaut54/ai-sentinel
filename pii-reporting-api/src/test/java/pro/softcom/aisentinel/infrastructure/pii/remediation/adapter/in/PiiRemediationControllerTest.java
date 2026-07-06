@@ -22,7 +22,9 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFin
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsQuery.StatusFilter;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationFindingsResult;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.RemediationTotals;
+import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.TrackObfuscationJobPort;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJob;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationPlan;
@@ -41,6 +43,7 @@ import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.Reme
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationSearchResponseDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationSelectionDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.RemediationTotalsDto;
+import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.dto.SelectionStatusChangeRequestDto;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.mapper.RemediationDtoMapper;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.in.mapper.RemediationJobDtoMapper;
 
@@ -197,6 +200,37 @@ class PiiRemediationControllerTest {
             controller.changeFindingStatuses(request, null);
 
             verify(mapper).toCommand(request, "system");
+        }
+    }
+
+    @Nested
+    @DisplayName("changeFindingStatusesBySelection() method tests")
+    class ChangeFindingStatusesBySelectionTests {
+
+        @Test
+        @DisplayName("Should_ResolveSelectionAndTransition_When_Requested")
+        void Should_ResolveSelectionAndTransition_When_Requested() {
+            SelectionStatusChangeRequestDto request =
+                    new SelectionStatusChangeRequestDto(selectionDto(), "MANUALLY_HANDLED");
+            SelectionStatusChangeCommand command = new SelectionStatusChangeCommand(
+                    RemediationSelection.builder().spaceKey("SPACE").build(),
+                    FindingRemediationStatus.MANUALLY_HANDLED, "alice");
+            FindingStatusChangeResult result = new FindingStatusChangeResult(List.of("f-1"), List.of());
+            FindingStatusChangeResponseDto responseDto =
+                    new FindingStatusChangeResponseDto(List.of("f-1"), List.of());
+            Principal principal = () -> "alice";
+            when(mapper.toSelectionCommand(any(RemediationSelection.class), any(), any())).thenReturn(command);
+            when(changeFindingStatusPort.changeStatusesBySelection(command)).thenReturn(result);
+            when(mapper.toDto(result)).thenReturn(responseDto);
+
+            ResponseEntity<@NonNull FindingStatusChangeResponseDto> response =
+                    controller.changeFindingStatusesBySelection(request, principal);
+
+            assertSoftly(softly -> {
+                softly.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                softly.assertThat(response.getBody()).isSameAs(responseDto);
+            });
+            verify(changeFindingStatusPort).changeStatusesBySelection(command);
         }
     }
 

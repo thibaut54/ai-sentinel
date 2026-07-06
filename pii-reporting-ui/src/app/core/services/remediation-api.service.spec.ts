@@ -146,4 +146,19 @@ describe('RemediationApiService', () => {
 
     expect(received).toEqual(response);
   });
+
+  it('Should_PostSelection_When_StatusChangedBySelection', () => {
+    const request = { selection: EMPTY_SELECTION, targetStatus: 'MANUALLY_HANDLED' as const };
+    const response: ChangeFindingsStatusResponse = { applied: ['f1', 'f2'], rejected: [] };
+
+    let received: ChangeFindingsStatusResponse | undefined;
+    service.changeFindingsStatusBySelection(request).subscribe((value) => (received = value));
+
+    const req = httpTesting.expectOne('/api/v1/pii/remediation/findings/status/by-selection');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(request);
+    req.flush(response);
+
+    expect(received).toEqual(response);
+  });
 });
