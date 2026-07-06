@@ -430,6 +430,30 @@ class StorageContentRedactorTest {
         }
 
         @Test
+        @DisplayName("Should_RedactBothValues_When_OneValueIsWordBoundedSubstringOfAnother")
+        void Should_RedactBothValues_When_OneValueIsWordBoundedSubstringOfAnother() {
+            // Given
+            String storage = fixture("46-overlapping-values");
+            String token = RedactionToken.forType("PERSON_NAME");
+            List<ValueReplacement> replacements = List.of(
+                new ValueReplacement("Meier", token),
+                new ValueReplacement("Anna Meier", token));
+
+            // When
+            RedactionResult result = redactor.redact(storage, replacements, RedactionGuardConfig.defaults());
+
+            // Then
+            String visibleTextAfter = extractedText(result.redactedXhtml());
+            assertSoftly(softly -> {
+                softly.assertThat(result.outcomes().get(0).found()).isTrue();
+                softly.assertThat(result.outcomes().get(1).found()).isTrue();
+                softly.assertThat(containsWordBounded(visibleTextAfter, "Anna Meier")).isFalse();
+                softly.assertThat(containsWordBounded(visibleTextAfter, "Meier")).isFalse();
+                softly.assertThat(visibleTextAfter).doesNotContain("Anna");
+            });
+        }
+
+        @Test
         @DisplayName("Should_ReturnOutcomesInInputOrder_When_SomeValuesNotFound")
         void Should_ReturnOutcomesInInputOrder_When_SomeValuesNotFound() {
             // Given
@@ -487,6 +511,31 @@ class StorageContentRedactorTest {
             assertSoftly(softly -> {
                 softly.assertThat(result.redactedXhtml()).isEqualTo(storage);
                 softly.assertThat(result.outcomes()).isEmpty();
+            });
+        }
+
+        @Test
+        @DisplayName("Should_KeepXmlSerializationSemantics_When_PageHasNbspAndSelfClosedMacro")
+        void Should_KeepXmlSerializationSemantics_When_PageHasNbspAndSelfClosedMacro() {
+            // Given
+            String storage = fixture("47-xml-serialization");
+            String token = RedactionToken.forType("PERSON_NAME");
+
+            // When
+            RedactionResult result = redactor.redact(
+                storage, List.of(new ValueReplacement("Jean Dupont", token)), RedactionGuardConfig.defaults());
+
+            // Then
+            assertSoftly(softly -> {
+                softly.assertThat(result.outcomes().getFirst().occurrencesReplaced()).isEqualTo(1);
+                softly.assertThat(result.redactedXhtml()).contains(token);
+                softly.assertThat(result.redactedXhtml())
+                    .as("U+00A0 must keep XML numeric-entity escaping, not HTML &nbsp;")
+                    .contains("&#xa0;")
+                    .doesNotContain("&nbsp;");
+                softly.assertThat(result.redactedXhtml())
+                    .as("self-closed macro must stay self-closed under XML syntax")
+                    .doesNotContain("</ac:image>");
             });
         }
 

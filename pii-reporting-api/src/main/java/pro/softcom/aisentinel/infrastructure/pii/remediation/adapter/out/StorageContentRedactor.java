@@ -9,12 +9,14 @@ import org.jsoup.parser.Parser;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.IntStream;
 
 /**
  * Replaces plaintext PII values with redaction tokens directly inside Confluence
@@ -44,27 +46,41 @@ public class StorageContentRedactor {
     private static final String TEL_SCHEME = "tel:";
 
     /**
-     * Applies every replacement sequentially on the same document; tokens already
-     * written never re-match. Returns one outcome per replacement, in input order.
-     * When nothing matches, the input string is returned verbatim.
+     * Applies every replacement on the same document; tokens already written never
+     * re-match. Longer values are applied before shorter ones so a value that is a
+     * word-bounded substring of another (e.g. "Doe" vs "John Doe") never shadows the
+     * containing value. Returns one outcome per replacement, in input order. When
+     * nothing matches, the input string is returned verbatim.
      */
     public RedactionResult redact(String storageXhtml, List<ValueReplacement> replacements,
                                   RedactionGuardConfig guardConfig) {
         Document document = parseStorage(storageXhtml);
-        List<ValueOutcome> outcomes = new ArrayList<>();
+        int[] occurrences = new int[replacements.size()];
         int totalReplaced = 0;
-        for (ValueReplacement value : replacements) {
-            int occurrences = redactValue(document, value, guardConfig);
-            outcomes.add(new ValueOutcome(occurrences));
-            totalReplaced += occurrences;
+        for (int index : indicesByDescendingValueLength(replacements)) {
+            int replaced = redactValue(document, replacements.get(index), guardConfig);
+            occurrences[index] = replaced;
+            totalReplaced += replaced;
+        }
+        List<ValueOutcome> outcomes = new ArrayList<>(replacements.size());
+        for (int replaced : occurrences) {
+            outcomes.add(new ValueOutcome(replaced));
         }
         String redactedXhtml = totalReplaced > 0 ? document.outerHtml() : storageXhtml;
         return new RedactionResult(redactedXhtml, outcomes);
     }
 
+    private static List<Integer> indicesByDescendingValueLength(List<ValueReplacement> replacements) {
+        return IntStream.range(0, replacements.size()).boxed()
+            .sorted(Comparator.comparingInt(
+                (Integer index) -> NormalizedText.normalizeValue(replacements.get(index).plaintextValue()).length())
+                .reversed())
+            .toList();
+    }
+
     private static Document parseStorage(String storageXhtml) {
         Document document = Jsoup.parse(storageXhtml, "", Parser.xmlParser());
-        document.outputSettings(new Document.OutputSettings().prettyPrint(false));
+        document.outputSettings().prettyPrint(false);
         return document;
     }
 
