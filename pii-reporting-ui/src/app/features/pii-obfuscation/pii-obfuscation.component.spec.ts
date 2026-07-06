@@ -123,6 +123,7 @@ function searchResponse(
     page: 0,
     pageSize: 20,
     totalElements: 12,
+    nonEligibleLegacyCount: 0,
     ...overrides,
   };
 }

@@ -96,6 +96,7 @@ export interface RemediationFindingsSearchResponse {
   page: number;
   pageSize: number;
   totalElements: number;
+  nonEligibleLegacyCount: number;
 }
 
 export interface ObfuscationPlanDto {

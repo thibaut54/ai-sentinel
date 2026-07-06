@@ -63,7 +63,8 @@ describe('RemediationApiService', () => {
       totals: { pending: 0, handled: 0, falsePositive: 0, total: 0 },
       page: 2,
       pageSize: 50,
-      totalElements: 0
+      totalElements: 0,
+      nonEligibleLegacyCount: 0
     };
 
     let received: RemediationFindingsSearchResponse | undefined;

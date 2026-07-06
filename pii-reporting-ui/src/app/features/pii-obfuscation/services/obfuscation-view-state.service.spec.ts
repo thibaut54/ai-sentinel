@@ -99,7 +99,8 @@ describe('ObfuscationViewStateService', () => {
       totals: { pending: 10, handled: 1, falsePositive: 1, total: 12 },
       page: 0,
       pageSize: 20,
-      totalElements: 12
+      totalElements: 12,
+      nonEligibleLegacyCount: 0
     };
 
     service.lastSearchResponse.set(response);
