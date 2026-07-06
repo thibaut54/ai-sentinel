@@ -3,6 +3,7 @@ package pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.ObfuscationJobStore;
@@ -28,6 +29,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class JpaObfuscationJobAdapter implements ObfuscationJobStore {
 
+    private static final String RUNNING_JOB_CONSTRAINT = "uq_pii_redaction_job_running_per_space";
+
     private static final TypeReference<List<String>> FINDING_IDS_TYPE = new TypeReference<>() {
     };
     private static final TypeReference<Map<String, FindingRedactionOutcome>> OUTCOMES_TYPE = new TypeReference<>() {
@@ -46,8 +49,20 @@ public class JpaObfuscationJobAdapter implements ObfuscationJobStore {
         try {
             repository.saveAndFlush(toEntity(job));
         } catch (DataIntegrityViolationException e) {
-            throw new ObfuscationJobAlreadyRunningException(job.spaceKey());
+            if (isRunningJobConflict(e)) {
+                throw new ObfuscationJobAlreadyRunningException(job.spaceKey());
+            }
+            throw e;
         }
+    }
+
+    private static boolean isRunningJobConflict(DataIntegrityViolationException e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation) {
+                return RUNNING_JOB_CONSTRAINT.equalsIgnoreCase(violation.getConstraintName());
+            }
+        }
+        return false;
     }
 
     @Override

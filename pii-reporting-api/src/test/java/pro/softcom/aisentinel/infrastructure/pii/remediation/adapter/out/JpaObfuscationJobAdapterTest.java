@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRedactionOutcome;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJob;
@@ -19,6 +20,7 @@ import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out.jpa.ObfuscationJobRepository;
 import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out.jpa.entity.ObfuscationJobEntity;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -132,11 +134,31 @@ class JpaObfuscationJobAdapterTest {
         @DisplayName("Should_TranslateConstraintViolation_When_RunningJobAlreadyExistsForSpace")
         void Should_TranslateConstraintViolation_When_RunningJobAlreadyExistsForSpace() {
             when(repository.saveAndFlush(any(ObfuscationJobEntity.class)))
-                    .thenThrow(new DataIntegrityViolationException("duplicate RUNNING job"));
+                    .thenThrow(runningJobUniqueViolation());
 
             assertThatThrownBy(() -> adapter.create(domainJob()))
                     .isInstanceOf(ObfuscationJobAlreadyRunningException.class)
                     .hasMessageContaining(SPACE_KEY);
+        }
+
+        @Test
+        @DisplayName("Should_RethrowOriginal_When_ViolationIsNotRunningJobUniqueIndex")
+        void Should_RethrowOriginal_When_ViolationIsNotRunningJobUniqueIndex() {
+            DataIntegrityViolationException other = new DataIntegrityViolationException(
+                    "not-null violation",
+                    new ConstraintViolationException("actor must not be null",
+                            new SQLException("null value"), "pii_redaction_job_actor_not_null"));
+            when(repository.saveAndFlush(any(ObfuscationJobEntity.class))).thenThrow(other);
+
+            assertThatThrownBy(() -> adapter.create(domainJob()))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .isNotInstanceOf(ObfuscationJobAlreadyRunningException.class);
+        }
+
+        private static DataIntegrityViolationException runningJobUniqueViolation() {
+            return new DataIntegrityViolationException("duplicate RUNNING job",
+                    new ConstraintViolationException("duplicate key", new SQLException("duplicate"),
+                            "uq_pii_redaction_job_running_per_space"));
         }
     }
 
