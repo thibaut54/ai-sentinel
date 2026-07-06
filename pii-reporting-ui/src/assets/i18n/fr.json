@@ -984,6 +984,104 @@
     },
     "internal": "Une erreur inattendue est survenue. Contactez l'administrateur si le problème persiste."
   },
+  "obfuscation": {
+    "entry": {
+      "space": "Caviarder l'espace",
+      "page": "Caviarder la page",
+      "attachment": "Caviarder la pièce jointe"
+    },
+    "spaceSub": "{{total}} findings · dernier scan {{ts}}",
+    "stats": {
+      "toTreat": "À traiter",
+      "treated": "Traités",
+      "falsePositives": "Faux positifs"
+    },
+    "entryBanner": {
+      "space": "Ouvert depuis le tableau de bord — <b>{{count}}</b> findings de « {{space}} » pré-sélectionnés pour revue.",
+      "page": "Ouvert depuis l'item <b>{{name}}</b> — <b>{{count}}</b> findings pré-sélectionnés pour revue."
+    },
+    "dismiss": "Fermer",
+    "searchPlaceholder": "Rechercher une valeur, une page, un type…",
+    "filter": {
+      "all": "Tous",
+      "pending": "À traiter",
+      "treated": "Traités",
+      "fp": "Faux positifs"
+    },
+    "selectAllPending": "Tout sélectionner (à traiter)",
+    "pageFilterChip": "Item : {{name}}",
+    "groupBy": {
+      "label": "Grouper par",
+      "type": "Type",
+      "severity": "Sévérité"
+    },
+    "expandAll": "Tout déplier",
+    "collapseAll": "Tout replier",
+    "selectAllGroup": "Sélectionner tout le groupe (toutes pages)",
+    "nSelectedShort": "{{count}} sélectionnés",
+    "groupPageHint": "{{visible}} occurrences affichées sur {{total}} — cocher l'en-tête sélectionne les {{total}}, y compris sur les autres pages.",
+    "select": "Sélectionner",
+    "status": {
+      "pending": "À traiter",
+      "redacted": "Caviardé",
+      "manual": "Traité (manuel)",
+      "fp": "Faux positif"
+    },
+    "redactedValue": "Caviardé",
+    "severity": {
+      "high": "Critique",
+      "medium": "Modéré",
+      "low": "Faible"
+    },
+    "action": {
+      "markManual": "Marquer comme traité manuellement",
+      "undoManual": "Rétablir « à traiter »",
+      "markFp": "Signaler faux positif",
+      "restore": "Rétablir"
+    },
+    "bulk": {
+      "ariaLabel": "Actions groupées",
+      "selectedForObf": "sélectionnés à caviarder",
+      "fpSignaled": "{{count}} faux positif(s) signalé(s)",
+      "clear": "Effacer",
+      "markTreated": "Marquer traité",
+      "markTreatedHint": "Marquer la sélection comme traitée manuellement",
+      "obfuscateN": "Caviarder ({{count}})"
+    },
+    "confirm": {
+      "title": "Caviarder {{count}} finding(s) ?",
+      "irreversibleTitle": "Action irréversible.",
+      "irreversibleBody": "Le contenu sera définitivement caviardé dans le document source (Confluence). Cette opération ne peut pas être annulée.",
+      "lead": "Vous êtes sur le point de caviarder <b>{{count}}</b> occurrence(s) dans <b>{{space}}</b>.",
+      "total": "Total",
+      "cancel": "Annuler",
+      "fpFeedbackNote": "{{count}} occurrence(s) exclue(s) et signalée(s) comme faux positif (feedback détection)."
+    },
+    "toast": {
+      "obfuscated": "<b>{{count}}</b> finding(s) caviardé(s) dans la source.",
+      "treated": "<b>{{count}}</b> finding(s) marqué(s) traité(s).",
+      "completedWithIssues": "Caviardage terminé avec des erreurs — consultez le détail des résultats."
+    },
+    "pager": {
+      "label": "{{first}}–{{last}} sur {{total}} findings",
+      "loading": "Chargement…",
+      "prev": "Précédent",
+      "next": "Suivant",
+      "rowsPerPage": "Par page :"
+    },
+    "noFindings": "Aucun finding ne correspond.",
+    "job": {
+      "running": "Caviardage en cours… {{done}}/{{total}}",
+      "rescanRecommended": "Caviardage terminé — relancez un scan pour mettre à jour les findings.",
+      "succeeded": "Réussis",
+      "failed": "Échoués",
+      "skipped": "Ignorés"
+    },
+    "ineligible": {
+      "attachment": "Pièce jointe non caviardable ({{kind}})"
+    },
+    "featureDisabled": "Le caviardage automatique est désactivé pour cette instance."
+  },
   "piiTypes": {
     "EMAIL": "Email",
     "PHONE": "Téléphone",

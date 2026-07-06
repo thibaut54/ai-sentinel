@@ -1,0 +1,118 @@
+.ob-confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.ob-confirm-warning {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  background: var(--sentinel-severity-high-bg);
+  color: var(--sentinel-severity-high-text);
+  border: 1px solid var(--sentinel-severity-high-border);
+  font-size: 0.8125rem;
+}
+
+.ob-confirm-warning .pi {
+  margin-top: 0.1rem;
+}
+
+.ob-confirm-lead {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sentinel-text-body);
+}
+
+.ob-breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--sentinel-border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.8125rem;
+}
+
+.ob-breakdown td {
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--sentinel-border-light);
+  color: var(--sentinel-text-body);
+}
+
+.ob-breakdown-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ob-breakdown-total td {
+  font-weight: 700;
+  background: var(--sentinel-bg-page);
+  border-bottom: none;
+}
+
+.ob-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  background: var(--sentinel-text-muted);
+}
+
+.ob-dot--high {
+  background: var(--sentinel-severity-high);
+}
+
+.ob-dot--medium {
+  background: var(--sentinel-severity-medium);
+}
+
+.ob-dot--low {
+  background: var(--sentinel-severity-low);
+}
+
+.ob-confirm-fp {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ob-btn:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 1px;
+}
+
+.ob-btn--secondary {
+  background: var(--sentinel-bg-card);
+  border-color: var(--sentinel-border-input);
+  color: var(--sentinel-text-body);
+}
+
+.ob-btn--secondary:hover {
+  border-color: var(--sentinel-border-strong);
+}
+
+.ob-btn--danger {
+  background: var(--sentinel-severity-high);
+  color: #fff;
+}
+
+.ob-btn--danger:hover {
+  filter: brightness(0.92);
+}
