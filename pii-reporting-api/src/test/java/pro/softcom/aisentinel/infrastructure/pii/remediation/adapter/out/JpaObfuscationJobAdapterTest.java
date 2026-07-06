@@ -9,7 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import pro.softcom.aisentinel.domain.pii.remediation.FindingRedactionOutcome;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJob;
+import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobAlreadyRunningException;
 import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RedactionOutcome;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
@@ -23,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -66,7 +70,8 @@ class JpaObfuscationJobAdapterTest {
                 .resolvedFindingIds(List.of("finding-1", "finding-2"))
                 .processed(1)
                 .total(2)
-                .outcomes(Map.of("finding-1", RedactionOutcome.REDACTED))
+                .outcomes(Map.of("finding-1",
+                        FindingRedactionOutcome.of("EMAIL_ADDRESS", RedactionOutcome.REDACTED)))
                 .actor("compliance-officer")
                 .createdAt(CREATED_AT)
                 .updatedAt(UPDATED_AT)
@@ -99,7 +104,7 @@ class JpaObfuscationJobAdapterTest {
             adapter.create(domainJob());
 
             ArgumentCaptor<ObfuscationJobEntity> captor = ArgumentCaptor.forClass(ObfuscationJobEntity.class);
-            verify(repository).save(captor.capture());
+            verify(repository).saveAndFlush(captor.capture());
             ObfuscationJobEntity saved = captor.getValue();
 
             assertSoftly(softly -> {
@@ -113,11 +118,25 @@ class JpaObfuscationJobAdapterTest {
                 softly.assertThat(saved.getResolvedFindingIds().get(1).asText()).isEqualTo("finding-2");
                 softly.assertThat(saved.getProcessed()).isEqualTo(1);
                 softly.assertThat(saved.getTotal()).isEqualTo(2);
-                softly.assertThat(saved.getOutcomes().get("finding-1").asText()).isEqualTo("REDACTED");
+                softly.assertThat(saved.getOutcomes().get("finding-1").get("outcome").asText())
+                        .isEqualTo("REDACTED");
+                softly.assertThat(saved.getOutcomes().get("finding-1").get("piiType").asText())
+                        .isEqualTo("EMAIL_ADDRESS");
                 softly.assertThat(saved.getActor()).isEqualTo("compliance-officer");
                 softly.assertThat(saved.getCreatedAt()).isEqualTo(CREATED_AT);
                 softly.assertThat(saved.getUpdatedAt()).isEqualTo(UPDATED_AT);
             });
+        }
+
+        @Test
+        @DisplayName("Should_TranslateConstraintViolation_When_RunningJobAlreadyExistsForSpace")
+        void Should_TranslateConstraintViolation_When_RunningJobAlreadyExistsForSpace() {
+            when(repository.saveAndFlush(any(ObfuscationJobEntity.class)))
+                    .thenThrow(new DataIntegrityViolationException("duplicate RUNNING job"));
+
+            assertThatThrownBy(() -> adapter.create(domainJob()))
+                    .isInstanceOf(ObfuscationJobAlreadyRunningException.class)
+                    .hasMessageContaining(SPACE_KEY);
         }
     }
 
@@ -132,8 +151,9 @@ class JpaObfuscationJobAdapterTest {
                     .processed(2)
                     .status(ObfuscationJobStatus.COMPLETED)
                     .outcomes(Map.of(
-                            "finding-1", RedactionOutcome.REDACTED,
-                            "finding-2", RedactionOutcome.SKIPPED_VALUE_NOT_FOUND))
+                            "finding-1", FindingRedactionOutcome.of("EMAIL_ADDRESS", RedactionOutcome.REDACTED),
+                            "finding-2", FindingRedactionOutcome.of("EMAIL_ADDRESS",
+                                    RedactionOutcome.SKIPPED_VALUE_NOT_FOUND)))
                     .build();
 
             adapter.update(updated);
@@ -145,7 +165,7 @@ class JpaObfuscationJobAdapterTest {
             assertSoftly(softly -> {
                 softly.assertThat(saved.getStatus()).isEqualTo("COMPLETED");
                 softly.assertThat(saved.getProcessed()).isEqualTo(2);
-                softly.assertThat(saved.getOutcomes().get("finding-2").asText())
+                softly.assertThat(saved.getOutcomes().get("finding-2").get("outcome").asText())
                         .isEqualTo("SKIPPED_VALUE_NOT_FOUND");
             });
         }

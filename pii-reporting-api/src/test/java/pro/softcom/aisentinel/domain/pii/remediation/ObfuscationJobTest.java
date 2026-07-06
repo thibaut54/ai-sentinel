@@ -31,7 +31,8 @@ class ObfuscationJobTest {
                 .resolvedFindingIds(List.of("finding-1", "finding-2"))
                 .processed(1)
                 .total(2)
-                .outcomes(Map.of("finding-1", RedactionOutcome.REDACTED))
+                .outcomes(Map.of("finding-1",
+                        FindingRedactionOutcome.of("EMAIL_ADDRESS", RedactionOutcome.REDACTED)))
                 .actor("compliance-officer")
                 .createdAt(Instant.parse("2026-07-05T10:00:00Z"))
                 .updatedAt(Instant.parse("2026-07-05T10:05:00Z"));
@@ -55,7 +56,8 @@ class ObfuscationJobTest {
                 softly.assertThat(obfuscationJob.processed()).isEqualTo(1);
                 softly.assertThat(obfuscationJob.total()).isEqualTo(2);
                 softly.assertThat(obfuscationJob.outcomes())
-                        .containsEntry("finding-1", RedactionOutcome.REDACTED);
+                        .containsEntry("finding-1",
+                                FindingRedactionOutcome.of("EMAIL_ADDRESS", RedactionOutcome.REDACTED));
                 softly.assertThat(obfuscationJob.actor()).isEqualTo("compliance-officer");
                 softly.assertThat(obfuscationJob.createdAt()).isEqualTo(Instant.parse("2026-07-05T10:00:00Z"));
                 softly.assertThat(obfuscationJob.updatedAt()).isEqualTo(Instant.parse("2026-07-05T10:05:00Z"));

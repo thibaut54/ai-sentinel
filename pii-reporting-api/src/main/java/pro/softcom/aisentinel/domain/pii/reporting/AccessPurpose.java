@@ -14,5 +14,11 @@ public enum AccessPurpose {
      */
     USER_DISPLAY,
 
+    /**
+     * Decryption of PII values by a redaction job in order to locate and replace them
+     * in the source document. Each batch decryption is audit-logged.
+     */
+    REDACTION,
+
     // Future purposes can be added here as needed
 }

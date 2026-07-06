@@ -22,6 +22,7 @@ import pro.softcom.aisentinel.application.pii.export.exception.UnsupportedSource
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorException;
 import pro.softcom.aisentinel.domain.pii.remediation.AttachmentRedactionUnsupportedException;
 import pro.softcom.aisentinel.domain.pii.remediation.IllegalStatusTransitionException;
+import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobAlreadyRunningException;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
 import pro.softcom.aisentinel.domain.pii.remediation.SelectionOutdatedException;
 import pro.softcom.aisentinel.domain.pii.scan.IllegalScanStatusTransitionException;
@@ -203,6 +204,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("[ERROR_HANDLER] Remediation selection outdated: {}", ex.getMessage());
         return problemWith(HttpStatus.CONFLICT, "Selection Outdated",
                 "error.remediation.selection_outdated");
+    }
+
+    @ExceptionHandler(ObfuscationJobAlreadyRunningException.class)
+    ProblemDetail handleObfuscationJobAlreadyRunning(ObfuscationJobAlreadyRunningException ex) {
+        log.warn("[ERROR_HANDLER] Obfuscation job already running: {}", ex.getMessage());
+        return problemWith(HttpStatus.CONFLICT, "Obfuscation Job Already Running",
+                "error.remediation.job_already_running");
     }
 
     // ========== Export exceptions (3) ==========
