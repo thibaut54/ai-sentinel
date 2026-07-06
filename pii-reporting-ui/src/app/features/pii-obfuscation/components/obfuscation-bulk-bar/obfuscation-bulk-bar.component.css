@@ -1,0 +1,150 @@
+.ob-bulkbar {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: var(--sentinel-bg-card);
+  border: 1px solid var(--sentinel-border-default);
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.18);
+  z-index: 900;
+  animation: ob-bulk-slide-up 0.2s ease-out;
+}
+
+@keyframes ob-bulk-slide-up {
+  from {
+    transform: translate(-50%, 150%);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+
+.ob-bulk-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ob-bulk-counter {
+  min-width: 2.1rem;
+  height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--sentinel-focus-ring);
+  color: #fff;
+  font-weight: 700;
+  padding: 0 0.4rem;
+}
+
+.ob-bulk-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8125rem;
+  color: var(--sentinel-text-body);
+}
+
+.ob-bulk-text small {
+  color: var(--sentinel-text-secondary);
+  font-size: 0.72rem;
+}
+
+.ob-bulk-chips {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ob-bulk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--sentinel-chip-bg);
+  color: var(--sentinel-chip-fg);
+  border: 1px solid var(--sentinel-chip-border);
+}
+
+.ob-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sentinel-text-muted);
+}
+
+.ob-dot--high {
+  background: var(--sentinel-severity-high);
+}
+
+.ob-dot--medium {
+  background: var(--sentinel-severity-medium);
+}
+
+.ob-dot--low {
+  background: var(--sentinel-severity-low);
+}
+
+.ob-bulk-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.ob-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ob-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ob-btn:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 1px;
+}
+
+.ob-btn--ghost {
+  background: transparent;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-btn--ghost:hover {
+  background: var(--sentinel-bg-hover);
+}
+
+.ob-btn--secondary {
+  background: var(--sentinel-bg-card);
+  border-color: var(--sentinel-border-input);
+  color: var(--sentinel-text-body);
+}
+
+.ob-btn--secondary:hover {
+  border-color: var(--sentinel-border-strong);
+}
+
+.ob-btn--primary {
+  background: var(--sentinel-focus-ring);
+  color: #fff;
+}
+
+.ob-btn--primary:hover {
+  filter: brightness(0.92);
+}

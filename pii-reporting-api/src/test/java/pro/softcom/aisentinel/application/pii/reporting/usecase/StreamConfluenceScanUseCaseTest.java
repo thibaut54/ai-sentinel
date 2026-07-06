@@ -107,7 +107,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService, value -> null);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -622,7 +622,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(blankUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(blankUrlProvider, piiContextExtractor, severityCalculationService, value -> null);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,
@@ -691,7 +691,7 @@ class StreamConfluenceScanUseCaseTest {
         var parserFactory = new ContentParserFactory(new PlainTextParser(), new HtmlContentParser());
         var piiContextExtractor = new PiiContextExtractor(parserFactory);
         ScanProgressCalculator progressCalculator = new ScanProgressCalculator();
-        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+        ScanEventFactory eventFactory = new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService, value -> null);
         ScanCheckpointService checkpointService = new ScanCheckpointService(scanCheckpointRepository);
         PublishEventPort publishEventPort = new ScanEventPublisherAdapter(applicationEventPublisher);
         ScanEventDispatcher scanEventDispatcher = new ScanEventDispatcher(publishEventPort,

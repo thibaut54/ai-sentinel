@@ -269,10 +269,12 @@ button.expanded-header {
   font-size: 10px;
 }
 
-/* Top reveal action row */
+/* Top actions row (obfuscation entry + reveal) */
 .card-header-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
   padding: 10px 20px 0;
 }
 

@@ -1,0 +1,275 @@
+<section class="ob-page" [attr.data-testid]="testIds.page">
+  @if (remediationConfig.enabled()) {
+    <header class="ob-head">
+      <h2 class="ob-title">
+        <i class="pi pi-globe" aria-hidden="true"></i>
+        {{ selection.scope()?.spaceKey }}
+      </h2>
+
+      @if (totals(); as currentTotals) {
+        <div class="ob-progress" [attr.data-testid]="testIds.stats">
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.pending }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--pending" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.toTreat' | transloco }}
+            </span>
+          </div>
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.handled }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--treated" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.treated' | transloco }}
+            </span>
+          </div>
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.falsePositive }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--fp" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.falsePositives' | transloco }}
+            </span>
+          </div>
+          <div class="ob-progress-track" aria-hidden="true">
+            <div
+              class="ob-progress-fill ob-progress-fill--treated"
+              [style.width.%]="percentOfTotal(currentTotals.handled)"
+            ></div>
+            <div
+              class="ob-progress-fill ob-progress-fill--fp"
+              [style.width.%]="percentOfTotal(currentTotals.falsePositive)"
+            ></div>
+          </div>
+        </div>
+      }
+    </header>
+
+    @if (showBanner()) {
+      <div class="ob-entry-banner" role="status" [attr.data-testid]="testIds.entryBanner">
+        <i class="pi pi-bolt" aria-hidden="true"></i>
+        @if (selection.scope()?.pageId || selection.scope()?.attachmentName) {
+          <span
+            [innerHTML]="
+              'obfuscation.entryBanner.page'
+                | transloco: { name: itemChipLabel(), count: totals()?.pending ?? 0 }
+            "
+          ></span>
+        } @else {
+          <span
+            [innerHTML]="
+              'obfuscation.entryBanner.space'
+                | transloco: { space: selection.scope()?.spaceKey, count: totals()?.pending ?? 0 }
+            "
+          ></span>
+        }
+        <button
+          type="button"
+          class="ob-banner-dismiss"
+          (click)="bannerDismissed.set(true)"
+          [attr.aria-label]="'obfuscation.dismiss' | transloco"
+          [attr.data-testid]="testIds.entryBannerDismiss"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+
+    <div class="ob-content" [attr.data-testid]="testIds.content">
+      <div class="ob-toolbar">
+        <span class="ob-search">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <input
+            type="search"
+            [value]="viewState.searchText()"
+            (input)="onSearchInput($event)"
+            [placeholder]="'obfuscation.searchPlaceholder' | transloco"
+            [attr.aria-label]="'obfuscation.searchPlaceholder' | transloco"
+            [attr.data-testid]="testIds.toolbar.search"
+          />
+        </span>
+
+        <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.statusFilter">
+          @for (option of statusFilterOptions; track option.value) {
+            <button
+              type="button"
+              class="ob-segment"
+              [class.ob-segment--active]="viewState.statusFilter() === option.value"
+              [attr.aria-pressed]="viewState.statusFilter() === option.value"
+              (click)="setStatusFilter(option.value)"
+              [attr.data-testid]="testIds.toolbar.statusOption + '-' + option.value"
+            >
+              {{ option.labelKey | transloco }}
+              @if (statusCount(option.value) !== null) {
+                <span class="ob-segment-count">{{ statusCount(option.value) }}</span>
+              }
+            </button>
+          }
+        </span>
+
+        @if (itemChipLabel(); as itemName) {
+          <span class="ob-item-chip" [attr.data-testid]="testIds.toolbar.itemChip">
+            {{ 'obfuscation.pageFilterChip' | transloco: { name: itemName } }}
+            <button
+              type="button"
+              class="ob-item-chip-remove"
+              (click)="removeItemFilter()"
+              [attr.aria-label]="'obfuscation.dismiss' | transloco"
+              [attr.data-testid]="testIds.toolbar.itemChipRemove"
+            >
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </span>
+        }
+
+        <span class="ob-toolbar-spacer"></span>
+
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          (click)="selectAllPending()"
+          [attr.data-testid]="testIds.toolbar.selectAllPending"
+        >
+          <i class="pi pi-check-square" aria-hidden="true"></i>
+          {{ 'obfuscation.selectAllPending' | transloco }}
+        </button>
+      </div>
+
+      <div class="ob-toolbar ob-toolbar--secondary">
+        <span class="ob-groupby-label">{{ 'obfuscation.groupBy.label' | transloco }}</span>
+        <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.groupBy">
+          @for (option of groupByOptions; track option.value) {
+            <button
+              type="button"
+              class="ob-segment"
+              [class.ob-segment--active]="viewState.groupBy() === option.value"
+              [attr.aria-pressed]="viewState.groupBy() === option.value"
+              (click)="setGroupBy(option.value)"
+              [attr.data-testid]="testIds.toolbar.groupByOption + '-' + option.value"
+            >
+              {{ option.labelKey | transloco }}
+            </button>
+          }
+        </span>
+        <span class="ob-toolbar-spacer"></span>
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          (click)="expandAll()"
+          [attr.data-testid]="testIds.toolbar.expandAll"
+        >
+          <i class="pi pi-angle-double-down" aria-hidden="true"></i>
+          {{ 'obfuscation.expandAll' | transloco }}
+        </button>
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          (click)="collapseAll()"
+          [attr.data-testid]="testIds.toolbar.collapseAll"
+        >
+          <i class="pi pi-angle-double-up" aria-hidden="true"></i>
+          {{ 'obfuscation.collapseAll' | transloco }}
+        </button>
+      </div>
+
+      <div
+        class="ob-list"
+        [class.ob-list--loading]="viewState.loading()"
+        [class.ob-list--frozen]="activeJobId() !== null"
+      >
+        @if (groups().length > 0) {
+          <app-obfuscation-group-list
+            [groups]="groups()"
+            [groupBy]="viewState.groupBy()"
+            [openKeys]="viewState.openAccordions()"
+            (groupToggled)="onGroupToggled($event)"
+            (masterToggled)="onMasterToggled($event)"
+            (rowToggled)="onRowToggled($event)"
+            (rowMarkManual)="onRowMarkManual($event)"
+            (rowReportFalsePositive)="onRowReportFalsePositive($event)"
+            (rowRestore)="onRowRestore($event)"
+          />
+        } @else {
+          <div class="ob-empty" [attr.data-testid]="testIds.empty">
+            <i class="pi pi-inbox" aria-hidden="true"></i>
+            {{ 'obfuscation.noFindings' | transloco }}
+          </div>
+        }
+      </div>
+
+      <div class="ob-pager" [attr.data-testid]="testIds.pager.root">
+        <span class="ob-pager-label" [attr.data-testid]="testIds.pager.label">
+          @if (viewState.loading()) {
+            {{ 'obfuscation.pager.loading' | transloco }}
+          } @else {
+            {{
+              'obfuscation.pager.label'
+                | transloco
+                  : {
+                      first: pagerFirst(),
+                      last: pagerLast(),
+                      total: viewState.lastSearchResponse()?.totalElements ?? 0
+                    }
+            }}
+          }
+        </span>
+        <span class="ob-toolbar-spacer"></span>
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          [disabled]="!hasPrev()"
+          (click)="prevPage()"
+          [attr.aria-label]="'obfuscation.pager.prev' | transloco"
+          [attr.data-testid]="testIds.pager.prev"
+        >
+          <i class="pi pi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          [disabled]="!hasNext()"
+          (click)="nextPage()"
+          [attr.aria-label]="'obfuscation.pager.next' | transloco"
+          [attr.data-testid]="testIds.pager.next"
+        >
+          <i class="pi pi-chevron-right" aria-hidden="true"></i>
+        </button>
+        <label class="ob-pager-size">
+          {{ 'obfuscation.pager.rowsPerPage' | transloco }}
+          <select
+            [value]="viewState.pageSize()"
+            (change)="onPageSizeChange($event)"
+            [attr.data-testid]="testIds.pager.pageSize"
+          >
+            @for (size of pageSizes; track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
+        </label>
+      </div>
+    </div>
+
+    @if (activeJobId(); as jobId) {
+      <app-obfuscation-job-progress [jobId]="jobId" (completed)="onJobCompleted($event)" />
+    } @else {
+      <app-obfuscation-bulk-bar
+        [plan]="viewState.lastPlan()"
+        [chips]="selectedChips()"
+        (cleared)="clearSelection()"
+        (markTreated)="markSelectionTreated()"
+        (obfuscate)="openConfirmDialog()"
+      />
+    }
+
+    <app-obfuscation-confirm-dialog
+      [visible]="dialogVisible()"
+      [plan]="viewState.lastPlan()"
+      [spaceKey]="selection.scope()?.spaceKey ?? ''"
+      (confirmed)="confirmObfuscation()"
+      (cancelled)="dialogVisible.set(false)"
+    />
+  } @else {
+    <div class="ob-disabled" role="status" [attr.data-testid]="testIds.featureDisabled">
+      <i class="pi pi-lock" aria-hidden="true"></i>
+      <p>{{ 'obfuscation.featureDisabled' | transloco }}</p>
+    </div>
+  }
+</section>

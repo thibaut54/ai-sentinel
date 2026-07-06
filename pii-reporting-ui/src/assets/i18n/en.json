@@ -984,6 +984,104 @@
     },
     "internal": "An unexpected error occurred. Contact the administrator if the issue persists."
   },
+  "obfuscation": {
+    "entry": {
+      "space": "Obfuscate space",
+      "page": "Obfuscate page",
+      "attachment": "Obfuscate attachment"
+    },
+    "spaceSub": "{{total}} findings · last scan {{ts}}",
+    "stats": {
+      "toTreat": "To handle",
+      "treated": "Handled",
+      "falsePositives": "False positives"
+    },
+    "entryBanner": {
+      "space": "Opened from the dashboard — <b>{{count}}</b> findings from \"{{space}}\" pre-selected for review.",
+      "page": "Opened from item <b>{{name}}</b> — <b>{{count}}</b> findings pre-selected for review."
+    },
+    "dismiss": "Dismiss",
+    "searchPlaceholder": "Search a value, a page, a type…",
+    "filter": {
+      "all": "All",
+      "pending": "To handle",
+      "treated": "Handled",
+      "fp": "False positives"
+    },
+    "selectAllPending": "Select all (to handle)",
+    "pageFilterChip": "Item: {{name}}",
+    "groupBy": {
+      "label": "Group by",
+      "type": "Type",
+      "severity": "Severity"
+    },
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "selectAllGroup": "Select whole group (all pages)",
+    "nSelectedShort": "{{count}} selected",
+    "groupPageHint": "Showing {{visible}} of {{total}} occurrences — checking the header selects all {{total}}, including on other pages.",
+    "select": "Select",
+    "status": {
+      "pending": "To handle",
+      "redacted": "Obfuscated",
+      "manual": "Handled (manual)",
+      "fp": "False positive"
+    },
+    "redactedValue": "Obfuscated",
+    "severity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "action": {
+      "markManual": "Mark handled manually",
+      "undoManual": "Reset to \"to handle\"",
+      "markFp": "Flag false positive",
+      "restore": "Restore"
+    },
+    "bulk": {
+      "ariaLabel": "Bulk actions",
+      "selectedForObf": "selected to obfuscate",
+      "fpSignaled": "{{count}} false positive(s) flagged",
+      "clear": "Clear",
+      "markTreated": "Mark handled",
+      "markTreatedHint": "Mark selection as handled manually",
+      "obfuscateN": "Obfuscate ({{count}})"
+    },
+    "confirm": {
+      "title": "Obfuscate {{count}} finding(s)?",
+      "irreversibleTitle": "Irreversible action.",
+      "irreversibleBody": "Content will be permanently obfuscated in the source document (Confluence). This cannot be undone.",
+      "lead": "You are about to obfuscate <b>{{count}}</b> occurrence(s) in <b>{{space}}</b>.",
+      "total": "Total",
+      "cancel": "Cancel",
+      "fpFeedbackNote": "{{count}} occurrence(s) excluded and flagged as false positive (detection feedback)."
+    },
+    "toast": {
+      "obfuscated": "<b>{{count}}</b> finding(s) obfuscated in the source.",
+      "treated": "<b>{{count}}</b> finding(s) marked handled.",
+      "completedWithIssues": "Obfuscation finished with errors — check the outcome details."
+    },
+    "pager": {
+      "label": "{{first}}–{{last}} of {{total}} findings",
+      "loading": "Loading…",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsPerPage": "Per page:"
+    },
+    "noFindings": "No finding matches.",
+    "job": {
+      "running": "Obfuscating… {{done}}/{{total}}",
+      "rescanRecommended": "Obfuscation finished — run a new scan to refresh findings.",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "ineligible": {
+      "attachment": "Attachment cannot be obfuscated ({{kind}})"
+    },
+    "featureDisabled": "Automatic obfuscation is disabled for this instance."
+  },
   "piiTypes": {
     "PERSON_NAME": "Person Name",
     "NATIONAL_ID": "National ID",

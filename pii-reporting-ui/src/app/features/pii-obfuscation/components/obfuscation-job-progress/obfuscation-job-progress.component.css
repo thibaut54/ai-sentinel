@@ -1,0 +1,89 @@
+.ob-job {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 2rem));
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: var(--sentinel-bg-card);
+  border: 1px solid var(--sentinel-status-running-border);
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.18);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ob-job-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  color: var(--sentinel-text-body);
+}
+
+.ob-job-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sentinel-progress-bg);
+  overflow: hidden;
+}
+
+.ob-job-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--sentinel-progress-running);
+  transition: width 0.3s ease;
+}
+
+.ob-job-outcomes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 9rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ob-job-outcome {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-job-outcome-type {
+  font-weight: 600;
+  color: var(--sentinel-text-body);
+}
+
+.ob-job-outcome-code {
+  font-family: monospace;
+}
+
+.ob-job-outcome--redacted .ob-job-outcome-code {
+  color: var(--sentinel-status-success-text);
+}
+
+.ob-job-outcome--failed .ob-job-outcome-code {
+  color: var(--sentinel-severity-high-text);
+}
+
+.ob-job-outcome--skipped_stale .ob-job-outcome-code,
+.ob-job-outcome--skipped_value_not_found .ob-job-outcome-code,
+.ob-job-outcome--skipped_attachment .ob-job-outcome-code {
+  color: var(--sentinel-warning-text);
+}
+
+.ob-job-rescan {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--sentinel-info-text);
+}

@@ -11,6 +11,8 @@ import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource
  *   <li>sensitiveValue: the actual PII value detected (e.g., "john.doe@example.com")</li>
  *   <li>sensitiveContext: the surrounding text with the PII in clear</li>
  *   <li>maskedContext: the surrounding text with the PII masked (e.g., "Email: j***@e***.com")</li>
+ *   <li>valueFingerprint: keyed non-reversible fingerprint of the normalized value, stable
+ *       across scans; null for events persisted before fingerprinting was introduced</li>
  * </ul>
  * 
  * <p>Security: Use {@link #withMaskedSensitiveData()} to create a safe version
@@ -26,7 +28,8 @@ public record DetectedPersonallyIdentifiableInformation(
         String sensitiveValue,
         String sensitiveContext,
         String maskedContext,
-        DetectorSource source
+        DetectorSource source,
+        String valueFingerprint
 ) {
     /**
      * Creates a safe copy with sensitive data masked (set to null).

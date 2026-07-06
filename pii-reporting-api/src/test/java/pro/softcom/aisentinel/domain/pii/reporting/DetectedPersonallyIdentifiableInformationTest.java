@@ -22,6 +22,7 @@ class DetectedPersonallyIdentifiableInformationTest {
                 .sensitiveValue("john.doe@example.com")
                 .sensitiveContext("Contact: john.doe@example.com for more info")
                 .maskedContext("Contact: j***@e***.com for more info")
+                .valueFingerprint("fp-abc123")
                 .build();
 
         // When
@@ -57,7 +58,11 @@ class DetectedPersonallyIdentifiableInformationTest {
         softly.assertThat(masked.maskedContext())
                 .as("Masked context should be preserved")
                 .isEqualTo("Contact: j***@e***.com for more info");
-        
+        // The fingerprint is a keyed HMAC, not a clear value: safe to keep after masking
+        softly.assertThat(masked.valueFingerprint())
+                .as("Value fingerprint should be preserved")
+                .isEqualTo("fp-abc123");
+
         softly.assertAll();
     }
 

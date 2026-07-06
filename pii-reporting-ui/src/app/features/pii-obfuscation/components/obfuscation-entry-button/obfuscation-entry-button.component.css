@@ -1,0 +1,33 @@
+:host {
+  display: inline-flex;
+}
+
+.obfuscation-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sentinel-severity-high);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.obfuscation-entry-btn--labeled {
+  padding: 6px 14px;
+  border: 1px solid var(--sentinel-severity-high-border);
+  background: var(--sentinel-bg-card);
+}
+
+.obfuscation-entry-btn:hover {
+  background: var(--sentinel-severity-high-bg);
+}
+
+.obfuscation-entry-btn:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 2px;
+}

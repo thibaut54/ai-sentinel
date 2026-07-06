@@ -1,0 +1,71 @@
+@if (plan(); as currentPlan) {
+  @if (currentPlan.totalFindings > 0) {
+    <div
+      class="ob-bulkbar"
+      role="region"
+      [attr.aria-label]="'obfuscation.bulk.ariaLabel' | transloco"
+      [attr.data-testid]="testIds.root"
+    >
+      <div class="ob-bulk-left">
+        <span class="ob-bulk-counter" [attr.data-testid]="testIds.counter">{{
+          currentPlan.totalFindings
+        }}</span>
+        <span class="ob-bulk-text">
+          <span>{{ 'obfuscation.bulk.selectedForObf' | transloco }}</span>
+          @if (currentPlan.falsePositivesReported > 0) {
+            <small [attr.data-testid]="testIds.fpNote">
+              {{
+                'obfuscation.bulk.fpSignaled'
+                  | transloco: { count: currentPlan.falsePositivesReported }
+              }}
+            </small>
+          }
+        </span>
+      </div>
+
+      <div class="ob-bulk-chips">
+        @for (chip of visibleChips(); track chip.key) {
+          <span class="ob-bulk-chip" [attr.data-testid]="testIds.chip">
+            <span class="ob-dot ob-dot--{{ chip.severity.toLowerCase() }}" aria-hidden="true"></span>
+            {{ chip.label }} · {{ chip.selectedCount }}
+          </span>
+        }
+        @if (overflowChipCount() > 0) {
+          <span class="ob-bulk-chip ob-bulk-chip--more" [attr.data-testid]="testIds.moreChip"
+            >+{{ overflowChipCount() }}</span
+          >
+        }
+      </div>
+
+      <div class="ob-bulk-actions">
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          (click)="cleared.emit()"
+          [attr.data-testid]="testIds.clear"
+        >
+          {{ 'obfuscation.bulk.clear' | transloco }}
+        </button>
+        <button
+          type="button"
+          class="ob-btn ob-btn--secondary"
+          (click)="markTreated.emit()"
+          [title]="'obfuscation.bulk.markTreatedHint' | transloco"
+          [attr.data-testid]="testIds.markTreated"
+        >
+          <i class="pi pi-check" aria-hidden="true"></i>
+          {{ 'obfuscation.bulk.markTreated' | transloco }}
+        </button>
+        <button
+          type="button"
+          class="ob-btn ob-btn--primary"
+          (click)="obfuscate.emit()"
+          [attr.data-testid]="testIds.obfuscate"
+        >
+          <i class="pi pi-eye-slash" aria-hidden="true"></i>
+          {{ 'obfuscation.bulk.obfuscateN' | transloco: { count: currentPlan.totalFindings } }}
+        </button>
+      </div>
+    </div>
+  }
+}

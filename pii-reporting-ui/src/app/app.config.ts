@@ -19,6 +19,7 @@ import { TranslocoHttpLoader } from './core/services/transloco-http-loader';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ToastService } from './core/services/toast.service';
 import { SentinelleApiService } from './core/services/sentinelle-api.service';
+import { RemediationConfigService } from './core/services/remediation-config.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -52,6 +53,7 @@ export const appConfig: ApplicationConfig = {
       loader: TranslocoHttpLoader
     }),
     provideAppInitializer(() => inject(ConfluenceSpacesPollingService).loadPollingConfig()),
-    provideAppInitializer(() => inject(SentinelleApiService).loadRevealConfig())
+    provideAppInitializer(() => inject(SentinelleApiService).loadRevealConfig()),
+    provideAppInitializer(() => inject(RemediationConfigService).loadRemediationConfig())
   ]
 };

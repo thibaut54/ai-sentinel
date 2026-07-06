@@ -1,0 +1,182 @@
+.ob-occ {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--sentinel-border-light);
+}
+
+.ob-occ:hover {
+  background: var(--sentinel-bg-hover);
+}
+
+.ob-occ--selected {
+  background: var(--sentinel-presidio-bg);
+}
+
+.ob-occ--treated {
+  opacity: 0.72;
+}
+
+.ob-occ--ineligible {
+  opacity: 0.45;
+}
+
+.ob-occ-check {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--sentinel-focus-ring);
+  cursor: pointer;
+}
+
+.ob-occ-check:disabled {
+  cursor: not-allowed;
+}
+
+.ob-occ-check--fp {
+  outline: 1px dashed var(--sentinel-border-strong);
+}
+
+.ob-occ-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.ob-masked-badge {
+  align-self: flex-start;
+  font-family: monospace;
+  font-size: 0.8125rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  background: var(--sentinel-masked-bg);
+  color: var(--sentinel-masked-color);
+  border: 1px solid var(--sentinel-masked-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.ob-masked-badge--fp {
+  text-decoration: line-through;
+  color: var(--sentinel-text-muted);
+}
+
+.ob-redacted-block {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 6px;
+  background: repeating-linear-gradient(45deg, #1e293b, #1e293b 6px, #334155 6px, #334155 12px);
+  color: #e2e8f0;
+}
+
+.ob-occ-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-occ-type {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--sentinel-badge-count-bg);
+  color: var(--sentinel-text-body);
+  font-size: 0.68rem;
+}
+
+.ob-occ-page {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ob-occ-ineligible-reason {
+  font-size: 0.72rem;
+  color: var(--sentinel-warning-text);
+}
+
+.ob-occ-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ob-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ob-status-badge--pending {
+  background: var(--sentinel-status-pending-bg);
+  color: var(--sentinel-status-pending-text);
+  border: 1px solid var(--sentinel-border-medium);
+}
+
+.ob-status-badge--redacted,
+.ob-status-badge--manual {
+  background: var(--sentinel-status-success-bg);
+  color: var(--sentinel-status-success-text);
+}
+
+.ob-status-badge--manual {
+  background: transparent;
+  border: 1px solid var(--sentinel-status-success-text);
+}
+
+.ob-status-badge--fp {
+  background: var(--sentinel-bg-page);
+  color: var(--sentinel-text-secondary);
+  border: 1px dashed var(--sentinel-border-strong);
+}
+
+.ob-occ-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+  min-width: 4rem;
+  justify-content: flex-end;
+}
+
+.ob-icon-btn {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sentinel-text-secondary);
+  cursor: pointer;
+}
+
+.ob-icon-btn:hover {
+  background: var(--sentinel-bg-hover);
+}
+
+.ob-icon-btn--ok:hover {
+  color: var(--sentinel-status-success-text);
+}
+
+.ob-icon-btn--warn:hover {
+  color: var(--sentinel-severity-medium-dark);
+}
+
+.ob-icon-btn:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 1px;
+}
