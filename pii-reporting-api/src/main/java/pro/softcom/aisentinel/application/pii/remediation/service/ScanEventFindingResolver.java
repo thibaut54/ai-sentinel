@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,8 @@ import java.util.Map;
  * <p>Detections without a {@code valueFingerprint} (persisted before fingerprinting was
  * introduced) have no stable identity and are counted as non-eligible instead. Multiple
  * occurrences of the same value on the same item share one identity and are collapsed
- * into a single finding, keeping the first occurrence's metadata.</p>
+ * into a single finding, keeping the first occurrence's metadata and counting how many
+ * raw detections it collapsed ({@code occurrenceCount}).</p>
  */
 @RequiredArgsConstructor
 public class ScanEventFindingResolver {
@@ -25,7 +27,8 @@ public class ScanEventFindingResolver {
     private final SeverityCalculationService severityCalculationService;
 
     public Resolution resolve(List<ConfluenceContentScanResult> events) {
-        Map<String, EligibleFinding> findingsById = new LinkedHashMap<>();
+        Map<String, EligibleFinding> firstById = new LinkedHashMap<>();
+        Map<String, Integer> occurrencesById = new HashMap<>();
         long nonEligibleLegacyCount = 0;
         for (ConfluenceContentScanResult event : events) {
             for (DetectedPersonallyIdentifiableInformation detection : detectionsOf(event)) {
@@ -34,10 +37,16 @@ public class ScanEventFindingResolver {
                     continue;
                 }
                 EligibleFinding finding = toFinding(event, detection);
-                findingsById.putIfAbsent(finding.findingId(), finding);
+                firstById.putIfAbsent(finding.findingId(), finding);
+                occurrencesById.merge(finding.findingId(), 1, Integer::sum);
             }
         }
-        return new Resolution(List.copyOf(findingsById.values()), nonEligibleLegacyCount);
+        List<EligibleFinding> findings = firstById.values().stream()
+                .map(finding -> finding.toBuilder()
+                        .occurrenceCount(occurrencesById.get(finding.findingId()))
+                        .build())
+                .toList();
+        return new Resolution(findings, nonEligibleLegacyCount);
     }
 
     private static List<DetectedPersonallyIdentifiableInformation> detectionsOf(ConfluenceContentScanResult event) {
@@ -65,6 +74,7 @@ public class ScanEventFindingResolver {
                 .confidence(detection.confidence())
                 .piiTypeLabel(detection.piiTypeLabel())
                 .maskedContext(detection.maskedContext())
+                .sensitiveValue(detection.sensitiveValue())
                 .pageTitle(event.pageTitle())
                 .build();
     }

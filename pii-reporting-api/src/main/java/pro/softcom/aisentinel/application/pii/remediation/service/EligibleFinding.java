@@ -5,7 +5,13 @@ import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 
 /**
  * A remediation-eligible finding resolved from scan events: its stable identity plus the
- * display metadata safe to expose (masked context only, never plaintext values).
+ * display metadata. {@code sensitiveValue} carries the plaintext value and is only populated
+ * when the events are read in decrypted mode (remediation review, gated by
+ * {@code pii.reporting.allow-secret-reveal}); it stays null otherwise.
+ *
+ * <p>{@code occurrenceCount} is the number of raw detections that collapsed into this
+ * finding: the same value detected several times on the same item (by the same detector)
+ * shares one identity, and redacting it rewrites every occurrence at once.</p>
  */
 @Builder(toBuilder = true)
 public record EligibleFinding(
@@ -14,6 +20,8 @@ public record EligibleFinding(
         double confidence,
         String piiTypeLabel,
         String maskedContext,
-        String pageTitle
+        String sensitiveValue,
+        String pageTitle,
+        int occurrenceCount
 ) {
 }

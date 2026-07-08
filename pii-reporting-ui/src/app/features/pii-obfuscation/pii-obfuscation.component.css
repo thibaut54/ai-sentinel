@@ -1,6 +1,9 @@
-.ob-page {
+.ob-shell {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.ob-page {
   padding: 1rem 1rem 6rem;
 }
 

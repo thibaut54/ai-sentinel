@@ -8,8 +8,10 @@ import java.util.List;
 /**
  * One accordion group of the remediation view (a PII type or a severity level).
  *
- * <p>{@code total}, {@code selectedCount} and {@code masterState} are computed over the
- * whole filtered scope; {@code findings} only carries the members of the current page.</p>
+ * <p>{@code total} is the number of distinct-value findings in the group and
+ * {@code occurrenceCount} the number of raw detections they collapsed; {@code selectedCount}
+ * and {@code masterState} are computed over the whole group. Pagination is by group, so
+ * {@code findings} always carries every member of the group.</p>
  */
 @Builder(toBuilder = true)
 public record RemediationFindingGroup(
@@ -17,6 +19,7 @@ public record RemediationFindingGroup(
         String label,
         PersonallyIdentifiableInformationSeverity severity,
         long total,
+        long occurrenceCount,
         long selectedCount,
         MasterState masterState,
         List<RemediationFindingView> findings

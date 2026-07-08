@@ -11,6 +11,7 @@ public record RemediationSearchResponseDto(
         int page,
         int pageSize,
         long totalElements,
+        long totalGroups,
         long nonEligibleLegacyCount
 ) {
 }

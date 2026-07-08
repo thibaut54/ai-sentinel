@@ -122,6 +122,11 @@
   color: var(--sentinel-presidio-color);
 }
 
+.ob-group-occ {
+  font-size: 0.72rem;
+  color: var(--sentinel-text-secondary);
+}
+
 .ob-group-count {
   font-size: 0.72rem;
   padding: 0.1rem 0.5rem;

@@ -50,6 +50,10 @@ export class ObfuscationFindingRowComponent {
 
   readonly testIds = TestIds.obfuscation.row;
 
+  // Reviewers need the plaintext value to judge false positives; the backend only sends it
+  // when secret reveal is allowed, so fall back to the masked context when it is absent.
+  readonly displayValue = computed(() => this.finding().sensitiveValue ?? this.finding().maskedContext);
+
   readonly status = computed(() => this.finding().status);
   readonly statusMeta = computed(() => STATUS_META[this.status()]);
   readonly detectorSource = computed(() => this.finding().detector as DetectorSource);

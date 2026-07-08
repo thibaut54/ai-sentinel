@@ -14,6 +14,7 @@ public record RemediationGroupDto(
         String label,
         String severity,
         long total,
+        long occurrenceCount,
         long selectedCount,
         String masterState,
         List<RemediationFindingDto> findings

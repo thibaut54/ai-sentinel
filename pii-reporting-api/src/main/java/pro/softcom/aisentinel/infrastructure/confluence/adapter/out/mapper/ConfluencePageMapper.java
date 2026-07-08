@@ -68,17 +68,12 @@ public final class ConfluencePageMapper {
 
     private static ConfluencePageDto.VersionDto buildVersionDto(ConfluencePage page) {
         var metadata = page.metadata();
-        if (metadata == null) {
-            return new ConfluencePageDto.VersionDto(null, formatDateTime(LocalDateTime.now()), 1, false, null);
-        }
-        var userDto = new ConfluencePageDto.UserDto("known", metadata.lastModifiedBy(), null, null);
-        return new ConfluencePageDto.VersionDto(
-            userDto,
-            formatDateTime(metadata.lastModifiedDate()),
-            metadata.version(),
-            false,
-            null
-        );
+        int nextVersion = metadata != null ? metadata.version() : 1;
+        // Only version.number must be sent on update; Confluence assigns version.by and version.when
+        // server-side. Sending them is unnecessary and unsafe: the domain keeps 'when' as an
+        // offset-less LocalDateTime, and Confluence Cloud rejects an offset-less timestamp with
+        // 400 "Invalid format ... is too short" (Version[when]), which broke every redaction PUT.
+        return new ConfluencePageDto.VersionDto(null, null, nextVersion, false, null);
     }
 
     private static ConfluencePage.PageContent buildContent(ConfluencePageDto dto) {
@@ -120,9 +115,4 @@ public final class ConfluencePageMapper {
         }
     }
 
-    private static String formatDateTime(LocalDateTime dateTime) {
-        return dateTime != null
-            ? dateTime.format(DateTimeFormatter.ISO_DATE_TIME)
-            : LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
-    }
 }

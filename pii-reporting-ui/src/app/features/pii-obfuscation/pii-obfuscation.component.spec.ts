@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, convertToParamMap, ParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -71,7 +71,7 @@ const FR_TRANSLATIONS = {
       completedWithIssues: 'Caviardage terminé avec des erreurs — consultez le détail des résultats.',
     },
     pager: {
-      label: '{{first}}–{{last}} sur {{total}} findings',
+      label: '{{first}}–{{last}} sur {{total}} groupes',
       loading: 'Chargement…',
       prev: 'Précédent',
       next: 'Suivant',
@@ -92,6 +92,7 @@ function finding(overrides: Partial<RemediationFindingDto> = {}): RemediationFin
     detector: 'PRESIDIO',
     confidenceScore: 0.87,
     maskedContext: 'contact: [EMAIL]',
+    occurrenceCount: 1,
     pageId: 'p1',
     pageTitle: 'Team page',
     status: 'PENDING',
@@ -107,6 +108,7 @@ function group(overrides: Partial<RemediationGroupDto> = {}): RemediationGroupDt
     label: 'Email',
     severity: 'high',
     total: 12,
+    occurrenceCount: 12,
     selectedCount: 0,
     masterState: 'none',
     findings: [finding()],
@@ -123,6 +125,7 @@ function searchResponse(
     page: 0,
     pageSize: 20,
     totalElements: 12,
+    totalGroups: 1,
     nonEligibleLegacyCount: 0,
     ...overrides,
   };
@@ -161,6 +164,10 @@ describe('PiiObfuscationComponent', () => {
   let messageService: { add: Mock };
 
   beforeEach(async () => {
+    // The shared app header pulls in ThemeService, which probes matchMedia at
+    // construction; jsdom does not implement it.
+    globalThis.matchMedia ??= vi.fn().mockReturnValue({ matches: false }) as unknown as typeof globalThis.matchMedia;
+
     remediationConfigMock = { enabled: signal(false) };
     queryParams$ = new BehaviorSubject(convertToParamMap({}));
     api = {
@@ -183,6 +190,7 @@ describe('PiiObfuscationComponent', () => {
         }),
       ],
       providers: [
+        provideRouter([]),
         { provide: RemediationConfigService, useValue: remediationConfigMock },
         { provide: RemediationApiService, useValue: api },
         { provide: MessageService, useValue: messageService },
@@ -337,6 +345,19 @@ describe('PiiObfuscationComponent', () => {
 
     expect(selectionService().checkedSeverities().size).toBe(3);
     expect(api.planObfuscation).toHaveBeenCalled();
+  });
+
+  it('Should_ClearSelection_When_ToggledWhileAllSelected', () => {
+    createEnabledComponent();
+
+    query('obfuscation-select-all-pending')?.click();
+    expect(fixture.componentInstance.allPendingSelected()).toBe(true);
+
+    fixture.detectChanges();
+    query('obfuscation-select-all-pending')?.click();
+
+    expect(selectionService().checkedSeverities().size).toBe(0);
+    expect(fixture.componentInstance.allPendingSelected()).toBe(false);
   });
 
   it('Should_ResetPageAndSearch_When_StatusFilterChanged', () => {
@@ -596,7 +617,7 @@ describe('PiiObfuscationComponent', () => {
 
   it('Should_ShowEmptyState_When_NoGroupReturned', () => {
     api.searchFindings.mockReturnValue(
-      of(searchResponse({ groups: [], totals: { pending: 0, handled: 0, falsePositive: 0, total: 0 }, totalElements: 0 }))
+      of(searchResponse({ groups: [], totals: { pending: 0, handled: 0, falsePositive: 0, total: 0 }, totalElements: 0, totalGroups: 0 }))
     );
 
     createEnabledComponent();
@@ -605,17 +626,17 @@ describe('PiiObfuscationComponent', () => {
   });
 
   it('Should_RenderPagerFromResponse_When_Loaded', () => {
-    api.searchFindings.mockReturnValue(of(searchResponse({ page: 0, pageSize: 20, totalElements: 44 })));
+    api.searchFindings.mockReturnValue(of(searchResponse({ page: 0, pageSize: 20, totalGroups: 44 })));
 
     createEnabledComponent();
 
-    expect(query('obfuscation-pager-label')?.textContent).toContain('1–20 sur 44 findings');
+    expect(query('obfuscation-pager-label')?.textContent).toContain('1–20 sur 44 groupes');
     expect(query<HTMLButtonElement>('obfuscation-pager-prev')?.disabled).toBe(true);
     expect(query<HTMLButtonElement>('obfuscation-pager-next')?.disabled).toBe(false);
   });
 
   it('Should_RequestNextPage_When_NextClicked', () => {
-    api.searchFindings.mockReturnValue(of(searchResponse({ page: 0, pageSize: 20, totalElements: 44 })));
+    api.searchFindings.mockReturnValue(of(searchResponse({ page: 0, pageSize: 20, totalGroups: 44 })));
     createEnabledComponent();
 
     query('obfuscation-pager-next')?.click();

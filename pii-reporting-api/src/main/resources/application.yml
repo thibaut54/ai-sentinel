@@ -87,7 +87,7 @@ pii:
   remediation:
     # Master feature flag for the bulk redaction endpoints (default: false).
     # When false, every /api/v1/pii/remediation endpoint except GET /config returns 403.
-    enabled: ${PII_REMEDIATION_ENABLED:false}
+    enabled: ${PII_REMEDIATION_ENABLED:true}
 
   # PII Access Audit Configuration (GDPR/nLPD compliance)
   audit:

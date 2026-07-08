@@ -64,6 +64,7 @@ describe('RemediationApiService', () => {
       page: 2,
       pageSize: 50,
       totalElements: 0,
+      totalGroups: 0,
       nonEligibleLegacyCount: 0
     };
 

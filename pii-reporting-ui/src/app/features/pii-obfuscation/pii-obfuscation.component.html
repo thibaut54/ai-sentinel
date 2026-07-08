@@ -1,3 +1,6 @@
+<div class="ob-shell">
+<app-header (openSettings)="goToSettings()" />
+
 <section class="ob-page" [attr.data-testid]="testIds.page">
   @if (remediationConfig.enabled()) {
     <header class="ob-head">
@@ -122,18 +125,6 @@
 
         <span class="ob-toolbar-spacer"></span>
 
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          (click)="selectAllPending()"
-          [attr.data-testid]="testIds.toolbar.selectAllPending"
-        >
-          <i class="pi pi-check-square" aria-hidden="true"></i>
-          {{ 'obfuscation.selectAllPending' | transloco }}
-        </button>
-      </div>
-
-      <div class="ob-toolbar ob-toolbar--secondary">
         <span class="ob-groupby-label">{{ 'obfuscation.groupBy.label' | transloco }}</span>
         <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.groupBy">
           @for (option of groupByOptions; track option.value) {
@@ -149,6 +140,18 @@
             </button>
           }
         </span>
+      </div>
+
+      <div class="ob-toolbar ob-toolbar--secondary">
+        <button
+          type="button"
+          class="ob-btn ob-btn--ghost"
+          (click)="toggleSelectAllPending()"
+          [attr.data-testid]="testIds.toolbar.selectAllPending"
+        >
+          <i class="pi" [class.pi-check-square]="!allPendingSelected()" [class.pi-times]="allPendingSelected()" aria-hidden="true"></i>
+          {{ (allPendingSelected() ? 'obfuscation.deselectAll' : 'obfuscation.selectAllPending') | transloco }}
+        </button>
         <span class="ob-toolbar-spacer"></span>
         <button
           type="button"
@@ -206,7 +209,7 @@
                   : {
                       first: pagerFirst(),
                       last: pagerLast(),
-                      total: viewState.lastSearchResponse()?.totalElements ?? 0
+                      total: viewState.lastSearchResponse()?.totalGroups ?? 0
                     }
             }}
           }
@@ -273,3 +276,4 @@
     </div>
   }
 </section>
+</div>

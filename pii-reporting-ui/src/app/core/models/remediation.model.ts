@@ -1,7 +1,8 @@
 /**
  * Types mirroring the PII remediation REST contract (/api/v1/pii/remediation).
  * The backend owns all aggregation logic; these types are pure data carriers.
- * Plaintext PII never crosses this API (maskedContext only).
+ * The plaintext value (sensitiveValue) only crosses this API when the feature is enabled
+ * together with pii.reporting.allow-secret-reveal; otherwise only maskedContext is sent.
  */
 
 export interface RemediationScope {
@@ -64,6 +65,8 @@ export interface RemediationFindingDto {
   detector: string;
   confidenceScore: number;
   maskedContext: string;
+  sensitiveValue?: string;
+  occurrenceCount: number;
   pageId: string;
   pageTitle: string;
   attachmentName?: string;
@@ -78,6 +81,7 @@ export interface RemediationGroupDto {
   label: string;
   severity?: string;
   total: number;
+  occurrenceCount: number;
   selectedCount: number;
   masterState: GroupMasterState;
   findings: RemediationFindingDto[];
@@ -96,6 +100,7 @@ export interface RemediationFindingsSearchResponse {
   page: number;
   pageSize: number;
   totalElements: number;
+  totalGroups: number;
   nonEligibleLegacyCount: number;
 }
 

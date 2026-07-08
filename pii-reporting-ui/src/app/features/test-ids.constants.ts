@@ -71,6 +71,7 @@ export const TestIds = {
       master: 'obfuscation-group-master',
       toggle: 'obfuscation-group-toggle',
       count: 'obfuscation-group-count',
+      occurrences: 'obfuscation-group-occurrences',
       selectedCount: 'obfuscation-group-selected-count',
       hint: 'obfuscation-group-hint'
     },
@@ -78,6 +79,7 @@ export const TestIds = {
       root: 'obfuscation-row',
       checkbox: 'obfuscation-row-checkbox',
       value: 'obfuscation-row-value',
+      occurrences: 'obfuscation-row-occurrences',
       status: 'obfuscation-row-status',
       ineligible: 'obfuscation-row-ineligible',
       markManual: 'obfuscation-row-mark-manual',

@@ -46,10 +46,21 @@ public class ConfluencePageRedactionAdapter implements SourcePageRedactionPort {
             log.warn("[PII_REMEDIATION] Page {} still conflicting after one retry, reported stale", pageId);
             return PageRedactionResult.stale();
         } catch (Exception e) {
-            log.error("[PII_REMEDIATION] Redaction of page {} failed: {}",
-                    pageId, e.getClass().getSimpleName());
+            log.error("[PII_REMEDIATION] Redaction of page {} failed: {}", pageId, describeFailure(e));
             return PageRedactionResult.failed();
         }
+    }
+
+    /**
+     * Describes a redaction failure for logging. The HTTP status of a {@link ConfluenceApiException}
+     * is included because it is the primary diagnostic signal (400 payload vs 403 permission vs 404)
+     * and, unlike the Confluence response body, cannot carry page content or PII values.
+     */
+    private static String describeFailure(Exception e) {
+        if (e instanceof ConfluenceApiException apiException) {
+            return "ConfluenceApiException(status=" + apiException.getStatusCode() + ")";
+        }
+        return e.getClass().getSimpleName();
     }
 
     private PageRedactionResult redactWithSingleRetry(String pageId, List<ValueReplacement> replacements) {

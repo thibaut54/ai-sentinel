@@ -9,6 +9,7 @@ const FR_TRANSLATIONS = {
     select: 'Sélectionner',
     selectAllGroup: 'Sélectionner tout le groupe (toutes pages)',
     nSelectedShort: '{{count}} sélectionnés',
+    nOccurrences: '{{count}} occurrences',
     groupPageHint:
       '{{visible}} occurrences affichées sur {{total}} — cocher l’en-tête sélectionne les {{total}}, y compris sur les autres pages.',
     redactedValue: 'Caviardé',
@@ -26,6 +27,7 @@ function finding(overrides: Partial<RemediationFindingDto> = {}): RemediationFin
     detector: 'PRESIDIO',
     confidenceScore: 0.87,
     maskedContext: 'contact: [EMAIL]',
+    occurrenceCount: 1,
     pageId: 'p1',
     pageTitle: 'Team page',
     status: 'PENDING',
@@ -41,6 +43,7 @@ function group(overrides: Partial<RemediationGroupDto> = {}): RemediationGroupDt
     label: 'Email',
     severity: 'high',
     total: 12,
+    occurrenceCount: 12,
     selectedCount: 0,
     masterState: 'none',
     findings: [finding()],
@@ -115,6 +118,18 @@ describe('ObfuscationGroupListComponent', () => {
     createComponent([group({ selectedCount: 0 })]);
 
     expect(query('obfuscation-group-selected-count')).toBeFalsy();
+  });
+
+  it('Should_ShowOccurrenceCount_When_MoreOccurrencesThanDistinctValues', () => {
+    createComponent([group({ total: 4, occurrenceCount: 9, findings: [finding()] })]);
+
+    expect(query('obfuscation-group-occurrences')?.textContent).toContain('9 occurrences');
+  });
+
+  it('Should_HideOccurrenceCount_When_OneOccurrencePerValue', () => {
+    createComponent([group({ total: 4, occurrenceCount: 4, findings: [finding()] })]);
+
+    expect(query('obfuscation-group-occurrences')).toBeFalsy();
   });
 
   it('Should_ShowCrossPageHint_When_FewerRowsThanGroupTotal', () => {

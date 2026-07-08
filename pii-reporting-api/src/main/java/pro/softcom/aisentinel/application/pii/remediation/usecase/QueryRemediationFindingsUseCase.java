@@ -17,6 +17,7 @@ import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindi
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver.Resolution;
 import pro.softcom.aisentinel.application.pii.remediation.service.SelectionEvaluator;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
+import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
@@ -38,8 +39,10 @@ import java.util.stream.Stream;
  * every displayed aggregate (groups, tri-state master checkboxes, selected counts,
  * pagination, totals) server-side.
  *
- * <p>Reads events in encrypted mode only: masked contexts and metadata leave this use
- * case, plaintext PII values never do.</p>
+ * <p>Reads events in decrypted mode: the remediation review is gated by
+ * {@code pii.reporting.allow-secret-reveal}, so the reviewer sees plaintext values to tell
+ * genuine hits from false positives before redacting. Each space view is audited for
+ * nLPD compliance.</p>
  */
 @RequiredArgsConstructor
 public class QueryRemediationFindingsUseCase implements QueryRemediationFindingsPort {
@@ -73,7 +76,7 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
 
     private RemediationFindingsResult searchScan(String scanId, RemediationFindingsQuery query) {
         List<ConfluenceContentScanResult> scopedEvents = scanResultQuery
-                .listItemEventsEncryptedByScanIdAndSpaceKey(scanId, query.spaceKey())
+                .listItemEventsDecryptedByScanIdAndSpaceKey(scanId, query.spaceKey(), AccessPurpose.USER_DISPLAY)
                 .stream()
                 .filter(event -> inScope(event, query))
                 .toList();
@@ -83,12 +86,17 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
                 .filter(finding -> matchesStatusFilter(finding.status(), query.statusFilter()))
                 .sorted(orderingFor(query.groupBy()))
                 .toList();
+        long totalGroups = filtered.stream()
+                .map(finding -> groupKeyOf(finding, query.groupBy()))
+                .distinct()
+                .count();
         return RemediationFindingsResult.builder()
                 .groups(buildGroups(filtered, query))
                 .totals(totalsOf(visible))
                 .page(query.page())
                 .pageSize(query.pageSize())
                 .totalElements(filtered.size())
+                .totalGroups(totalGroups)
                 .nonEligibleLegacyCount(resolution.nonEligibleLegacyCount())
                 .build();
     }
@@ -133,8 +141,9 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
             return true;
         }
         String needle = searchText.toLowerCase(Locale.ROOT);
-        return Stream.of(finding.maskedContext(), finding.pageTitle(), finding.piiTypeLabel(),
-                        finding.reference().piiType(), finding.reference().attachmentName())
+        return Stream.of(finding.maskedContext(), finding.sensitiveValue(), finding.pageTitle(),
+                        finding.piiTypeLabel(), finding.reference().piiType(),
+                        finding.reference().attachmentName())
                 .anyMatch(value -> value != null && value.toLowerCase(Locale.ROOT).contains(needle));
     }
 
@@ -185,35 +194,31 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
 
     private static List<RemediationFindingGroup> buildGroups(List<StatusedFinding> ordered,
                                                              RemediationFindingsQuery query) {
-        Map<String, List<StatusedFinding>> byKey = ordered.stream()
+        List<List<StatusedFinding>> byKey = new ArrayList<>(ordered.stream()
                 .collect(Collectors.groupingBy(finding -> groupKeyOf(finding, query.groupBy()),
-                        LinkedHashMap::new, Collectors.toList()));
-        int pageStart = query.page() * query.pageSize();
-        int pageEnd = pageStart + query.pageSize();
-        List<RemediationFindingGroup> groups = new ArrayList<>();
-        int globalIndex = 0;
-        for (List<StatusedFinding> members : byKey.values()) {
-            groups.add(toGroup(members, query.groupBy(), pageStart - globalIndex, pageEnd - globalIndex));
-            globalIndex += members.size();
-        }
-        return groups;
+                        LinkedHashMap::new, Collectors.toList()))
+                .values());
+        int from = Math.clamp((long) query.page() * query.pageSize(), 0, byKey.size());
+        int to = Math.clamp((long) (query.page() + 1) * query.pageSize(), 0, byKey.size());
+        return byKey.subList(from, to).stream()
+                .map(members -> toGroup(members, query.groupBy()))
+                .toList();
     }
 
-    private static RemediationFindingGroup toGroup(List<StatusedFinding> members, GroupBy groupBy,
-                                                   int sliceFrom, int sliceTo) {
-        int from = Math.clamp(sliceFrom, 0, members.size());
-        int to = Math.clamp(sliceTo, 0, members.size());
+    private static RemediationFindingGroup toGroup(List<StatusedFinding> members, GroupBy groupBy) {
         long selectedCount = members.stream().filter(StatusedFinding::selected).count();
         long pendingCount = countByStatus(members, FindingRemediationStatus.PENDING);
+        long occurrenceCount = members.stream().mapToLong(finding -> finding.finding().occurrenceCount()).sum();
         StatusedFinding first = members.getFirst();
         return RemediationFindingGroup.builder()
                 .key(groupKeyOf(first, groupBy))
                 .label(labelOf(first.finding(), groupBy))
                 .severity(first.finding().reference().severity())
                 .total(members.size())
+                .occurrenceCount(occurrenceCount)
                 .selectedCount(selectedCount)
                 .masterState(masterStateOf(pendingCount, selectedCount))
-                .findings(members.subList(from, to).stream().map(QueryRemediationFindingsUseCase::toView).toList())
+                .findings(members.stream().map(QueryRemediationFindingsUseCase::toView).toList())
                 .build();
     }
 
@@ -250,6 +255,8 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
                 .detector(reference.detector())
                 .confidenceScore(finding.confidence())
                 .maskedContext(finding.maskedContext())
+                .sensitiveValue(finding.sensitiveValue())
+                .occurrenceCount(finding.occurrenceCount())
                 .pageId(reference.pageId())
                 .pageTitle(finding.pageTitle())
                 .attachmentName(reference.attachmentName())
@@ -267,6 +274,7 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
                 .page(query.page())
                 .pageSize(query.pageSize())
                 .totalElements(0)
+                .totalGroups(0)
                 .nonEligibleLegacyCount(0)
                 .build();
     }

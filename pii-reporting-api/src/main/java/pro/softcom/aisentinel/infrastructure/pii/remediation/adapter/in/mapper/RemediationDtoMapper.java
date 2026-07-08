@@ -79,6 +79,7 @@ public class RemediationDtoMapper {
                 result.page(),
                 result.pageSize(),
                 result.totalElements(),
+                result.totalGroups(),
                 result.nonEligibleLegacyCount());
     }
 
@@ -154,6 +155,7 @@ public class RemediationDtoMapper {
                 group.label(),
                 group.severity() == null ? null : group.severity().name(),
                 group.total(),
+                group.occurrenceCount(),
                 group.selectedCount(),
                 group.masterState().name().toLowerCase(Locale.ROOT),
                 group.findings().stream().map(this::toFindingDto).toList());
@@ -167,6 +169,8 @@ public class RemediationDtoMapper {
                 view.detector(),
                 view.confidenceScore(),
                 view.maskedContext(),
+                view.sensitiveValue(),
+                view.occurrenceCount(),
                 view.pageId(),
                 view.pageTitle(),
                 view.attachmentName(),

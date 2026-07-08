@@ -42,6 +42,11 @@
               {{ 'obfuscation.nSelectedShort' | transloco: { count: group.selectedCount } }}
             </span>
           }
+          @if (group.occurrenceCount > group.total) {
+            <span class="ob-group-occ" [attr.data-testid]="testIds.occurrences">
+              {{ 'obfuscation.nOccurrences' | transloco: { count: group.occurrenceCount } }}
+            </span>
+          }
           <span class="ob-group-count" [attr.data-testid]="testIds.count">{{ group.total }}</span>
         </button>
       </div>

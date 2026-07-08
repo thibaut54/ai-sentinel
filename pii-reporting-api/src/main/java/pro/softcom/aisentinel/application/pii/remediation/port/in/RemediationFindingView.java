@@ -5,8 +5,9 @@ import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 
 /**
- * Read-model row of a single finding. Carries only the masked context and metadata:
- * plaintext PII values never cross this model.
+ * Read-model row of a single finding. Carries the masked context plus, when the caller is
+ * authorized to reveal secrets (gated by {@code pii.reporting.allow-secret-reveal}), the
+ * plaintext {@code sensitiveValue}; that field is null when revelation is not allowed.
  */
 @Builder(toBuilder = true)
 public record RemediationFindingView(
@@ -16,6 +17,8 @@ public record RemediationFindingView(
         String detector,
         double confidenceScore,
         String maskedContext,
+        String sensitiveValue,
+        int occurrenceCount,
         String pageId,
         String pageTitle,
         String attachmentName,

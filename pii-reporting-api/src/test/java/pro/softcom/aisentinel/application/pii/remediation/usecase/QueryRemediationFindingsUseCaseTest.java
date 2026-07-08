@@ -24,15 +24,14 @@ import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
+import pro.softcom.aisentinel.domain.pii.reporting.AccessPurpose;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection.DetectorSource;
 
-import java.lang.reflect.RecordComponent;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -88,7 +87,8 @@ class QueryRemediationFindingsUseCaseTest {
                 .thenReturn(PersonallyIdentifiableInformationSeverity.HIGH);
         lenient().when(scanResultQuery.findLatestScan())
                 .thenReturn(Optional.of(new LastScanMeta(SCAN_ID, Instant.now(), 1)));
-        lenient().when(scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(SCAN_ID, SPACE))
+        lenient().when(scanResultQuery.listItemEventsDecryptedByScanIdAndSpaceKey(
+                        SCAN_ID, SPACE, AccessPurpose.USER_DISPLAY))
                 .thenReturn(defaultEvents());
         lenient().when(findingRemediationStore.findStatusesByIds(anyCollection())).thenReturn(Map.of());
         emailP1Id = findingId("p1", null, "PRESIDIO", "EMAIL", "fp-email-1");
@@ -182,17 +182,13 @@ class QueryRemediationFindingsUseCaseTest {
         }
 
         @Test
-        @DisplayName("Should_ExposeOnlyMaskedContext_When_BuildingViews")
-        void Should_ExposeOnlyMaskedContext_When_BuildingViews() {
+        @DisplayName("Should_ExposeSensitiveValueAndMaskedContext_When_BuildingViews")
+        void Should_ExposeSensitiveValueAndMaskedContext_When_BuildingViews() {
             RemediationFindingsResult result = useCase.search(query().build());
 
-            List<String> componentNames = Arrays.stream(RemediationFindingView.class.getRecordComponents())
-                    .map(RecordComponent::getName)
-                    .toList();
             assertSoftly(softly -> {
-                softly.assertThat(componentNames)
-                        .doesNotContain("sensitiveValue", "sensitiveContext", "sourceContent");
                 softly.assertThat(viewById(result, emailP1Id).maskedContext()).isEqualTo("ctx-email-1");
+                softly.assertThat(viewById(result, emailP1Id).sensitiveValue()).isEqualTo("ENC:v1:opaque");
             });
         }
     }
@@ -381,31 +377,64 @@ class QueryRemediationFindingsUseCaseTest {
     class PaginationTests {
 
         @Test
-        @DisplayName("Should_PaginateAcrossGroupsKeepingAggregates_When_SecondPageRequested")
-        void Should_PaginateAcrossGroupsKeepingAggregates_When_SecondPageRequested() {
+        @DisplayName("Should_PaginateByWholeGroupsNeverSplitting_When_SecondPageRequested")
+        void Should_PaginateByWholeGroupsNeverSplitting_When_SecondPageRequested() {
             RemediationFindingsResult result = useCase.search(query().page(1).pageSize(2).build());
 
             assertSoftly(softly -> {
                 softly.assertThat(result.totalElements()).isEqualTo(5);
+                softly.assertThat(result.totalGroups()).isEqualTo(4);
                 softly.assertThat(result.page()).isEqualTo(1);
                 softly.assertThat(result.pageSize()).isEqualTo(2);
+                softly.assertThat(result.groups())
+                        .extracting(RemediationFindingGroup::key)
+                        .containsExactly("IBAN", "PHONE");
                 softly.assertThat(allViews(result))
                         .extracting(RemediationFindingView::findingId)
-                        .containsExactly(emailP2Id, ibanP2Id);
-                softly.assertThat(groupByKey(result, "AVS").total()).isEqualTo(1);
-                softly.assertThat(groupByKey(result, "AVS").findings()).isEmpty();
-                softly.assertThat(groupByKey(result, "EMAIL").total()).isEqualTo(2);
+                        .containsExactly(ibanP2Id, phoneP1Id);
+                softly.assertThat(groupByKey(result, "IBAN").findings())
+                        .hasSize((int) groupByKey(result, "IBAN").total());
             });
         }
 
         @Test
-        @DisplayName("Should_ReturnEmptyPage_When_PageBeyondLastElement")
-        void Should_ReturnEmptyPage_When_PageBeyondLastElement() {
+        @DisplayName("Should_ReturnAllGroupsWithEveryMember_When_PageSizeExceedsGroupCount")
+        void Should_ReturnAllGroupsWithEveryMember_When_PageSizeExceedsGroupCount() {
+            RemediationFindingsResult result = useCase.search(query().page(0).pageSize(20).build());
+
+            assertThat(result.groups())
+                    .allSatisfy(group -> assertThat(group.findings()).hasSize((int) group.total()));
+        }
+
+        @Test
+        @DisplayName("Should_ReturnEmptyPage_When_PageBeyondLastGroup")
+        void Should_ReturnEmptyPage_When_PageBeyondLastGroup() {
             RemediationFindingsResult result = useCase.search(query().page(9).pageSize(10).build());
 
             assertSoftly(softly -> {
-                softly.assertThat(allViews(result)).isEmpty();
+                softly.assertThat(result.groups()).isEmpty();
                 softly.assertThat(result.totalElements()).isEqualTo(5);
+                softly.assertThat(result.totalGroups()).isEqualTo(4);
+            });
+        }
+    }
+
+    @Nested
+    @DisplayName("search() occurrence-count tests")
+    class OccurrenceCountTests {
+
+        @Test
+        @DisplayName("Should_CountCollapsedOccurrences_When_SameValueDetectedMultipleTimes")
+        void Should_CountCollapsedOccurrences_When_SameValueDetectedMultipleTimes() {
+            RemediationFindingsResult result = useCase.search(query().build());
+
+            assertSoftly(softly -> {
+                // EMAIL: fp-email-1 detected twice + fp-email-2 once = 2 values, 3 occurrences
+                softly.assertThat(groupByKey(result, "EMAIL").total()).isEqualTo(2);
+                softly.assertThat(groupByKey(result, "EMAIL").occurrenceCount()).isEqualTo(3);
+                softly.assertThat(viewById(result, emailP1Id).occurrenceCount()).isEqualTo(2);
+                softly.assertThat(viewById(result, emailP2Id).occurrenceCount()).isEqualTo(1);
+                softly.assertThat(groupByKey(result, "PHONE").occurrenceCount()).isEqualTo(1);
             });
         }
     }

@@ -7,6 +7,7 @@ import { RemediationFindingDto } from '../../../../core/models/remediation.model
 const FR_TRANSLATIONS = {
   obfuscation: {
     select: 'Sélectionner',
+    nOccurrences: '{{count}} occurrences',
     redactedValue: 'Caviardé',
     status: {
       pending: 'À traiter',
@@ -34,6 +35,7 @@ function finding(overrides: Partial<RemediationFindingDto> = {}): RemediationFin
     detector: 'PRESIDIO',
     confidenceScore: 0.87,
     maskedContext: 'contact: [EMAIL]',
+    occurrenceCount: 1,
     pageId: 'p1',
     pageTitle: 'Team page',
     status: 'PENDING',
@@ -70,12 +72,32 @@ describe('ObfuscationFindingRowComponent', () => {
     return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
   }
 
-  it('Should_RenderMaskedContextOnly_When_FindingPending', () => {
+  it('Should_RenderMaskedContext_When_NoSensitiveValue', () => {
     createComponent(finding());
 
     const value = query('obfuscation-row-value');
     expect(value?.textContent).toContain('contact: [EMAIL]');
     expect(fixture.nativeElement.textContent).not.toContain('john.doe@example.com');
+  });
+
+  it('Should_RenderClearValue_When_SensitiveValuePresent', () => {
+    createComponent(finding({ sensitiveValue: 'john.doe@example.com' }));
+
+    const value = query('obfuscation-row-value');
+    expect(value?.textContent).toContain('john.doe@example.com');
+    expect(value?.textContent).not.toContain('[EMAIL]');
+  });
+
+  it('Should_ShowOccurrenceCount_When_ValueAppearsMoreThanOnce', () => {
+    createComponent(finding({ occurrenceCount: 4 }));
+
+    expect(query('obfuscation-row-occurrences')?.textContent).toContain('4 occurrences');
+  });
+
+  it('Should_HideOccurrenceCount_When_SingleOccurrence', () => {
+    createComponent(finding({ occurrenceCount: 1 }));
+
+    expect(query('obfuscation-row-occurrences')).toBeFalsy();
   });
 
   it('Should_CheckCheckbox_When_ApiSaysSelected', () => {

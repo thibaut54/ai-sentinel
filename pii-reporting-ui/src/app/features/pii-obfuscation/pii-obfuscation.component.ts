@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MessageService } from 'primeng/api';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../../core/models/remediation.model';
 import { RemediationApiService } from '../../core/services/remediation-api.service';
 import { RemediationConfigService } from '../../core/services/remediation-config.service';
+import { AppHeaderComponent } from '../app-header/app-header.component';
 import { ObfuscationSelectionService } from './services/obfuscation-selection.service';
 import { ObfuscationViewStateService } from './services/obfuscation-view-state.service';
 import { BulkChip, ObfuscationBulkBarComponent } from './components/obfuscation-bulk-bar/obfuscation-bulk-bar.component';
@@ -64,6 +65,7 @@ function stripBoldTags(value: string): string {
   standalone: true,
   imports: [
     TranslocoModule,
+    AppHeaderComponent,
     ObfuscationGroupListComponent,
     ObfuscationBulkBarComponent,
     ObfuscationConfirmDialogComponent,
@@ -79,6 +81,7 @@ export class PiiObfuscationComponent {
   readonly selection = inject(ObfuscationSelectionService);
   readonly viewState = inject(ObfuscationViewStateService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly remediationApi = inject(RemediationApiService);
   private readonly messageService = inject(MessageService);
   private readonly transloco = inject(TranslocoService);
@@ -99,6 +102,16 @@ export class PiiObfuscationComponent {
   readonly groups = computed(() => this.viewState.lastSearchResponse()?.groups ?? []);
   readonly showBanner = computed(() => this.preselectRequested() && !this.bannerDismissed());
 
+  // "Select all pending" checks every severity with no per-finding exclusion.
+  // Detecting that state lets the single button toggle to "deselect all".
+  readonly allPendingSelected = computed(() => {
+    const checkedSeverities = this.selection.checkedSeverities();
+    return (
+      ALL_SEVERITIES.every((severity) => checkedSeverities.has(severity)) &&
+      this.selection.excludedFindingIds().size === 0
+    );
+  });
+
   readonly itemChipLabel = computed(() => {
     const scope = this.selection.scope();
     return scope?.attachmentName ?? scope?.pageId ?? null;
@@ -116,9 +129,11 @@ export class PiiObfuscationComponent {
       }));
   });
 
+  // Pagination is by group (a type/severity group is never split across pages),
+  // so the pager navigates groups: its bounds use totalGroups, not the finding count.
   readonly pagerFirst = computed(() => {
     const response = this.viewState.lastSearchResponse();
-    if (!response || response.totalElements === 0) {
+    if (!response || response.totalGroups === 0) {
       return 0;
     }
     return response.page * response.pageSize + 1;
@@ -129,7 +144,7 @@ export class PiiObfuscationComponent {
     if (!response) {
       return 0;
     }
-    return Math.min((response.page + 1) * response.pageSize, response.totalElements);
+    return Math.min((response.page + 1) * response.pageSize, response.totalGroups);
   });
 
   readonly hasPrev = computed(() => (this.viewState.lastSearchResponse()?.page ?? 0) > 0);
@@ -139,13 +154,17 @@ export class PiiObfuscationComponent {
     if (!response) {
       return false;
     }
-    return (response.page + 1) * response.pageSize < response.totalElements;
+    return (response.page + 1) * response.pageSize < response.totalGroups;
   });
 
   constructor() {
     this.route.queryParamMap
       .pipe(takeUntilDestroyed())
       .subscribe((params) => this.enterFromParams(params));
+  }
+
+  goToSettings(): void {
+    this.router.navigate(['/settings']);
   }
 
   statusCount(filter: RemediationStatusFilter): number | null {
@@ -225,6 +244,14 @@ export class PiiObfuscationComponent {
     this.selection.setScope({ spaceKey: scope.spaceKey });
     this.viewState.page.set(0);
     this.refreshAll();
+  }
+
+  toggleSelectAllPending(): void {
+    if (this.allPendingSelected()) {
+      this.clearSelection();
+    } else {
+      this.selectAllPending();
+    }
   }
 
   selectAllPending(): void {

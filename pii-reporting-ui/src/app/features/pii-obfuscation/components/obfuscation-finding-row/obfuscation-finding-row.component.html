@@ -27,7 +27,7 @@
         class="ob-masked-badge"
         [class.ob-masked-badge--fp]="status() === 'FALSE_POSITIVE'"
         [attr.data-testid]="testIds.value"
-        >{{ finding().maskedContext }}</span
+        >{{ displayValue() }}</span
       >
     }
     <span class="ob-occ-meta">
@@ -38,6 +38,11 @@
       <span class="ob-occ-page">{{ finding().pageTitle }}</span>
       @if (finding().attachmentName) {
         <span class="ob-occ-attachment">· {{ finding().attachmentName }}</span>
+      }
+      @if (finding().occurrenceCount > 1) {
+        <span class="ob-occ-count" [attr.data-testid]="testIds.occurrences"
+          >· {{ 'obfuscation.nOccurrences' | transloco: { count: finding().occurrenceCount } }}</span
+        >
       }
     </span>
     @if (!finding().eligibleForRedaction) {

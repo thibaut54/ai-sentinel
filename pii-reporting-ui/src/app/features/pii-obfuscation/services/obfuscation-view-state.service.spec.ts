@@ -91,6 +91,7 @@ describe('ObfuscationViewStateService', () => {
           key: 'EMAIL',
           label: 'Email',
           total: 12,
+          occurrenceCount: 12,
           selectedCount: 4,
           masterState: 'partial',
           findings: []
@@ -100,6 +101,7 @@ describe('ObfuscationViewStateService', () => {
       page: 0,
       pageSize: 20,
       totalElements: 12,
+      totalGroups: 1,
       nonEligibleLegacyCount: 0
     };
 

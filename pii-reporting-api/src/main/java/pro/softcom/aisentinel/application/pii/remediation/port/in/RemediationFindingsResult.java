@@ -5,11 +5,13 @@ import lombok.Builder;
 import java.util.List;
 
 /**
- * Server-computed remediation view: groups with aggregates over the full filtered scope,
- * findings paginated across groups.
+ * Server-computed remediation view: groups with aggregates over the full filtered scope.
+ * Pagination is by group (a group is never split across pages).
  *
  * <p>{@code totals} reflects the lifecycle breakdown of the scope before the status facet
- * filter, so header counters stay stable while the operator switches facets.</p>
+ * filter, so header counters stay stable while the operator switches facets. {@code totalElements}
+ * is the number of distinct-value findings in the scope (informational); {@code totalGroups} is
+ * the number of groups and drives the pager.</p>
  */
 @Builder(toBuilder = true)
 public record RemediationFindingsResult(
@@ -18,6 +20,7 @@ public record RemediationFindingsResult(
         int page,
         int pageSize,
         long totalElements,
+        long totalGroups,
         long nonEligibleLegacyCount
 ) {
 

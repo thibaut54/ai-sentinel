@@ -1009,6 +1009,7 @@
       "fp": "False positives"
     },
     "selectAllPending": "Select all (to handle)",
+    "deselectAll": "Deselect all",
     "pageFilterChip": "Item: {{name}}",
     "groupBy": {
       "label": "Group by",
@@ -1019,6 +1020,7 @@
     "collapseAll": "Collapse all",
     "selectAllGroup": "Select whole group (all pages)",
     "nSelectedShort": "{{count}} selected",
+    "nOccurrences": "{{count}} occurrences",
     "groupPageHint": "Showing {{visible}} of {{total}} occurrences — checking the header selects all {{total}}, including on other pages.",
     "select": "Select",
     "status": {
@@ -1063,7 +1065,7 @@
       "completedWithIssues": "Obfuscation finished with errors — check the outcome details."
     },
     "pager": {
-      "label": "{{first}}–{{last}} of {{total}} findings",
+      "label": "{{first}}–{{last}} of {{total}} groups",
       "loading": "Loading…",
       "prev": "Previous",
       "next": "Next",
