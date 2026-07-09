@@ -14,9 +14,9 @@ import {
 import { PiiTypeConfig } from '../../../core/models/pii-detection-config.model';
 
 const piiConfigs: PiiTypeConfig[] = [
-  { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT' },
-  { id: 2, piiType: 'PHONE_NUMBER', detector: 'PRESIDIO', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'CONTACT' },
-  { id: 3, piiType: 'IBAN_CODE', detector: 'REGEX', enabled: true, threshold: 0.5, llmJudgeEnabled: false, category: 'FINANCIAL' }
+  { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+  { id: 2, piiType: 'PHONE_NUMBER', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+  { id: 3, piiType: 'IBAN_CODE', detector: 'REGEX', enabled: true, threshold: 0.5, category: 'FINANCIAL' }
 ];
 
 /** Resolves after the service's debounced (200ms) server fetch has run. */
