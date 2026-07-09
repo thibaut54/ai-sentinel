@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.application.pii.reporting.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanEventStore;
@@ -29,6 +30,7 @@ public class ContentScanOrchestrator {
     private final ScanEventDispatcher scanEventDispatcher;
     private final SeverityCalculationService severityCalculationService;
     private final ScanSeverityCountService scanSeverityCountService;
+    private final ScanPiiTypeCountService scanPiiTypeCountService;
 
     public ConfluenceContentScanResult createStartEvent(String scanId, String spaceKey, int total, double progress) {
         return scanEventFactory.createStartEvent(scanId, spaceKey, total, progress);
@@ -108,7 +110,12 @@ public class ContentScanOrchestrator {
             SeverityCounts counts = severityCalculationService.aggregateCounts(event.detectedPIIList());
             scanSeverityCountService.incrementCounts(event.scanId(), event.spaceKey(), counts);
         }
-        
+
+        // Persist per-type occurrence counts if event carries them
+        if (event.nbOfDetectedPIIByType() != null && !event.nbOfDetectedPIIByType().isEmpty()) {
+            scanPiiTypeCountService.incrementCounts(event.scanId(), event.spaceKey(), event.nbOfDetectedPIIByType());
+        }
+
         if (scanEventStore != null) {
             scanEventStore.append(event);
 

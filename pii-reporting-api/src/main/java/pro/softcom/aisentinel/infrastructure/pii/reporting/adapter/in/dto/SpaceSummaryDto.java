@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto;
 
 import java.time.Instant;
+import java.util.Map;
 
 public record SpaceSummaryDto(
         String spaceKey,
@@ -9,5 +10,7 @@ public record SpaceSummaryDto(
         long pagesDone,
         long attachmentsDone,
         Instant lastEventTs,
-        SeverityCountsDto severityCounts
+        SeverityCountsDto severityCounts,
+        String spaceName,
+        Map<String, Integer> piiTypeCounts
 ) { }

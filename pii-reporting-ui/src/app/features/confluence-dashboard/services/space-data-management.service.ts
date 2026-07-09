@@ -214,6 +214,14 @@ export class SpaceDataManagementService {
             // Map severity counts from backend to Space model
             const counts = spaceSummary.severityCounts ?? { high: 0, medium: 0, low: 0, total: 0 };
             this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, { counts });
+
+            // Map per-type PII counts (never null) onto the UI space
+            this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, {
+              piiTypeCounts: spaceSummary.piiTypeCounts ?? {}
+            });
+
+            // Backfill the human-readable name only when the UI space is missing it
+            this.patchSpaceNameIfMissing(spaceSummary.spaceKey, spaceSummary.spaceName);
           }
 
           // Still load persisted items to display PII cards (if needed)
@@ -272,6 +280,21 @@ export class SpaceDataManagementService {
         }
       });
     });
+  }
+
+  /**
+   * Backfills the UI space name from the backend summary, but only when the
+   * current UI space has no name yet (avoids clobbering an existing label).
+   */
+  private patchSpaceNameIfMissing(spaceKey: string, spaceName?: string): void {
+    if (!spaceName) {
+      return;
+    }
+    const nk = (v: string | null | undefined) => String(v ?? '').trim().toLowerCase();
+    const target = this.spacesDashboardUtils.allSpaces().find(s => nk(s.key) === nk(spaceKey));
+    if (target && !target.name) {
+      this.spacesDashboardUtils.updateSpace(spaceKey, { name: spaceName });
+    }
   }
 
   /**

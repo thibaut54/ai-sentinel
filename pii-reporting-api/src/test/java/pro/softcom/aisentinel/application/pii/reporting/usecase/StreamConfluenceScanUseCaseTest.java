@@ -86,6 +86,9 @@ class StreamConfluenceScanUseCaseTest {
     private pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService scanSeverityCountService;
 
     @Mock
+    private pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService scanPiiTypeCountService;
+
+    @Mock
     private ConfluenceSpaceRepository spaceRepository;
 
     private StreamConfluenceScanUseCase streamConfluenceScanUseCase;
@@ -117,7 +120,7 @@ class StreamConfluenceScanUseCaseTest {
         confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
         contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
-                severityCalculationService, scanSeverityCountService
+                severityCalculationService, scanSeverityCountService, scanPiiTypeCountService
         );
         attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,
@@ -632,7 +635,7 @@ class StreamConfluenceScanUseCaseTest {
         ConfluenceAccessor confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
         ContentScanOrchestrator contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
-                severityCalculationService, scanSeverityCountService
+                severityCalculationService, scanSeverityCountService, scanPiiTypeCountService
         );
         AttachmentProcessor attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,
@@ -701,7 +704,7 @@ class StreamConfluenceScanUseCaseTest {
         ConfluenceAccessor confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
         ContentScanOrchestrator contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
-                severityCalculationService, scanSeverityCountService
+                severityCalculationService, scanSeverityCountService, scanPiiTypeCountService
         );
         AttachmentProcessor attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,

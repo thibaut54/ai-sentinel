@@ -3,8 +3,10 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanPiiTypeCountRepository;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanSeverityCountRepository;
 
 /**
@@ -33,5 +35,15 @@ public class ApplicationServicesConfiguration {
     public ScanSeverityCountService scanSeverityCountService(
             ScanSeverityCountRepository scanSeverityCountRepository) {
         return new ScanSeverityCountService(scanSeverityCountRepository);
+    }
+
+    /**
+     * Creates the scan PII type count service bean.
+     * This service manages atomic operations on per-type occurrence counts during scans.
+     */
+    @Bean
+    public ScanPiiTypeCountService scanPiiTypeCountService(
+            ScanPiiTypeCountRepository scanPiiTypeCountRepository) {
+        return new ScanPiiTypeCountService(scanPiiTypeCountRepository);
     }
 }

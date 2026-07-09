@@ -76,7 +76,10 @@ class StreamConfluenceResumeScanUseCaseTest {
     @Mock
     private pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService scanSeverityCountService;
 
-    
+    @Mock
+    private pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService scanPiiTypeCountService;
+
+
 
     @Mock
     private ConfluenceSpaceRepository spaceRepository;
@@ -102,7 +105,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         ConfluenceAccessor confluenceAccessor = new ConfluenceAccessor(confluenceService, confluenceAttachmentService, spaceRepository);
         ContentScanOrchestrator contentScanOrchestrator = new ContentScanOrchestrator(
                 eventFactory, progressCalculator, checkpointService, jpaScanEventStoreAdapter, scanEventDispatcher,
-                severityCalculationService, scanSeverityCountService
+                severityCalculationService, scanSeverityCountService, scanPiiTypeCountService
         );
         AttachmentProcessor attachmentProcessor = new AttachmentProcessor(
                 confluenceDownloadService,
