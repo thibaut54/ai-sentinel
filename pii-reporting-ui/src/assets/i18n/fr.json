@@ -1069,7 +1069,15 @@
       "loading": "Chargement…",
       "prev": "Précédent",
       "next": "Suivant",
+      "refresh": "Revenir à la première page",
       "rowsPerPage": "Par page :"
+    },
+    "table": {
+      "selected": "Sélectionnés",
+      "occurrences": "Occurrences",
+      "total": "Valeurs",
+      "expand": "Développer",
+      "collapse": "Réduire"
     },
     "noFindings": "Aucun finding ne correspond.",
     "job": {

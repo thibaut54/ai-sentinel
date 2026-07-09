@@ -5,6 +5,9 @@ import { ObfuscationFindingRowComponent } from './obfuscation-finding-row.compon
 import { RemediationFindingDto } from '../../../../core/models/remediation.model';
 
 const FR_TRANSLATIONS = {
+  piiTypes: {
+    EMAIL: 'Email',
+  },
   obfuscation: {
     select: 'Sélectionner',
     nOccurrences: '{{count}} occurrences',
@@ -72,20 +75,36 @@ describe('ObfuscationFindingRowComponent', () => {
     return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
   }
 
-  it('Should_RenderMaskedContext_When_NoSensitiveValue', () => {
+  it('Should_RenderMaskedContextWithTokenBadge_When_NoSensitiveValue', () => {
     createComponent(finding());
 
     const value = query('obfuscation-row-value');
-    expect(value?.textContent).toContain('contact: [EMAIL]');
+    expect(value?.textContent).toContain('contact:');
+    expect(value?.querySelector('.ob-token-badge')?.textContent).toContain('Email');
+    expect(value?.textContent).not.toContain('[EMAIL]');
     expect(fixture.nativeElement.textContent).not.toContain('john.doe@example.com');
   });
 
-  it('Should_RenderClearValue_When_SensitiveValuePresent', () => {
+  it('Should_RenderClearValue_When_SensitiveValuePresentWithoutContext', () => {
     createComponent(finding({ sensitiveValue: 'john.doe@example.com' }));
 
     const value = query('obfuscation-row-value');
-    expect(value?.textContent).toContain('john.doe@example.com');
+    expect(value?.querySelector('.ob-highlight')?.textContent).toContain('john.doe@example.com');
     expect(value?.textContent).not.toContain('[EMAIL]');
+  });
+
+  it('Should_HighlightValueWithinContext_When_SensitiveContextPresent', () => {
+    createComponent(
+      finding({
+        sensitiveValue: 'john.doe@example.com',
+        sensitiveContext: 'Contact: john.doe@example.com for info',
+      })
+    );
+
+    const value = query('obfuscation-row-value');
+    expect(value?.textContent).toContain('Contact:');
+    expect(value?.textContent).toContain('for info');
+    expect(value?.querySelector('.ob-highlight')?.textContent?.trim()).toBe('john.doe@example.com');
   });
 
   it('Should_ShowOccurrenceCount_When_ValueAppearsMoreThanOnce', () => {

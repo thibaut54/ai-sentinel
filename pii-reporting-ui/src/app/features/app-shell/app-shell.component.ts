@@ -4,15 +4,13 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
-import { TabsModule } from 'primeng/tabs';
 import { AppHeaderComponent } from '../app-header/app-header.component';
 import { ConfluenceDashboardComponent } from '../confluence-dashboard/confluence-dashboard.component';
 import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
 
 /**
- * Application shell with top bar and Confluence source tab.
- *
- * Hosts the global toast, confirmation dialog, and settings dialog.
+ * Application shell hosting the shared header (with the data source selector) and the
+ * Confluence dashboard, plus the global toast, confirmation dialog, and settings dialog.
  */
 @Component({
   selector: 'app-shell',
@@ -23,7 +21,6 @@ import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
     ToastModule,
     ConfirmDialogModule,
     DialogModule,
-    TabsModule,
     AppHeaderComponent,
     ConfluenceDashboardComponent,
     PiiSettingsComponent
@@ -33,8 +30,6 @@ import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppShellComponent {
-  readonly activeSourceId = signal('confluence');
-
   // Settings dialog state
   readonly showSettingsDialog = signal(false);
   readonly settingsInitialTab = signal(0);

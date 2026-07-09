@@ -7,7 +7,7 @@
 
 /* Total — dark panel */
 .total-card {
-  background: linear-gradient(135deg, #1a1a2e 0%, #2d1520 100%);
+  background: #1e293b;
   border-radius: 10px;
   padding: 0.375rem 1rem;
   display: flex;

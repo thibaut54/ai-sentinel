@@ -195,6 +195,8 @@ class RemediationDtoMapperTest {
                 softly.assertThat(dto.groups().getFirst().findings().getFirst().severity()).isEqualTo("MEDIUM");
                 softly.assertThat(dto.groups().getFirst().findings().getFirst().sensitiveValue())
                         .isEqualTo("secret-value");
+                softly.assertThat(dto.groups().getFirst().findings().getFirst().sensitiveContext())
+                        .isEqualTo("secret-context");
                 softly.assertThat(dto.totals().pending()).isEqualTo(3);
                 softly.assertThat(dto.totals().handled()).isEqualTo(2);
                 softly.assertThat(dto.totals().falsePositive()).isEqualTo(1);
@@ -224,15 +226,15 @@ class RemediationDtoMapperTest {
         }
 
         @Test
-        @DisplayName("Should_ExposeSensitiveValueButNoContext_When_FindingDtoShapeInspected")
-        void Should_ExposeSensitiveValueButNoContext_When_FindingDtoShapeInspected() {
+        @DisplayName("Should_ExposeSensitiveValueAndContextButNotSourceContent_When_FindingDtoShapeInspected")
+        void Should_ExposeSensitiveValueAndContextButNotSourceContent_When_FindingDtoShapeInspected() {
             List<String> componentNames = Arrays.stream(RemediationFindingDto.class.getRecordComponents())
                     .map(RecordComponent::getName)
                     .toList();
 
             assertThat(componentNames)
-                    .contains("maskedContext", "sensitiveValue")
-                    .doesNotContain("sensitiveContext", "sourceContent");
+                    .contains("maskedContext", "sensitiveValue", "sensitiveContext")
+                    .doesNotContain("sourceContent");
         }
 
         private RemediationFindingView findingView() {
@@ -244,6 +246,7 @@ class RemediationDtoMapperTest {
                     .confidenceScore(0.9)
                     .maskedContext("masked")
                     .sensitiveValue("secret-value")
+                    .sensitiveContext("secret-context")
                     .pageId("p1")
                     .pageTitle("Alpha Page")
                     .status(FindingRemediationStatus.PENDING)

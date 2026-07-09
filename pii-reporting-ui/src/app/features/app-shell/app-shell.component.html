@@ -2,23 +2,10 @@
 <p-confirmDialog></p-confirmDialog>
 
 <div class="app-shell">
-  <!-- Top bar -->
+  <!-- Top bar with the data source selector -->
   <app-header (openSettings)="openSettingsDialog()" />
 
-  <!-- Source tabs -->
-  <p-tabs [value]="activeSourceId()">
-    <p-tablist>
-      <p-tab value="confluence">
-        <i class="pi pi-globe tab-icon"></i>
-        <span>{{ 'dashboard.sources.confluence' | transloco }}</span>
-      </p-tab>
-    </p-tablist>
-    <p-tabpanels>
-      <p-tabpanel value="confluence">
-        <app-confluence-dashboard (openSettings)="openSettingsDialog($event)" />
-      </p-tabpanel>
-    </p-tabpanels>
-  </p-tabs>
+  <app-confluence-dashboard (openSettings)="openSettingsDialog($event)" />
 
   <!-- Settings Dialog -->
   <p-dialog [(visible)]="showSettingsDialog"

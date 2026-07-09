@@ -20,3 +20,13 @@
     <app-language-selector />
   </div>
 </header>
+
+<!-- Data source selector -->
+<p-tabs [value]="activeSourceId()">
+  <p-tablist>
+    <p-tab value="confluence">
+      <i class="pi pi-globe tab-icon"></i>
+      <span>{{ 'dashboard.sources.confluence' | transloco }}</span>
+    </p-tab>
+  </p-tablist>
+</p-tabs>

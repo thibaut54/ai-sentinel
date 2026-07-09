@@ -4,9 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * A single finding row of the remediation view. {@code sensitiveValue} holds the plaintext
- * value and is only present when the remediation feature is enabled together with
- * {@code pii.reporting.allow-secret-reveal}; it is omitted (null) otherwise so masked-only
- * deployments keep the previous contract.
+ * value and {@code sensitiveContext} its surrounding line; both are only present when the
+ * remediation feature is enabled together with {@code pii.reporting.allow-secret-reveal},
+ * and are omitted (null) otherwise so masked-only deployments keep the previous contract.
+ * The full page {@code sourceContent} is never exposed here.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RemediationFindingDto(
@@ -17,6 +18,7 @@ public record RemediationFindingDto(
         double confidenceScore,
         String maskedContext,
         String sensitiveValue,
+        String sensitiveContext,
         int occurrenceCount,
         String pageId,
         String pageTitle,

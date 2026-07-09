@@ -24,11 +24,21 @@
       </span>
     } @else {
       <span
-        class="ob-masked-badge"
-        [class.ob-masked-badge--fp]="status() === 'FALSE_POSITIVE'"
+        class="ob-value"
+        [class.ob-value--revealed]="display().isRevealed"
+        [class.ob-value--fp]="status() === 'FALSE_POSITIVE'"
         [attr.data-testid]="testIds.value"
-        >{{ displayValue() }}</span
       >
+        @for (part of display().parts; track $index) {
+          @if (part.isBadge) {
+            <span class="ob-token-badge">{{ part.text }}</span>
+          } @else if (part.isHighlighted) {
+            <mark class="ob-highlight">{{ part.text }}</mark>
+          } @else {
+            <span class="ob-context-text">{{ part.text }}</span>
+          }
+        }
+      </span>
     }
     <span class="ob-occ-meta">
       @if (groupBy() === 'severity') {

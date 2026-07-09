@@ -57,9 +57,33 @@ public class ScanEventFindingResolver {
         return detection.valueFingerprint() == null || detection.valueFingerprint().isBlank();
     }
 
-    private EligibleFinding toFinding(ConfluenceContentScanResult event,
-                                      DetectedPersonallyIdentifiableInformation detection) {
-        FindingReference reference = FindingReference.builder()
+    /**
+     * Stable identity of a single detection as stored in the remediation projection, or
+     * {@code null} when the detection has no well-formed stable identity. Exposed so read models
+     * (e.g. the dashboard) can exclude findings by their remediation status without duplicating the
+     * identity recipe.
+     *
+     * <p>Returns {@code null} both for legacy detections (no {@code valueFingerprint}) and for
+     * detections that violate a {@link FindingReference} invariant (e.g. a blank {@code piiType} or
+     * {@code detector} — states the scan pipeline tolerates but which cannot form a stable id). Such
+     * a detection is therefore never treated as a tracked false positive, keeping the read path
+     * robust rather than letting one borderline detection abort the whole dashboard aggregation.</p>
+     */
+    public String stableFindingId(ConfluenceContentScanResult event,
+                                  DetectedPersonallyIdentifiableInformation detection) {
+        if (isLegacy(detection)) {
+            return null;
+        }
+        try {
+            return referenceOf(event, detection).findingId();
+        } catch (IllegalArgumentException identityViolation) {
+            return null;
+        }
+    }
+
+    private FindingReference referenceOf(ConfluenceContentScanResult event,
+                                         DetectedPersonallyIdentifiableInformation detection) {
+        return FindingReference.builder()
                 .spaceKey(event.spaceKey())
                 .pageId(event.pageId())
                 .attachmentName(event.attachmentName())
@@ -68,6 +92,11 @@ public class ScanEventFindingResolver {
                 .severity(severityCalculationService.calculateSeverity(detection.piiType()))
                 .valueFingerprint(detection.valueFingerprint())
                 .build();
+    }
+
+    private EligibleFinding toFinding(ConfluenceContentScanResult event,
+                                      DetectedPersonallyIdentifiableInformation detection) {
+        FindingReference reference = referenceOf(event, detection);
         return EligibleFinding.builder()
                 .findingId(reference.findingId())
                 .reference(reference)
@@ -75,6 +104,7 @@ public class ScanEventFindingResolver {
                 .piiTypeLabel(detection.piiTypeLabel())
                 .maskedContext(detection.maskedContext())
                 .sensitiveValue(detection.sensitiveValue())
+                .sensitiveContext(detection.sensitiveContext())
                 .pageTitle(event.pageTitle())
                 .build();
     }

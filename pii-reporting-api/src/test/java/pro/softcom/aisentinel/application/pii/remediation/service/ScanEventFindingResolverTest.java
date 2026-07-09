@@ -59,6 +59,7 @@ class ScanEventFindingResolverTest {
             softly.assertThat(finding.confidence()).isEqualTo(0.9);
             softly.assertThat(finding.piiTypeLabel()).isEqualTo("Email Address");
             softly.assertThat(finding.maskedContext()).isEqualTo("masked-EMAIL");
+            softly.assertThat(finding.sensitiveContext()).isEqualTo("ENC:v1:context");
             softly.assertThat(finding.pageTitle()).isEqualTo("Alpha Page");
         });
     }
@@ -103,6 +104,42 @@ class ScanEventFindingResolverTest {
         Resolution resolution = resolver.resolve(List.of(event));
 
         assertThat(resolution.findings().getFirst().reference().detector()).isEqualTo("UNKNOWN_SOURCE");
+    }
+
+    @Test
+    @DisplayName("Should_ReturnStableFindingIdEqualToResolvedFinding_When_DetectionHasFingerprint")
+    void Should_ReturnStableFindingIdEqualToResolvedFinding_When_DetectionHasFingerprint() {
+        DetectedPersonallyIdentifiableInformation detection =
+                detection("EMAIL", "Email Address", "fp-1", 0.9, DetectorSource.PRESIDIO);
+        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of(detection));
+
+        String stableId = resolver.stableFindingId(event, detection);
+
+        assertThat(stableId).isEqualTo(resolver.resolve(List.of(event)).findings().getFirst().findingId());
+    }
+
+    @Test
+    @DisplayName("Should_ReturnNullStableFindingId_When_DetectionIsLegacy")
+    void Should_ReturnNullStableFindingId_When_DetectionIsLegacy() {
+        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of());
+
+        assertSoftly(softly -> {
+            softly.assertThat(resolver.stableFindingId(event,
+                    detection("EMAIL", "Email Address", null, 0.9, DetectorSource.PRESIDIO))).isNull();
+            softly.assertThat(resolver.stableFindingId(event,
+                    detection("PHONE", "Phone", " ", 0.8, DetectorSource.REGEX))).isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("Should_ReturnNullStableFindingId_When_IdentityInvariantViolated")
+    void Should_ReturnNullStableFindingId_When_IdentityInvariantViolated() {
+        // A detection carrying a real value (fingerprint set) but a blank piiType violates the
+        // FindingReference invariant; it has no stable identity and must not abort the read path.
+        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of());
+
+        assertThat(resolver.stableFindingId(event,
+                detection(" ", "Blank type", "fp-1", 0.9, DetectorSource.PRESIDIO))).isNull();
     }
 
     @Test

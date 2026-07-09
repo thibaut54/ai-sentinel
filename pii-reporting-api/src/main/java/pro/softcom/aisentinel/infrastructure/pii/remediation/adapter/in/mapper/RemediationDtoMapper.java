@@ -170,6 +170,7 @@ public class RemediationDtoMapper {
                 view.confidenceScore(),
                 view.maskedContext(),
                 view.sensitiveValue(),
+                view.sensitiveContext(),
                 view.occurrenceCount(),
                 view.pageId(),
                 view.pageTitle(),

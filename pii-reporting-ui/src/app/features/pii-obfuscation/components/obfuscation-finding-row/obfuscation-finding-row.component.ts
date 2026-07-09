@@ -8,6 +8,7 @@ import {
 } from '../../../../core/models/remediation.model';
 import { ConfidenceIndicatorComponent } from '../../../../shared/confidence-indicator/confidence-indicator.component';
 import { DetectorTagComponent } from '../../../../shared/detector-tag/detector-tag.component';
+import { PiiValueDisplayService } from '../../../../shared/pii-value-display/pii-value-display.service';
 import { PiiItemCardUtils } from '../../../pii-item-card/pii-item-card.utils';
 import { TestIds } from '../../../test-ids.constants';
 
@@ -47,12 +48,22 @@ export class ObfuscationFindingRowComponent {
   readonly restore = output<void>();
 
   private readonly itemCardUtils = inject(PiiItemCardUtils);
+  private readonly valueDisplay = inject(PiiValueDisplayService);
 
   readonly testIds = TestIds.obfuscation.row;
 
-  // Reviewers need the plaintext value to judge false positives; the backend only sends it
-  // when secret reveal is allowed, so fall back to the masked context when it is absent.
-  readonly displayValue = computed(() => this.finding().sensitiveValue ?? this.finding().maskedContext);
+  // Reviewers need the plaintext value in its detection context to judge false positives.
+  // The backend only sends sensitiveValue/sensitiveContext when secret reveal is allowed
+  // (the whole remediation feature is gated on it), so a present value means "revealed"; the
+  // masked context with [TYPE] token badges is shown when it is absent.
+  readonly display = computed(() =>
+    this.valueDisplay.build({
+      sensitiveValue: this.finding().sensitiveValue,
+      sensitiveContext: this.finding().sensitiveContext,
+      maskedContext: this.finding().maskedContext,
+      revealed: true,
+    })
+  );
 
   readonly status = computed(() => this.finding().status);
   readonly statusMeta = computed(() => STATUS_META[this.status()]);

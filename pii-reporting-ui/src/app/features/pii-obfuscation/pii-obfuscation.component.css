@@ -127,12 +127,13 @@
   background: rgb(0 0 0 / 0.05);
 }
 
-.ob-toolbar {
+/* Table controls, hosted in the table caption below the top pagination. */
+.ob-caption-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-bottom: 0.6rem;
+  margin-top: 0.6rem;
 }
 
 .ob-toolbar-spacer {
@@ -273,19 +274,197 @@
   outline-offset: 1px;
 }
 
-.ob-list {
+/* ======================================================================
+ * Group table: mirrors the Confluence dashboard table chrome so both views
+ * share one look & feel (rounded card, sticky-ish header, caption paginator
+ * on top, PrimeNG paginator at the bottom).
+ * ====================================================================== */
+.ob-table-wrap {
   position: relative;
   transition: opacity 0.15s ease;
 }
 
-.ob-list--loading {
+.ob-table-wrap--loading {
   opacity: 0.45;
   pointer-events: none;
 }
 
-.ob-list--frozen {
+.ob-table-wrap--frozen {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* Table container: rounded corners, card background, subtle border.
+   ::ng-deep needed: PrimeNG renders its own datatable template. */
+:host ::ng-deep .ob-table.p-datatable {
+  background: var(--sentinel-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--sentinel-border-top-bar);
+  overflow: hidden;
+}
+
+:host ::ng-deep .ob-table .p-datatable-table {
+  table-layout: fixed;
+}
+
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th,
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Expanded row is free to wrap and overflow. */
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td[colspan] {
+  white-space: normal;
+  overflow: visible;
+}
+
+/* Caption bar (top): holds the paginator cluster, matching the dashboard. */
+:host ::ng-deep .ob-table .p-datatable-header {
+  background: var(--sentinel-bg-page);
+  border-bottom: 1px solid var(--sentinel-border-light);
+  padding: 0.5rem 1rem;
+}
+
+.caption-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.caption-paginator {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.page-indicator {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sentinel-text-secondary);
+  white-space: nowrap;
+  margin-left: 0.25rem;
+}
+
+/* Column headers */
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th {
+  background: var(--sentinel-bg-page);
+  color: var(--sentinel-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-color: var(--sentinel-border-light);
+}
+
+/* Row borders */
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td {
+  border-color: var(--sentinel-border-light);
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Checkbox column: header select-all and per-group masters share one column.
+   Same left padding on header th and body td so the boxes line up vertically. */
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th.ob-check-cell,
+.ob-check-cell {
+  padding-left: 1rem;
+  vertical-align: middle;
+}
+
+.ob-check-cell p-checkbox {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Toggle cell: chevron sits left, not clipped. */
+.toggle-cell {
+  cursor: pointer;
+  padding-right: 0 !important;
+  padding-left: 0.25rem !important;
+  overflow: visible !important;
+}
+
+/* Label cell: clickable to expand/collapse. */
+.ob-label-cell {
+  cursor: pointer;
+}
+
+.ob-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Severity dot + label */
+.ob-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--sentinel-text-muted);
+}
+
+.ob-dot--high {
+  background: var(--sentinel-severity-high);
+}
+
+.ob-dot--medium {
+  background: var(--sentinel-severity-medium);
+}
+
+.ob-dot--low {
+  background: var(--sentinel-severity-low);
+}
+
+.ob-group-label {
+  font-weight: 600;
+  color: var(--sentinel-text-primary);
+}
+
+.ob-group-selected {
+  font-size: 0.75rem;
+  color: var(--sentinel-presidio-color);
+}
+
+.ob-group-occ {
+  font-size: 0.72rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-group-count {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--sentinel-badge-count-bg);
+  color: var(--sentinel-text-body);
+}
+
+/* Expanded row: stacked finding rows + cross-page hint. */
+.ob-group-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.ob-group-hint {
+  margin: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed var(--sentinel-info-border);
+  border-radius: 8px;
+  background: var(--sentinel-info-bg);
+  color: var(--sentinel-info-text);
+  font-size: 0.72rem;
+}
+
+/* Bottom paginator, aligned with the dashboard. */
+:host ::ng-deep .ob-table .p-paginator {
+  border-top: 1px solid var(--sentinel-border-light);
+  background: var(--sentinel-bg-card);
+  border-radius: 0 0 12px 12px;
+  font-size: 0.75rem;
 }
 
 .ob-empty {
@@ -301,29 +480,6 @@
 
 .ob-empty .pi {
   font-size: 1.4rem;
-}
-
-.ob-pager {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  font-size: 0.78rem;
-  color: var(--sentinel-text-secondary);
-}
-
-.ob-pager-size {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.ob-pager-size select {
-  height: 1.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--sentinel-border-input);
-  background: var(--sentinel-bg-card);
-  color: var(--sentinel-text-body);
 }
 
 .ob-disabled {

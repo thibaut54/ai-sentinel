@@ -2,8 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MessageService } from 'primeng/api';
+import { TableModule } from 'primeng/table';
+import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { Ripple } from 'primeng/ripple';
 import {
   FindingTargetStatus,
   ObfuscationJobDto,
@@ -22,7 +27,7 @@ import { ObfuscationSelectionService } from './services/obfuscation-selection.se
 import { ObfuscationViewStateService } from './services/obfuscation-view-state.service';
 import { BulkChip, ObfuscationBulkBarComponent } from './components/obfuscation-bulk-bar/obfuscation-bulk-bar.component';
 import { ObfuscationConfirmDialogComponent } from './components/obfuscation-confirm-dialog/obfuscation-confirm-dialog.component';
-import { ObfuscationGroupListComponent } from './components/obfuscation-group-list/obfuscation-group-list.component';
+import { ObfuscationFindingRowComponent } from './components/obfuscation-finding-row/obfuscation-finding-row.component';
 import { ObfuscationJobProgressComponent } from './components/obfuscation-job-progress/obfuscation-job-progress.component';
 import { TestIds } from '../test-ids.constants';
 
@@ -65,8 +70,13 @@ function stripBoldTags(value: string): string {
   standalone: true,
   imports: [
     TranslocoModule,
+    FormsModule,
+    TableModule,
+    ButtonModule,
+    CheckboxModule,
+    Ripple,
     AppHeaderComponent,
-    ObfuscationGroupListComponent,
+    ObfuscationFindingRowComponent,
     ObfuscationBulkBarComponent,
     ObfuscationConfirmDialogComponent,
     ObfuscationJobProgressComponent
@@ -157,6 +167,27 @@ export class PiiObfuscationComponent {
     return (response.page + 1) * response.pageSize < response.totalGroups;
   });
 
+  // Total number of groups across all pages — the paginator counts groups, not findings.
+  readonly totalGroups = computed(() => this.viewState.lastSearchResponse()?.totalGroups ?? 0);
+
+  // PrimeNG paginator offset (rows before the current page), in group units.
+  readonly pagerOffset = computed(() => this.viewState.page() * this.viewState.pageSize());
+
+  readonly currentPage = computed(() => this.viewState.page() + 1);
+
+  readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.totalGroups() / this.viewState.pageSize()))
+  );
+
+  // p-table expects a { key: true } map; derive it from the open-accordion set.
+  readonly expandedRowKeys = computed<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    for (const key of this.viewState.openAccordions()) {
+      map[key] = true;
+    }
+    return map;
+  });
+
   constructor() {
     this.route.queryParamMap
       .pipe(takeUntilDestroyed())
@@ -230,10 +261,48 @@ export class PiiObfuscationComponent {
     }
   }
 
-  onPageSizeChange(event: Event): void {
-    this.viewState.pageSize.set(Number((event.target as HTMLSelectElement).value));
+  resetPage(): void {
+    if (this.viewState.page() === 0) {
+      return;
+    }
     this.viewState.page.set(0);
     this.refreshSearch();
+  }
+
+  // Bottom PrimeNG paginator gesture. Guarded so PrimeNG's binding-driven emits
+  // (init / programmatic [first] changes) never trigger a redundant backend search.
+  onTablePage(event: { first: number; rows: number }): void {
+    const nextPage = Math.floor(event.first / event.rows);
+    const nextSize = event.rows;
+    if (nextPage === this.viewState.page() && nextSize === this.viewState.pageSize()) {
+      return;
+    }
+    this.viewState.pageSize.set(nextSize);
+    this.viewState.page.set(nextPage);
+    this.refreshSearch();
+  }
+
+  onRowExpand(event: { data?: { key?: string } }): void {
+    const key = event.data?.key;
+    if (key) {
+      this.viewState.openAccordions.update((open) => new Set(open).add(key));
+    }
+  }
+
+  onRowCollapse(event: { data?: { key?: string } }): void {
+    const key = event.data?.key;
+    if (key) {
+      this.viewState.openAccordions.update((open) => {
+        const next = new Set(open);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  severityOf(group: RemediationGroupDto): string {
+    const severity = this.viewState.groupBy() === 'severity' ? group.key : group.severity;
+    return (severity ?? '').toLowerCase();
   }
 
   removeItemFilter(): void {
@@ -257,10 +326,6 @@ export class PiiObfuscationComponent {
   selectAllPending(): void {
     this.applySelectAllPending();
     this.refreshAll();
-  }
-
-  onGroupToggled(key: string): void {
-    this.viewState.toggleAccordion(key);
   }
 
   onMasterToggled(group: RemediationGroupDto): void {

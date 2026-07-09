@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
 import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
@@ -20,6 +21,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,11 +42,16 @@ class ScanReportingSummaryMapperTest {
     @Mock
     private SeverityCountsMapper severityCountsMapper;
 
+    @Mock
+    private DashboardFalsePositiveFilter falsePositiveFilter;
+
     private ScanReportingSummaryMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new ScanReportingSummaryMapper(severityCountService, severityCountsMapper);
+        mapper = new ScanReportingSummaryMapper(severityCountService, severityCountsMapper, falsePositiveFilter);
+        lenient().when(falsePositiveFilter.falsePositiveDelta(anyString(), anyString()))
+                .thenReturn(SeverityCounts.zero());
     }
 
     @Test
@@ -97,6 +105,54 @@ class ScanReportingSummaryMapperTest {
         
         verify(severityCountService).getCounts(scanId, "SPACE1");
         verify(severityCountsMapper).toDto(severityCounts);
+    }
+
+    @Test
+    void should_DecrementSeverityCounts_When_SpaceHasFalsePositives() {
+        // Given
+        String scanId = "scan-fp";
+        SpaceSummary space = new SpaceSummary(
+                "SPACE1", "COMPLETED", 100.0, 10L, 0L, Instant.parse("2026-01-15T10:00:00Z"));
+        ScanReportingSummary summary = new ScanReportingSummary(
+                scanId, Instant.parse("2026-01-15T10:00:00Z"), 1, List.of(space));
+
+        SeverityCountsDto correctedDto = new SeverityCountsDto(2, 2, 0, 4);
+        when(severityCountService.getCounts(scanId, "SPACE1"))
+                .thenReturn(Optional.of(new SeverityCounts(3, 2, 1)));
+        // 1 HIGH and 1 LOW occurrence flagged false positive (plus more LOW than present -> floored at 0).
+        when(falsePositiveFilter.falsePositiveDelta(scanId, "SPACE1"))
+                .thenReturn(new SeverityCounts(1, 0, 3));
+        when(severityCountsMapper.toDto(new SeverityCounts(2, 2, 0))).thenReturn(correctedDto);
+
+        // When
+        ScanReportingSummaryDto result = mapper.toDto(summary);
+
+        // Then
+        assertThat(result.spaces().get(0).severityCounts()).isEqualTo(correctedDto);
+        verify(severityCountsMapper).toDto(new SeverityCounts(2, 2, 0));
+    }
+
+    @Test
+    void should_YieldZeroCounts_When_BaseAbsentButDeltaPresent() {
+        // Given: no scan-time aggregate row (base absent) but the space still has FP occurrences.
+        String scanId = "scan-null-base";
+        SpaceSummary space = new SpaceSummary(
+                "SPACE1", "COMPLETED", 100.0, 10L, 0L, Instant.parse("2026-01-15T10:00:00Z"));
+        ScanReportingSummary summary = new ScanReportingSummary(
+                scanId, Instant.parse("2026-01-15T10:00:00Z"), 1, List.of(space));
+
+        SeverityCountsDto zeroDto = new SeverityCountsDto(0, 0, 0, 0);
+        when(severityCountService.getCounts(scanId, "SPACE1")).thenReturn(Optional.empty());
+        when(falsePositiveFilter.falsePositiveDelta(scanId, "SPACE1"))
+                .thenReturn(new SeverityCounts(0, 0, 2));
+        when(severityCountsMapper.toDto(new SeverityCounts(0, 0, 0))).thenReturn(zeroDto);
+
+        // When
+        ScanReportingSummaryDto result = mapper.toDto(summary);
+
+        // Then: the null base is treated as zero and floored, yielding all-zero counts.
+        assertThat(result.spaces().get(0).severityCounts()).isEqualTo(zeroDto);
+        verify(severityCountsMapper).toDto(new SeverityCounts(0, 0, 0));
     }
 
     @Test

@@ -36,6 +36,11 @@
   letter-spacing: -0.3px;
 }
 
+/* Data source tab icon */
+.tab-icon {
+  margin-right: 0.5rem;
+}
+
 /* Header theme toggle button
    ::ng-deep needed: PrimeNG button renders its own internal template */
 :host ::ng-deep .header-theme-btn.p-button {

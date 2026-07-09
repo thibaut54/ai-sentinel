@@ -22,6 +22,9 @@ import {
 
 const FR_TRANSLATIONS = {
   common: { success: 'Succès', warning: 'Attention' },
+  dashboard: {
+    table: { paginatorReport: 'Affichage de {first} à {last} sur {totalRecords} entrées' },
+  },
   obfuscation: {
     featureDisabled: 'Le caviardage automatique est désactivé pour cette instance.',
     noFindings: 'Aucun finding ne correspond.',
@@ -33,6 +36,8 @@ const FR_TRANSLATIONS = {
     collapseAll: 'Tout replier',
     selectAllGroup: 'Sélectionner tout le groupe (toutes pages)',
     nSelectedShort: '{{count}} sélectionnés',
+    nOccurrences: '{{count}} occurrences',
+    table: { selected: 'Sélectionnés', occurrences: 'Occurrences', total: 'Valeurs', expand: 'Développer', collapse: 'Réduire' },
     groupPageHint: '{{visible}} sur {{total}}',
     select: 'Sélectionner',
     redactedValue: 'Caviardé',
@@ -75,6 +80,7 @@ const FR_TRANSLATIONS = {
       loading: 'Chargement…',
       prev: 'Précédent',
       next: 'Suivant',
+      refresh: 'Revenir à la première page',
       rowsPerPage: 'Par page :',
     },
     job: {
@@ -167,6 +173,12 @@ describe('PiiObfuscationComponent', () => {
     // The shared app header pulls in ThemeService, which probes matchMedia at
     // construction; jsdom does not implement it.
     globalThis.matchMedia ??= vi.fn().mockReturnValue({ matches: false }) as unknown as typeof globalThis.matchMedia;
+    // The header's data source tabs (PrimeNG TabList) observe resize; jsdom lacks it.
+    globalThis.ResizeObserver ??= class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    } as unknown as typeof globalThis.ResizeObserver;
 
     remediationConfigMock = { enabled: signal(false) };
     queryParams$ = new BehaviorSubject(convertToParamMap({}));
@@ -341,7 +353,8 @@ describe('PiiObfuscationComponent', () => {
   it('Should_SelectAllSeverities_When_SelectAllPendingClicked', () => {
     createEnabledComponent();
 
-    query('obfuscation-select-all-pending')?.click();
+    // The select-all is a p-checkbox: the testid is on the host, the toggle on its input.
+    query('obfuscation-select-all-pending')?.querySelector('input')?.click();
 
     expect(selectionService().checkedSeverities().size).toBe(3);
     expect(api.planObfuscation).toHaveBeenCalled();
@@ -350,11 +363,11 @@ describe('PiiObfuscationComponent', () => {
   it('Should_ClearSelection_When_ToggledWhileAllSelected', () => {
     createEnabledComponent();
 
-    query('obfuscation-select-all-pending')?.click();
+    query('obfuscation-select-all-pending')?.querySelector('input')?.click();
     expect(fixture.componentInstance.allPendingSelected()).toBe(true);
 
     fixture.detectChanges();
-    query('obfuscation-select-all-pending')?.click();
+    query('obfuscation-select-all-pending')?.querySelector('input')?.click();
 
     expect(selectionService().checkedSeverities().size).toBe(0);
     expect(fixture.componentInstance.allPendingSelected()).toBe(false);
@@ -631,15 +644,17 @@ describe('PiiObfuscationComponent', () => {
     createEnabledComponent();
 
     expect(query('obfuscation-pager-label')?.textContent).toContain('1–20 sur 44 groupes');
-    expect(query<HTMLButtonElement>('obfuscation-pager-prev')?.disabled).toBe(true);
-    expect(query<HTMLButtonElement>('obfuscation-pager-next')?.disabled).toBe(false);
+    // The caption paginator uses <p-button>: the testid is on the host, the disabled
+    // state lives on the rendered inner <button>.
+    expect(query('obfuscation-pager-prev')?.querySelector('button')?.disabled).toBe(true);
+    expect(query('obfuscation-pager-next')?.querySelector('button')?.disabled).toBe(false);
   });
 
   it('Should_RequestNextPage_When_NextClicked', () => {
     api.searchFindings.mockReturnValue(of(searchResponse({ page: 0, pageSize: 20, totalGroups: 44 })));
     createEnabledComponent();
 
-    query('obfuscation-pager-next')?.click();
+    query('obfuscation-pager-next')?.querySelector('button')?.click();
 
     expect(lastSearchRequest().page).toBe(1);
   });
@@ -654,5 +669,65 @@ describe('PiiObfuscationComponent', () => {
 
     expect(viewStateService().page()).toBe(0);
     expect(lastSearchRequest().searchText).toBe('john');
+  });
+
+  // Group-row rendering guarantees (backend values rendered verbatim), migrated from
+  // the retired ObfuscationGroupListComponent now that the table lives in this template.
+  it('Should_RenderMasterStateVerbatim_When_RowsWouldImplyOtherwise', async () => {
+    api.searchFindings.mockReturnValue(
+      of(searchResponse({ groups: [group({ masterState: 'all', findings: [finding({ selected: false })] })] }))
+    );
+
+    createEnabledComponent();
+    // NgModel writes its initial value in a microtask; flush it before asserting.
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Master checkbox reflects the backend group state, not the (unselected) row.
+    // PrimeNG applies the checked class to the p-checkbox host (the testid element).
+    const master = query('obfuscation-group-master');
+    expect(master?.classList.contains('p-checkbox-checked')).toBe(true);
+  });
+
+  it('Should_RenderGroupTotalVerbatim_When_VisibleRowCountDiffers', () => {
+    api.searchFindings.mockReturnValue(
+      of(searchResponse({ groups: [group({ total: 344, findings: [finding()] })] }))
+    );
+
+    createEnabledComponent();
+
+    expect(query('obfuscation-group-count')?.textContent).toContain('344');
+  });
+
+  it('Should_ShowOccurrenceCount_When_MoreOccurrencesThanDistinctValues', () => {
+    api.searchFindings.mockReturnValue(
+      of(searchResponse({ groups: [group({ total: 4, occurrenceCount: 9 })] }))
+    );
+
+    createEnabledComponent();
+
+    expect(query('obfuscation-group-occurrences')?.textContent).toContain('9 occurrences');
+  });
+
+  it('Should_ShowCrossPageHint_When_FewerRowsThanGroupTotal', () => {
+    api.searchFindings.mockReturnValue(
+      of(searchResponse({ groups: [group({ total: 12, findings: [finding()] })] }))
+    );
+
+    createEnabledComponent();
+
+    expect(query('obfuscation-group-hint')?.textContent).toContain('1 sur 12');
+  });
+
+  it('Should_UseSeverityGroupKeyForDot_When_GroupedBySeverity', () => {
+    api.searchFindings.mockReturnValue(
+      of(searchResponse({ groups: [group({ key: 'high', label: 'Critique', severity: undefined })] }))
+    );
+    createEnabledComponent();
+
+    fixture.componentInstance.setGroupBy('severity');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ob-dot--high')).toBeTruthy();
   });
 });

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.*;
@@ -18,6 +19,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
     private final ScanResultQuery scanResultQuery;
     private final ScanCheckpointRepository checkpointRepo;
+    private final DashboardFalsePositiveFilter falsePositiveFilter;
 
     @Override
     public Optional<LastScanMeta> getLatestScan() {
@@ -94,7 +96,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 log.info("[SCAN] Found {} items for space={}, scanId={}", spaceItems.size(), cp.spaceKey(), cp.scanId());
                 allItems.addAll(spaceItems);
             }
-            return allItems;
+            return falsePositiveFilter.excludeFalsePositives(allItems);
         } catch (Exception ex) {
             log.warn("[SCAN] Failed to get global scan items: {}", ex.getMessage());
             return List.of();

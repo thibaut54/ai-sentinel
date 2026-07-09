@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
+import { TabsModule } from 'primeng/tabs';
 import { LanguageSelectorComponent } from '../../core/components/language-selector/language-selector.component';
 import { ThemeService } from '../../core/services/theme.service';
 
@@ -17,7 +18,7 @@ import { ThemeService } from '../../core/services/theme.service';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [NgOptimizedImage, RouterLink, TranslocoModule, ButtonModule, LanguageSelectorComponent],
+  imports: [NgOptimizedImage, RouterLink, TranslocoModule, ButtonModule, TabsModule, LanguageSelectorComponent],
   templateUrl: './app-header.component.html',
   styleUrl: './app-header.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -25,4 +26,8 @@ import { ThemeService } from '../../core/services/theme.service';
 export class AppHeaderComponent {
   readonly themeService = inject(ThemeService);
   readonly openSettings = output<void>();
+
+  // Data source selector. Only Confluence exists today; kept as a tab bar so it
+  // reads as a source picker and stays consistent across every top-level view.
+  readonly activeSourceId = signal('confluence');
 }

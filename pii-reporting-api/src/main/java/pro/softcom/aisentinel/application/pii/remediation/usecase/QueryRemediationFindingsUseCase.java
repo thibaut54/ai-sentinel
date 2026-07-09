@@ -256,6 +256,7 @@ public class QueryRemediationFindingsUseCase implements QueryRemediationFindings
                 .confidenceScore(finding.confidence())
                 .maskedContext(finding.maskedContext())
                 .sensitiveValue(finding.sensitiveValue())
+                .sensitiveContext(finding.sensitiveContext())
                 .occurrenceCount(finding.occurrenceCount())
                 .pageId(reference.pageId())
                 .pageTitle(finding.pageTitle())

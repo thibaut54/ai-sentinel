@@ -77,176 +77,290 @@
     }
 
     <div class="ob-content" [attr.data-testid]="testIds.content">
-      <div class="ob-toolbar">
-        <span class="ob-search">
-          <i class="pi pi-search" aria-hidden="true"></i>
-          <input
-            type="search"
-            [value]="viewState.searchText()"
-            (input)="onSearchInput($event)"
-            [placeholder]="'obfuscation.searchPlaceholder' | transloco"
-            [attr.aria-label]="'obfuscation.searchPlaceholder' | transloco"
-            [attr.data-testid]="testIds.toolbar.search"
-          />
-        </span>
-
-        <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.statusFilter">
-          @for (option of statusFilterOptions; track option.value) {
-            <button
-              type="button"
-              class="ob-segment"
-              [class.ob-segment--active]="viewState.statusFilter() === option.value"
-              [attr.aria-pressed]="viewState.statusFilter() === option.value"
-              (click)="setStatusFilter(option.value)"
-              [attr.data-testid]="testIds.toolbar.statusOption + '-' + option.value"
-            >
-              {{ option.labelKey | transloco }}
-              @if (statusCount(option.value) !== null) {
-                <span class="ob-segment-count">{{ statusCount(option.value) }}</span>
-              }
-            </button>
-          }
-        </span>
-
-        @if (itemChipLabel(); as itemName) {
-          <span class="ob-item-chip" [attr.data-testid]="testIds.toolbar.itemChip">
-            {{ 'obfuscation.pageFilterChip' | transloco: { name: itemName } }}
-            <button
-              type="button"
-              class="ob-item-chip-remove"
-              (click)="removeItemFilter()"
-              [attr.aria-label]="'obfuscation.dismiss' | transloco"
-              [attr.data-testid]="testIds.toolbar.itemChipRemove"
-            >
-              <i class="pi pi-times" aria-hidden="true"></i>
-            </button>
-          </span>
-        }
-
-        <span class="ob-toolbar-spacer"></span>
-
-        <span class="ob-groupby-label">{{ 'obfuscation.groupBy.label' | transloco }}</span>
-        <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.groupBy">
-          @for (option of groupByOptions; track option.value) {
-            <button
-              type="button"
-              class="ob-segment"
-              [class.ob-segment--active]="viewState.groupBy() === option.value"
-              [attr.aria-pressed]="viewState.groupBy() === option.value"
-              (click)="setGroupBy(option.value)"
-              [attr.data-testid]="testIds.toolbar.groupByOption + '-' + option.value"
-            >
-              {{ option.labelKey | transloco }}
-            </button>
-          }
-        </span>
-      </div>
-
-      <div class="ob-toolbar ob-toolbar--secondary">
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          (click)="toggleSelectAllPending()"
-          [attr.data-testid]="testIds.toolbar.selectAllPending"
-        >
-          <i class="pi" [class.pi-check-square]="!allPendingSelected()" [class.pi-times]="allPendingSelected()" aria-hidden="true"></i>
-          {{ (allPendingSelected() ? 'obfuscation.deselectAll' : 'obfuscation.selectAllPending') | transloco }}
-        </button>
-        <span class="ob-toolbar-spacer"></span>
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          (click)="expandAll()"
-          [attr.data-testid]="testIds.toolbar.expandAll"
-        >
-          <i class="pi pi-angle-double-down" aria-hidden="true"></i>
-          {{ 'obfuscation.expandAll' | transloco }}
-        </button>
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          (click)="collapseAll()"
-          [attr.data-testid]="testIds.toolbar.collapseAll"
-        >
-          <i class="pi pi-angle-double-up" aria-hidden="true"></i>
-          {{ 'obfuscation.collapseAll' | transloco }}
-        </button>
-      </div>
-
       <div
-        class="ob-list"
-        [class.ob-list--loading]="viewState.loading()"
-        [class.ob-list--frozen]="activeJobId() !== null"
+        class="ob-table-wrap"
+        [class.ob-table-wrap--loading]="viewState.loading()"
+        [class.ob-table-wrap--frozen]="activeJobId() !== null"
+        [attr.data-testid]="testIds.pager.root"
       >
-        @if (groups().length > 0) {
-          <app-obfuscation-group-list
-            [groups]="groups()"
-            [groupBy]="viewState.groupBy()"
-            [openKeys]="viewState.openAccordions()"
-            (groupToggled)="onGroupToggled($event)"
-            (masterToggled)="onMasterToggled($event)"
-            (rowToggled)="onRowToggled($event)"
-            (rowMarkManual)="onRowMarkManual($event)"
-            (rowReportFalsePositive)="onRowReportFalsePositive($event)"
-            (rowRestore)="onRowRestore($event)"
-          />
-        } @else {
-          <div class="ob-empty" [attr.data-testid]="testIds.empty">
-            <i class="pi pi-inbox" aria-hidden="true"></i>
-            {{ 'obfuscation.noFindings' | transloco }}
-          </div>
-        }
-      </div>
+        <p-table
+          [value]="groups()"
+          dataKey="key"
+          [lazy]="true"
+          [lazyLoadOnInit]="false"
+          [paginator]="true"
+          [rows]="viewState.pageSize()"
+          [first]="pagerOffset()"
+          [totalRecords]="totalGroups()"
+          [rowsPerPageOptions]="pageSizes"
+          [showCurrentPageReport]="true"
+          [currentPageReportTemplate]="'dashboard.table.paginatorReport' | transloco"
+          (onPage)="onTablePage($event)"
+          [expandedRowKeys]="expandedRowKeys()"
+          (onRowExpand)="onRowExpand($event)"
+          (onRowCollapse)="onRowCollapse($event)"
+          [tableStyle]="{ 'min-width': '40rem' }"
+          styleClass="ob-table"
+        >
+          <ng-template #caption>
+            <!-- Top pagination row (mirrors the dashboard caption). -->
+            <div class="caption-bar">
+              <div class="caption-paginator">
+                <p-button
+                  type="button"
+                  icon="pi pi-chevron-left"
+                  [text]="true"
+                  size="small"
+                  [disabled]="!hasPrev()"
+                  (click)="prevPage()"
+                  [ariaLabel]="'obfuscation.pager.prev' | transloco"
+                  [attr.data-testid]="testIds.pager.prev"
+                />
+                <p-button
+                  type="button"
+                  icon="pi pi-refresh"
+                  [text]="true"
+                  size="small"
+                  (click)="resetPage()"
+                  [ariaLabel]="'obfuscation.pager.refresh' | transloco"
+                />
+                <p-button
+                  type="button"
+                  icon="pi pi-chevron-right"
+                  [text]="true"
+                  size="small"
+                  [disabled]="!hasNext()"
+                  (click)="nextPage()"
+                  [ariaLabel]="'obfuscation.pager.next' | transloco"
+                  [attr.data-testid]="testIds.pager.next"
+                />
+                <span class="page-indicator" [attr.data-testid]="testIds.pager.label">
+                  @if (viewState.loading()) {
+                    {{ 'obfuscation.pager.loading' | transloco }}
+                  } @else {
+                    {{
+                      'obfuscation.pager.label'
+                        | transloco
+                          : {
+                              first: pagerFirst(),
+                              last: pagerLast(),
+                              total: totalGroups()
+                            }
+                    }}
+                  }
+                </span>
+              </div>
+            </div>
 
-      <div class="ob-pager" [attr.data-testid]="testIds.pager.root">
-        <span class="ob-pager-label" [attr.data-testid]="testIds.pager.label">
-          @if (viewState.loading()) {
-            {{ 'obfuscation.pager.loading' | transloco }}
-          } @else {
-            {{
-              'obfuscation.pager.label'
-                | transloco
-                  : {
-                      first: pagerFirst(),
-                      last: pagerLast(),
-                      total: viewState.lastSearchResponse()?.totalGroups ?? 0
+            <!-- Table controls, below the top pagination. -->
+            <div class="ob-caption-controls">
+              <span class="ob-search">
+                <i class="pi pi-search" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [value]="viewState.searchText()"
+                  (input)="onSearchInput($event)"
+                  [placeholder]="'obfuscation.searchPlaceholder' | transloco"
+                  [attr.aria-label]="'obfuscation.searchPlaceholder' | transloco"
+                  [attr.data-testid]="testIds.toolbar.search"
+                />
+              </span>
+
+              <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.statusFilter">
+                @for (option of statusFilterOptions; track option.value) {
+                  <button
+                    type="button"
+                    class="ob-segment"
+                    [class.ob-segment--active]="viewState.statusFilter() === option.value"
+                    [attr.aria-pressed]="viewState.statusFilter() === option.value"
+                    (click)="setStatusFilter(option.value)"
+                    [attr.data-testid]="testIds.toolbar.statusOption + '-' + option.value"
+                  >
+                    {{ option.labelKey | transloco }}
+                    @if (statusCount(option.value) !== null) {
+                      <span class="ob-segment-count">{{ statusCount(option.value) }}</span>
                     }
-            }}
-          }
-        </span>
-        <span class="ob-toolbar-spacer"></span>
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          [disabled]="!hasPrev()"
-          (click)="prevPage()"
-          [attr.aria-label]="'obfuscation.pager.prev' | transloco"
-          [attr.data-testid]="testIds.pager.prev"
-        >
-          <i class="pi pi-chevron-left" aria-hidden="true"></i>
-        </button>
-        <button
-          type="button"
-          class="ob-btn ob-btn--ghost"
-          [disabled]="!hasNext()"
-          (click)="nextPage()"
-          [attr.aria-label]="'obfuscation.pager.next' | transloco"
-          [attr.data-testid]="testIds.pager.next"
-        >
-          <i class="pi pi-chevron-right" aria-hidden="true"></i>
-        </button>
-        <label class="ob-pager-size">
-          {{ 'obfuscation.pager.rowsPerPage' | transloco }}
-          <select
-            [value]="viewState.pageSize()"
-            (change)="onPageSizeChange($event)"
-            [attr.data-testid]="testIds.pager.pageSize"
-          >
-            @for (size of pageSizes; track size) {
-              <option [value]="size">{{ size }}</option>
-            }
-          </select>
-        </label>
+                  </button>
+                }
+              </span>
+
+              @if (itemChipLabel(); as itemName) {
+                <span class="ob-item-chip" [attr.data-testid]="testIds.toolbar.itemChip">
+                  {{ 'obfuscation.pageFilterChip' | transloco: { name: itemName } }}
+                  <button
+                    type="button"
+                    class="ob-item-chip-remove"
+                    (click)="removeItemFilter()"
+                    [attr.aria-label]="'obfuscation.dismiss' | transloco"
+                    [attr.data-testid]="testIds.toolbar.itemChipRemove"
+                  >
+                    <i class="pi pi-times" aria-hidden="true"></i>
+                  </button>
+                </span>
+              }
+
+              <span class="ob-toolbar-spacer"></span>
+
+              <span class="ob-groupby-label">{{ 'obfuscation.groupBy.label' | transloco }}</span>
+              <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.groupBy">
+                @for (option of groupByOptions; track option.value) {
+                  <button
+                    type="button"
+                    class="ob-segment"
+                    [class.ob-segment--active]="viewState.groupBy() === option.value"
+                    [attr.aria-pressed]="viewState.groupBy() === option.value"
+                    (click)="setGroupBy(option.value)"
+                    [attr.data-testid]="testIds.toolbar.groupByOption + '-' + option.value"
+                  >
+                    {{ option.labelKey | transloco }}
+                  </button>
+                }
+              </span>
+
+              <button
+                type="button"
+                class="ob-btn ob-btn--ghost"
+                (click)="expandAll()"
+                [attr.data-testid]="testIds.toolbar.expandAll"
+              >
+                <i class="pi pi-angle-double-down" aria-hidden="true"></i>
+                {{ 'obfuscation.expandAll' | transloco }}
+              </button>
+              <button
+                type="button"
+                class="ob-btn ob-btn--ghost"
+                (click)="collapseAll()"
+                [attr.data-testid]="testIds.toolbar.collapseAll"
+              >
+                <i class="pi pi-angle-double-up" aria-hidden="true"></i>
+                {{ 'obfuscation.collapseAll' | transloco }}
+              </button>
+            </div>
+          </ng-template>
+
+          <ng-template #header>
+            <tr>
+              <th id="ob-col-check" class="ob-check-cell" style="width: 3.5rem">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="allPendingSelected()"
+                  (onChange)="toggleSelectAllPending()"
+                  [ariaLabel]="
+                    (allPendingSelected() ? 'obfuscation.deselectAll' : 'obfuscation.selectAllPending')
+                      | transloco
+                  "
+                  [attr.data-testid]="testIds.toolbar.selectAllPending"
+                />
+              </th>
+              <th id="ob-col-toggle" style="width: 3.5rem"></th>
+              <th id="ob-col-label">
+                {{
+                  (viewState.groupBy() === 'severity'
+                    ? 'obfuscation.groupBy.severity'
+                    : 'obfuscation.groupBy.type'
+                  ) | transloco
+                }}
+              </th>
+              <th id="ob-col-selected" class="text-right" style="width: 11rem">
+                {{ 'obfuscation.table.selected' | transloco }}
+              </th>
+              <th id="ob-col-occ" class="text-right" style="width: 11rem">
+                {{ 'obfuscation.table.occurrences' | transloco }}
+              </th>
+              <th id="ob-col-total" class="text-right" style="width: 6rem">
+                {{ 'obfuscation.table.total' | transloco }}
+              </th>
+            </tr>
+          </ng-template>
+
+          <ng-template #body let-group let-expanded="expanded">
+            <tr [attr.data-testid]="testIds.group.root">
+              <td class="ob-check-cell">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="group.masterState === 'all'"
+                  [indeterminate]="group.masterState === 'partial'"
+                  (onChange)="onMasterToggled(group)"
+                  [ariaLabel]="'obfuscation.selectAllGroup' | transloco"
+                  [attr.data-testid]="testIds.group.master"
+                />
+              </td>
+              <td class="toggle-cell">
+                <p-button
+                  type="button"
+                  pRipple
+                  [pRowToggler]="group"
+                  [text]="true"
+                  [rounded]="true"
+                  [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                  [ariaLabel]="(expanded ? 'obfuscation.table.collapse' : 'obfuscation.table.expand') | transloco"
+                  [attr.data-testid]="testIds.group.toggle"
+                />
+              </td>
+              <td class="ob-label-cell" [pRowToggler]="group" tabindex="0">
+                <span class="ob-label-inner">
+                  <span class="ob-dot ob-dot--{{ severityOf(group) }}" aria-hidden="true"></span>
+                  <span class="ob-group-label">{{ group.label }}</span>
+                </span>
+              </td>
+              <td class="text-right">
+                @if (group.selectedCount > 0) {
+                  <span class="ob-group-selected" [attr.data-testid]="testIds.group.selectedCount">
+                    {{ 'obfuscation.nSelectedShort' | transloco: { count: group.selectedCount } }}
+                  </span>
+                }
+              </td>
+              <td class="text-right">
+                @if (group.occurrenceCount > group.total) {
+                  <span class="ob-group-occ" [attr.data-testid]="testIds.group.occurrences">
+                    {{ 'obfuscation.nOccurrences' | transloco: { count: group.occurrenceCount } }}
+                  </span>
+                }
+              </td>
+              <td class="text-right">
+                <span class="ob-group-count" [attr.data-testid]="testIds.group.count">{{ group.total }}</span>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template #expandedrow let-group>
+            <tr class="ob-expanded-row">
+              <td colspan="6">
+                <div class="ob-group-body">
+                  @for (finding of group.findings; track finding.findingId) {
+                    <app-obfuscation-finding-row
+                      [finding]="finding"
+                      [groupBy]="viewState.groupBy()"
+                      (toggled)="onRowToggled(finding)"
+                      (markManual)="onRowMarkManual(finding)"
+                      (reportFalsePositive)="onRowReportFalsePositive(finding)"
+                      (restore)="onRowRestore(finding)"
+                    />
+                  }
+                  @if (group.findings.length < group.total) {
+                    <p class="ob-group-hint" [attr.data-testid]="testIds.group.hint">
+                      {{
+                        'obfuscation.groupPageHint'
+                          | transloco: { visible: group.findings.length, total: group.total }
+                      }}
+                    </p>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="6">
+                <div class="ob-empty" [attr.data-testid]="testIds.empty">
+                  <i class="pi pi-inbox" aria-hidden="true"></i>
+                  {{ 'obfuscation.noFindings' | transloco }}
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
       </div>
     </div>
 

@@ -55,22 +55,22 @@
      Severity Colors (PII risk levels)
      --------------------------------------------------------------------------- */
   /* High severity -- red */
-  --sentinel-severity-high: #ef4444;       /* red-500 -- badge background */
+  --sentinel-severity-high: #b91c1c;       /* red-700 -- badge background */
   --sentinel-severity-high-dark: #dc2626;  /* red-600 -- expanded card color */
   --sentinel-severity-high-bg: #fef2f2;    /* red-50 -- help section, severity card */
   --sentinel-severity-high-text: #b91c1c;  /* red-700 -- help section title */
   --sentinel-severity-high-border: #fecaca; /* red-200 -- expanded card border */
 
-  /* Medium severity -- orange */
-  --sentinel-severity-medium: #f97316;     /* orange-500 -- badge background */
+  /* Medium severity -- amber */
+  --sentinel-severity-medium: #c2740a;     /* amber -- badge background */
   --sentinel-severity-medium-dark: #ea580c; /* orange-600 -- expanded card color */
   --sentinel-severity-medium-bg: #fffbeb;  /* amber-50 -- help section (regex too) */
   --sentinel-severity-medium-bg-alt: #fff7ed; /* orange-50 -- severity card */
   --sentinel-severity-medium-text: #b45309; /* amber-700 -- help section title */
   --sentinel-severity-medium-border: #fed7aa; /* orange-200 -- expanded card border */
 
-  /* Low severity -- yellow/green */
-  --sentinel-severity-low: #eab308;        /* yellow-500 -- badge background */
+  /* Low severity -- slate */
+  --sentinel-severity-low: #94a3b8;        /* slate-400 -- badge background */
   --sentinel-severity-low-bg: #eff6ff;     /* blue-50 -- help section bg */
   --sentinel-severity-low-text: #1d4ed8;   /* blue-700 -- help section title */
   --sentinel-severity-low-color: #16a34a;  /* green-600 -- expanded card color */
@@ -78,7 +78,7 @@
   --sentinel-severity-low-border: #bbf7d0; /* green-200 -- expanded card border */
 
   /* Total badge */
-  --sentinel-severity-total: #475569;      /* slate-600 -- total badge background */
+  --sentinel-severity-total: #334155;      /* slate-700 -- total badge background */
   --sentinel-severity-total-card: #22c55e; /* green-500 -- total severity card */
 
   /* ---------------------------------------------------------------------------
@@ -114,26 +114,26 @@
   /* ---------------------------------------------------------------------------
      Status Colors (scan state)
      --------------------------------------------------------------------------- */
-  --sentinel-status-success-bg: #dcfce7;   /* green-100 -- completed tag */
-  --sentinel-status-success-text: #15803d; /* green-700 -- completed text */
-  --sentinel-status-pending-bg: #f1f5f9;   /* slate-100 -- pending tag */
-  --sentinel-status-pending-text: #475569; /* slate-600 -- pending text */
-  --sentinel-status-running-bg: #6DBAF7;   /* custom -- running tag */
-  --sentinel-status-running-border: #41A5F5; /* custom -- running border */
-  --sentinel-status-running-text: #263238; /* custom -- running text */
+  --sentinel-status-success-bg: #e9f1ea;   /* soft green -- completed tag */
+  --sentinel-status-success-text: #2f6a45; /* muted green -- completed text */
+  --sentinel-status-pending-bg: #f2f1ec;   /* warm grey -- pending tag */
+  --sentinel-status-pending-text: #78716c; /* stone-500 -- pending text */
+  --sentinel-status-running-bg: #e3edfb;   /* light blue -- running tag */
+  --sentinel-status-running-border: #9cc0f5; /* blue -- running border */
+  --sentinel-status-running-text: #1d4ed8; /* blue-700 -- running text */
   --sentinel-status-paused-bg: #CFD8D8;    /* custom -- paused tag/button */
   --sentinel-status-paused-border: #90A4AE; /* custom -- paused border */
   --sentinel-status-paused-text: #263238;  /* custom -- paused text */
 
   /* Scan pulse animation */
-  --sentinel-scan-pulse-light: #42A5F5;    /* light blue -- pulse start/end */
-  --sentinel-scan-pulse-dark: #1565C0;     /* dark blue -- pulse midpoint */
+  --sentinel-scan-pulse-light: #3b82f6;    /* blue-500 -- pulse start/end */
+  --sentinel-scan-pulse-dark: #1d4ed8;     /* blue-700 -- pulse midpoint */
 
   /* Progress bar */
   --sentinel-progress-bg: #e2e8f0;         /* slate-200 */
-  --sentinel-progress-completed-start: #34d399; /* emerald-400 */
-  --sentinel-progress-completed-end: #06b6d4;   /* cyan-500 */
-  --sentinel-progress-running: #2196F3A8;  /* blue with alpha */
+  --sentinel-progress-completed-start: #1d4ed8; /* blue-700 */
+  --sentinel-progress-completed-end: #1d4ed8;   /* blue-700 */
+  --sentinel-progress-running: #3b82f6a8;  /* blue-500 with alpha */
   --sentinel-progress-paused: #CFD8D8;     /* grey */
 
   /* ---------------------------------------------------------------------------
@@ -163,9 +163,9 @@
   --sentinel-focus-ring: #2563eb;          /* blue-600 -- focus-visible outlines */
   --sentinel-link-hover: #3b82f6;          /* blue-500 -- help button hover */
 
-  /* Scan action button gradient */
-  --sentinel-scan-btn-start: #15804d;      /* custom green */
-  --sentinel-scan-btn-end: #0e7490;        /* custom teal */
+  /* Scan action button gradient -- blue to match the primary accent */
+  --sentinel-scan-btn-start: #2563eb;      /* blue-600 */
+  --sentinel-scan-btn-end: #1d4ed8;        /* blue-700 */
   --sentinel-scan-btn-disabled: #94a3b8;   /* slate-400 */
 
   /* Masked/revealed highlights */
@@ -280,14 +280,14 @@
      readability. Borders use muted mid-tones.
      --------------------------------------------------------------------------- */
   /* High severity -- red */
-  --sentinel-severity-high: #f87171;       /* red-400 -- slightly lifted for dark bg */
+  --sentinel-severity-high: #ef4444;       /* red-500 -- deep red dot, readable on dark */
   --sentinel-severity-high-dark: #ef4444;  /* red-500 -- expanded card color */
   --sentinel-severity-high-bg: #1c1215;    /* very dark warm red tint -- help section */
   --sentinel-severity-high-text: #fca5a5;  /* red-300 -- readable red on dark */
   --sentinel-severity-high-border: #5c2020; /* muted dark red -- expanded card border */
 
   /* Medium severity -- orange */
-  --sentinel-severity-medium: #fb923c;     /* orange-400 -- lifted for contrast */
+  --sentinel-severity-medium: #e0a34a;     /* amber -- desaturated, readable on dark */
   --sentinel-severity-medium-dark: #f97316; /* orange-500 -- expanded card color */
   --sentinel-severity-medium-bg: #1c1610;  /* very dark warm amber tint */
   --sentinel-severity-medium-bg-alt: #1c1610; /* same dark tint -- severity card */
@@ -295,7 +295,7 @@
   --sentinel-severity-medium-border: #5c3a14; /* muted dark amber -- expanded card border */
 
   /* Low severity -- yellow/green */
-  --sentinel-severity-low: #facc15;        /* yellow-400 -- slightly brighter */
+  --sentinel-severity-low: #94a3b8;        /* slate-400 -- neutral dot on dark */
   --sentinel-severity-low-bg: #101824;     /* very dark blue tint -- help section */
   --sentinel-severity-low-text: #60a5fa;   /* blue-400 -- readable blue on dark */
   --sentinel-severity-low-color: #4ade80;  /* green-400 -- expanded card color */
@@ -303,7 +303,7 @@
   --sentinel-severity-low-border: #1a3a28; /* muted dark green -- expanded card border */
 
   /* Total badge */
-  --sentinel-severity-total: #64748b;      /* slate-500 -- total badge background */
+  --sentinel-severity-total: #475569;      /* slate-600 -- total badge background */
   --sentinel-severity-total-card: #4ade80; /* green-400 -- total severity card */
 
   /* ---------------------------------------------------------------------------
@@ -346,12 +346,12 @@
      Running/paused backgrounds darkened significantly. Success uses a dark
      green tint. Text colors are the lighter variants for readability.
      --------------------------------------------------------------------------- */
-  --sentinel-status-success-bg: #0f1a14;   /* dark green tint -- completed tag */
-  --sentinel-status-success-text: #4ade80; /* green-400 -- completed text */
-  --sentinel-status-pending-bg: #1e2736;   /* neutral dark -- pending tag */
-  --sentinel-status-pending-text: #8b95a5; /* muted grey -- pending text */
-  --sentinel-status-running-bg: #1a3550;   /* dark blue -- running tag */
-  --sentinel-status-running-border: #2563eb; /* blue-600 -- running border */
+  --sentinel-status-success-bg: #14231a;   /* dark soft green tint -- completed tag */
+  --sentinel-status-success-text: #86c99f; /* desaturated green -- completed text */
+  --sentinel-status-pending-bg: #232b39;   /* warm-neutral dark -- pending tag */
+  --sentinel-status-pending-text: #a8a29e; /* stone-400 -- pending text */
+  --sentinel-status-running-bg: #142c47;   /* dark blue -- running tag */
+  --sentinel-status-running-border: #2f5c9e; /* muted blue -- running border */
   --sentinel-status-running-text: #93c5fd; /* blue-300 -- running text */
   --sentinel-status-paused-bg: #232b39;    /* dark neutral -- paused tag/button */
   --sentinel-status-paused-border: #4b5563; /* grey-600 -- paused border */
@@ -363,8 +363,8 @@
 
   /* Progress bar */
   --sentinel-progress-bg: #232b39;         /* dark track */
-  --sentinel-progress-completed-start: #34d399; /* emerald-400 (kept vivid) */
-  --sentinel-progress-completed-end: #06b6d4;   /* cyan-500 (kept vivid) */
+  --sentinel-progress-completed-start: #3b82f6; /* blue-500 */
+  --sentinel-progress-completed-end: #3b82f6;   /* blue-500 */
   --sentinel-progress-running: #3b82f6a8;  /* blue-500 with alpha */
   --sentinel-progress-paused: #374151;     /* grey-700 */
 
@@ -402,8 +402,8 @@
   --sentinel-link-hover: #60a5fa;          /* blue-400 -- help button hover */
 
   /* Scan action button gradient -- blue accent for dark mode */
-  --sentinel-scan-btn-start: #2563eb;      /* blue-600 */
-  --sentinel-scan-btn-end: #0891b2;        /* cyan-600 */
+  --sentinel-scan-btn-start: #3b82f6;      /* blue-500 */
+  --sentinel-scan-btn-end: #2563eb;        /* blue-600 */
   --sentinel-scan-btn-disabled: #4b5563;   /* grey-600 */
 
   /* Masked/revealed highlights -- amber toned, darkened bg for dark mode */

@@ -182,13 +182,14 @@ class QueryRemediationFindingsUseCaseTest {
         }
 
         @Test
-        @DisplayName("Should_ExposeSensitiveValueAndMaskedContext_When_BuildingViews")
-        void Should_ExposeSensitiveValueAndMaskedContext_When_BuildingViews() {
+        @DisplayName("Should_ExposeSensitiveValueContextAndMaskedContext_When_BuildingViews")
+        void Should_ExposeSensitiveValueContextAndMaskedContext_When_BuildingViews() {
             RemediationFindingsResult result = useCase.search(query().build());
 
             assertSoftly(softly -> {
                 softly.assertThat(viewById(result, emailP1Id).maskedContext()).isEqualTo("ctx-email-1");
                 softly.assertThat(viewById(result, emailP1Id).sensitiveValue()).isEqualTo("ENC:v1:opaque");
+                softly.assertThat(viewById(result, emailP1Id).sensitiveContext()).isEqualTo("ENC:v1:context");
             });
         }
     }

@@ -16,7 +16,11 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
+import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
@@ -39,6 +43,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @Testcontainers
 @DataJpaTest
@@ -134,9 +139,23 @@ class ScanReportingUseCaseTest {
 
     @BeforeEach
     void cleanDb() {
-        scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository);
+        scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository,
+                noOpFalsePositiveFilter());
         detectionCheckpointRepository.deleteAll();
         detectionEventRepository.deleteAll();
+    }
+
+    /**
+     * The reporting behaviour under test is orthogonal to false positives; a mocked store returns
+     * no false-positive row, so the filter is a pass-through and its other collaborators are never
+     * exercised.
+     */
+    private DashboardFalsePositiveFilter noOpFalsePositiveFilter() {
+        return new DashboardFalsePositiveFilter(
+                mock(FindingRemediationStore.class),
+                mock(ScanEventFindingResolver.class),
+                mock(SeverityCalculationService.class),
+                scanResultQuery);
     }
 
     @Test

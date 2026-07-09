@@ -3,11 +3,6 @@
   margin: 0 auto;
 }
 
-/* Tab icons */
-.tab-icon {
-  margin-right: 0.5rem;
-}
-
 /* Scan Error Toast Styling
    ::ng-deep needed: PrimeNG toast renders outside component scope */
 :host ::ng-deep .p-toast.p-component[key="scan-errors"] {

@@ -35,6 +35,8 @@ import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextP
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.ContentParserFactory;
@@ -76,9 +78,20 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public DashboardFalsePositiveFilter dashboardFalsePositiveFilter(
+            FindingRemediationStore findingRemediationStore,
+            ScanEventFindingResolver scanEventFindingResolver,
+            SeverityCalculationService severityCalculationService,
+            ScanResultQuery scanResultQuery) {
+        return new DashboardFalsePositiveFilter(findingRemediationStore, scanEventFindingResolver,
+                severityCalculationService, scanResultQuery);
+    }
+
+    @Bean
     public ScanReportingPort scanResultUseCase(ScanResultQuery scanResultQuery,
-                                               ScanCheckpointRepository checkpointRepo) {
-        return new ScanReportingUseCase(scanResultQuery, checkpointRepo);
+                                               ScanCheckpointRepository checkpointRepo,
+                                               DashboardFalsePositiveFilter dashboardFalsePositiveFilter) {
+        return new ScanReportingUseCase(scanResultQuery, checkpointRepo, dashboardFalsePositiveFilter);
     }
 
     @Bean

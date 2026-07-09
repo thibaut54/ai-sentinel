@@ -1069,7 +1069,15 @@
       "loading": "Loading…",
       "prev": "Previous",
       "next": "Next",
+      "refresh": "Reset to first page",
       "rowsPerPage": "Per page:"
+    },
+    "table": {
+      "selected": "Selected",
+      "occurrences": "Occurrences",
+      "total": "Values",
+      "expand": "Expand",
+      "collapse": "Collapse"
     },
     "noFindings": "No finding matches.",
     "job": {

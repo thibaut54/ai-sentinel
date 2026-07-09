@@ -1,10 +1,5 @@
 import { DetectorSource } from '../../core/models/detected-personally-identifiable-information';
-
-export interface ValuePart {
-  text: string;
-  isBadge: boolean;
-  isHighlighted?: boolean;
-}
+import { ValuePart } from '../../shared/pii-value-display/pii-value-display.service';
 
 export interface PiiEntityRow {
   typeLabel: string;
