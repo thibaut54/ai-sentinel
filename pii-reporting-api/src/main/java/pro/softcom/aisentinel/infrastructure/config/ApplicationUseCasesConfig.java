@@ -192,10 +192,12 @@ public class ApplicationUseCasesConfig {
     @Bean
     public StreamConfluenceResumeScanPort streamConfluenceResumeScanUseCase(
             ScanPipelineDependencies scanPipelineDependencies,
-            ScanCheckpointRepository scanCheckpointRepository) {
+            ScanCheckpointRepository scanCheckpointRepository,
+            PersonallyIdentifiableInformationScanExecutionOrchestratorPort personallyIdentifiableInformationScanExecutionOrchestratorPort) {
         return new StreamConfluenceResumeScanUseCase(
                 scanPipelineDependencies,
-                scanCheckpointRepository
+                scanCheckpointRepository,
+                personallyIdentifiableInformationScanExecutionOrchestratorPort
         );
     }
 

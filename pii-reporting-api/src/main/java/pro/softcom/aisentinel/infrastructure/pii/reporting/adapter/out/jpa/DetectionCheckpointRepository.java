@@ -63,10 +63,13 @@ public interface DetectionCheckpointRepository extends
     void deleteAllCheckpointsForSpaces(@Param("spaceKeys") List<String> spaceKeys);
 
     /**
-     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as COMPLETED.
+     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as INTERRUPTED.
      * Business purpose: When starting a selected scan, stale active checkpoints from
      * previous interrupted scans on other spaces must be resolved to prevent them from
-     * polluting the dashboard summary with ghost RUNNING statuses.
+     * polluting the dashboard summary with ghost RUNNING statuses. Interrupted work is
+     * marked INTERRUPTED, never COMPLETED, so partially scanned spaces are never presented
+     * as fully scanned (which would hide the PII on their unscanned pages).
+     * All scan data (results, counts, progress) is preserved — only the status changes.
      *
      * @param spaceKeys list of space keys that are EXCLUDED from the cleanup (being re-scanned)
      * @return number of rows updated
@@ -75,7 +78,7 @@ public interface DetectionCheckpointRepository extends
     @Transactional
     @Query(value = """
         UPDATE scan_checkpoints
-        SET status = 'COMPLETED', updated_at = NOW()
+        SET status = 'INTERRUPTED', updated_at = NOW()
         WHERE status IN ('RUNNING', 'PAUSED') AND space_key NOT IN (:spaceKeys)
         """, nativeQuery = true)
     int resolveStaleActiveCheckpoints(@Param("spaceKeys") List<String> spaceKeys);

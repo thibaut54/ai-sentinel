@@ -110,6 +110,34 @@ class ScanTaskManagerAdapterTest {
     }
 
     @Test
+    void Should_ReturnFalse_When_IsScanActiveForUnknownScan() {
+        assertThat(adapter.isScanActive("unknown-scan")).isFalse();
+    }
+
+    @Test
+    void Should_ReturnTrue_When_IsScanActiveForRunningScan() {
+        // Arrange: a never-ending source keeps the subscription alive and not completed
+        String scanId = "scan-active";
+        adapter.startScan(scanId, Flux.never());
+
+        // Assert
+        assertThat(adapter.isScanActive(scanId)).isTrue();
+
+        adapter.pauseScan(scanId);
+    }
+
+    @Test
+    void Should_ReturnFalse_When_IsScanActiveForPausedScan() {
+        // Arrange: pausing disposes the subscription, so the scan is no longer active
+        String scanId = "scan-active-then-paused";
+        adapter.startScan(scanId, Flux.never());
+        adapter.pauseScan(scanId);
+
+        // Assert
+        assertThat(adapter.isScanActive(scanId)).isFalse();
+    }
+
+    @Test
     void Should_DoNothing_When_CleanupCalledWithNoScans() {
         assertThatCode(() -> adapter.cleanupCompletedScans())
                 .doesNotThrowAnyException();

@@ -62,7 +62,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
 
     private static SpaceSummary space(String key, String status, String name) {
         return new SpaceSummary(key, status, 100.0, 10L, 5L,
-                Instant.parse("2025-01-15T09:30:00Z"), name, SeverityCounts.zero(), Map.of());
+                Instant.parse("2025-01-15T09:30:00Z"), name, SeverityCounts.zero(), Map.of(), "scan-123");
     }
 
     private static ScanReportingSummary summary(String scanId, int count, List<SpaceSummary> spaces) {
@@ -84,9 +84,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
                 scanId, lastUpdated, 2,
                 List.of(
                         new SpaceSummaryDto("SPACE1", "COMPLETED", 100.0, 10L, 5L, lastEventTs,
-                                new SeverityCountsDto(5, 10, 15, 30), "Space One", Map.of("EMAIL", 5)),
+                                new SeverityCountsDto(5, 10, 15, 30), "Space One", Map.of("EMAIL", 5), "scan-123"),
                         new SpaceSummaryDto("SPACE2", "RUNNING", 50.0, 5L, 2L, lastEventTs,
-                                new SeverityCountsDto(2, 8, 12, 22), "Space Two", Map.of("PHONE_NUMBER", 2))),
+                                new SeverityCountsDto(2, 8, 12, 22), "Space Two", Map.of("PHONE_NUMBER", 2), "scan-123")),
                 DashboardFacetsDto_empty());
 
         when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.of(domainSummary));
@@ -154,7 +154,7 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
         ScanReportingSummaryDto dto = new ScanReportingSummaryDto(
                 scanId, lastUpdated, 1,
                 List.of(new SpaceSummaryDto("S", "COMPLETED", 100.0, 20L, 10L, lastUpdated,
-                        new SeverityCountsDto(3, 7, 11, 21), "S", Map.of("IBAN_CODE", 4))),
+                        new SeverityCountsDto(3, 7, 11, 21), "S", Map.of("IBAN_CODE", 4), "scan-facets")),
                 facetsDto);
 
         when(scanReportingPort.getGlobalScanSummary(any())).thenReturn(Optional.of(domainSummary));

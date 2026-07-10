@@ -207,6 +207,8 @@ export class DashboardUiStateService {
         return 'dashboard.status.notStarted';
       case 'PAUSED':
         return 'dashboard.status.paused';
+      case 'INTERRUPTED':
+        return 'dashboard.status.interrupted';
       case 'COMPLETED' :
         return 'dashboard.status.completed';
       default:

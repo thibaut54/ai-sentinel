@@ -88,10 +88,12 @@ public interface ScanCheckpointRepository {
     void deleteAllCheckpointsForSpaces(List<String> spaceKeys);
 
     /**
-     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as COMPLETED.
+     * Marks all RUNNING or PAUSED checkpoints NOT in the given space list as INTERRUPTED.
      * Business purpose: When starting a selected scan, stale active checkpoints from
      * previous interrupted scans on other spaces must be resolved to prevent them from
-     * polluting the dashboard summary with ghost RUNNING statuses.
+     * polluting the dashboard summary with ghost RUNNING statuses. Interrupted work is
+     * marked INTERRUPTED, never COMPLETED, so partial scans are never presented as fully
+     * scanned (which would hide the PII on their unscanned pages).
      * All scan data (results, counts, progress) is preserved — only the status changes.
      *
      * @param spaceKeys list of space keys EXCLUDED from cleanup (being re-scanned)

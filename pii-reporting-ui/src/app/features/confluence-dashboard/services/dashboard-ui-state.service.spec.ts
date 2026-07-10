@@ -178,6 +178,9 @@ describe('DashboardUiStateService', () => {
     service.statusLabel('PAUSED');
     expect(translocoMock.translate).toHaveBeenCalledWith('dashboard.status.paused');
 
+    service.statusLabel('INTERRUPTED');
+    expect(translocoMock.translate).toHaveBeenCalledWith('dashboard.status.interrupted');
+
     service.statusLabel('COMPLETED');
     expect(translocoMock.translate).toHaveBeenCalledWith('dashboard.status.completed');
 

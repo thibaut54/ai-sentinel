@@ -70,4 +70,16 @@ public interface PersonallyIdentifiableInformationScanExecutionOrchestratorPort 
      * @throws IllegalArgumentException if scanId is null
      */
     boolean pauseScan(String scanId);
+
+    /**
+     * Indicates whether a managed scan is currently live for the given id.
+     *
+     * <p>A live scan is still emitting work: reconnecting clients must re-attach to it via
+     * {@link #subscribeScan(String)} rather than launching a concurrent resume pipeline, which
+     * would double-count severity totals.
+     *
+     * @param scanId the scan identifier
+     * @return true when a managed scan exists, is not completed and its subscription is not disposed
+     */
+    boolean isScanActive(String scanId);
 }

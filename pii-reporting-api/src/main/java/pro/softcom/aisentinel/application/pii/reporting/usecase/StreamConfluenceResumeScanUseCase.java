@@ -2,6 +2,7 @@ package pro.softcom.aisentinel.application.pii.reporting.usecase;
 
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceResumeScanPort;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -14,7 +15,10 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Application use case orchestrating Confluence scans and PII detection. What: encapsulates
@@ -26,12 +30,15 @@ public class StreamConfluenceResumeScanUseCase extends
     AbstractStreamConfluenceScanUseCase implements StreamConfluenceResumeScanPort {
 
     private final ScanCheckpointRepository scanCheckpointRepository;
+    private final PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestratorPort;
 
     public StreamConfluenceResumeScanUseCase(
         ScanPipelineDependencies dependencies,
-        ScanCheckpointRepository scanCheckpointRepository) {
+        ScanCheckpointRepository scanCheckpointRepository,
+        PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestratorPort) {
         super(dependencies);
         this.scanCheckpointRepository = scanCheckpointRepository;
+        this.scanExecutionOrchestratorPort = scanExecutionOrchestratorPort;
     }
 
 
@@ -40,6 +47,16 @@ public class StreamConfluenceResumeScanUseCase extends
         if (isBlank(scanId)) {
             return Flux.empty();
         }
+        // Reconnection to a still-live scan: re-attach to the existing replay sink instead of
+        // launching a second concurrent pipeline. Both pipelines would emit item events for the
+        // same pages, and severity counts are additive/non-idempotent, so a live resume would
+        // double-count. A paused scan has a disposed subscription and is therefore NOT active,
+        // so it still follows the real resume path below — exactly the intended behavior.
+        if (scanExecutionOrchestratorPort.isScanActive(scanId)) {
+            log.info("[RESUME] Scan {} is still live — attaching to existing scan (replay), no new work", scanId);
+            return scanExecutionOrchestratorPort.subscribeScan(scanId);
+        }
+
         // Atomically set PAUSED checkpoints back to RUNNING BEFORE emitting scan events,
         // so the UPSERT guard (which blocks PAUSED → RUNNING from scan events) does not reject them.
         // Wrapped in Mono.fromCallable to run on boundedElastic (JPA is blocking).
@@ -47,15 +64,37 @@ public class StreamConfluenceResumeScanUseCase extends
             .subscribeOn(Schedulers.boundedElastic())
             .doOnNext(resumed ->
                 log.info("[RESUME] Scan {} — {} checkpoint(s) updated from PAUSED to RUNNING", scanId, resumed))
-            .then(Mono.fromFuture(confluenceAccessor.getAllSpaces()))
-            .flatMapMany(spaces ->
-                             Flux.fromIterable(spaces)
-                                 .concatMap(space -> resumeScanResultFlux(scanId, space)))
+            .then(Mono.fromCallable(() -> scanCheckpointRepository.findByScan(scanId))
+                .subscribeOn(Schedulers.boundedElastic()))
+            .flatMapMany(checkpoints -> resumeScopedSpaces(scanId, checkpoints))
             .onErrorResume(exception -> {
                 log.error("[USECASE] Error when resuming scan: {}", exception.getMessage(),
                           exception);
                 return buildErrorScanResultFlux(scanId, null, exception);
             });
+    }
+
+    /**
+     * Resumes only the spaces that belong to the scan's persisted scope.
+     *
+     * <p>The scope is derived from the scan's own checkpoints ({@code findByScan}), so a selected
+     * scan resumes exactly its selected spaces — never the whole Confluence base. Spaces of the scope
+     * that were never started still have a NOT_STARTED checkpoint (created upfront when the scan
+     * scope was initialized), so they are resumed and fully scanned.
+     */
+    private Flux<ConfluenceContentScanResult> resumeScopedSpaces(String scanId, List<ScanCheckpoint> checkpoints) {
+        if (checkpoints == null || checkpoints.isEmpty()) {
+            log.warn("[RESUME] Scan {} has no persisted checkpoints — nothing to resume", scanId);
+            return Flux.empty();
+        }
+        Set<String> scopedSpaceKeys = checkpoints.stream()
+            .map(ScanCheckpoint::spaceKey)
+            .collect(Collectors.toSet());
+        return Mono.fromFuture(confluenceAccessor.getAllSpaces())
+            .flatMapMany(spaces ->
+                             Flux.fromIterable(spaces)
+                                 .filter(space -> scopedSpaceKeys.contains(space.key()))
+                                 .concatMap(space -> resumeScanResultFlux(scanId, space)));
     }
 
     private Flux<ConfluenceContentScanResult> resumeScanResultFlux(String scanId, ConfluenceSpace space) {

@@ -161,7 +161,8 @@ public class ScanReportingUseCase implements ScanReportingPort {
                     c.lastEventTs(),
                     spaceNames.get(c.spaceKey()),
                     severityByKey.getOrDefault(c.spaceKey(), SeverityCounts.zero()),
-                    piiTypeByKey.getOrDefault(c.spaceKey(), Map.of())
+                    piiTypeByKey.getOrDefault(c.spaceKey(), Map.of()),
+                    scanId
                 ))
                 .toList();
 
@@ -249,7 +250,8 @@ public class ScanReportingUseCase implements ScanReportingPort {
             lastEventTs,
             spaceName,
             severityCounts,
-            piiTypeCounts
+            piiTypeCounts,
+            checkpoint != null ? checkpoint.scanId() : null
         );
     }
 
@@ -364,6 +366,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
                 case COMPLETED, FAILED, RUNNING -> checkpointStatus.name();
                 case PAUSED -> "PAUSED";
                 case NOT_STARTED -> "NOT_STARTED";
+                case INTERRUPTED -> "INTERRUPTED";
             };
         }
         long progress = Math.max(0, pagesDone) + Math.max(0, attachmentsDone);

@@ -60,12 +60,12 @@
           </p-toggleButton>
         </div>
         <div class="caption-right">
-          <p-tag [value]="(actionPending() ? 'dashboard.scanStatus.loading' : scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco"
-                 [icon]="actionPending() ? 'pi pi-spin pi-spinner' : scanActive() ? 'pi pi-wave-pulse' : ''"
-                 [severity]="actionPending() ? 'secondary' : scanActive() ? 'info' : 'secondary'"
-                 [styleClass]="'scan-status-badge' + (scanActive() && !actionPending() ? ' scanning' : '') + (!scanActive() && !actionPending() ? ' inactive' : '')"
+          <p-tag [value]="scanStatusKey() | transloco"
+                 [icon]="actionPending() ? 'pi pi-spin pi-spinner' : scanActive() ? 'pi pi-wave-pulse' : scanPaused() ? 'pi pi-pause' : ''"
+                 [severity]="actionPending() ? 'secondary' : scanActive() ? 'info' : scanPaused() ? 'warn' : 'secondary'"
+                 [styleClass]="'scan-status-badge' + (scanActive() && !actionPending() ? ' scanning' : '') + (scanPaused() && !scanActive() && !actionPending() ? ' paused' : '') + (!scanActive() && !scanPaused() && !actionPending() ? ' inactive' : '')"
                  [attr.aria-live]="scanActive() || actionPending() ? 'polite' : 'off'"
-                 [attr.aria-label]="(actionPending() ? 'dashboard.scanStatus.loading' : scanActive() ? 'dashboard.scanStatus.active' : 'dashboard.scanStatus.inactive') | transloco">
+                 [attr.aria-label]="scanStatusKey() | transloco">
           </p-tag>
           <div class="scan-actions-group">
             @if (actionPending()) {

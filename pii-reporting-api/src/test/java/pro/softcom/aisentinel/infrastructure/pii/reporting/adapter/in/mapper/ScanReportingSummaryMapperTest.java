@@ -48,7 +48,7 @@ class ScanReportingSummaryMapperTest {
                 "SPACE1", "IN_PROGRESS", 75.5, 100L, 50L,
                 Instant.parse("2025-01-15T09:30:00Z"), "Space One",
                 new SeverityCounts(10, 20, 5),
-                Map.of("EMAIL", 7, "IBAN_CODE", 2));
+                Map.of("EMAIL", 7, "IBAN_CODE", 2), "scan-123");
 
         ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
 
@@ -68,6 +68,7 @@ class ScanReportingSummaryMapperTest {
         assertThat(spaceDto.severityCounts().total()).isEqualTo(35);
         assertThat(spaceDto.spaceName()).isEqualTo("Space One");
         assertThat(spaceDto.piiTypeCounts()).containsEntry("EMAIL", 7).containsEntry("IBAN_CODE", 2);
+        assertThat(spaceDto.scanId()).isEqualTo("scan-123");
     }
 
     @Test
@@ -76,7 +77,7 @@ class ScanReportingSummaryMapperTest {
         SpaceSummary space = new SpaceSummary(
                 "SPACE1", "COMPLETED", 100.0, 200L, 100L,
                 Instant.parse("2025-01-15T10:00:00Z"), "Space One",
-                SeverityCounts.zero(), Map.of());
+                SeverityCounts.zero(), Map.of(), "scan-123");
 
         ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
 

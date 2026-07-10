@@ -22,7 +22,7 @@ class DashboardSpaceFilterTest {
 
     private static SpaceSummary space(String key, String name, String status,
                                       SeverityCounts severity, Map<String, Integer> piiTypes, Instant lastEvent) {
-        return new SpaceSummary(key, status, 100.0, 0L, 0L, lastEvent, name, severity, piiTypes);
+        return new SpaceSummary(key, status, 100.0, 0L, 0L, lastEvent, name, severity, piiTypes, "scan-1");
     }
 
     private static DashboardFilterCriteria criteria(List<String> piiTypes, List<String> severities,

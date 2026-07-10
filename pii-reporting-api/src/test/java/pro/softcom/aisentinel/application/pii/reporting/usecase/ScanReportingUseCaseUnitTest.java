@@ -169,6 +169,50 @@ class ScanReportingUseCaseUnitTest {
         void Should_ReturnEmpty_When_ScanIdIsBlank() {
             assertThat(useCase.getScanReportingSummary("")).isEmpty();
         }
+
+        @Test
+        @DisplayName("Should_MapStatusToInterrupted_When_CheckpointIsInterrupted")
+        void Should_MapStatusToInterrupted_When_CheckpointIsInterrupted() {
+            String scanId = "scan-int";
+            ScanCheckpoint cp = ScanCheckpoint.builder()
+                    .scanId(scanId).spaceKey("SPACE-INT")
+                    .scanStatus(ScanStatus.INTERRUPTED).progressPercentage(40.0).build();
+            when(checkpointRepo.findByScan(scanId)).thenReturn(List.of(cp));
+            when(spaceRepository.findAll()).thenReturn(List.of());
+            when(severityCountService.getCountsByScan(scanId)).thenReturn(List.of());
+            when(piiTypeCountService.getCountsByScan(scanId)).thenReturn(List.of());
+            when(scanResultQuery.getSpaceCounters(scanId)).thenReturn(
+                    List.of(new ScanResultQuery.SpaceCounter("SPACE-INT", 4L, 0L, Instant.now())));
+
+            var summary = useCase.getScanReportingSummary(scanId);
+
+            assertThat(summary).isPresent();
+            var space = summary.orElseThrow().spaces().getFirst();
+            assertSoftly(softly -> {
+                softly.assertThat(space.status()).isEqualTo("INTERRUPTED");
+                softly.assertThat(space.progressPercentage()).isEqualTo(40.0);
+            });
+        }
+
+        @Test
+        @DisplayName("Should_CarryScanId_When_BuildingSpaceSummary")
+        void Should_CarryScanId_When_BuildingSpaceSummary() {
+            String scanId = "scan-with-id";
+            ScanCheckpoint cp = ScanCheckpoint.builder()
+                    .scanId(scanId).spaceKey("SPACE-ID")
+                    .scanStatus(ScanStatus.RUNNING).progressPercentage(50.0).build();
+            when(checkpointRepo.findByScan(scanId)).thenReturn(List.of(cp));
+            when(spaceRepository.findAll()).thenReturn(List.of());
+            when(severityCountService.getCountsByScan(scanId)).thenReturn(List.of());
+            when(piiTypeCountService.getCountsByScan(scanId)).thenReturn(List.of());
+            when(scanResultQuery.getSpaceCounters(scanId)).thenReturn(
+                    List.of(new ScanResultQuery.SpaceCounter("SPACE-ID", 2L, 1L, Instant.now())));
+
+            var summary = useCase.getScanReportingSummary(scanId);
+
+            assertThat(summary).isPresent();
+            assertThat(summary.orElseThrow().spaces().getFirst().scanId()).isEqualTo(scanId);
+        }
     }
 
     @Nested

@@ -11,6 +11,9 @@ import pro.softcom.aisentinel.domain.pii.reporting.ScanCheckpoint;
 import pro.softcom.aisentinel.domain.pii.scan.Initiator;
 import pro.softcom.aisentinel.domain.pii.scan.ScanCheckpointStatusTransition;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 /**
  * Manages scan checkpoint persistence for resume capability.
  * Business intent: Tracks scan progress to enable resuming interrupted scans.
@@ -190,7 +193,52 @@ public class ScanCheckpointService {
         scanCheckpointRepository.deleteAllCheckpointsForSpaces(spaceKeys);
     }
 
+    /**
+     * Marks stale RUNNING/PAUSED checkpoints outside the given scope as INTERRUPTED.
+     * Interrupted work is marked INTERRUPTED, never COMPLETED, so partial scans are never
+     * presented as fully scanned (which would hide the PII on their unscanned pages).
+     *
+     * @param excludedSpaceKeys space keys being re-scanned (excluded from resolution)
+     * @return number of checkpoints marked INTERRUPTED
+     */
     public int resolveStaleActiveCheckpoints(java.util.List<String> excludedSpaceKeys) {
         return scanCheckpointRepository.resolveStaleActiveCheckpoints(excludedSpaceKeys);
+    }
+
+    /**
+     * Persists a NOT_STARTED checkpoint for every space of a fresh scan's scope, before any
+     * space is scanned. This durably records the scan scope server-side so that a paused scan
+     * can later be resumed within its original scope (spaces never started still have a
+     * checkpoint) and never leaks into other, unselected spaces.
+     *
+     * <p>Each checkpoint is created with progress 0.0 and no page/attachment position. Because
+     * the scanId is fresh, the underlying upsert performs pure INSERTs, and the later
+     * NOT_STARTED → RUNNING transition emitted by scan events is allowed by the SYSTEM initiator.
+     *
+     * @param scanId    the fresh scan identifier
+     * @param spaceKeys the space keys forming the scan scope
+     */
+    public void initializeScanScope(String scanId, List<String> spaceKeys) {
+        if (StringUtils.isBlank(scanId) || spaceKeys == null || spaceKeys.isEmpty()) {
+            return;
+        }
+        int initialized = 0;
+        for (String spaceKey : spaceKeys) {
+            if (StringUtils.isBlank(spaceKey)) {
+                continue;
+            }
+            ScanCheckpoint checkpoint = ScanCheckpoint.builder()
+                .scanId(scanId)
+                .spaceKey(spaceKey)
+                .lastProcessedPageId(null)
+                .lastProcessedAttachmentName(null)
+                .scanStatus(ScanStatus.NOT_STARTED)
+                .progressPercentage(0.0)
+                .updatedAt(LocalDateTime.now())
+                .build();
+            scanCheckpointRepository.save(checkpoint);
+            initialized++;
+        }
+        log.info("[SCAN] Initialized {} NOT_STARTED checkpoint(s) for scan {}", initialized, scanId);
     }
 }

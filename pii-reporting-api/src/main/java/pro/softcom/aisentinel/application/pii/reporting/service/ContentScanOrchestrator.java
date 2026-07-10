@@ -150,6 +150,23 @@ public class ContentScanOrchestrator {
      * 
      * @param spaceKeys list of space keys to purge
      */
+    /**
+     * Records the scan scope server-side by creating a NOT_STARTED checkpoint for every space of a
+     * fresh scan, before any space is scanned. This lets a paused scan be resumed within its original
+     * scope and prevents the resume path from leaking into unselected spaces.
+     *
+     * @param scanId    the fresh scan identifier
+     * @param spaceKeys the space keys forming the scan scope
+     */
+    public void initializeScanScope(String scanId, java.util.List<String> spaceKeys) {
+        try {
+            scanCheckpointService.initializeScanScope(scanId, spaceKeys);
+        } catch (Exception e) {
+            log.error("[SCAN] Failed to initialize scan scope for {}: {}", scanId, e.getMessage(), e);
+            // Don't fail the scan if scope initialization fails - log and continue
+        }
+    }
+
     public void purgePreviousScanDataForSpaces(java.util.List<String> spaceKeys) {
         try {
             log.info("[SCAN] Purging ALL previous scan data for selected spaces before starting new scan");

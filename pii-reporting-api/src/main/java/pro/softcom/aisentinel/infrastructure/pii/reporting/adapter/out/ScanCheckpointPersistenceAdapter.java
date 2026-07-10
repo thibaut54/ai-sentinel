@@ -138,6 +138,11 @@ public class ScanCheckpointPersistenceAdapter implements ScanCheckpointRepositor
         return jpaRepository.resumeAllPausedCheckpoints(scanId);
     }
 
+    /**
+     * Marks stale RUNNING/PAUSED checkpoints outside the given scope as INTERRUPTED.
+     * Interrupted work is marked INTERRUPTED, never COMPLETED, so partial scans are never
+     * presented as fully scanned (which would hide the PII on their unscanned pages).
+     */
     @Override
     @Transactional
     public int resolveStaleActiveCheckpoints(List<String> spaceKeys) {

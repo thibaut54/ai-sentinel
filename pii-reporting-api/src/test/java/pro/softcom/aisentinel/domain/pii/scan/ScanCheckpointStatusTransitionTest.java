@@ -170,6 +170,27 @@ class ScanCheckpointStatusTransitionTest {
         }
 
         @Test
+        @DisplayName("Should_AllowCompletion_When_NotStartedInitiatedBySystem")
+        void Should_AllowCompletion_When_NotStartedInitiatedBySystem() {
+            // A space with no page to scan emits only the space-level "complete" event,
+            // so its upfront NOT_STARTED checkpoint must be able to complete directly.
+            ScanCheckpointStatusTransition underTest =
+                    new ScanCheckpointStatusTransition(ScanStatus.NOT_STARTED, Initiator.SYSTEM);
+
+            assertThat(underTest.isTransitionAllowed(ScanStatus.COMPLETED)).isTrue();
+            assertThat(underTest.transition(ScanStatus.COMPLETED)).isEqualTo(ScanStatus.COMPLETED);
+        }
+
+        @Test
+        @DisplayName("Should_RejectCompletion_When_NotStartedInitiatedByUser")
+        void Should_RejectCompletion_When_NotStartedInitiatedByUser() {
+            ScanCheckpointStatusTransition underTest =
+                    new ScanCheckpointStatusTransition(ScanStatus.NOT_STARTED, Initiator.USER);
+
+            assertThat(underTest.isTransitionAllowed(ScanStatus.COMPLETED)).isFalse();
+        }
+
+        @Test
         @DisplayName("Should_RejectStartToRunning_When_NotStartedInitiatedByUser")
         void Should_RejectStartToRunning_When_NotStartedInitiatedByUser() {
             ScanCheckpointStatusTransition underTest =
@@ -182,6 +203,36 @@ class ScanCheckpointStatusTransitionTest {
                     .hasMessageContaining("NOT_STARTED")
                     .hasMessageContaining("RUNNING")
                     .hasMessageContaining("USER");
+        }
+    }
+
+    @Nested
+    @DisplayName("INTERRUPTED status transitions")
+    class InterruptedStatusTransitions {
+
+        @Test
+        @DisplayName("Should_RejectAnyOutgoingTransition_When_Interrupted")
+        void Should_RejectAnyOutgoingTransition_When_Interrupted() {
+            // INTERRUPTED is a terminal state of an abandoned scan: it is never resumed,
+            // a new scan (new scanId) creates its own checkpoints instead.
+            SoftAssertions softly = new SoftAssertions();
+
+            for (Initiator initiator : Initiator.values()) {
+                ScanCheckpointStatusTransition underTest =
+                        new ScanCheckpointStatusTransition(ScanStatus.INTERRUPTED, initiator);
+
+                for (ScanStatus target : ScanStatus.values()) {
+                    if (target == ScanStatus.INTERRUPTED) {
+                        continue;
+                    }
+
+                    softly.assertThat(underTest.isTransitionAllowed(target))
+                            .as("INTERRUPTED -> %s should be rejected for initiator %s", target, initiator)
+                            .isFalse();
+                }
+            }
+
+            softly.assertAll();
         }
     }
 

@@ -62,7 +62,7 @@ describe('ScanControlService', () => {
     translocoMock = { translate: vi.fn((key: string) => key) };
     toastMock = { clearScanErrors: vi.fn() };
     progressMock = { resetProgress: vi.fn(), resetAllProgress: vi.fn() };
-    utilsMock = { updateSpace: vi.fn(), setSpaces: vi.fn() };
+    utilsMock = { updateSpace: vi.fn(), setSpaces: vi.fn(), allSpaces: vi.fn().mockReturnValue([]) };
     storageMock = { clearItemsForSpace: vi.fn(), clearAllItems: vi.fn() };
 
     uiStateMock = {
@@ -201,6 +201,20 @@ describe('ScanControlService', () => {
     expect(pollingMock.start).toHaveBeenCalledWith(3000);
   });
 
+  it('Should_ResetStalePendingBadges_When_RelaunchSelected', () => {
+    utilsMock['allSpaces'] = vi.fn().mockReturnValue([
+      { key: 'A', status: 'PENDING' },
+      { key: 'B', status: 'PAUSED' },
+      { key: 'C', status: 'NOT_STARTED' }
+    ]);
+
+    service.startSelected(['C']);
+    confirmMock.confirm.mock.calls[0][0].accept();
+
+    expect(utilsMock['updateSpace']).toHaveBeenCalledWith('A', { status: 'NOT_STARTED' });
+    expect(utilsMock['updateSpace']).not.toHaveBeenCalledWith('B', { status: 'NOT_STARTED' });
+  });
+
   // ========== pauseScan ==========
 
   it('Should_CallPauseApi_When_PauseScan', () => {
@@ -284,6 +298,54 @@ describe('ScanControlService', () => {
 
   it('Should_NotReconnect_When_NoRunningSpaces', () => {
     dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([{ status: 'COMPLETED' }]);
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
+  it('Should_RestoreScanScope_When_ReconnectWithMatchingScanId', () => {
+    dataManagementMock.currentScanSpaceKeys.set(null);
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([
+      { spaceKey: 'A', status: 'RUNNING', scanId: 'scan-1' },
+      { spaceKey: 'B', status: 'NOT_STARTED', scanId: 'scan-1' },
+      { spaceKey: 'C', status: 'OK', scanId: 'other-scan' }
+    ]);
+
+    service.reconnectIfScanRunning();
+
+    expect(dataManagementMock.currentScanSpaceKeys()).toEqual(['A', 'B']);
+  });
+
+  it('Should_ReconnectSse_When_InterSpaceWindowNotStarted', () => {
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([
+      { spaceKey: 'A', status: 'NOT_STARTED', scanId: 'scan-1' },
+      { spaceKey: 'B', status: 'OK', scanId: 'scan-1' }
+    ]);
+
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).toHaveBeenCalledWith(3000);
+    expect(apiMock.startAllSpacesStream).toHaveBeenCalledWith('scan-1');
+  });
+
+  it('Should_NotReconnect_When_AllTerminalStatuses', () => {
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([
+      { spaceKey: 'A', status: 'COMPLETED', scanId: 'scan-1' },
+      { spaceKey: 'B', status: 'FAILED', scanId: 'scan-1' },
+      { spaceKey: 'C', status: 'INTERRUPTED', scanId: 'scan-1' }
+    ]);
+
+    service.reconnectIfScanRunning();
+
+    expect(pollingMock.start).not.toHaveBeenCalled();
+  });
+
+  it('Should_NotReconnect_When_PausedInCurrentScan', () => {
+    dataManagementMock.lastSpaceStatuses = vi.fn().mockReturnValue([
+      { spaceKey: 'A', status: 'RUNNING', scanId: 'scan-1' },
+      { spaceKey: 'B', status: 'PAUSED', scanId: 'scan-1' }
+    ]);
+
     service.reconnectIfScanRunning();
 
     expect(pollingMock.start).not.toHaveBeenCalled();
