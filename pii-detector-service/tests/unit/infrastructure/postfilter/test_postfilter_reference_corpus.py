@@ -162,3 +162,78 @@ class TestRawFindingsPrecision:
         )
         kept_texts = {entity.text for entity in kept}
         assert _MUST_KEEP_CREDENTIALS <= kept_texts
+
+
+# Anonymized replica of the 134 PASSWORD findings from the 2026-07 Confluence
+# scan (scan 9f17da25): every real secret / person / internal app name was
+# substituted with a same-shape equivalent verified to take the same rule
+# path. Real secrets (recall invariant): the strategy must never reject one.
+_MUST_KEEP_PASSWORD_SECRETS = {
+    "y&%73gxq248p5b#9@ubmycqka1652mtf",
+    "KRTmEWQYj41PbGhx",
+    "Basic ZGVtbzpkZW1v",
+    "VD_Compta81724",
+    "Wuk7pos2elXaonzu",
+    "OWNER_PASS= Q%K42T7oRWv908%pemzS55g4kfd2LMcx",
+    "OWNER_PASS= pdxRScMWE2VgHK9B+ZTQMvi_kexZoXf5",
+    "READ_PASS = qkfWD84RwTXvoNGGMTUAe%K-C2mbSnHy",
+    "READ_PASS = r5abQvvokfnpYLdSM%Xq2hMo6tbc4qkz",
+    "USER_PASS = WcRak7QhTgZ5pdxom+cV_NBSM8+q24TA",
+    "USER_PASS = hsNWamq+rXBWhc63K_dVkh8UTNK4RcQp",
+    "MDP = Battery5678",
+    "PWD: kp7zeQBmXc",
+    "Passw: 7c2XY5w1PbnF",
+    "webservice.password = mA24k9Xe",
+    "pwd : QKX7rp5W-in",
+    "pwd mifR4kal",
+    "mifR4kal",
+    "k2Ppa7B4",
+    "b0njour",
+    "dev001/Battery5678",
+    "dev002/Battery5678",
+}
+
+# Conservative keeps: not obviously secrets, but rejecting them would need
+# evidence the strategy does not have (fail-open by design).
+_EXPECTED_KEPT_PASSWORD_TEXTS = _MUST_KEEP_PASSWORD_SECRETS | {
+    "Autumn42.",
+    "DEF5678",
+    "gcappdemo-in@{cipher2:appdemo:IN:ace.password}125349ab902cde4f759"
+    "10c8aa41bb307c92117425de8fc9235409a1de5a11b18abb1fc9aa2860e753050"
+    "72b613f5a2ce",
+    "session-token.cookie.path=/",
+    "session-token.cookie.secure=true",
+    "session-token.enable-session=true",
+    "session-token.session-time-to-live-in-minuts=30",
+    "u9demo Battery1. (Demo)",
+    "us00312 <standard-pass>",
+    "us00313 <standard-pass>",
+    "webservice.password=XYZ",
+}
+
+
+class TestPasswordCorpusPrecision:
+    def test_should_never_reject_a_real_password_secret(
+        self, validator
+    ) -> None:
+        findings = _load("password-findings.json")
+        assert len(findings) == 134
+        kept, _rejections = validator.filter_with_verdicts(
+            "", _entities(findings)
+        )
+        kept_texts = {entity.text for entity in kept}
+        missing = _MUST_KEEP_PASSWORD_SECRETS - kept_texts
+        assert missing == set(), f"Real secrets rejected: {missing}"
+
+    def test_should_reject_every_password_mention(self, validator) -> None:
+        # Exact pin: anything kept beyond this set is a new false positive,
+        # anything missing is a recall regression on a conservative keep.
+        findings = _load("password-findings.json")
+        kept, rejections = validator.filter_with_verdicts(
+            "", _entities(findings)
+        )
+        assert {
+            entity.text for entity in kept
+        } == _EXPECTED_KEPT_PASSWORD_TEXTS
+        assert len(kept) == 42
+        assert len(rejections) == 92
