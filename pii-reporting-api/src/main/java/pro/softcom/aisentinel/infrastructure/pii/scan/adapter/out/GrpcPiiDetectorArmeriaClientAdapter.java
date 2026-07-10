@@ -163,6 +163,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
                 .statistics(statistics)
                 .discardedByPostfilter(discardedByPostfilter)
                 .detectorRunStats(detectorRunStats)
+                .discoveredLabels(response.getDiscoveredLabelsMap())
                 .build();
     }
 

@@ -27,15 +27,17 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { PiiDetectionConfigService } from '../../core/services/pii-detection-config.service';
 import {
     CreatePiiTypeConfigRequest,
+    DiscoveredLabel,
     GroupedPiiTypes,
     PiiDetectionConfig,
     PiiTypeConfig,
+    PromoteDiscoveredLabelRequest,
     UpdatePiiTypeConfigRequest
 } from '../../core/models/pii-detection-config.model';
-import { forkJoin, Observable } from 'rxjs';
+import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
 
-type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence';
+type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'confluence' | 'discovered_labels';
 
 /**
  * Settings page for PII detection configuration.
@@ -149,6 +151,14 @@ export class PiiSettingsComponent implements OnInit {
   customLabelForm!: FormGroup;
   creatingCustomType = signal(false);
 
+  // Discovered labels (Ministral open-vocabulary proposals awaiting review)
+  discoveredLabels = signal<DiscoveredLabel[]>([]);
+  discoveredLabelsCount = computed(() => this.discoveredLabels().length);
+
+  // Set while the custom-label dialog is reused to promote a discovered label,
+  // so the shared submit handler routes to promoteLabel instead of createConfig.
+  promotingLabel = signal<DiscoveredLabel | null>(null);
+
   categoryOptions = [
     { label: 'CONTACT', value: 'CONTACT' },
     { label: 'IDENTITY', value: 'IDENTITY' },
@@ -184,7 +194,7 @@ export class PiiSettingsComponent implements OnInit {
 
   /** Maps tab indices to sidebar section identifiers. */
   private static readonly TAB_TO_SECTION: ReadonlyArray<SettingsSection> = [
-    'detectors', 'thresholds', 'pii_types', 'confluence'
+    'detectors', 'thresholds', 'pii_types', 'confluence', 'discovered_labels'
   ];
 
   /**
@@ -241,6 +251,11 @@ export class PiiSettingsComponent implements OnInit {
    * "Numéro de badge" -> "NUMERO_DE_BADGE"
    */
   onDetectorLabelChange(label: string): void {
+    // In promote mode the PII type is authoritative from the discovered label
+    // (the backend derives it from the path), so never auto-overwrite it here.
+    if (this.promotingLabel()) {
+      return;
+    }
     const piiType = label
       .trim()
       .normalize('NFD')
@@ -252,6 +267,7 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   openAddCustomLabelDialog(): void {
+    this.promotingLabel.set(null);
     this.customLabelForm.reset({
       detectorLabel: '',
       piiType: '',
@@ -264,6 +280,7 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   closeAddCustomLabelDialog(): void {
+    this.promotingLabel.set(null);
     this.customLabelForm.reset({
       detectorLabel: '',
       piiType: '',
@@ -273,6 +290,114 @@ export class PiiSettingsComponent implements OnInit {
       countryCode: ''
     });
     this.showAddCustomLabelDialog.set(false);
+  }
+
+  /**
+   * Reuse the custom-label dialog to promote a discovered label: prefill the
+   * form from the proposal and remember it so the submit handler promotes
+   * instead of creating a config from scratch.
+   */
+  openPromoteDialog(label: DiscoveredLabel): void {
+    this.customLabelForm.reset({
+      detectorLabel: label.label.toLowerCase(),
+      piiType: label.label,
+      category: 'CUSTOM',
+      severity: 'MEDIUM',
+      threshold: 0.8,
+      countryCode: ''
+    });
+    this.promotingLabel.set(label);
+    this.showAddCustomLabelDialog.set(true);
+  }
+
+  /**
+   * Shared submit for the custom-label dialog: promote a discovered label when
+   * the dialog was opened in promote mode, otherwise create a new config.
+   */
+  submitCustomLabel(): void {
+    if (this.promotingLabel()) {
+      this.promoteDiscoveredLabel();
+    } else {
+      this.createCustomType();
+    }
+  }
+
+  private promoteDiscoveredLabel(): void {
+    const discovered = this.promotingLabel();
+    if (!discovered || this.customLabelForm.invalid) {
+      this.customLabelForm.markAllAsTouched();
+      return;
+    }
+
+    this.creatingCustomType.set(true);
+    const formValue = this.customLabelForm.value;
+
+    const request: PromoteDiscoveredLabelRequest = {
+      category: formValue.category,
+      severity: formValue.severity,
+      threshold: formValue.threshold,
+      detectorLabel: formValue.detectorLabel,
+      countryCode: formValue.countryCode || undefined
+    };
+
+    this.configService.promoteLabel(discovered.label, request).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translocoService.translate('common.success'),
+          detail: this.translocoService.translate('settings.discoveredLabels.promoteSuccess', { label: discovered.label }),
+          life: 3000
+        });
+        this.creatingCustomType.set(false);
+        this.promotingLabel.set(null);
+        this.showAddCustomLabelDialog.set(false);
+        this.loadAllConfigs();
+      },
+      error: (err) => {
+        console.error('Failed to promote discovered label:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translocoService.translate('common.error'),
+          detail: this.translocoService.translate('settings.discoveredLabels.promoteError', { error: err.error?.message || err.message || 'Unknown error' }),
+          life: 5000
+        });
+        this.creatingCustomType.set(false);
+      }
+    });
+  }
+
+  ignoreLabel(label: DiscoveredLabel): void {
+    this.confirmationService.confirm({
+      header: this.translocoService.translate('settings.discoveredLabels.ignoreConfirm.header'),
+      message: this.translocoService.translate('settings.discoveredLabels.ignoreConfirm.message', { label: label.label }),
+      acceptLabel: this.translocoService.translate('common.yes'),
+      rejectLabel: this.translocoService.translate('common.no'),
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.performIgnoreLabel(label)
+    });
+  }
+
+  private performIgnoreLabel(label: DiscoveredLabel): void {
+    this.configService.ignoreLabel(label.label).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translocoService.translate('common.success'),
+          detail: this.translocoService.translate('settings.discoveredLabels.ignoreSuccess', { label: label.label }),
+          life: 3000
+        });
+        this.loadAllConfigs();
+      },
+      error: (err) => {
+        console.error('Failed to ignore discovered label:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translocoService.translate('common.error'),
+          detail: this.translocoService.translate('settings.discoveredLabels.ignoreError', { error: err.error?.message || err.message || 'Unknown error' }),
+          life: 5000
+        });
+      }
+    });
   }
 
   createCustomType(): void {
@@ -391,9 +516,15 @@ export class PiiSettingsComponent implements OnInit {
 
     forkJoin([
       this.configService.getConfig(),
-      this.configService.getPiiTypesGroupedForUI()
+      this.configService.getPiiTypesGroupedForUI(),
+      // Discovered labels are auxiliary: a failure here (endpoint missing on a
+      // not-yet-migrated backend, transient 5xx) must not blank out the core
+      // settings, so it degrades to an empty inbox instead of failing the join.
+      this.configService.getDiscoveredLabels().pipe(
+        catchError(() => of([] as DiscoveredLabel[]))
+      )
     ]).subscribe({
-      next: ([detectorConfig, piiTypes]) => {
+      next: ([detectorConfig, piiTypes, discovered]) => {
         // Set detector config
         this.currentConfig.set(detectorConfig);
         this.configForm.patchValue({
@@ -409,6 +540,8 @@ export class PiiSettingsComponent implements OnInit {
         // Set PII types
         this.groupedPiiTypes.set(piiTypes);
         this.initializeOriginalPiiTypes(piiTypes);
+
+        this.discoveredLabels.set(discovered);
 
         // Collapse the sub-sections of detectors that are disabled, so the
         // "Types d'IPI" view reflects the "Moteur de détection" state on load.

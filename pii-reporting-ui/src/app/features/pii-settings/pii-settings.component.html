@@ -53,6 +53,17 @@
                 <i class="pi pi-link"></i>
                 {{ 'settings.nav.confluence' | transloco }}
             </button>
+
+            <button
+                type="button"
+                class="sidebar-nav-item"
+                [class.active]="activeSection() === 'discovered_labels'"
+                (click)="setActiveSection('discovered_labels')"
+                (keydown.enter)="setActiveSection('discovered_labels')"
+            >
+                <i class="pi pi-inbox"></i>
+                {{ 'settings.nav.discoveredLabels' | transloco }}
+            </button>
         </nav>
 
         <!-- Content Panel -->
@@ -449,6 +460,49 @@
             @if (activeSection() === 'confluence') {
                 <app-confluence-settings (saved)="settingsSaved.emit()"></app-confluence-settings>
             }
+
+            <!-- ===== SECTION: DISCOVERED LABELS ===== -->
+            @if (activeSection() === 'discovered_labels') {
+                <h3 class="section-title">{{ 'settings.discoveredLabels.title' | transloco: {count: discoveredLabelsCount()} }}</h3>
+                <p class="section-desc">{{ 'settings.discoveredLabels.description' | transloco }}</p>
+
+                @if (discoveredLabels().length === 0) {
+                    <div class="no-results-message">
+                        <i class="pi pi-inbox"></i>
+                        <p>{{ 'settings.discoveredLabels.empty' | transloco }}</p>
+                    </div>
+                } @else {
+                    @for (label of discoveredLabels(); track label.label) {
+                        <div class="pii-type-row">
+                            <div class="pii-type-info">
+                                <span class="type-name">{{ label.label }}</span>
+                                <span class="type-code">{{ 'settings.discoveredLabels.occurrences' | transloco: {count: label.occurrenceCount} }}</span>
+                            </div>
+                            <div class="pii-type-controls">
+                                <p-button
+                                    type="button"
+                                    icon="pi pi-plus"
+                                    [label]="'settings.discoveredLabels.add' | transloco"
+                                    (click)="openPromoteDialog(label)"
+                                    (keydown.enter)="openPromoteDialog(label)"
+                                    styleClass="p-button-sm p-button-outlined"
+                                    [ariaLabel]="'settings.discoveredLabels.add' | transloco">
+                                </p-button>
+                                <p-button
+                                    type="button"
+                                    icon="pi pi-ban"
+                                    [label]="'settings.discoveredLabels.ignore' | transloco"
+                                    [text]="true"
+                                    (click)="ignoreLabel(label)"
+                                    (keydown.enter)="ignoreLabel(label)"
+                                    styleClass="p-button-sm"
+                                    [ariaLabel]="'settings.discoveredLabels.ignore' | transloco">
+                                </p-button>
+                            </div>
+                        </div>
+                    }
+                }
+            }
         </div>
     </div>
 
@@ -514,7 +568,7 @@
         </button>
     </div>
 
-    <form [formGroup]="customLabelForm" (ngSubmit)="createCustomType()">
+    <form [formGroup]="customLabelForm" (ngSubmit)="submitCustomLabel()">
         <!-- Detector Label -->
         <div class="custom-label-field">
             <label for="detectorLabel">
@@ -544,6 +598,7 @@
                 type="text"
                 pInputText
                 formControlName="piiType"
+                [readonly]="!!promotingLabel()"
                 [placeholder]="'settings.customLabels.fields.piiTypePlaceholder' | transloco" />
             @if (customLabelForm.get('piiType')?.invalid && customLabelForm.get('piiType')?.touched) {
                 <small class="field-error">{{ 'settings.customLabels.validation.piiTypeInvalid' | transloco }}</small>

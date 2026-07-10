@@ -209,7 +209,8 @@
       "detectors": "Moteurs de d\u00e9tection",
       "thresholds": "Seuils & Performance",
       "piiTypes": "Types d'IPI",
-      "confluence": "Connexion Confluence"
+      "confluence": "Connexion Confluence",
+      "discoveredLabels": "Nouveaux labels d\u00e9tect\u00e9s"
     },
     "subtitle": "Configurez les moteurs, seuils et types d'informations \u00e0 d\u00e9tecter",
     "tabs": {
@@ -859,6 +860,22 @@
         "createError": "Erreur lors de la création du label personnalisé : {{error}}",
         "deleteSuccess": "Label personnalisé \"{{label}}\" supprimé avec succès",
         "deleteError": "Erreur lors de la suppression du label personnalisé : {{error}}"
+      }
+    },
+    "discoveredLabels": {
+      "title": "Nouveaux labels détectés ({{count}})",
+      "description": "Labels proposés par Ministral qui ne sont pas encore configurés. Ajoutez-les pour les détecter lors des prochains scans, ou ignorez-les.",
+      "empty": "Aucun nouveau label détecté pour le moment.",
+      "occurrences": "{{count}} occurrence(s)",
+      "add": "Ajouter",
+      "ignore": "Ignorer",
+      "promoteSuccess": "Label \"{{label}}\" ajouté à la configuration",
+      "promoteError": "Erreur lors de l'ajout du label : {{error}}",
+      "ignoreSuccess": "Label \"{{label}}\" ignoré",
+      "ignoreError": "Erreur lors de la mise à l'écart du label : {{error}}",
+      "ignoreConfirm": {
+        "header": "Ignorer le label",
+        "message": "Êtes-vous sûr de vouloir ignorer le label \"{{label}}\" ? Il ne sera plus proposé."
       }
     },
     "actions": {

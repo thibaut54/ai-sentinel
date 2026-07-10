@@ -209,7 +209,8 @@
       "detectors": "Detection Engines",
       "thresholds": "Thresholds & Performance",
       "piiTypes": "PII Types",
-      "confluence": "Confluence Connection"
+      "confluence": "Confluence Connection",
+      "discoveredLabels": "Discovered Labels"
     },
     "subtitle": "Configure detection engines, thresholds and types of information to detect",
     "tabs": {
@@ -859,6 +860,22 @@
         "createError": "Error creating custom label: {{error}}",
         "deleteSuccess": "Custom label \"{{label}}\" deleted successfully",
         "deleteError": "Error deleting custom label: {{error}}"
+      }
+    },
+    "discoveredLabels": {
+      "title": "Discovered Labels ({{count}})",
+      "description": "Labels proposed by Ministral that are not configured yet. Add them to detect them on the next scans, or ignore them.",
+      "empty": "No new label discovered yet.",
+      "occurrences": "{{count}} occurrence(s)",
+      "add": "Add",
+      "ignore": "Ignore",
+      "promoteSuccess": "Label \"{{label}}\" added to the configuration",
+      "promoteError": "Error adding the label: {{error}}",
+      "ignoreSuccess": "Label \"{{label}}\" ignored",
+      "ignoreError": "Error ignoring the label: {{error}}",
+      "ignoreConfirm": {
+        "header": "Ignore label",
+        "message": "Are you sure you want to ignore the label \"{{label}}\"? It will no longer be proposed."
       }
     },
     "actions": {
