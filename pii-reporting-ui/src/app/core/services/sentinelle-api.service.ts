@@ -23,6 +23,8 @@ export interface SpaceScanStateDto {
   attachmentsDone: number;
   lastEventTs: string;
   progressPercentage?: number;
+  /** Scan id of the space's latest checkpoint (absent/null if never scanned). */
+  scanId?: string;
 }
 
 export interface SpaceSummaryDto {
@@ -33,6 +35,8 @@ export interface SpaceSummaryDto {
   attachmentsDone: number;
   lastEventTs: string;
   severityCounts: { high: number; medium: number; low: number; total: number; } | null;
+  /** Scan id of the space's latest checkpoint (absent/null if never scanned). */
+  scanId?: string;
   /** Human-readable space name as known by the backend (optional, additive). */
   spaceName?: string;
   /**

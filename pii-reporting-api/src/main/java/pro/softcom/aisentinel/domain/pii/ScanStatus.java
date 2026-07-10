@@ -8,7 +8,8 @@ public enum ScanStatus {
     RUNNING("En cours"),
     COMPLETED("Terminé"),
     FAILED("Échoué"),
-    PAUSED("En pause");
+    PAUSED("En pause"),
+    INTERRUPTED("Interrompu");
 
     private final String label;
 

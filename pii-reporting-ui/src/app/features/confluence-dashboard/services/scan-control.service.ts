@@ -246,6 +246,17 @@ export class ScanControlService {
           counts: { total: 0, high: 0, medium: 0, low: 0 }
         });
       }
+
+      // Reconcile stale queue badges: spaces left PENDING by a previous scan but
+      // excluded from this new selection must fall back to NOT_STARTED. Other
+      // statuses (PAUSED/OK/FAILED/RUNNING) are preserved.
+      const nk = (v: string | null | undefined) => String(v ?? '').trim().toLowerCase();
+      const selection = new Set(spaceKeys.map(nk));
+      for (const space of this.spacesDashboardUtils.allSpaces()) {
+        if (!selection.has(nk(space.key)) && space.status === 'PENDING') {
+          this.spacesDashboardUtils.updateSpace(space.key, { status: 'NOT_STARTED' });
+        }
+      }
     } else {
       this.piiItemsStorage.clearAllItems();
       this.scanProgressService.resetAllProgress();
@@ -390,7 +401,18 @@ export class ScanControlService {
    * Called during dashboard initialization after loading statuses.
    *
    * Always syncs button panel signals (scanActive, scanPaused) from backend.
-   * If a scan is actively RUNNING, also starts polling + SSE reconnection.
+   *
+   * Scope restoration: when the current scan scope is unknown (e.g. after a page
+   * reload), it is rebuilt from the spaces whose checkpoint carries the current
+   * scanId. This runs even when the scan is paused, so resume and "En attente"
+   * badges stay correct after a reload.
+   *
+   * Reconnection gate (bounded to the current scan): reconnect only when the scan
+   * is unfinished — a space RUNNING or NOT_STARTED (queued via upfront checkpoints)
+   * under the current scanId means the scan is still in progress, even in the
+   * inter-space window where no space is RUNNING at the instant of the reload.
+   * A finished scan (all COMPLETED/FAILED/INTERRUPTED) does not reconnect; a paused
+   * scan never resumes on its own.
    */
   reconnectIfScanRunning(): void {
     // Always sync button panel state from backend — regardless of scan state
@@ -403,10 +425,21 @@ export class ScanControlService {
 
     if (!meta?.scanId) return;
 
-    const hasRunningScan = statuses.some(s => s.status === 'RUNNING');
-    const hasPausedScan = statuses.some(s => s.status === 'PAUSED');
+    if (this.dataManagement.currentScanSpaceKeys() === null) {
+      const scopeKeys = statuses
+        .filter(s => s.scanId === meta.scanId)
+        .map(s => s.spaceKey);
+      if (scopeKeys.length > 0) {
+        this.dataManagement.currentScanSpaceKeys.set(scopeKeys);
+      }
+    }
 
-    if (!hasRunningScan || hasPausedScan) return;
+    // Keep entries without scanId for backward compatibility with pre-fix scans.
+    const scanStatuses = statuses.filter(s => !s.scanId || s.scanId === meta.scanId);
+    const hasPaused = scanStatuses.some(s => s.status === 'PAUSED');
+    const hasUnfinished = scanStatuses.some(s => s.status === 'RUNNING' || s.status === 'NOT_STARTED');
+
+    if (hasPaused || !hasUnfinished) return;
 
     this.uiStateService.append(
       this.translocoService.translate('dashboard.logs.autoReconnect', { scanId: meta.scanId })

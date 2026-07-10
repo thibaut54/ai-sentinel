@@ -19,6 +19,7 @@ import java.util.Map;
  * @param spaceName          human-readable space name (may be null)
  * @param severityCounts     aggregated severity counts (never null; zero when no detections)
  * @param piiTypeCounts      occurrence count keyed by PII type code (never null; empty when none)
+ * @param scanId             identifier of the scan this space state belongs to (null when never scanned)
  */
 public record SpaceSummary(
     String spaceKey,
@@ -29,7 +30,8 @@ public record SpaceSummary(
     Instant lastEventTs,
     String spaceName,
     SeverityCounts severityCounts,
-    Map<String, Integer> piiTypeCounts
+    Map<String, Integer> piiTypeCounts,
+    String scanId
 ) {
 
     public SpaceSummary {

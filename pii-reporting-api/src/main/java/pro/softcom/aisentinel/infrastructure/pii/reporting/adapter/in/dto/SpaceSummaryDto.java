@@ -12,5 +12,6 @@ public record SpaceSummaryDto(
         Instant lastEventTs,
         SeverityCountsDto severityCounts,
         String spaceName,
-        Map<String, Integer> piiTypeCounts
+        Map<String, Integer> piiTypeCounts,
+        String scanId
 ) { }

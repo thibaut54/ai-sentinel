@@ -58,7 +58,8 @@
       "failed": "Échec",
       "pending": "En attente",
       "notStarted": "Non démarré",
-      "paused": "En pause"
+      "paused": "En pause",
+      "interrupted": "Interrompu"
     },
     "actions": {
       "startScan": "Démarrer le scan global",
@@ -138,6 +139,7 @@
     },
     "scanStatus": {
       "active": "Scan en cours",
+      "paused": "Scan en pause",
       "inactive": "Scan inactif",
       "loading": "Chargement..."
     },

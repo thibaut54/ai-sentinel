@@ -190,7 +190,8 @@ export class SpaceDataManagementService {
             pagesDone: space.pagesDone,
             attachmentsDone: space.attachmentsDone,
             lastEventTs: space.lastEventTs,
-            progressPercentage: space.progressPercentage ?? undefined
+            progressPercentage: space.progressPercentage ?? undefined,
+            scanId: space.scanId
           }));
 
           this.lastSpaceStatuses.set(spaceScanStateList);

@@ -55,9 +55,11 @@ public class ScanCheckpointStatusTransition {
             new Transition(ScanStatus.COMPLETED, Set.of(Initiator.SYSTEM))
         ),
         
-        // Not started: can be launched by SYSTEM
+        // Not started: can be launched by SYSTEM, or completed directly when the
+        // space has no page to scan (its only scan event is the space-level "complete")
         ScanStatus.NOT_STARTED, Set.of(
-            new Transition(ScanStatus.RUNNING, Set.of(Initiator.SYSTEM))
+            new Transition(ScanStatus.RUNNING, Set.of(Initiator.SYSTEM)),
+            new Transition(ScanStatus.COMPLETED, Set.of(Initiator.SYSTEM))
         )
     );
 

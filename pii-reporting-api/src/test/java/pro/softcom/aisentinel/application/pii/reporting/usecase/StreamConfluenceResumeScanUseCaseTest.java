@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import pro.softcom.aisentinel.application.confluence.port.out.*;
 import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.StreamConfluenceResumeScanPort;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.PersonallyIdentifiableInformationScanExecutionOrchestratorPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.PublishEventPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
 import pro.softcom.aisentinel.application.pii.reporting.service.*;
@@ -41,6 +42,8 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -84,6 +87,9 @@ class StreamConfluenceResumeScanUseCaseTest {
     @Mock
     private ConfluenceSpaceRepository spaceRepository;
 
+    @Mock
+    private PersonallyIdentifiableInformationScanExecutionOrchestratorPort scanExecutionOrchestratorPort;
+
     private StreamConfluenceResumeScanPort streamConfluenceResumeScanPort;
 
     @BeforeEach
@@ -124,8 +130,90 @@ class StreamConfluenceResumeScanUseCaseTest {
         );
         streamConfluenceResumeScanPort = new StreamConfluenceResumeScanUseCase(
                 pipelineDependencies,
-                scanCheckpointRepository
+                scanCheckpointRepository,
+                scanExecutionOrchestratorPort
         );
+    }
+
+    private static ScanCheckpoint scopeCheckpoint(String scanId, String spaceKey) {
+        return ScanCheckpoint.builder()
+            .scanId(scanId)
+            .spaceKey(spaceKey)
+            .scanStatus(ScanStatus.PAUSED)
+            .build();
+    }
+
+    private static ConfluenceSpace space(String key) {
+        return new ConfluenceSpace("id-" + key, key, "t", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+    }
+
+    @Test
+    @DisplayName("resumeAllSpaces - live scan re-attaches via subscribeScan without launching new work")
+    void Should_AttachToLiveScan_When_ScanIsActive() {
+        String scanId = "SID-LIVE";
+        ConfluenceContentScanResult replayed = ConfluenceContentScanResult.builder()
+            .scanId(scanId).eventType("item").emittedAt("t").build();
+        when(scanExecutionOrchestratorPort.isScanActive(scanId)).thenReturn(true);
+        when(scanExecutionOrchestratorPort.subscribeScan(scanId)).thenReturn(Flux.just(replayed));
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId);
+
+        StepVerifier.create(flux)
+            .expectNext(replayed)
+            .verifyComplete();
+
+        verify(scanExecutionOrchestratorPort).subscribeScan(scanId);
+        verify(confluenceService, never()).getAllSpaces();
+        verify(scanCheckpointRepository, never()).findByScan(anyString());
+        verify(scanCheckpointRepository, never()).resumeAllPausedCheckpoints(anyString());
+    }
+
+    @Test
+    @DisplayName("resumeAllSpaces - inactive scan resumes only the spaces of its own persisted scope")
+    void Should_ResumeOnlyScopedSpaces_When_ScanInactive() {
+        String scanId = "SID-SCOPE";
+        ConfluenceSpace inScope = space("SPACE_A");
+        ConfluenceSpace outOfScope = space("SPACE_B");
+        when(spaceRepository.findAll()).thenReturn(List.of());
+        when(confluenceService.getAllSpaces())
+            .thenReturn(CompletableFuture.completedFuture(List.of(inScope, outOfScope)));
+        when(scanCheckpointRepository.findByScan(scanId))
+            .thenReturn(List.of(scopeCheckpoint(scanId, "SPACE_A")));
+        when(scanCheckpointRepository.findByScanAndSpace(scanId, "SPACE_A")).thenReturn(Optional.empty());
+
+        ConfluencePage page = ConfluencePage.builder().id("pA").title("A").spaceKey("SPACE_A")
+            .content(new ConfluencePage.HtmlContent("content")).build();
+        when(confluenceService.getAllPagesInSpace("SPACE_A"))
+            .thenReturn(CompletableFuture.completedFuture(List.of(page)));
+        when(confluenceAttachmentService.getPageAttachments(anyString()))
+            .thenReturn(CompletableFuture.completedFuture(List.of()));
+        when(piiDetectorClient.analyzeContent(any())).thenReturn(
+            ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build());
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
+            .filter(ev -> "start".equals(ev.eventType()))
+            .timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux)
+            .assertNext(ev -> assertThat(ev.spaceKey()).isEqualTo("SPACE_A"))
+            .verifyComplete();
+
+        verify(confluenceService, never()).getAllPagesInSpace("SPACE_B");
+    }
+
+    @Test
+    @DisplayName("resumeAllSpaces - empty persisted scope yields an empty flux and never scans")
+    void Should_ReturnEmptyFlux_When_ScanHasNoCheckpoints() {
+        String scanId = "SID-EMPTY";
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of());
+
+        Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId)
+            .timeout(Duration.ofSeconds(5));
+
+        StepVerifier.create(flux).verifyComplete();
+
+        verify(confluenceService, never()).getAllSpaces();
     }
 
     @Test
@@ -144,6 +232,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             .lastProcessedAttachmentName("att.bin")
             .scanStatus(ScanStatus.RUNNING)
             .build();
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of(cp));
         when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("p1").title("P1").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("content"))
@@ -173,6 +262,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         ConfluenceSpace space = new ConfluenceSpace("id", spaceKey, "t","http://test.com", "d",
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of(scopeCheckpoint(scanId, spaceKey)));
         when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.empty());
 
         CompletableFuture<List<ConfluencePage>> failing = new CompletableFuture<>();
@@ -198,6 +288,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space)));
 
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of(scopeCheckpoint(scanId, spaceKey)));
         when(scanCheckpointRepository.findByScanAndSpace(anyString(), anyString())).thenThrow(new RuntimeException("prep-fail"));
 
         Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
@@ -217,6 +308,7 @@ class StreamConfluenceResumeScanUseCaseTest {
         CompletableFuture<List<ConfluenceSpace>> failing = new CompletableFuture<>();
         failing.completeExceptionally(new RuntimeException("resume-allspaces-fail"));
         when(spaceRepository.findAll()).thenReturn(List.of()); when(confluenceService.getAllSpaces()).thenReturn(failing);
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of(scopeCheckpoint(scanId, "RS-any")));
 
         Flux<ConfluenceContentScanResult> flux = streamConfluenceResumeScanPort.resumeAllSpaces(scanId).timeout(Duration.ofSeconds(5));
 
@@ -240,6 +332,7 @@ class StreamConfluenceResumeScanUseCaseTest {
             .lastProcessedPageId("UNKNOWN")
             .scanStatus(ScanStatus.RUNNING)
             .build();
+        when(scanCheckpointRepository.findByScan(scanId)).thenReturn(List.of(cp));
         when(scanCheckpointRepository.findByScanAndSpace(scanId, spaceKey)).thenReturn(Optional.of(cp));
 
         ConfluencePage p1 = ConfluencePage.builder().id("pA").title("A").spaceKey(spaceKey).content(new ConfluencePage.HtmlContent("contentA"))

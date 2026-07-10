@@ -244,6 +244,12 @@
   color: var(--sentinel-status-running-text);
 }
 
+/* Paused state: scan paused, awaiting resume (amber, distinct from inactive grey) */
+:host ::ng-deep .scan-status-badge.paused.p-tag {
+  background-color: var(--sentinel-severity-medium-bg);
+  color: var(--sentinel-severity-medium-text);
+}
+
 /* Color pulse animation - progressive color change from light blue to dark blue */
 @keyframes color-pulse {
   0%, 100% {

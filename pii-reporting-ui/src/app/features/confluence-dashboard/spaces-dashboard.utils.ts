@@ -51,6 +51,7 @@ export class SpacesDashboardUtils {
     { labelKey: 'dashboard.status.pending', value: 'PENDING' },
     { labelKey: 'dashboard.status.paused', value: 'PAUSED' },
     { labelKey: 'dashboard.status.running', value: 'RUNNING' },
+    { labelKey: 'dashboard.status.interrupted', value: 'INTERRUPTED' },
     { labelKey: 'dashboard.status.ok', value: 'OK' },
     { labelKey: 'dashboard.status.failed', value: 'FAILED' }
   ]);
@@ -113,6 +114,7 @@ export class SpacesDashboardUtils {
     // Use PrimeNG-supported severities for Tag: success | info | warning | danger | secondary
     if (status === 'FAILED') return 'danger';
     if (status === 'RUNNING') return 'warning';
+    if (status === 'INTERRUPTED') return 'warning';
     if (status === 'PAUSED') return 'info';
     if (status === 'PENDING') return 'info';
     if (status === 'NOT_STARTED' || !status) return 'secondary';

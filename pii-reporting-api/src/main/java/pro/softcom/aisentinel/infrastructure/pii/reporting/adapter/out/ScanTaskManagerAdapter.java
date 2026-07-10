@@ -158,6 +158,12 @@ public class ScanTaskManagerAdapter implements
     }
 
 
+    @Override
+    public boolean isScanActive(String scanId) {
+        ManagedScan scan = managedScans.get(scanId);
+        return scan != null && !scan.isCompleted().get() && !scan.subscription().isDisposed();
+    }
+
     /**
      * Marks a scan as completed (atomically).
      *

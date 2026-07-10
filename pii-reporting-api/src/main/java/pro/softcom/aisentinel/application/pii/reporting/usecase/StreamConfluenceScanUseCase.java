@@ -169,6 +169,10 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                     .filter(space -> spaceKeys.contains(space.key()))
                     .toList();
 
+                // Persist the scan scope (NOT_STARTED checkpoints) BEFORE any space is scanned,
+                // so a paused scan can later be resumed within this exact scope.
+                contentScanOrchestrator.initializeScanScope(scanId, resolveSpaceKeys(selectedSpaces));
+
                 // If the list is empty, generate a small error Flux. Otherwise, create the scan Flux.
                 Flux<ConfluenceContentScanResult> errrorScanResultsFlux = createErrorScanResultIfNoSpace(scanId, selectedSpaces);
                 return Objects.requireNonNullElseGet(errrorScanResultsFlux, () -> createScanResultFlux(scanId, selectedSpaces));
@@ -200,6 +204,10 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
         return Mono.fromFuture(confluenceAccessor.getAllSpaces())
             // Then unfold into Flux<ScanResult>
             .flatMapMany(spaces -> {
+                // Persist the scan scope (NOT_STARTED checkpoints) BEFORE any space is scanned,
+                // so a paused scan can later be resumed within this exact scope.
+                contentScanOrchestrator.initializeScanScope(scanId, resolveSpaceKeys(spaces));
+
                 // If the list is empty, generate a small error Flux. Otherwise, create the scan Flux.
                 // Note: createErrorScanResultIfNoSpace(...) returns null when everything is fine, which allows us
                 // to use Objects.requireNonNullElseGet(...) to fall back to the processing Flux.
@@ -250,6 +258,13 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                                 .emittedAt(Instant.now().toString())
                                 .build());
                     }));
+    }
+
+    private static List<String> resolveSpaceKeys(List<ConfluenceSpace> spaces) {
+        if (spaces == null) {
+            return List.of();
+        }
+        return spaces.stream().map(ConfluenceSpace::key).toList();
     }
 
     private static Flux<ConfluenceContentScanResult> createErrorScanResultIfNoSpace(String scanId, List<ConfluenceSpace> spaces) {

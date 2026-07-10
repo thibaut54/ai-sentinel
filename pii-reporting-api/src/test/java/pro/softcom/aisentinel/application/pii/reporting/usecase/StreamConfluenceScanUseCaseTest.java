@@ -23,6 +23,7 @@ import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.confluence.DataOwners;
+import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.PersonallyIdentifiableInformationSeverity;
 import pro.softcom.aisentinel.domain.pii.scan.ContentPiiDetection;
@@ -43,9 +44,11 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -933,6 +936,67 @@ class StreamConfluenceScanUseCaseTest {
         // Verify both spaces were scanned
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("AHVIV");
         verify(confluenceService, atLeastOnce()).getAllPagesInSpace("XYZ");
+    }
+
+    @Test
+    @DisplayName("streamAllSpaces - initializes NOT_STARTED checkpoints for the whole scope before scanning")
+    void Should_InitializeNotStartedCheckpoints_When_StreamAllSpaces() {
+        ConfluenceSpace space1 = new ConfluenceSpace("id1", "SC1", "Space 1", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        ConfluenceSpace space2 = new ConfluenceSpace("id2", "SC2", "Space 2", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(spaceRepository.findAll()).thenReturn(List.of());
+        when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(space1, space2)));
+
+        ConfluencePage page1 = ConfluencePage.builder().id("p1").title("T").spaceKey("SC1")
+            .content(new ConfluencePage.HtmlContent("content")).build();
+        ConfluencePage page2 = ConfluencePage.builder().id("p2").title("T").spaceKey("SC2")
+            .content(new ConfluencePage.HtmlContent("content")).build();
+        when(confluenceService.getAllPagesInSpace("SC1")).thenReturn(CompletableFuture.completedFuture(List.of(page1)));
+        when(confluenceService.getAllPagesInSpace("SC2")).thenReturn(CompletableFuture.completedFuture(List.of(page2)));
+        when(confluenceAttachmentService.getPageAttachments(anyString()))
+            .thenReturn(CompletableFuture.completedFuture(List.of()));
+        when(piiDetectorClient.analyzeContent(any())).thenReturn(
+            ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build());
+
+        streamConfluenceScanUseCase.streamAllSpaces()
+            .filter(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
+            .timeout(Duration.ofSeconds(10))
+            .blockLast();
+
+        verify(scanCheckpointRepository).save(argThat(cp ->
+            cp != null && "SC1".equals(cp.spaceKey()) && cp.scanStatus() == ScanStatus.NOT_STARTED));
+        verify(scanCheckpointRepository).save(argThat(cp ->
+            cp != null && "SC2".equals(cp.spaceKey()) && cp.scanStatus() == ScanStatus.NOT_STARTED));
+    }
+
+    @Test
+    @DisplayName("streamSelectedSpaces - initializes NOT_STARTED checkpoints only for the selected scope")
+    void Should_InitializeNotStartedCheckpointsForSelectionOnly_When_StreamSelectedSpaces() {
+        ConfluenceSpace selected = new ConfluenceSpace("id1", "SEL1", "Selected", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        ConfluenceSpace other = new ConfluenceSpace("id2", "SEL2", "Other", "http://test.com", "d",
+            ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);
+        when(spaceRepository.findAll()).thenReturn(List.of());
+        when(confluenceService.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(selected, other)));
+
+        ConfluencePage page = ConfluencePage.builder().id("pSel").title("T").spaceKey("SEL1")
+            .content(new ConfluencePage.HtmlContent("content")).build();
+        when(confluenceService.getAllPagesInSpace("SEL1")).thenReturn(CompletableFuture.completedFuture(List.of(page)));
+        when(confluenceAttachmentService.getPageAttachments(anyString()))
+            .thenReturn(CompletableFuture.completedFuture(List.of()));
+        when(piiDetectorClient.analyzeContent(any())).thenReturn(
+            ContentPiiDetection.builder().sensitiveDataFound(List.of()).statistics(Map.of()).build());
+
+        streamConfluenceScanUseCase.streamSelectedSpaces(List.of("SEL1"))
+            .filter(ev -> ScanEventType.MULTI_COMPLETE.toJson().equals(ev.eventType()))
+            .timeout(Duration.ofSeconds(10))
+            .blockLast();
+
+        verify(scanCheckpointRepository).save(argThat(cp ->
+            cp != null && "SEL1".equals(cp.spaceKey()) && cp.scanStatus() == ScanStatus.NOT_STARTED));
+        verify(scanCheckpointRepository, never()).save(argThat(cp ->
+            cp != null && "SEL2".equals(cp.spaceKey()) && cp.scanStatus() == ScanStatus.NOT_STARTED));
     }
 
     /**

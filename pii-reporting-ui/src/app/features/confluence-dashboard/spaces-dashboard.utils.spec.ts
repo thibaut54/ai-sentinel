@@ -130,6 +130,10 @@ describe('SpacesDashboardUtils', () => {
     expect(utils.statusStyle('OK')).toBe('success');
   });
 
+  it('Should_ReturnWarningSeverity_When_StatusInterrupted', () => {
+    expect(utils.statusStyle('INTERRUPTED')).toBe('warning');
+  });
+
   // ========== statusStyleClass ==========
 
   it('Should_ReturnStyleClass_When_StatusStyleClass', () => {

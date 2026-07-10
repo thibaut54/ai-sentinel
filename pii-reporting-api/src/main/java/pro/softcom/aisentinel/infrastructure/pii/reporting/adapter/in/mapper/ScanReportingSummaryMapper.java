@@ -63,7 +63,8 @@ public class ScanReportingSummaryMapper {
                 space.lastEventTs(),
                 severityCountsDto,
                 space.spaceName(),
-                piiTypeCounts
+                piiTypeCounts,
+                space.scanId()
         );
     }
 
