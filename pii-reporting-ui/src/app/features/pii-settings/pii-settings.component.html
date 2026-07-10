@@ -372,6 +372,10 @@
                                         styleClass="p-button-sm p-button-outlined"
                                         [ariaLabel]="'settings.customLabels.addButton' | transloco">
                                     </p-button>
+                                    <span class="ministral-no-threshold-hint">
+                                        <i class="pi pi-info-circle" aria-hidden="true"></i>
+                                        {{ 'settings.piiTypes.ministralNoThreshold' | transloco }}
+                                    </span>
                                 }
                             </div>
                         </div>
@@ -420,7 +424,7 @@
                                                     [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
                                                 </p-toggleswitch>
                                             </div>
-                                            @if (type.enabled) {
+                                            @if (type.enabled && detectorGroup.detector !== 'MINISTRAL') {
                                                 <p-inputNumber
                                                     [(ngModel)]="type.threshold"
                                                     (ngModelChange)="onPiiTypeThresholdChange(type, $event)"
@@ -637,26 +641,14 @@
             </p-select>
         </div>
 
-        <!-- Threshold -->
+        <!-- Threshold is inert for custom labels (always MINISTRAL, which emits no
+             confidence score), so the input is hidden. The 'threshold' form control is
+             kept with its default so the required create/promote request stays valid. -->
         <div class="custom-label-field">
-            <label for="customThreshold">
-                {{ 'settings.customLabels.fields.threshold' | transloco }}
-            </label>
-            <div class="threshold-input-group">
-                <p-inputNumber
-                    inputId="customThreshold"
-                    formControlName="threshold"
-                    [min]="0"
-                    [max]="1"
-                    [step]="0.05"
-                    [minFractionDigits]="2"
-                    [maxFractionDigits]="2"
-                    [showButtons]="true"
-                    buttonLayout="horizontal"
-                    incrementButtonIcon="pi pi-plus"
-                    decrementButtonIcon="pi pi-minus">
-                </p-inputNumber>
-            </div>
+            <span class="ministral-no-threshold-hint">
+                <i class="pi pi-info-circle" aria-hidden="true"></i>
+                {{ 'settings.piiTypes.ministralNoThreshold' | transloco }}
+            </span>
         </div>
 
         <!-- Country Code -->

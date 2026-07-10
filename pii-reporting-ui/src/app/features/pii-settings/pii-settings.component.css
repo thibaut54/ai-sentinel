@@ -1062,6 +1062,21 @@
   color: var(--sentinel-text-subtle);
 }
 
+/* Discreet note shown where a confidence-threshold control would be, for the
+   MINISTRAL detector — which emits no probabilistic score, so the threshold is
+   inert (see the PII types list header and the add/promote dialog). */
+.ministral-no-threshold-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--sentinel-text-subtle);
+}
+
+.ministral-no-threshold-hint .pi {
+  font-size: 0.85rem;
+}
+
 /* ============================================================
    Per-detector switch: detector activation with a compact caption.
    ============================================================ */

@@ -334,6 +334,7 @@
       "categories": "catégories",
       "types": "types",
       "threshold": "Seuil de confiance",
+      "ministralNoThreshold": "Ministral n'utilise pas de seuil de confiance.",
       "toggle": "Activer/désactiver {{type}}",
       "detectors": {
         "presidio": "Détecteur Presidio",

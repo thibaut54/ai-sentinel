@@ -334,6 +334,7 @@
       "categories": "categories",
       "types": "types",
       "threshold": "Confidence Threshold",
+      "ministralNoThreshold": "Ministral does not use a confidence threshold.",
       "toggle": "Toggle {{type}}",
       "detectors": {
         "presidio": "Presidio Detector",

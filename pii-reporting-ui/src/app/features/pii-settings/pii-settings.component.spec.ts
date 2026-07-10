@@ -365,6 +365,45 @@ describe('PiiSettingsComponent', () => {
     expect(component.saving()).toBe(false);
   });
 
+  // ========== Ministral: confidence threshold is inert (hidden) ==========
+
+  it('Should_HideThresholdInput_When_MinistralTypeRow', () => {
+    // Given - one Presidio type (real score → threshold applies) and one Ministral
+    // type (fixed score 1.0 → threshold inert), both enabled and expanded.
+    component.groupedPiiTypes.set([
+      { detector: 'PRESIDIO', categories: [{ category: 'CONTACT', types: [
+        { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+      ] }] },
+      { detector: 'MINISTRAL', categories: [{ category: 'IDENTITY', types: [
+        { id: 2, piiType: 'FIRST_NAME', detector: 'MINISTRAL', enabled: true, threshold: 0.5, category: 'IDENTITY' },
+      ] }] },
+    ]);
+    component.collapsedDetectors.set(new Set());
+    component.setActiveSection('pii_types');
+
+    // When
+    fixture.detectChanges();
+
+    // Then - only the Presidio row renders a threshold input; the Ministral group
+    // shows the explanatory note instead.
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('p-inputnumber').length).toBe(1);
+    expect(el.querySelector('.ministral-no-threshold-hint')).not.toBeNull();
+  });
+
+  it('Should_HideThresholdField_When_AddCustomLabelDialogOpened', () => {
+    // When - the add/promote dialog is opened (custom labels are always MINISTRAL)
+    component.openAddCustomLabelDialog();
+    component.customLabelForm.patchValue({ detectorLabel: 'my label', piiType: 'MY_LABEL' });
+    fixture.detectChanges();
+
+    // Then - the threshold input is gone, but the control keeps its default so the
+    // required create/promote request stays populated and the form is valid.
+    expect(document.querySelector('#customThreshold')).toBeNull();
+    expect(component.customLabelForm.get('threshold')?.value).toBe(0.8);
+    expect(component.customLabelForm.valid).toBe(true);
+  });
+
   // ========== onSaveDetectorConfig ==========
 
   it('Should_MarkPristine_When_SaveDetectorConfigSucceeds', () => {
