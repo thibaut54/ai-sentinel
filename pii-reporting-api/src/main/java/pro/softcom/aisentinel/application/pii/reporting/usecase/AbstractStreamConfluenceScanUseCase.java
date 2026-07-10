@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.application.confluence.service.ConfluenceAccessor;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanTimeOutConfig;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentProcessor;
 import pro.softcom.aisentinel.application.pii.reporting.service.AttachmentTextExtracted;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanTimeFalsePositiveSuppressor;
 import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrchestrator;
 import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
@@ -27,6 +28,7 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -47,6 +49,10 @@ public abstract class AbstractStreamConfluenceScanUseCase {
     protected final HtmlContentParser htmlContentParser;
     protected final ScanSpaceStatsCollector scanSpaceStatsCollector;
 
+    /** Drops detections already flagged false positive before persistence, statistics and the
+     *  live view; {@code null} disables scan-time suppression. */
+    protected final ScanTimeFalsePositiveSuppressor falsePositiveSuppressor;
+
     /** Number of pages detected concurrently (>=1); feeds the detector worker pool. */
     protected final int pageConcurrency;
 
@@ -62,6 +68,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         this.scanTimeoutConfig = dependencies.scanTimeoutConfig();
         this.htmlContentParser = dependencies.htmlContentParser();
         this.scanSpaceStatsCollector = dependencies.scanSpaceStatsCollector();
+        this.falsePositiveSuppressor = dependencies.falsePositiveSuppressor();
         this.pageConcurrency = Math.max(1, dependencies.pageConcurrency());
     }
 
@@ -82,7 +89,16 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                                                originalTotal, total);
         Flux<ConfluenceContentScanResult> completeEvent = createCompleteEvent(scanId, spaceKey);
 
+        // Load the space's false-positive finding ids once and drop matching detections from every
+        // event before any consumer sees it, so scan events, severity counters, per-space stats and
+        // the live SSE view stay consistent. Suppression is a pure in-memory transform here; the set
+        // is empty (no-op) when suppression is disabled or the space has no false positive.
+        Set<String> falsePositiveIds = falsePositiveSuppressor == null
+            ? Set.of()
+            : falsePositiveSuppressor.falsePositiveIds(spaceKey);
+
         return Flux.concat(startEvent, pageEvents, completeEvent)
+            .map(event -> suppressFalsePositives(event, falsePositiveIds))
             .doOnEach(signal -> {
                 if (signal.isOnNext() && signal.get() != null) {
                     ConfluenceContentScanResult event = signal.get();
@@ -422,6 +438,14 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                 .subscribe();
 
         return contentPiiDetection;
+    }
+
+    private ConfluenceContentScanResult suppressFalsePositives(ConfluenceContentScanResult event,
+                                                               Set<String> falsePositiveIds) {
+        if (falsePositiveSuppressor == null) {
+            return event;
+        }
+        return falsePositiveSuppressor.suppress(event, falsePositiveIds);
     }
 
     boolean isBlank(String value) {

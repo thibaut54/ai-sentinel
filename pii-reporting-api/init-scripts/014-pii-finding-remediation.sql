@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_pii_finding_remediation_page
     ON pii_finding_remediation(page_id);
 
 COMMENT ON TABLE pii_finding_remediation IS
-    'Remediation lifecycle projection per finding. finding_id = SHA-256 of (space_key, page_id, attachment_name, detector, pii_type, value_fingerprint); no row = implicitly PENDING.';
+    'Remediation lifecycle projection per finding. finding_id = SHA-256 of (space_key, page_id, attachment_name, pii_type, value_fingerprint); detector is denormalised metadata only, not part of the identity; no row = implicitly PENDING.';
 COMMENT ON COLUMN pii_finding_remediation.status IS
     'Lifecycle status: PENDING | REDACTED | MANUALLY_HANDLED | FALSE_POSITIVE. REDACTED is terminal.';
 COMMENT ON COLUMN pii_finding_remediation.status_reason IS
