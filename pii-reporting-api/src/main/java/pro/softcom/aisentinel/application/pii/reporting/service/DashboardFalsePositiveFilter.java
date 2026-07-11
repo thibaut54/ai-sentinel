@@ -97,31 +97,36 @@ public class DashboardFalsePositiveFilter {
             return SeverityCounts.zero();
         }
         try {
-            int high = 0;
-            int medium = 0;
-            int low = 0;
-            for (ConfluenceContentScanResult event :
-                    scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(scanId, spaceKey)) {
-                for (DetectedPersonallyIdentifiableInformation detection : detectionsOf(event)) {
-                    String findingId = findingResolver.stableFindingId(event, detection);
-                    PersonallyIdentifiableInformationSeverity severity =
-                            findingId == null ? null : severityByFindingId.get(findingId);
-                    if (severity == null) {
-                        continue;
-                    }
-                    switch (severity) {
-                        case HIGH -> high++;
-                        case MEDIUM -> medium++;
-                        case LOW -> low++;
-                    }
-                }
-            }
-            return new SeverityCounts(high, medium, low);
+            return countFalsePositiveOccurrences(scanId, spaceKey, severityByFindingId);
         } catch (Exception failure) {
             log.warn("[DASHBOARD_FP] Could not compute false-positive counter delta for space {}: {} "
                     + "— leaving counters undecremented", spaceKey, failure.getMessage());
             return SeverityCounts.zero();
         }
+    }
+
+    private SeverityCounts countFalsePositiveOccurrences(String scanId, String spaceKey,
+            Map<String, PersonallyIdentifiableInformationSeverity> severityByFindingId) {
+        int high = 0;
+        int medium = 0;
+        int low = 0;
+        for (ConfluenceContentScanResult event :
+                scanResultQuery.listItemEventsEncryptedByScanIdAndSpaceKey(scanId, spaceKey)) {
+            for (DetectedPersonallyIdentifiableInformation detection : detectionsOf(event)) {
+                String findingId = findingResolver.stableFindingId(event, detection);
+                PersonallyIdentifiableInformationSeverity severity =
+                        findingId == null ? null : severityByFindingId.get(findingId);
+                if (severity == null) {
+                    continue;
+                }
+                switch (severity) {
+                    case HIGH -> high++;
+                    case MEDIUM -> medium++;
+                    case LOW -> low++;
+                }
+            }
+        }
+        return new SeverityCounts(high, medium, low);
     }
 
     private List<FindingRemediation> falsePositiveRows(String spaceKey) {
@@ -156,9 +161,9 @@ public class DashboardFalsePositiveFilter {
             return null;
         }
         return item.toBuilder()
-                .detectedPIIList(kept)
-                .nbOfDetectedPIIBySeverity(severitySummary(kept))
-                .nbOfDetectedPIIByType(typeSummary(kept))
+                .detectedPIIs(kept)
+                .detectedPiiCountBySeverity(severitySummary(kept))
+                .detectedPiiCountByType(typeSummary(kept))
                 .severity(highestSeverity(kept))
                 .build();
     }
@@ -171,7 +176,7 @@ public class DashboardFalsePositiveFilter {
     }
 
     private static List<DetectedPersonallyIdentifiableInformation> detectionsOf(ConfluenceContentScanResult event) {
-        return event.detectedPIIList() == null ? List.of() : event.detectedPIIList();
+        return event.detectedPIIs() == null ? List.of() : event.detectedPIIs();
     }
 
     private Map<String, Integer> severitySummary(List<DetectedPersonallyIdentifiableInformation> detections) {

@@ -71,7 +71,7 @@ public class ScanTimeFalsePositiveSuppressor {
         if (event == null || falsePositiveIds == null || falsePositiveIds.isEmpty()) {
             return event;
         }
-        List<DetectedPersonallyIdentifiableInformation> detections = event.detectedPIIList();
+        List<DetectedPersonallyIdentifiableInformation> detections = event.detectedPIIs();
         if (detections == null || detections.isEmpty()) {
             return event;
         }
@@ -83,9 +83,9 @@ public class ScanTimeFalsePositiveSuppressor {
                 return event;
             }
             return event.toBuilder()
-                    .detectedPIIList(kept)
-                    .nbOfDetectedPIIBySeverity(severitySummary(kept))
-                    .nbOfDetectedPIIByType(typeSummary(kept))
+                    .detectedPIIs(kept)
+                    .detectedPiiCountBySeverity(severitySummary(kept))
+                    .detectedPiiCountByType(typeSummary(kept))
                     .severity(highestSeverity(kept))
                     .build();
         } catch (Exception failure) {

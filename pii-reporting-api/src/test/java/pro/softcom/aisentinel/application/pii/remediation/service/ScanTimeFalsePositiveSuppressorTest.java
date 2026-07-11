@@ -109,16 +109,16 @@ class ScanTimeFalsePositiveSuppressorTest {
         void Should_RemoveFalsePositiveDetectionAndRecomputeSummaries_When_ItemMixesFalsePositiveAndGenuine() {
             DetectedPersonallyIdentifiableInformation email = detection("EMAIL", "fp-email", DetectorSource.PRESIDIO);
             DetectedPersonallyIdentifiableInformation iban = detection("IBAN", "fp-iban", DetectorSource.REGEX);
-            ConfluenceContentScanResult event = pageEvent("p1", List.of(email, iban));
+            ConfluenceContentScanResult event = pageEvent(List.of(email, iban));
             String emailFindingId = resolver.stableFindingId(event, email);
 
             ConfluenceContentScanResult suppressed = suppressor.suppress(event, Set.of(emailFindingId));
 
             assertSoftly(softly -> {
-                softly.assertThat(suppressed.detectedPIIList()).containsExactly(iban);
-                softly.assertThat(suppressed.nbOfDetectedPIIBySeverity())
+                softly.assertThat(suppressed.detectedPIIs()).containsExactly(iban);
+                softly.assertThat(suppressed.detectedPiiCountBySeverity())
                         .isEqualTo(Map.of("high", 1, "medium", 0, "low", 0));
-                softly.assertThat(suppressed.nbOfDetectedPIIByType()).isEqualTo(Map.of("IBAN", 1));
+                softly.assertThat(suppressed.detectedPiiCountByType()).isEqualTo(Map.of("IBAN", 1));
                 softly.assertThat(suppressed.severity()).isEqualTo(PersonallyIdentifiableInformationSeverity.HIGH);
             });
         }
@@ -126,7 +126,7 @@ class ScanTimeFalsePositiveSuppressorTest {
         @Test
         @DisplayName("Should_ReturnEventUnchanged_When_FalsePositiveIdsIsEmpty")
         void Should_ReturnEventUnchanged_When_FalsePositiveIdsIsEmpty() {
-            ConfluenceContentScanResult event = pageEvent("p1",
+            ConfluenceContentScanResult event = pageEvent(
                     List.of(detection("EMAIL", "fp-email", DetectorSource.PRESIDIO)));
 
             assertThat(suppressor.suppress(event, Set.of())).isSameAs(event);
@@ -135,7 +135,7 @@ class ScanTimeFalsePositiveSuppressorTest {
         @Test
         @DisplayName("Should_ReturnEventUnchanged_When_EventHasNoDetections")
         void Should_ReturnEventUnchanged_When_EventHasNoDetections() {
-            ConfluenceContentScanResult event = pageEvent("p1", List.of());
+            ConfluenceContentScanResult event = pageEvent(List.of());
 
             assertThat(suppressor.suppress(event, Set.of("some-id"))).isSameAs(event);
         }
@@ -143,7 +143,7 @@ class ScanTimeFalsePositiveSuppressorTest {
         @Test
         @DisplayName("Should_ReturnEventUnchanged_When_NoDetectionMatchesFalsePositiveIds")
         void Should_ReturnEventUnchanged_When_NoDetectionMatchesFalsePositiveIds() {
-            ConfluenceContentScanResult event = pageEvent("p1",
+            ConfluenceContentScanResult event = pageEvent(
                     List.of(detection("EMAIL", "fp-email", DetectorSource.PRESIDIO)));
 
             assertThat(suppressor.suppress(event, Set.of("some-other-id"))).isSameAs(event);
@@ -153,16 +153,16 @@ class ScanTimeFalsePositiveSuppressorTest {
         @DisplayName("Should_ReturnEmptyDetectionsAndZeroCounters_When_AllDetectionsAreFalsePositive")
         void Should_ReturnEmptyDetectionsAndZeroCounters_When_AllDetectionsAreFalsePositive() {
             DetectedPersonallyIdentifiableInformation email = detection("EMAIL", "fp-email", DetectorSource.PRESIDIO);
-            ConfluenceContentScanResult event = pageEvent("p1", List.of(email));
+            ConfluenceContentScanResult event = pageEvent(List.of(email));
             String emailFindingId = resolver.stableFindingId(event, email);
 
             ConfluenceContentScanResult suppressed = suppressor.suppress(event, Set.of(emailFindingId));
 
             assertSoftly(softly -> {
-                softly.assertThat(suppressed.detectedPIIList()).isEmpty();
-                softly.assertThat(suppressed.nbOfDetectedPIIBySeverity())
+                softly.assertThat(suppressed.detectedPIIs()).isEmpty();
+                softly.assertThat(suppressed.detectedPiiCountBySeverity())
                         .isEqualTo(Map.of("high", 0, "medium", 0, "low", 0));
-                softly.assertThat(suppressed.nbOfDetectedPIIByType()).isEmpty();
+                softly.assertThat(suppressed.detectedPiiCountByType()).isEmpty();
                 softly.assertThat(suppressed.severity()).isNull();
             });
         }
@@ -173,7 +173,7 @@ class ScanTimeFalsePositiveSuppressorTest {
             // The false positive was recorded against a PRESIDIO detection...
             DetectedPersonallyIdentifiableInformation flaggedByPresidio =
                     detection("EMAIL", "fp-email", DetectorSource.PRESIDIO);
-            ConfluenceContentScanResult flaggingEvent = pageEvent("p1", List.of(flaggedByPresidio));
+            ConfluenceContentScanResult flaggingEvent = pageEvent(List.of(flaggedByPresidio));
             String falsePositiveId = resolver.stableFindingId(flaggingEvent, flaggedByPresidio);
 
             // ...but a later scan re-surfaces the very same value at the very same location
@@ -181,18 +181,18 @@ class ScanTimeFalsePositiveSuppressorTest {
             // detector-based, so it must still be suppressed.
             DetectedPersonallyIdentifiableInformation reDetectedByRegex =
                     detection("EMAIL", "fp-email", DetectorSource.REGEX);
-            ConfluenceContentScanResult rescanEvent = pageEvent("p1", List.of(reDetectedByRegex));
+            ConfluenceContentScanResult rescanEvent = pageEvent(List.of(reDetectedByRegex));
 
             ConfluenceContentScanResult suppressed = suppressor.suppress(rescanEvent, Set.of(falsePositiveId));
 
-            assertThat(suppressed.detectedPIIList()).isEmpty();
+            assertThat(suppressed.detectedPIIs()).isEmpty();
         }
 
         @Test
         @DisplayName("Should_KeepLegacyDetection_When_ValueFingerprintIsMissing")
         void Should_KeepLegacyDetection_When_ValueFingerprintIsMissing() {
             DetectedPersonallyIdentifiableInformation legacy = detection("EMAIL", null, DetectorSource.PRESIDIO);
-            ConfluenceContentScanResult event = pageEvent("p1", List.of(legacy));
+            ConfluenceContentScanResult event = pageEvent(List.of(legacy));
             // A stale FALSE_POSITIVE row must never remove a legacy detection (no stable identity).
             Set<String> falsePositiveIds = Set.of("some-other-id");
 
@@ -210,7 +210,7 @@ class ScanTimeFalsePositiveSuppressorTest {
         void Should_ReturnEventUnchanged_When_SummaryRecomputationThrows() {
             DetectedPersonallyIdentifiableInformation email = detection("EMAIL", "fp-email", DetectorSource.PRESIDIO);
             DetectedPersonallyIdentifiableInformation iban = detection("IBAN", "fp-iban", DetectorSource.REGEX);
-            ConfluenceContentScanResult event = pageEvent("p1", List.of(email, iban));
+            ConfluenceContentScanResult event = pageEvent(List.of(email, iban));
             String emailFindingId = resolver.stableFindingId(event, email);
             when(severityCalculationService.aggregateCounts(anyList()))
                     .thenThrow(new RuntimeException("severity aggregation failure"));
@@ -233,15 +233,14 @@ class ScanTimeFalsePositiveSuppressorTest {
         return new SeverityCounts(high, medium, low);
     }
 
-    private static ConfluenceContentScanResult pageEvent(String pageId,
-                                                         List<DetectedPersonallyIdentifiableInformation> detections) {
+    private static ConfluenceContentScanResult pageEvent(List<DetectedPersonallyIdentifiableInformation> detections) {
         return ConfluenceContentScanResult.builder()
                 .scanId(SCAN_ID)
                 .spaceKey(SPACE)
                 .eventType("item")
-                .pageId(pageId)
-                .pageTitle("Title " + pageId)
-                .detectedPIIList(detections)
+                .pageId("p1")
+                .pageTitle("Title " + "p1")
+                .detectedPIIs(detections)
                 .build();
     }
 

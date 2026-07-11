@@ -122,7 +122,7 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
 
         // Space-level audit for GDPR/nLPD compliance: one record per space view.
         int totalPiiCount = results.stream()
-            .mapToInt(r -> r.detectedPIIList() != null ? r.detectedPIIList().size() : 0)
+            .mapToInt(contentScanResult -> contentScanResult.detectedPIIs() != null ? contentScanResult.detectedPIIs().size() : 0)
             .sum();
         auditService.auditPiiAccess(scanId, spaceKey, null, null, purpose, totalPiiCount);
 

@@ -47,6 +47,7 @@ import pro.softcom.aisentinel.infrastructure.pii.remediation.adapter.out.JpaFind
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Map;
 
@@ -192,10 +193,10 @@ class DashboardFalsePositiveExclusionTest {
         ConfluenceContentScanResult filtered = items.getFirst();
         assertSoftly(softly -> {
             // The EMAIL false positive (both occurrences) is gone; the genuine IBAN remains.
-            softly.assertThat(filtered.detectedPIIList()).hasSize(1);
-            softly.assertThat(filtered.detectedPIIList().getFirst().piiType()).isEqualTo("IBAN");
-            softly.assertThat(filtered.nbOfDetectedPIIByType()).isEqualTo(Map.of("IBAN", 1));
-            softly.assertThat(filtered.nbOfDetectedPIIBySeverity())
+            softly.assertThat(filtered.detectedPIIs()).hasSize(1);
+            softly.assertThat(filtered.detectedPIIs().getFirst().piiType()).isEqualTo("IBAN");
+            softly.assertThat(filtered.detectedPiiCountByType()).isEqualTo(Map.of("IBAN", 1));
+            softly.assertThat(filtered.detectedPiiCountBySeverity())
                     .containsEntry("high", 1).containsEntry("low", 0);
             // Both EMAIL occurrences (LOW) contribute to the counter decrement, the IBAN does not.
             softly.assertThat(delta.low()).isEqualTo(2);
@@ -223,7 +224,7 @@ class DashboardFalsePositiveExclusionTest {
 
         List<ConfluenceContentScanResult> items = scanReportingUseCase.getGlobalScanItemsEncrypted();
         assertThat(items).hasSize(1);
-        assertThat(items.getFirst().detectedPIIList()).hasSize(1);
+        assertThat(items.getFirst().detectedPIIs()).hasSize(1);
     }
 
     private void persist(ConfluenceContentScanResult event) {
@@ -232,7 +233,7 @@ class DashboardFalsePositiveExclusionTest {
                 .eventSeq(1L)
                 .spaceKey(SPACE)
                 .eventType("item")
-                .ts(Instant.parse("2026-01-01T10:00:00Z"))
+                .occurredAt(Instant.parse("2026-01-01T10:00:00Z"))
                 .pageId(PAGE)
                 .pageTitle("Page 1")
                 .payload(objectMapper.valueToTree(event))
@@ -242,7 +243,7 @@ class DashboardFalsePositiveExclusionTest {
                 .scanId(SCAN_ID)
                 .spaceKey(SPACE)
                 .scanStatus(ScanStatus.COMPLETED)
-                .updatedAt(LocalDateTime.of(2026, 1, 1, 10, 0))
+                .updatedAt(LocalDateTime.of(2026, Month.JANUARY, 1, 10, 0))
                 .progressPercentage(100.0)
                 .build());
     }
@@ -255,7 +256,7 @@ class DashboardFalsePositiveExclusionTest {
                 .isFinal(true)
                 .pageId(PAGE)
                 .pageTitle("Page 1")
-                .detectedPIIList(detections)
+                .detectedPIIs(detections)
                 .build();
     }
 

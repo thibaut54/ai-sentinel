@@ -56,7 +56,7 @@ class SelectionResolverTest {
         lenient().when(severityCalculationService.calculateSeverity(anyString()))
                 .thenReturn(PersonallyIdentifiableInformationSeverity.MEDIUM);
         lenient().when(scanResultQuery.findLatestScan())
-                .thenReturn(Optional.of(new LastScanMeta(SCAN_ID, Instant.now(), 1)));
+                .thenReturn(Optional.of(new LastScanMeta(SCAN_ID, Instant.parse("2026-01-01T10:00:00Z"), 1)));
         lenient().when(findingRemediationStore.findStatusesByIds(any())).thenReturn(Map.of());
     }
 
@@ -170,7 +170,7 @@ class SelectionResolverTest {
                 .pageId(pageId)
                 .pageTitle("Page " + pageId)
                 .attachmentName(attachmentName)
-                .detectedPIIList(List.of(detections))
+                .detectedPIIs(List.of(detections))
                 .build();
     }
 

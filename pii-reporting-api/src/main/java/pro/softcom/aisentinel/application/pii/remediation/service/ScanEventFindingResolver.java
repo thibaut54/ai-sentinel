@@ -50,7 +50,7 @@ public class ScanEventFindingResolver {
     }
 
     private static List<DetectedPersonallyIdentifiableInformation> detectionsOf(ConfluenceContentScanResult event) {
-        return event.detectedPIIList() == null ? List.of() : event.detectedPIIList();
+        return event.detectedPIIs() == null ? List.of() : event.detectedPIIs();
     }
 
     private static boolean isLegacy(DetectedPersonallyIdentifiableInformation detection) {
@@ -76,7 +76,7 @@ public class ScanEventFindingResolver {
         }
         try {
             return referenceOf(event, detection).findingId();
-        } catch (IllegalArgumentException identityViolation) {
+        } catch (IllegalArgumentException _) {
             return null;
         }
     }

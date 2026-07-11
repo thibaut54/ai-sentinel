@@ -315,7 +315,7 @@ class ScanEventFactoryTest {
             ConfluenceContentScanResult result = factory.createPageItemEvent(SCAN_ID, SPACE_KEY, page, content, detection, 60.0);
 
             // Assert
-            assertThat(result.detectedPIIList())
+            assertThat(result.detectedPIIs())
                     .extracting(DetectedPersonallyIdentifiableInformation::valueFingerprint)
                     .containsExactly("fp-password", "fp-email");
         }

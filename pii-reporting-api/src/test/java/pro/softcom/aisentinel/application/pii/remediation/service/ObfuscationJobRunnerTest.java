@@ -37,6 +37,7 @@ import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
@@ -204,7 +205,7 @@ class ObfuscationJobRunnerTest {
         @Test
         @DisplayName("Should_SkipAttachmentFindingWithoutDecryption_When_OneSlipsIntoTheResolvedSet")
         void Should_SkipAttachmentFindingWithoutDecryption_When_OneSlipsIntoTheResolvedSet() {
-            EligibleFinding attachment = attachmentFinding("EMAIL", "p1", "report.xlsx", "fp-1");
+            EligibleFinding attachment = attachmentFinding();
 
             runner.run(job(attachment), resolved(attachment));
 
@@ -284,7 +285,7 @@ class ObfuscationJobRunnerTest {
                         .eventType("item")
                         .pageId(pageId)
                         .pageTitle("Page " + pageId)
-                        .detectedPIIList(List.of(detection))
+                        .detectedPIIs(List.of(detection))
                         .build()));
     }
 
@@ -298,7 +299,7 @@ class ObfuscationJobRunnerTest {
                 .spaceKey(SPACE_KEY)
                 .status(ObfuscationJobStatus.RUNNING)
                 .submittedSelection(RemediationSelection.builder().spaceKey(SPACE_KEY).build())
-                .resolvedFindingIds(List.of(findings).stream().map(EligibleFinding::findingId).toList())
+                .resolvedFindingIds(Stream.of(findings).map(EligibleFinding::findingId).toList())
                 .processed(0)
                 .total(findings.length)
                 .actor("officer")
@@ -316,9 +317,8 @@ class ObfuscationJobRunnerTest {
         return buildFinding(piiType, pageId, null, fingerprint, detector);
     }
 
-    private static EligibleFinding attachmentFinding(String piiType, String pageId,
-                                                     String attachmentName, String fingerprint) {
-        return buildFinding(piiType, pageId, attachmentName, fingerprint, "PRESIDIO");
+    private static EligibleFinding attachmentFinding() {
+        return buildFinding("EMAIL", "p1", "report.xlsx", "fp-1", "PRESIDIO");
     }
 
     private static EligibleFinding buildFinding(String piiType, String pageId, String attachmentName,

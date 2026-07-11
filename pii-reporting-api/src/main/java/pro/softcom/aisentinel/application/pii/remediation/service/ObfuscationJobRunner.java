@@ -155,7 +155,7 @@ public class ObfuscationJobRunner {
 
     private static Stream<DetectedPersonallyIdentifiableInformation> detectionsOf(
             ConfluenceContentScanResult event) {
-        return event.detectedPIIList() == null ? Stream.empty() : event.detectedPIIList().stream();
+        return event.detectedPIIs() == null ? Stream.empty() : event.detectedPIIs().stream();
     }
 
     private static boolean carriesUsableValue(DetectedPersonallyIdentifiableInformation detection) {

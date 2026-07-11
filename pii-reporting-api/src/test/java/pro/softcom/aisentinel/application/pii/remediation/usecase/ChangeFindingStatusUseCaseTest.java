@@ -296,10 +296,10 @@ class ChangeFindingStatusUseCaseTest {
         void Should_ThrowRemediationDisabledException_When_FeatureFlagOff() {
             when(remediationConfigPort.isRemediationEnabled()).thenReturn(false);
             RemediationSelection selection = RemediationSelection.builder().spaceKey(SPACE).build();
+            SelectionStatusChangeCommand command = new SelectionStatusChangeCommand(selection,
+                    FindingRemediationStatus.MANUALLY_HANDLED, ACTOR);
 
-            assertThatThrownBy(() -> useCase.changeStatusesBySelection(
-                    new SelectionStatusChangeCommand(selection,
-                            FindingRemediationStatus.MANUALLY_HANDLED, ACTOR)))
+            assertThatThrownBy(() -> useCase.changeStatusesBySelection(command))
                     .isInstanceOf(RemediationDisabledException.class);
             verifyNoInteractions(selectionResolver, findingRemediationStore);
         }
@@ -380,7 +380,7 @@ class ChangeFindingStatusUseCaseTest {
                 .eventType("item")
                 .pageId("p1")
                 .pageTitle("Alpha Page")
-                .detectedPIIList(List.of(detection))
+                .detectedPIIs(List.of(detection))
                 .build();
     }
 }

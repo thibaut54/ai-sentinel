@@ -87,10 +87,10 @@ class DashboardFalsePositiveFilterTest {
         assertThat(result).hasSize(1);
         ConfluenceContentScanResult filtered = result.getFirst();
         assertSoftly(softly -> {
-            softly.assertThat(filtered.detectedPIIList()).containsExactly(iban);
-            softly.assertThat(filtered.nbOfDetectedPIIBySeverity())
+            softly.assertThat(filtered.detectedPIIs()).containsExactly(iban);
+            softly.assertThat(filtered.detectedPiiCountBySeverity())
                     .isEqualTo(Map.of("high", 1, "medium", 0, "low", 0));
-            softly.assertThat(filtered.nbOfDetectedPIIByType()).isEqualTo(Map.of("IBAN", 1));
+            softly.assertThat(filtered.detectedPiiCountByType()).isEqualTo(Map.of("IBAN", 1));
             softly.assertThat(filtered.severity()).isEqualTo(PersonallyIdentifiableInformationSeverity.HIGH);
         });
     }
@@ -254,8 +254,8 @@ class DashboardFalsePositiveFilterTest {
                 .eventType("item")
                 .pageId(pageId)
                 .pageTitle("Title " + pageId)
-                .detectedPIIList(detections)
-                .nbOfDetectedPIIBySeverity(counts.total() == 0 ? Map.of()
+                .detectedPIIs(detections)
+                .detectedPiiCountBySeverity(counts.total() == 0 ? Map.of()
                         : Map.of("high", counts.high(), "medium", counts.medium(), "low", counts.low()))
                 .build();
     }

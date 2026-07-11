@@ -35,7 +35,7 @@ class ScanEventPayloadSerializationTest {
               "spaceKey": "SPACE",
               "eventType": "item",
               "pageId": "p1",
-              "detectedPIIList": [
+              "detectedPIIs": [
                 {
                   "startPosition": 9,
                   "endPosition": 25,
@@ -55,8 +55,8 @@ class ScanEventPayloadSerializationTest {
                 objectMapper.treeToValue(payload, ConfluenceContentScanResult.class);
 
         assertSoftly(softly -> {
-            softly.assertThat(result.detectedPIIList()).hasSize(1);
-            DetectedPersonallyIdentifiableInformation pii = result.detectedPIIList().getFirst();
+            softly.assertThat(result.detectedPIIs()).hasSize(1);
+            DetectedPersonallyIdentifiableInformation pii = result.detectedPIIs().getFirst();
             softly.assertThat(pii.valueFingerprint()).isNull();
             softly.assertThat(pii.piiType()).isEqualTo("EMAIL");
             softly.assertThat(pii.maskedContext()).isEqualTo("Contact: [EMAIL]");
@@ -81,14 +81,14 @@ class ScanEventPayloadSerializationTest {
                 .spaceKey("SPACE")
                 .eventType("item")
                 .pageId("p1")
-                .detectedPIIList(List.of(pii))
+                .detectedPIIs(List.of(pii))
                 .build();
 
         JsonNode payload = objectMapper.valueToTree(event);
         ConfluenceContentScanResult rehydrated =
                 objectMapper.treeToValue(payload, ConfluenceContentScanResult.class);
 
-        assertThat(rehydrated.detectedPIIList().getFirst().valueFingerprint())
+        assertThat(rehydrated.detectedPIIs().getFirst().valueFingerprint())
                 .isEqualTo(FINGERPRINT);
     }
 }

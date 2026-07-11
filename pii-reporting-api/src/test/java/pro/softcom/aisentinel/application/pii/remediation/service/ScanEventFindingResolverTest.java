@@ -39,7 +39,7 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_ResolveReferenceAndMetadata_When_DetectionHasFingerprint")
     void Should_ResolveReferenceAndMetadata_When_DetectionHasFingerprint() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null,
+        ConfluenceContentScanResult event = event(
                 List.of(detection("EMAIL", "Email Address", "fp-1", 0.9, DetectorSource.PRESIDIO)));
 
         Resolution resolution = resolver.resolve(List.of(event));
@@ -67,7 +67,8 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_CollapseDuplicates_When_SameValueDetectedTwiceOnSameItem")
     void Should_CollapseDuplicates_When_SameValueDetectedTwiceOnSameItem() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of(
+        ConfluenceContentScanResult event = event(
+                List.of(
                 detection("EMAIL", "Email Address", "fp-1", 0.9, DetectorSource.PRESIDIO),
                 detection("EMAIL", "Email Address", "fp-1", 0.5, DetectorSource.PRESIDIO)));
 
@@ -82,7 +83,8 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_CountLegacyDetections_When_FingerprintMissingOrBlank")
     void Should_CountLegacyDetections_When_FingerprintMissingOrBlank() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of(
+        ConfluenceContentScanResult event = event(
+                List.of(
                 detection("EMAIL", "Email Address", null, 0.9, DetectorSource.PRESIDIO),
                 detection("PHONE", "Phone", " ", 0.8, DetectorSource.REGEX),
                 detection("IBAN", "IBAN", "fp-1", 0.8, DetectorSource.REGEX)));
@@ -98,7 +100,7 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_FallBackToUnknownSource_When_DetectorMissing")
     void Should_FallBackToUnknownSource_When_DetectorMissing() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null,
+        ConfluenceContentScanResult event = event(
                 List.of(detection("EMAIL", "Email Address", "fp-1", 0.9, null)));
 
         Resolution resolution = resolver.resolve(List.of(event));
@@ -111,7 +113,7 @@ class ScanEventFindingResolverTest {
     void Should_ReturnStableFindingIdEqualToResolvedFinding_When_DetectionHasFingerprint() {
         DetectedPersonallyIdentifiableInformation detection =
                 detection("EMAIL", "Email Address", "fp-1", 0.9, DetectorSource.PRESIDIO);
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of(detection));
+        ConfluenceContentScanResult event = event(List.of(detection));
 
         String stableId = resolver.stableFindingId(event, detection);
 
@@ -121,7 +123,7 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_ReturnNullStableFindingId_When_DetectionIsLegacy")
     void Should_ReturnNullStableFindingId_When_DetectionIsLegacy() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of());
+        ConfluenceContentScanResult event = event(List.of());
 
         assertSoftly(softly -> {
             softly.assertThat(resolver.stableFindingId(event,
@@ -136,7 +138,7 @@ class ScanEventFindingResolverTest {
     void Should_ReturnNullStableFindingId_When_IdentityInvariantViolated() {
         // A detection carrying a real value (fingerprint set) but a blank piiType violates the
         // FindingReference invariant; it has no stable identity and must not abort the read path.
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, List.of());
+        ConfluenceContentScanResult event = event(List.of());
 
         assertThat(resolver.stableFindingId(event,
                 detection(" ", "Blank type", "fp-1", 0.9, DetectorSource.PRESIDIO))).isNull();
@@ -145,7 +147,7 @@ class ScanEventFindingResolverTest {
     @Test
     @DisplayName("Should_ReturnEmptyResolution_When_EventHasNoDetections")
     void Should_ReturnEmptyResolution_When_EventHasNoDetections() {
-        ConfluenceContentScanResult event = event("p1", "Alpha Page", null, null);
+        ConfluenceContentScanResult event = event(null);
 
         Resolution resolution = resolver.resolve(List.of(event));
 
@@ -155,16 +157,16 @@ class ScanEventFindingResolverTest {
         });
     }
 
-    private static ConfluenceContentScanResult event(String pageId, String pageTitle, String attachmentName,
-                                                     List<DetectedPersonallyIdentifiableInformation> detections) {
+    private static ConfluenceContentScanResult event(
+            List<DetectedPersonallyIdentifiableInformation> detections) {
         return ConfluenceContentScanResult.builder()
                 .scanId("scan-1")
                 .spaceKey("SPACE")
-                .eventType(attachmentName == null ? "item" : "attachmentItem")
-                .pageId(pageId)
-                .pageTitle(pageTitle)
-                .attachmentName(attachmentName)
-                .detectedPIIList(detections)
+                .eventType("item")
+                .pageId("p1")
+                .pageTitle("Alpha Page")
+                .attachmentName(null)
+                .detectedPIIs(detections)
                 .build();
     }
 

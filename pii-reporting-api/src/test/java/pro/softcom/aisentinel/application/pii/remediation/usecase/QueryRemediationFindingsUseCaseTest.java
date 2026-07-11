@@ -86,7 +86,7 @@ class QueryRemediationFindingsUseCaseTest {
         lenient().when(severityCalculationService.calculateSeverity("AVS"))
                 .thenReturn(PersonallyIdentifiableInformationSeverity.HIGH);
         lenient().when(scanResultQuery.findLatestScan())
-                .thenReturn(Optional.of(new LastScanMeta(SCAN_ID, Instant.now(), 1)));
+                .thenReturn(Optional.of(new LastScanMeta(SCAN_ID, Instant.parse("2026-01-01T10:00:00Z"), 1)));
         lenient().when(scanResultQuery.listItemEventsDecryptedByScanIdAndSpaceKey(
                         SCAN_ID, SPACE, AccessPurpose.USER_DISPLAY))
                 .thenReturn(defaultEvents());
@@ -119,8 +119,9 @@ class QueryRemediationFindingsUseCaseTest {
         @DisplayName("Should_ThrowRemediationDisabledException_When_FeatureFlagOff")
         void Should_ThrowRemediationDisabledException_When_FeatureFlagOff() {
             when(remediationConfigPort.isRemediationEnabled()).thenReturn(false);
+            RemediationFindingsQuery disabledQuery = query().build();
 
-            assertThatThrownBy(() -> useCase.search(query().build()))
+            assertThatThrownBy(() -> useCase.search(disabledQuery))
                     .isInstanceOf(RemediationDisabledException.class);
         }
 
@@ -404,6 +405,7 @@ class QueryRemediationFindingsUseCaseTest {
             RemediationFindingsResult result = useCase.search(query().page(0).pageSize(20).build());
 
             assertThat(result.groups())
+                    .isNotEmpty()
                     .allSatisfy(group -> assertThat(group.findings()).hasSize((int) group.total()));
         }
 
@@ -511,7 +513,7 @@ class QueryRemediationFindingsUseCaseTest {
                 .pageId(pageId)
                 .pageTitle(pageTitle)
                 .attachmentName(attachmentName)
-                .detectedPIIList(detections)
+                .detectedPIIs(detections)
                 .build();
     }
 
