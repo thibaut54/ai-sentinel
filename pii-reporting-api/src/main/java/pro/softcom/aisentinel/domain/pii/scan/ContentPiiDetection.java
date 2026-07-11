@@ -25,6 +25,10 @@ import java.util.Map;
  * @param detectorRunStats per-detector execution stats for this analysis (one
  *        entry per detector that actually ran, even at zero detection); empty
  *        when the detection service does not report them
+ * @param discoveredLabels open-vocabulary MINISTRAL labels dropped for lacking a
+ *        pii_type_config row, keyed by UPPER_SNAKE label with their per-request
+ *        occurrence count; empty when the detection service reports none. Never
+ *        carries PII values, only labels and counts for operator review
  */
 @Builder
 public record ContentPiiDetection(
@@ -35,7 +39,8 @@ public record ContentPiiDetection(
     List<SensitiveData> sensitiveDataFound,
     Map<String, Integer> statistics,
     List<DiscardedSensitiveData> discardedByPostfilter,
-    List<DetectorRunStat> detectorRunStats
+    List<DetectorRunStat> detectorRunStats,
+    Map<String, Integer> discoveredLabels
 ) {
 
     public ContentPiiDetection {
@@ -43,6 +48,8 @@ public record ContentPiiDetection(
         discardedByPostfilter = discardedByPostfilter == null ? List.of() : discardedByPostfilter;
         // Builder callers predating detector-stats collection never set the field.
         detectorRunStats = detectorRunStats == null ? List.of() : detectorRunStats;
+        // Builder callers predating open-vocabulary label discovery never set the field.
+        discoveredLabels = discoveredLabels == null ? Map.of() : discoveredLabels;
     }
     
     // Sonar S1192: avoid duplicate literal for phone number label

@@ -104,6 +104,32 @@ public class JpaScanResultQueryAdapter implements ScanResultQuery {
     }
 
     @Override
+    public List<ConfluenceContentScanResult> listItemEventsDecryptedByScanIdAndSpaceKey(
+            String scanId, String spaceKey, AccessPurpose purpose) {
+        if (scanId == null || scanId.isBlank()) {
+            return List.of();
+        }
+
+        List<ConfluenceContentScanResult> results = eventRepository
+            .findByScanIdAndSpaceKeyAndEventTypeInOrderByEventSeqAsc(scanId, spaceKey, ITEM_EVENT_TYPES).stream()
+            .map(this::toDecryptedDomain)
+            .filter(Objects::nonNull)
+            .toList();
+
+        if (results.isEmpty()) {
+            return results;
+        }
+
+        // Space-level audit for GDPR/nLPD compliance: one record per space view.
+        int totalPiiCount = results.stream()
+            .mapToInt(r -> r.detectedPIIList() != null ? r.detectedPIIList().size() : 0)
+            .sum();
+        auditService.auditPiiAccess(scanId, spaceKey, null, null, purpose, totalPiiCount);
+
+        return results;
+    }
+
+    @Override
     public List<ConfluenceContentScanResult> listItemEventsDecrypted(String scanId, String pageId, AccessPurpose purpose) {
         if (scanId == null || scanId.isBlank()) {
             return List.of();

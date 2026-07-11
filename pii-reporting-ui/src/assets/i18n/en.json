@@ -240,7 +240,8 @@
       "detectors": "Detection Engines",
       "thresholds": "Thresholds & Performance",
       "piiTypes": "PII Types",
-      "confluence": "Confluence Connection"
+      "confluence": "Confluence Connection",
+      "discoveredLabels": "Discovered Labels"
     },
     "subtitle": "Configure detection engines, thresholds and types of information to detect",
     "tabs": {
@@ -364,6 +365,7 @@
       "categories": "categories",
       "types": "types",
       "threshold": "Confidence Threshold",
+      "ministralNoThreshold": "Ministral does not use a confidence threshold.",
       "toggle": "Toggle {{type}}",
       "detectors": {
         "presidio": "Presidio Detector",
@@ -892,6 +894,22 @@
         "deleteError": "Error deleting custom label: {{error}}"
       }
     },
+    "discoveredLabels": {
+      "title": "Discovered Labels ({{count}})",
+      "description": "Labels proposed by Ministral that are not configured yet. Add them to detect them on the next scans, or ignore them.",
+      "empty": "No new label discovered yet.",
+      "occurrences": "{{count}} occurrence(s)",
+      "add": "Add",
+      "ignore": "Ignore",
+      "promoteSuccess": "Label \"{{label}}\" added to the configuration",
+      "promoteError": "Error adding the label: {{error}}",
+      "ignoreSuccess": "Label \"{{label}}\" ignored",
+      "ignoreError": "Error ignoring the label: {{error}}",
+      "ignoreConfirm": {
+        "header": "Ignore label",
+        "message": "Are you sure you want to ignore the label \"{{label}}\"? It will no longer be proposed."
+      }
+    },
     "actions": {
       "save": "Save Configuration",
       "reset": "Reset",
@@ -1014,6 +1032,114 @@
       "invalid": "Operation not possible in the current state."
     },
     "internal": "An unexpected error occurred. Contact the administrator if the issue persists."
+  },
+  "obfuscation": {
+    "entry": {
+      "space": "Obfuscate space",
+      "page": "Obfuscate page",
+      "attachment": "Obfuscate attachment"
+    },
+    "spaceSub": "{{total}} findings · last scan {{ts}}",
+    "stats": {
+      "toTreat": "To handle",
+      "treated": "Handled",
+      "falsePositives": "False positives"
+    },
+    "entryBanner": {
+      "space": "Opened from the dashboard — <b>{{count}}</b> findings from \"{{space}}\" pre-selected for review.",
+      "page": "Opened from item <b>{{name}}</b> — <b>{{count}}</b> findings pre-selected for review."
+    },
+    "dismiss": "Dismiss",
+    "searchPlaceholder": "Search a value, a page, a type…",
+    "filter": {
+      "all": "All",
+      "pending": "To handle",
+      "treated": "Handled",
+      "fp": "False positives"
+    },
+    "selectAllPending": "Select all (to handle)",
+    "deselectAll": "Deselect all",
+    "pageFilterChip": "Item: {{name}}",
+    "groupBy": {
+      "label": "Group by",
+      "type": "Type",
+      "severity": "Severity"
+    },
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "selectAllGroup": "Select whole group (all pages)",
+    "nSelectedShort": "{{count}} selected",
+    "nOccurrences": "{{count}} occurrences",
+    "groupPageHint": "Showing {{visible}} of {{total}} occurrences — checking the header selects all {{total}}, including on other pages.",
+    "select": "Select",
+    "status": {
+      "pending": "To handle",
+      "redacted": "Obfuscated",
+      "manual": "Handled (manual)",
+      "fp": "False positive"
+    },
+    "redactedValue": "Obfuscated",
+    "severity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "action": {
+      "markManual": "Mark handled manually",
+      "undoManual": "Reset to \"to handle\"",
+      "markFp": "Flag false positive",
+      "restore": "Restore"
+    },
+    "bulk": {
+      "ariaLabel": "Bulk actions",
+      "selectedForObf": "selected to obfuscate",
+      "fpSignaled": "{{count}} false positive(s) flagged",
+      "clear": "Clear",
+      "markTreated": "Mark handled",
+      "markTreatedHint": "Mark selection as handled manually",
+      "obfuscateN": "Obfuscate ({{count}})"
+    },
+    "confirm": {
+      "title": "Obfuscate {{count}} finding(s)?",
+      "irreversibleTitle": "Irreversible action.",
+      "irreversibleBody": "Content will be permanently obfuscated in the source document (Confluence). This cannot be undone.",
+      "lead": "You are about to obfuscate <b>{{count}}</b> occurrence(s) in <b>{{space}}</b>.",
+      "total": "Total",
+      "cancel": "Cancel",
+      "fpFeedbackNote": "{{count}} occurrence(s) excluded and flagged as false positive (detection feedback)."
+    },
+    "toast": {
+      "obfuscated": "<b>{{count}}</b> finding(s) obfuscated in the source.",
+      "treated": "<b>{{count}}</b> finding(s) marked handled.",
+      "completedWithIssues": "Obfuscation finished with errors — check the outcome details."
+    },
+    "pager": {
+      "label": "{{first}}–{{last}} of {{total}} groups",
+      "loading": "Loading…",
+      "prev": "Previous",
+      "next": "Next",
+      "refresh": "Reset to first page",
+      "rowsPerPage": "Per page:"
+    },
+    "table": {
+      "selected": "Selected",
+      "occurrences": "Occurrences",
+      "total": "Values",
+      "expand": "Expand",
+      "collapse": "Collapse"
+    },
+    "noFindings": "No finding matches.",
+    "job": {
+      "running": "Obfuscating… {{done}}/{{total}}",
+      "rescanRecommended": "Obfuscation finished — run a new scan to refresh findings.",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "ineligible": {
+      "attachment": "Attachment cannot be obfuscated ({{kind}})"
+    },
+    "featureDisabled": "Automatic obfuscation is disabled for this instance."
   },
   "piiTypes": {
     "PERSON_NAME": "Person Name",

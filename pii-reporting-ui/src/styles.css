@@ -6,6 +6,12 @@
 html, body {
   height: 100%;
 }
+/* Reserve the scrollbar gutter at all times so views without overflow (e.g. the
+   obfuscation view) keep the same usable width as scrolling ones, preventing the
+   header from shifting horizontally when navigating between views. */
+html {
+  scrollbar-gutter: stable;
+}
 body {
   margin: 0;
   font-family: Roboto, Arial, Helvetica, sans-serif;

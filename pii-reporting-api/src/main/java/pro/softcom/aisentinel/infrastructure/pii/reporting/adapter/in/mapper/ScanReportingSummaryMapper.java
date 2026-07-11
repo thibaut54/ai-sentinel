@@ -2,9 +2,11 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
 import pro.softcom.aisentinel.domain.pii.reporting.FacetCount;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
+import pro.softcom.aisentinel.domain.pii.reporting.SeverityCounts;
 import pro.softcom.aisentinel.domain.pii.reporting.SpaceSummary;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.DashboardFacetsDto;
 import pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.dto.FacetCountDto;
@@ -19,14 +21,17 @@ import java.util.Map;
 /**
  * Maps domain {@link ScanReportingSummary} to its REST representation.
  *
- * <p>Severity and per-type counts are read directly from the domain {@link SpaceSummary},
- * which the use case has already populated, keeping the web layer free of additional queries.
+ * <p>Per-type counts are read directly from the domain {@link SpaceSummary}, which the use case has
+ * already populated. Severity counters are taken from the same scan-time aggregate and then
+ * decremented by the space's false-positive occurrences, so findings reported as false positives
+ * disappear from the dashboard counters just as they do from the item detail.
  */
 @Component
 @RequiredArgsConstructor
 public class ScanReportingSummaryMapper {
 
     private final SeverityCountsMapper severityCountsMapper;
+    private final DashboardFalsePositiveFilter falsePositiveFilter;
 
     public ScanReportingSummaryDto toDto(ScanReportingSummary summary) {
         if (summary == null) {
@@ -51,7 +56,7 @@ public class ScanReportingSummaryMapper {
             return null;
         }
 
-        SeverityCountsDto severityCountsDto = severityCountsMapper.toDto(space.severityCounts());
+        SeverityCountsDto severityCountsDto = severityCountsMapper.toDto(correctedCounts(space));
         Map<String, Integer> piiTypeCounts = space.piiTypeCounts() != null ? space.piiTypeCounts() : Map.of();
 
         return new SpaceSummaryDto(
@@ -66,6 +71,24 @@ public class ScanReportingSummaryMapper {
                 piiTypeCounts,
                 space.scanId()
         );
+    }
+
+    /**
+     * Space severity counts minus its false-positive occurrences. When the space has no false
+     * positive, the aggregate is returned untouched (possibly {@code null}, preserving the
+     * "no counts recorded" contract), so the common case is unaffected.
+     */
+    private SeverityCounts correctedCounts(SpaceSummary space) {
+        SeverityCounts base = space.severityCounts();
+        SeverityCounts delta = falsePositiveFilter.falsePositiveDelta(space.scanId(), space.spaceKey());
+        if (delta.total() == 0) {
+            return base;
+        }
+        SeverityCounts nonNullBase = base == null ? SeverityCounts.zero() : base;
+        return new SeverityCounts(
+                Math.max(0, nonNullBase.high() - delta.high()),
+                Math.max(0, nonNullBase.medium() - delta.medium()),
+                Math.max(0, nonNullBase.low() - delta.low()));
     }
 
     private DashboardFacetsDto toFacetsDto(DashboardFacets facets) {

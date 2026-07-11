@@ -1,0 +1,500 @@
+.ob-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.ob-page {
+  padding: 1rem 1rem 6rem;
+}
+
+.ob-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ob-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--sentinel-text-primary);
+  font-size: 1.25rem;
+}
+
+.ob-progress {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.ob-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.ob-stat-num {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--sentinel-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ob-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ob-stat-dot--pending {
+  background: var(--sentinel-text-muted);
+}
+
+.ob-stat-dot--treated {
+  background: var(--sentinel-status-success-text);
+}
+
+.ob-stat-dot--fp {
+  background: transparent;
+  border: 2px solid var(--sentinel-border-strong);
+}
+
+.ob-progress-track {
+  width: 220px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sentinel-progress-bg);
+  overflow: hidden;
+  display: flex;
+}
+
+.ob-progress-fill {
+  height: 100%;
+}
+
+.ob-progress-fill--treated {
+  background: linear-gradient(
+    90deg,
+    var(--sentinel-progress-completed-start),
+    var(--sentinel-progress-completed-end)
+  );
+}
+
+.ob-progress-fill--fp {
+  background: var(--sentinel-border-strong);
+}
+
+.ob-entry-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--sentinel-info-border);
+  background: var(--sentinel-info-bg);
+  color: var(--sentinel-info-text);
+  font-size: 0.8125rem;
+}
+
+.ob-entry-banner span {
+  flex: 1;
+}
+
+.ob-banner-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+}
+
+.ob-banner-dismiss:hover {
+  background: rgb(0 0 0 / 0.05);
+}
+
+/* Table controls, hosted in the table caption below the top pagination. */
+.ob-caption-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.ob-toolbar-spacer {
+  flex: 1;
+}
+
+.ob-search {
+  position: relative;
+  flex: 1 1 260px;
+  max-width: 420px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ob-search .pi-search {
+  position: absolute;
+  left: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--sentinel-text-muted);
+}
+
+.ob-search input {
+  width: 100%;
+  height: 2.1rem;
+  padding: 0 0.6rem 0 2rem;
+  border-radius: 8px;
+  border: 1px solid var(--sentinel-border-input);
+  background: var(--sentinel-bg-card);
+  color: var(--sentinel-text-body);
+  font-size: 0.8125rem;
+}
+
+.ob-search input:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 1px;
+}
+
+.ob-segmented {
+  display: inline-flex;
+  border: 1px solid var(--sentinel-border-input);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--sentinel-bg-card);
+}
+
+.ob-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.1rem;
+  padding: 0 0.7rem;
+  border: none;
+  background: transparent;
+  color: var(--sentinel-text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.ob-segment + .ob-segment {
+  border-left: 1px solid var(--sentinel-border-light);
+}
+
+.ob-segment--active {
+  background: var(--sentinel-presidio-bg);
+  color: var(--sentinel-presidio-color);
+  font-weight: 600;
+}
+
+.ob-segment:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: -2px;
+}
+
+.ob-segment-count {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--sentinel-badge-count-bg);
+  color: var(--sentinel-text-body);
+}
+
+.ob-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--sentinel-chip-bg);
+  color: var(--sentinel-chip-fg);
+  border: 1px solid var(--sentinel-chip-border);
+}
+
+.ob-item-chip-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: 50%;
+  display: inline-flex;
+}
+
+.ob-item-chip-remove:hover {
+  background: rgb(0 0 0 / 0.08);
+}
+
+.ob-groupby-label {
+  font-size: 0.75rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 1.9rem;
+  padding: 0 0.7rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sentinel-text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ob-btn:hover:not(:disabled) {
+  background: var(--sentinel-bg-hover);
+}
+
+.ob-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ob-btn:focus-visible {
+  outline: 2px solid var(--sentinel-focus-ring);
+  outline-offset: 1px;
+}
+
+/* ======================================================================
+ * Group table: mirrors the Confluence dashboard table chrome so both views
+ * share one look & feel (rounded card, sticky-ish header, caption paginator
+ * on top, PrimeNG paginator at the bottom).
+ * ====================================================================== */
+.ob-table-wrap {
+  position: relative;
+  transition: opacity 0.15s ease;
+}
+
+.ob-table-wrap--loading {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ob-table-wrap--frozen {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Table container: rounded corners, card background, subtle border.
+   ::ng-deep needed: PrimeNG renders its own datatable template. */
+:host ::ng-deep .ob-table.p-datatable {
+  background: var(--sentinel-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--sentinel-border-top-bar);
+  overflow: hidden;
+}
+
+:host ::ng-deep .ob-table .p-datatable-table {
+  table-layout: fixed;
+}
+
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th,
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Expanded row is free to wrap and overflow. */
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td[colspan] {
+  white-space: normal;
+  overflow: visible;
+}
+
+/* Caption bar (top): holds the paginator cluster, matching the dashboard. */
+:host ::ng-deep .ob-table .p-datatable-header {
+  background: var(--sentinel-bg-page);
+  border-bottom: 1px solid var(--sentinel-border-light);
+  padding: 0.5rem 1rem;
+}
+
+.caption-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.caption-paginator {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.page-indicator {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sentinel-text-secondary);
+  white-space: nowrap;
+  margin-left: 0.25rem;
+}
+
+/* Column headers */
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th {
+  background: var(--sentinel-bg-page);
+  color: var(--sentinel-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-color: var(--sentinel-border-light);
+}
+
+/* Row borders */
+:host ::ng-deep .ob-table .p-datatable-tbody > tr > td {
+  border-color: var(--sentinel-border-light);
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Checkbox column: header select-all and per-group masters share one column.
+   Same left padding on header th and body td so the boxes line up vertically. */
+:host ::ng-deep .ob-table .p-datatable-thead > tr > th.ob-check-cell,
+.ob-check-cell {
+  padding-left: 1rem;
+  vertical-align: middle;
+}
+
+.ob-check-cell p-checkbox {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Toggle cell: chevron sits left, not clipped. */
+.toggle-cell {
+  cursor: pointer;
+  padding-right: 0 !important;
+  padding-left: 0.25rem !important;
+  overflow: visible !important;
+}
+
+/* Label cell: clickable to expand/collapse. */
+.ob-label-cell {
+  cursor: pointer;
+}
+
+.ob-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Severity dot + label */
+.ob-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--sentinel-text-muted);
+}
+
+.ob-dot--high {
+  background: var(--sentinel-severity-high);
+}
+
+.ob-dot--medium {
+  background: var(--sentinel-severity-medium);
+}
+
+.ob-dot--low {
+  background: var(--sentinel-severity-low);
+}
+
+.ob-group-label {
+  font-weight: 600;
+  color: var(--sentinel-text-primary);
+}
+
+.ob-group-selected {
+  font-size: 0.75rem;
+  color: var(--sentinel-presidio-color);
+}
+
+.ob-group-occ {
+  font-size: 0.72rem;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-group-count {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--sentinel-badge-count-bg);
+  color: var(--sentinel-text-body);
+}
+
+/* Expanded row: stacked finding rows + cross-page hint. */
+.ob-group-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.ob-group-hint {
+  margin: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed var(--sentinel-info-border);
+  border-radius: 8px;
+  background: var(--sentinel-info-bg);
+  color: var(--sentinel-info-text);
+  font-size: 0.72rem;
+}
+
+/* Bottom paginator, aligned with the dashboard. */
+:host ::ng-deep .ob-table .p-paginator {
+  border-top: 1px solid var(--sentinel-border-light);
+  background: var(--sentinel-bg-card);
+  border-radius: 0 0 12px 12px;
+  font-size: 0.75rem;
+}
+
+.ob-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 3rem 1rem;
+  border: 1px dashed var(--sentinel-border-strong);
+  border-radius: 12px;
+  color: var(--sentinel-text-secondary);
+}
+
+.ob-empty .pi {
+  font-size: 1.4rem;
+}
+
+.ob-disabled {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  border: 1px dashed var(--sentinel-border-strong);
+  border-radius: 12px;
+  background: var(--sentinel-bg-card);
+  color: var(--sentinel-text-secondary);
+  text-align: center;
+}
+
+.ob-disabled .pi {
+  font-size: 1.5rem;
+}

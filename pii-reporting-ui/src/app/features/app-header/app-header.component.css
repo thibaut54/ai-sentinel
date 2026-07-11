@@ -1,0 +1,93 @@
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--sentinel-bg-card);
+  border-bottom: 1px solid var(--sentinel-border-top-bar);
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.app-logo {
+  height: 3rem;
+  width: auto;
+  mix-blend-mode: multiply;
+}
+
+:host-context([data-theme="dark"]) .app-logo {
+  mix-blend-mode: normal;
+  filter: brightness(1.2);
+}
+
+.app-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--sentinel-text-app-title);
+  letter-spacing: -0.3px;
+}
+
+/* Data source tab icon */
+.tab-icon {
+  margin-right: 0.5rem;
+}
+
+/* Header theme toggle button
+   ::ng-deep needed: PrimeNG button renders its own internal template */
+:host ::ng-deep .header-theme-btn.p-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--sentinel-text-body) !important;
+  border-radius: 8px !important;
+  transition: background 0.2s, color 0.2s;
+}
+
+:host ::ng-deep .header-theme-btn.p-button:hover {
+  background: var(--sentinel-bg-hover) !important;
+  color: var(--sentinel-text-primary) !important;
+}
+
+/* Header settings button
+   ::ng-deep needed: PrimeNG button renders its own internal template */
+:host ::ng-deep .header-settings-btn.p-button {
+  background: var(--sentinel-bg-card) !important;
+  border: 1px solid var(--sentinel-border-medium) !important;
+  color: var(--sentinel-text-body) !important;
+  border-radius: 8px !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem !important;
+  height: 2.25rem;
+}
+
+:host ::ng-deep .header-settings-btn.p-button .p-button-icon {
+  color: var(--sentinel-text-body) !important;
+}
+
+:host ::ng-deep .header-settings-btn.p-button:hover {
+  background: var(--sentinel-bg-page) !important;
+  border-color: var(--sentinel-border-strong) !important;
+}
+
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 0.5rem;
+  }
+
+  .app-logo {
+    height: 2rem;
+  }
+
+  .app-title {
+    font-size: 1rem;
+  }
+}

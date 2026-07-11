@@ -40,6 +40,84 @@ export const TestIds = {
     collapseButton: 'pii-card-collapse',
     revealButton: 'pii-card-reveal',
     confluenceLink: 'pii-card-confluence-link',
+  },
+  obfuscation: {
+    page: 'obfuscation-page',
+    content: 'obfuscation-content',
+    featureDisabled: 'obfuscation-feature-disabled',
+    entryButtons: {
+      space: 'btn-obfuscate-space',
+      page: 'btn-obfuscate-page',
+      attachment: 'btn-obfuscate-attachment'
+    },
+    stats: 'obfuscation-stats',
+    entryBanner: 'obfuscation-entry-banner',
+    entryBannerDismiss: 'obfuscation-entry-banner-dismiss',
+    empty: 'obfuscation-empty',
+    toolbar: {
+      search: 'obfuscation-search',
+      statusFilter: 'obfuscation-status-filter',
+      statusOption: 'obfuscation-status-option',
+      selectAllPending: 'obfuscation-select-all-pending',
+      groupBy: 'obfuscation-group-by',
+      groupByOption: 'obfuscation-group-by-option',
+      expandAll: 'obfuscation-expand-all',
+      collapseAll: 'obfuscation-collapse-all',
+      itemChip: 'obfuscation-item-chip',
+      itemChipRemove: 'obfuscation-item-chip-remove'
+    },
+    group: {
+      root: 'obfuscation-group',
+      master: 'obfuscation-group-master',
+      toggle: 'obfuscation-group-toggle',
+      count: 'obfuscation-group-count',
+      occurrences: 'obfuscation-group-occurrences',
+      selectedCount: 'obfuscation-group-selected-count',
+      hint: 'obfuscation-group-hint'
+    },
+    row: {
+      root: 'obfuscation-row',
+      checkbox: 'obfuscation-row-checkbox',
+      value: 'obfuscation-row-value',
+      occurrences: 'obfuscation-row-occurrences',
+      status: 'obfuscation-row-status',
+      ineligible: 'obfuscation-row-ineligible',
+      markManual: 'obfuscation-row-mark-manual',
+      reportFp: 'obfuscation-row-report-fp',
+      restore: 'obfuscation-row-restore'
+    },
+    bulkBar: {
+      root: 'obfuscation-bulk-bar',
+      counter: 'obfuscation-bulk-counter',
+      fpNote: 'obfuscation-bulk-fp-note',
+      chip: 'obfuscation-bulk-chip',
+      moreChip: 'obfuscation-bulk-more-chip',
+      clear: 'obfuscation-bulk-clear',
+      markTreated: 'obfuscation-bulk-mark-treated',
+      obfuscate: 'obfuscation-bulk-obfuscate'
+    },
+    confirmDialog: {
+      warning: 'obfuscation-confirm-warning',
+      lead: 'obfuscation-confirm-lead',
+      breakdownRow: 'obfuscation-confirm-breakdown-row',
+      total: 'obfuscation-confirm-total',
+      fpNote: 'obfuscation-confirm-fp-note',
+      cancel: 'obfuscation-confirm-cancel',
+      accept: 'obfuscation-confirm-accept'
+    },
+    jobProgress: {
+      root: 'obfuscation-job-progress',
+      label: 'obfuscation-job-label',
+      outcome: 'obfuscation-job-outcome',
+      rescanHint: 'obfuscation-job-rescan-hint'
+    },
+    pager: {
+      root: 'obfuscation-pager',
+      label: 'obfuscation-pager-label',
+      prev: 'obfuscation-pager-prev',
+      next: 'obfuscation-pager-next',
+      pageSize: 'obfuscation-pager-page-size'
+    }
   }
 } as const;
 

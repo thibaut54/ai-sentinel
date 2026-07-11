@@ -2,6 +2,10 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
 import pro.softcom.aisentinel.domain.pii.reporting.FacetCount;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
@@ -16,20 +20,29 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link ScanReportingSummaryMapper}.
  *
- * <p>Verifies the transformation of domain objects into REST DTOs, including severity/PII-type
- * counts (now read from the domain) and the contextual facets.
+ * <p>Verifies the transformation of domain objects into REST DTOs, including per-type counts and
+ * facets (read from the domain) and the false-positive decrement applied to severity counters.
  */
+@ExtendWith(MockitoExtension.class)
 class ScanReportingSummaryMapperTest {
+
+    @Mock
+    private DashboardFalsePositiveFilter falsePositiveFilter;
 
     private ScanReportingSummaryMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new ScanReportingSummaryMapper(new SeverityCountsMapper());
+        mapper = new ScanReportingSummaryMapper(new SeverityCountsMapper(), falsePositiveFilter);
+        lenient().when(falsePositiveFilter.falsePositiveDelta(any(), any()))
+                .thenReturn(SeverityCounts.zero());
     }
 
     private static ScanReportingSummary summaryOf(List<SpaceSummary> spaces, DashboardFacets facets) {
@@ -69,6 +82,48 @@ class ScanReportingSummaryMapperTest {
         assertThat(spaceDto.spaceName()).isEqualTo("Space One");
         assertThat(spaceDto.piiTypeCounts()).containsEntry("EMAIL", 7).containsEntry("IBAN_CODE", 2);
         assertThat(spaceDto.scanId()).isEqualTo("scan-123");
+    }
+
+    @Test
+    void should_DecrementSeverityCounts_When_SpaceHasFalsePositives() {
+        // Given: a space with a scan-time aggregate of 3 HIGH / 2 MEDIUM / 1 LOW.
+        SpaceSummary space = new SpaceSummary(
+                "SPACE1", "COMPLETED", 100.0, 10L, 0L,
+                Instant.parse("2026-01-15T10:00:00Z"), "Space One",
+                new SeverityCounts(3, 2, 1), Map.of(), "scan-fp");
+        ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
+
+        // 1 HIGH and 3 LOW occurrences flagged false positive (more LOW than present -> floored at 0).
+        when(falsePositiveFilter.falsePositiveDelta("scan-fp", "SPACE1"))
+                .thenReturn(new SeverityCounts(1, 0, 3));
+
+        // When
+        ScanReportingSummaryDto result = mapper.toDto(summary);
+
+        // Then: counters decremented and floored (2 HIGH / 2 MEDIUM / 0 LOW).
+        SpaceSummaryDto spaceDto = result.spaces().get(0);
+        assertThat(spaceDto.severityCounts().high()).isEqualTo(2);
+        assertThat(spaceDto.severityCounts().medium()).isEqualTo(2);
+        assertThat(spaceDto.severityCounts().low()).isZero();
+    }
+
+    @Test
+    void should_FloorCountsToZero_When_DeltaExceedsBase() {
+        // Given: a zero base aggregate but the space still reports false-positive occurrences.
+        SpaceSummary space = new SpaceSummary(
+                "SPACE1", "COMPLETED", 100.0, 10L, 0L,
+                Instant.parse("2026-01-15T10:00:00Z"), "Space One",
+                SeverityCounts.zero(), Map.of(), "scan-null-base");
+        ScanReportingSummary summary = summaryOf(List.of(space), DashboardFacets.empty());
+
+        when(falsePositiveFilter.falsePositiveDelta("scan-null-base", "SPACE1"))
+                .thenReturn(new SeverityCounts(0, 0, 2));
+
+        // When
+        ScanReportingSummaryDto result = mapper.toDto(summary);
+
+        // Then: the decrement is floored, yielding all-zero counts.
+        assertThat(result.spaces().get(0).severityCounts().total()).isZero();
     }
 
     @Test

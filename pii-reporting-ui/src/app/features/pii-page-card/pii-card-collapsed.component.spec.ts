@@ -132,7 +132,7 @@ describe('PiiCardCollapsedComponent', () => {
     fixture.componentRef.setInput('item', MOCK_ITEM);
     fixture.detectChanges();
     const strip = fixture.nativeElement.querySelector('.severity-strip') as HTMLElement;
-    expect(strip.style.backgroundColor).toBe('rgb(220, 38, 38)');
+    expect(strip.style.backgroundColor).toBe('rgb(185, 28, 28)');
   });
 
   it('Should_RenderPiiTypeBadges_When_DetectionsExist', () => {

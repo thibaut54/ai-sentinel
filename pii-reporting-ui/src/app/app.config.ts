@@ -12,13 +12,35 @@ import { routes } from './app.routes';
 import { providePrimeNG } from 'primeng/config';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
+
+// Align the PrimeNG primary accent with the blue used in the obfuscation view
+// (blue-600 = #2563eb) instead of Aura's default green.
+const SentinelPreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{blue.50}',
+      100: '{blue.100}',
+      200: '{blue.200}',
+      300: '{blue.300}',
+      400: '{blue.400}',
+      500: '{blue.500}',
+      600: '{blue.600}',
+      700: '{blue.700}',
+      800: '{blue.800}',
+      900: '{blue.900}',
+      950: '{blue.950}'
+    }
+  }
+});
 import { ConfluenceSpacesPollingService } from './core/services/confluence-spaces-polling.service';
 import { provideTransloco } from '@jsverse/transloco';
 import { TranslocoHttpLoader } from './core/services/transloco-http-loader';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ToastService } from './core/services/toast.service';
 import { SentinelleApiService } from './core/services/sentinelle-api.service';
+import { RemediationConfigService } from './core/services/remediation-config.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -27,7 +49,7 @@ export const appConfig: ApplicationConfig = {
     ToastService,
     providePrimeNG({
       theme: {
-        preset: Aura,
+        preset: SentinelPreset,
         options: {
           darkModeSelector: '[data-theme="dark"]'
         }
@@ -52,6 +74,7 @@ export const appConfig: ApplicationConfig = {
       loader: TranslocoHttpLoader
     }),
     provideAppInitializer(() => inject(ConfluenceSpacesPollingService).loadPollingConfig()),
-    provideAppInitializer(() => inject(SentinelleApiService).loadRevealConfig())
+    provideAppInitializer(() => inject(SentinelleApiService).loadRevealConfig()),
+    provideAppInitializer(() => inject(RemediationConfigService).loadRemediationConfig())
   ]
 };

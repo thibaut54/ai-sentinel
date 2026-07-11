@@ -2,44 +2,10 @@
 <p-confirmDialog></p-confirmDialog>
 
 <div class="app-shell">
-  <!-- Top bar -->
-  <header class="top-bar">
-    <div class="top-bar-left">
-      <img ngSrc="assets/softcom_logo_1.png" alt="Softcom Logo" class="app-logo" height="696" width="696" />
-      <h1 class="app-title">{{ 'common.appTitle' | transloco }}</h1>
-    </div>
-    <div class="flex align-items-center gap-2">
-      <p-button [icon]="themeService.isDark() ? 'pi pi-sun' : 'pi pi-moon'"
-                styleClass="header-theme-btn"
-                [rounded]="true"
-                [text]="true"
-                (click)="themeService.toggle()"
-                (keydown.enter)="themeService.toggle()"
-                [ariaLabel]="(themeService.isDark() ? 'dashboard.actions.lightMode' : 'dashboard.actions.darkMode') | transloco" />
-      <p-button icon="pi pi-cog"
-                [label]="'dashboard.actions.settings' | transloco"
-                styleClass="header-settings-btn"
-                (click)="openSettingsDialog()"
-                (keydown.enter)="openSettingsDialog()"
-                [ariaLabel]="'dashboard.actions.settings' | transloco" />
-      <app-language-selector />
-    </div>
-  </header>
+  <!-- Top bar with the data source selector -->
+  <app-header (openSettings)="openSettingsDialog()" />
 
-  <!-- Source tabs -->
-  <p-tabs [value]="activeSourceId()">
-    <p-tablist>
-      <p-tab value="confluence">
-        <i class="pi pi-globe tab-icon"></i>
-        <span>{{ 'dashboard.sources.confluence' | transloco }}</span>
-      </p-tab>
-    </p-tablist>
-    <p-tabpanels>
-      <p-tabpanel value="confluence">
-        <app-confluence-dashboard (openSettings)="openSettingsDialog($event)" />
-      </p-tabpanel>
-    </p-tabpanels>
-  </p-tabs>
+  <app-confluence-dashboard (openSettings)="openSettingsDialog($event)" />
 
   <!-- Settings Dialog -->
   <p-dialog [(visible)]="showSettingsDialog"

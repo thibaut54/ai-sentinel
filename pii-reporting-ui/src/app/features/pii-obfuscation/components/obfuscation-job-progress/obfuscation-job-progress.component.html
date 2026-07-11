@@ -1,0 +1,38 @@
+@if (job(); as currentJob) {
+  <div class="ob-job" role="status" [attr.data-testid]="testIds.root">
+    <div class="ob-job-label" [attr.data-testid]="testIds.label">
+      <i class="pi pi-eye-slash" aria-hidden="true"></i>
+      {{
+        'obfuscation.job.running'
+          | transloco: { done: currentJob.processed, total: currentJob.total }
+      }}
+    </div>
+    <div class="ob-job-track" aria-hidden="true">
+      <div class="ob-job-fill" [style.width.%]="progressPercent()"></div>
+    </div>
+
+    @if (currentJob.outcomes.length > 0) {
+      <ul class="ob-job-outcomes">
+        @for (outcome of currentJob.outcomes; track outcome.findingId) {
+          <li
+            class="ob-job-outcome ob-job-outcome--{{ outcome.outcome.toLowerCase() }}"
+            [attr.data-testid]="testIds.outcome"
+          >
+            <span class="ob-job-outcome-type">{{ outcome.piiType }}</span>
+            <span class="ob-job-outcome-code">{{ outcome.outcome }}</span>
+            @if (outcome.reason) {
+              <span class="ob-job-outcome-reason">{{ outcome.reason }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (terminal()) {
+      <p class="ob-job-rescan" [attr.data-testid]="testIds.rescanHint">
+        <i class="pi pi-refresh" aria-hidden="true"></i>
+        {{ 'obfuscation.job.rescanRecommended' | transloco }}
+      </p>
+    }
+  </div>
+}

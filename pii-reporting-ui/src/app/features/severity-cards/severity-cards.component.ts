@@ -30,9 +30,9 @@ export class SeverityCardsComponent {
   readonly cards = computed<SeverityCard[]>(() => {
     const c = this._counts();
     return [
-      { labelKey: 'severity.badgeHigh',   count: c.high,   color: '#E53935', border: '#EF9A9A' },
-      { labelKey: 'severity.badgeMedium', count: c.medium, color: '#F57C00', border: '#FFCC80' },
-      { labelKey: 'severity.badgeLow',    count: c.low,    color: '#FBC02D', border: '#FFF176' },
+      { labelKey: 'severity.badgeHigh',   count: c.high,   color: '#b91c1c', border: '#eec2c2' },
+      { labelKey: 'severity.badgeMedium', count: c.medium, color: '#c2740a', border: '#ecd4a5' },
+      { labelKey: 'severity.badgeLow',    count: c.low,    color: '#94a3b8', border: '#cbd5e1' },
     ];
   });
 }

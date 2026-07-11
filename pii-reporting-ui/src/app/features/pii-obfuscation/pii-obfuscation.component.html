@@ -1,0 +1,393 @@
+<div class="ob-shell">
+<app-header (openSettings)="goToSettings()" />
+
+<section class="ob-page" [attr.data-testid]="testIds.page">
+  @if (remediationConfig.enabled()) {
+    <header class="ob-head">
+      <h2 class="ob-title">
+        <i class="pi pi-globe" aria-hidden="true"></i>
+        {{ selection.scope()?.spaceKey }}
+      </h2>
+
+      @if (totals(); as currentTotals) {
+        <div class="ob-progress" [attr.data-testid]="testIds.stats">
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.pending }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--pending" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.toTreat' | transloco }}
+            </span>
+          </div>
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.handled }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--treated" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.treated' | transloco }}
+            </span>
+          </div>
+          <div class="ob-stat">
+            <span class="ob-stat-num">{{ currentTotals.falsePositive }}</span>
+            <span class="ob-stat-label">
+              <span class="ob-stat-dot ob-stat-dot--fp" aria-hidden="true"></span>
+              {{ 'obfuscation.stats.falsePositives' | transloco }}
+            </span>
+          </div>
+          <div class="ob-progress-track" aria-hidden="true">
+            <div
+              class="ob-progress-fill ob-progress-fill--treated"
+              [style.width.%]="percentOfTotal(currentTotals.handled)"
+            ></div>
+            <div
+              class="ob-progress-fill ob-progress-fill--fp"
+              [style.width.%]="percentOfTotal(currentTotals.falsePositive)"
+            ></div>
+          </div>
+        </div>
+      }
+    </header>
+
+    @if (showBanner()) {
+      <div class="ob-entry-banner" role="status" [attr.data-testid]="testIds.entryBanner">
+        <i class="pi pi-bolt" aria-hidden="true"></i>
+        @if (selection.scope()?.pageId || selection.scope()?.attachmentName) {
+          <span
+            [innerHTML]="
+              'obfuscation.entryBanner.page'
+                | transloco: { name: itemChipLabel(), count: totals()?.pending ?? 0 }
+            "
+          ></span>
+        } @else {
+          <span
+            [innerHTML]="
+              'obfuscation.entryBanner.space'
+                | transloco: { space: selection.scope()?.spaceKey, count: totals()?.pending ?? 0 }
+            "
+          ></span>
+        }
+        <button
+          type="button"
+          class="ob-banner-dismiss"
+          (click)="bannerDismissed.set(true)"
+          [attr.aria-label]="'obfuscation.dismiss' | transloco"
+          [attr.data-testid]="testIds.entryBannerDismiss"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
+    }
+
+    <div class="ob-content" [attr.data-testid]="testIds.content">
+      <div
+        class="ob-table-wrap"
+        [class.ob-table-wrap--loading]="viewState.loading()"
+        [class.ob-table-wrap--frozen]="activeJobId() !== null"
+        [attr.data-testid]="testIds.pager.root"
+      >
+        <p-table
+          [value]="groups()"
+          dataKey="key"
+          [lazy]="true"
+          [lazyLoadOnInit]="false"
+          [paginator]="true"
+          [rows]="viewState.pageSize()"
+          [first]="pagerOffset()"
+          [totalRecords]="totalGroups()"
+          [rowsPerPageOptions]="pageSizes"
+          [showCurrentPageReport]="true"
+          [currentPageReportTemplate]="'dashboard.table.paginatorReport' | transloco"
+          (onPage)="onTablePage($event)"
+          [expandedRowKeys]="expandedRowKeys()"
+          (onRowExpand)="onRowExpand($event)"
+          (onRowCollapse)="onRowCollapse($event)"
+          [tableStyle]="{ 'min-width': '40rem' }"
+          styleClass="ob-table"
+        >
+          <ng-template #caption>
+            <!-- Top pagination row (mirrors the dashboard caption). -->
+            <div class="caption-bar">
+              <div class="caption-paginator">
+                <p-button
+                  type="button"
+                  icon="pi pi-chevron-left"
+                  [text]="true"
+                  size="small"
+                  [disabled]="!hasPrev()"
+                  (click)="prevPage()"
+                  [ariaLabel]="'obfuscation.pager.prev' | transloco"
+                  [attr.data-testid]="testIds.pager.prev"
+                />
+                <p-button
+                  type="button"
+                  icon="pi pi-refresh"
+                  [text]="true"
+                  size="small"
+                  (click)="resetPage()"
+                  [ariaLabel]="'obfuscation.pager.refresh' | transloco"
+                />
+                <p-button
+                  type="button"
+                  icon="pi pi-chevron-right"
+                  [text]="true"
+                  size="small"
+                  [disabled]="!hasNext()"
+                  (click)="nextPage()"
+                  [ariaLabel]="'obfuscation.pager.next' | transloco"
+                  [attr.data-testid]="testIds.pager.next"
+                />
+                <span class="page-indicator" [attr.data-testid]="testIds.pager.label">
+                  @if (viewState.loading()) {
+                    {{ 'obfuscation.pager.loading' | transloco }}
+                  } @else {
+                    {{
+                      'obfuscation.pager.label'
+                        | transloco
+                          : {
+                              first: pagerFirst(),
+                              last: pagerLast(),
+                              total: totalGroups()
+                            }
+                    }}
+                  }
+                </span>
+              </div>
+            </div>
+
+            <!-- Table controls, below the top pagination. -->
+            <div class="ob-caption-controls">
+              <span class="ob-search">
+                <i class="pi pi-search" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [value]="viewState.searchText()"
+                  (input)="onSearchInput($event)"
+                  [placeholder]="'obfuscation.searchPlaceholder' | transloco"
+                  [attr.aria-label]="'obfuscation.searchPlaceholder' | transloco"
+                  [attr.data-testid]="testIds.toolbar.search"
+                />
+              </span>
+
+              <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.statusFilter">
+                @for (option of statusFilterOptions; track option.value) {
+                  <button
+                    type="button"
+                    class="ob-segment"
+                    [class.ob-segment--active]="viewState.statusFilter() === option.value"
+                    [attr.aria-pressed]="viewState.statusFilter() === option.value"
+                    (click)="setStatusFilter(option.value)"
+                    [attr.data-testid]="testIds.toolbar.statusOption + '-' + option.value"
+                  >
+                    {{ option.labelKey | transloco }}
+                    @if (statusCount(option.value) !== null) {
+                      <span class="ob-segment-count">{{ statusCount(option.value) }}</span>
+                    }
+                  </button>
+                }
+              </span>
+
+              @if (itemChipLabel(); as itemName) {
+                <span class="ob-item-chip" [attr.data-testid]="testIds.toolbar.itemChip">
+                  {{ 'obfuscation.pageFilterChip' | transloco: { name: itemName } }}
+                  <button
+                    type="button"
+                    class="ob-item-chip-remove"
+                    (click)="removeItemFilter()"
+                    [attr.aria-label]="'obfuscation.dismiss' | transloco"
+                    [attr.data-testid]="testIds.toolbar.itemChipRemove"
+                  >
+                    <i class="pi pi-times" aria-hidden="true"></i>
+                  </button>
+                </span>
+              }
+
+              <span class="ob-toolbar-spacer"></span>
+
+              <span class="ob-groupby-label">{{ 'obfuscation.groupBy.label' | transloco }}</span>
+              <span class="ob-segmented" role="group" [attr.data-testid]="testIds.toolbar.groupBy">
+                @for (option of groupByOptions; track option.value) {
+                  <button
+                    type="button"
+                    class="ob-segment"
+                    [class.ob-segment--active]="viewState.groupBy() === option.value"
+                    [attr.aria-pressed]="viewState.groupBy() === option.value"
+                    (click)="setGroupBy(option.value)"
+                    [attr.data-testid]="testIds.toolbar.groupByOption + '-' + option.value"
+                  >
+                    {{ option.labelKey | transloco }}
+                  </button>
+                }
+              </span>
+
+              <button
+                type="button"
+                class="ob-btn ob-btn--ghost"
+                (click)="expandAll()"
+                [attr.data-testid]="testIds.toolbar.expandAll"
+              >
+                <i class="pi pi-angle-double-down" aria-hidden="true"></i>
+                {{ 'obfuscation.expandAll' | transloco }}
+              </button>
+              <button
+                type="button"
+                class="ob-btn ob-btn--ghost"
+                (click)="collapseAll()"
+                [attr.data-testid]="testIds.toolbar.collapseAll"
+              >
+                <i class="pi pi-angle-double-up" aria-hidden="true"></i>
+                {{ 'obfuscation.collapseAll' | transloco }}
+              </button>
+            </div>
+          </ng-template>
+
+          <ng-template #header>
+            <tr>
+              <th id="ob-col-check" class="ob-check-cell" style="width: 3.5rem">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="allPendingSelected()"
+                  (onChange)="toggleSelectAllPending()"
+                  [ariaLabel]="
+                    (allPendingSelected() ? 'obfuscation.deselectAll' : 'obfuscation.selectAllPending')
+                      | transloco
+                  "
+                  [attr.data-testid]="testIds.toolbar.selectAllPending"
+                />
+              </th>
+              <th id="ob-col-toggle" style="width: 3.5rem"></th>
+              <th id="ob-col-label">
+                {{
+                  (viewState.groupBy() === 'severity'
+                    ? 'obfuscation.groupBy.severity'
+                    : 'obfuscation.groupBy.type'
+                  ) | transloco
+                }}
+              </th>
+              <th id="ob-col-selected" class="text-right" style="width: 11rem">
+                {{ 'obfuscation.table.selected' | transloco }}
+              </th>
+              <th id="ob-col-occ" class="text-right" style="width: 11rem">
+                {{ 'obfuscation.table.occurrences' | transloco }}
+              </th>
+              <th id="ob-col-total" class="text-right" style="width: 6rem">
+                {{ 'obfuscation.table.total' | transloco }}
+              </th>
+            </tr>
+          </ng-template>
+
+          <ng-template #body let-group let-expanded="expanded">
+            <tr [attr.data-testid]="testIds.group.root">
+              <td class="ob-check-cell">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="group.masterState === 'all'"
+                  [indeterminate]="group.masterState === 'partial'"
+                  (onChange)="onMasterToggled(group)"
+                  [ariaLabel]="'obfuscation.selectAllGroup' | transloco"
+                  [attr.data-testid]="testIds.group.master"
+                />
+              </td>
+              <td class="toggle-cell">
+                <p-button
+                  type="button"
+                  pRipple
+                  [pRowToggler]="group"
+                  [text]="true"
+                  [rounded]="true"
+                  [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                  [ariaLabel]="(expanded ? 'obfuscation.table.collapse' : 'obfuscation.table.expand') | transloco"
+                  [attr.data-testid]="testIds.group.toggle"
+                />
+              </td>
+              <td class="ob-label-cell" [pRowToggler]="group" tabindex="0">
+                <span class="ob-label-inner">
+                  <span class="ob-dot ob-dot--{{ severityOf(group) }}" aria-hidden="true"></span>
+                  <span class="ob-group-label">{{ group.label }}</span>
+                </span>
+              </td>
+              <td class="text-right">
+                @if (group.selectedCount > 0) {
+                  <span class="ob-group-selected" [attr.data-testid]="testIds.group.selectedCount">
+                    {{ 'obfuscation.nSelectedShort' | transloco: { count: group.selectedCount } }}
+                  </span>
+                }
+              </td>
+              <td class="text-right">
+                @if (group.occurrenceCount > group.total) {
+                  <span class="ob-group-occ" [attr.data-testid]="testIds.group.occurrences">
+                    {{ 'obfuscation.nOccurrences' | transloco: { count: group.occurrenceCount } }}
+                  </span>
+                }
+              </td>
+              <td class="text-right">
+                <span class="ob-group-count" [attr.data-testid]="testIds.group.count">{{ group.total }}</span>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template #expandedrow let-group>
+            <tr class="ob-expanded-row">
+              <td colspan="6">
+                <div class="ob-group-body">
+                  @for (finding of group.findings; track finding.findingId) {
+                    <app-obfuscation-finding-row
+                      [finding]="finding"
+                      [groupBy]="viewState.groupBy()"
+                      (toggled)="onRowToggled(finding)"
+                      (markManual)="onRowMarkManual(finding)"
+                      (reportFalsePositive)="onRowReportFalsePositive(finding)"
+                      (restore)="onRowRestore(finding)"
+                    />
+                  }
+                  @if (group.findings.length < group.total) {
+                    <p class="ob-group-hint" [attr.data-testid]="testIds.group.hint">
+                      {{
+                        'obfuscation.groupPageHint'
+                          | transloco: { visible: group.findings.length, total: group.total }
+                      }}
+                    </p>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="6">
+                <div class="ob-empty" [attr.data-testid]="testIds.empty">
+                  <i class="pi pi-inbox" aria-hidden="true"></i>
+                  {{ 'obfuscation.noFindings' | transloco }}
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+
+    @if (activeJobId(); as jobId) {
+      <app-obfuscation-job-progress [jobId]="jobId" (completed)="onJobCompleted($event)" />
+    } @else {
+      <app-obfuscation-bulk-bar
+        [plan]="viewState.lastPlan()"
+        [chips]="selectedChips()"
+        (cleared)="clearSelection()"
+        (markTreated)="markSelectionTreated()"
+        (obfuscate)="openConfirmDialog()"
+      />
+    }
+
+    <app-obfuscation-confirm-dialog
+      [visible]="dialogVisible()"
+      [plan]="viewState.lastPlan()"
+      [spaceKey]="selection.scope()?.spaceKey ?? ''"
+      (confirmed)="confirmObfuscation()"
+      (cancelled)="dialogVisible.set(false)"
+    />
+  } @else {
+    <div class="ob-disabled" role="status" [attr.data-testid]="testIds.featureDisabled">
+      <i class="pi pi-lock" aria-hidden="true"></i>
+      <p>{{ 'obfuscation.featureDisabled' | transloco }}</p>
+    </div>
+  }
+</section>
+</div>

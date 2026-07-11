@@ -20,6 +20,11 @@ import pro.softcom.aisentinel.application.pii.export.exception.ExportContextNotF
 import pro.softcom.aisentinel.application.pii.export.exception.ExportException;
 import pro.softcom.aisentinel.application.pii.export.exception.UnsupportedSourceTypeException;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorException;
+import pro.softcom.aisentinel.domain.pii.remediation.AttachmentRedactionUnsupportedException;
+import pro.softcom.aisentinel.domain.pii.remediation.IllegalStatusTransitionException;
+import pro.softcom.aisentinel.domain.pii.remediation.ObfuscationJobAlreadyRunningException;
+import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
+import pro.softcom.aisentinel.domain.pii.remediation.SelectionOutdatedException;
 import pro.softcom.aisentinel.domain.pii.scan.IllegalScanStatusTransitionException;
 import pro.softcom.aisentinel.domain.pii.scan.ScanNotFoundException;
 import pro.softcom.aisentinel.domain.pii.security.CryptographicOperationException;
@@ -169,6 +174,43 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("[ERROR_HANDLER] Scan not found: {}", ex.getMessage());
         return problemWith(HttpStatus.NOT_FOUND, "Scan Not Found",
                 "error.scan.not_found");
+    }
+
+    // ========== Remediation exceptions (4) ==========
+
+    @ExceptionHandler(RemediationDisabledException.class)
+    ProblemDetail handleRemediationDisabled(RemediationDisabledException ex) {
+        log.warn("[ERROR_HANDLER] Remediation disabled: {}", ex.getMessage());
+        return problemWith(HttpStatus.FORBIDDEN, "Remediation Disabled",
+                "error.remediation.disabled");
+    }
+
+    @ExceptionHandler(IllegalStatusTransitionException.class)
+    ProblemDetail handleIllegalFindingStatusTransition(IllegalStatusTransitionException ex) {
+        log.warn("[ERROR_HANDLER] Illegal finding status transition: {}", ex.getMessage());
+        return problemWith(HttpStatus.CONFLICT, "Invalid Finding Status Transition",
+                "error.remediation.invalid_status_transition");
+    }
+
+    @ExceptionHandler(AttachmentRedactionUnsupportedException.class)
+    ProblemDetail handleAttachmentRedactionUnsupported(AttachmentRedactionUnsupportedException ex) {
+        log.warn("[ERROR_HANDLER] Attachment redaction unsupported: {}", ex.getMessage());
+        return problemWith(HttpStatus.UNPROCESSABLE_ENTITY, "Attachment Redaction Unsupported",
+                "error.remediation.attachment_not_supported");
+    }
+
+    @ExceptionHandler(SelectionOutdatedException.class)
+    ProblemDetail handleSelectionOutdated(SelectionOutdatedException ex) {
+        log.warn("[ERROR_HANDLER] Remediation selection outdated: {}", ex.getMessage());
+        return problemWith(HttpStatus.CONFLICT, "Selection Outdated",
+                "error.remediation.selection_outdated");
+    }
+
+    @ExceptionHandler(ObfuscationJobAlreadyRunningException.class)
+    ProblemDetail handleObfuscationJobAlreadyRunning(ObfuscationJobAlreadyRunningException ex) {
+        log.warn("[ERROR_HANDLER] Obfuscation job already running: {}", ex.getMessage());
+        return problemWith(HttpStatus.CONFLICT, "Obfuscation Job Already Running",
+                "error.remediation.job_already_running");
     }
 
     // ========== Export exceptions (3) ==========

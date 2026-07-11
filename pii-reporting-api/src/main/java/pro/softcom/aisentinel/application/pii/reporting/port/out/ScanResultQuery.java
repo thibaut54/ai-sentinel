@@ -70,6 +70,20 @@ public interface ScanResultQuery {
     List<ConfluenceContentScanResult> listItemEventsEncryptedByScanIdAndSpaceKey(String scanId, String spaceKey);
 
     /**
+     * Lists item events with DECRYPTED PII data filtered by space.
+     * Use when the caller is authorized to view plaintext values (e.g. the remediation
+     * review, which is gated by {@code pii.reporting.allow-secret-reveal}). Logs a
+     * space-level access record for GDPR/nLPD compliance.
+     *
+     * @param scanId scan identifier
+     * @param spaceKey Confluence space key to filter results
+     * @param purpose access purpose (for audit trail)
+     * @return list of scan results with decrypted PII for the specified space
+     */
+    List<ConfluenceContentScanResult> listItemEventsDecryptedByScanIdAndSpaceKey(
+            String scanId, String spaceKey, AccessPurpose purpose);
+
+    /**
      * Read-side projection representing per-space progress within a scan.
      *
      * @param spaceKey the business key of the space

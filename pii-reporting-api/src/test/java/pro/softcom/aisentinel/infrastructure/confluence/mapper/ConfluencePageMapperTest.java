@@ -93,11 +93,33 @@ class ConfluencePageMapperTest {
         softly.assertThat(dto.body().storage().value()).isEqualTo("<p>X</p>");
         softly.assertThat(dto.body().storage().representation()).isEqualTo("storage");
         softly.assertThat(dto.version()).isNotNull();
-        softly.assertThat(dto.version().by()).isNotNull();
-        softly.assertThat(dto.version().by().username()).isEqualTo("modifier");
         softly.assertThat(dto.version().number()).isEqualTo(7);
+        // version.by and version.when are server-assigned on update and must NOT be sent back.
+        softly.assertThat(dto.version().by()).isNull();
+        softly.assertThat(dto.version().when()).isNull();
         softly.assertThat(dto.status()).isEqualTo("current");
         softly.assertThat(dto.metadata()).containsEntry("a", 1);
+        softly.assertAll();
+    }
+
+    @Test
+    void fromDomainModel_ShouldNotSendServerManagedVersionFields() {
+        // A page read from Confluence Cloud carries a version timestamp with a zone offset
+        // (e.g. "2026-07-06T22:23:46.869Z"). The domain stores it as an offset-less LocalDateTime.
+        // Re-serializing it into the update payload produced "2026-07-06T22:23:46.869", which
+        // Confluence Cloud rejects with 400 "Invalid format ... is too short" (Version[when]).
+        // The update DTO must therefore carry only version.number.
+        var meta = new ConfluencePage.PageMetadata("creator", LocalDateTime.of(2026, 7, 6, 22, 23, 46),
+                "modifier", LocalDateTime.of(2026, 7, 6, 22, 23, 46), 3, "current");
+        var page = new ConfluencePage("id-1", "T1", "KEY",
+                new ConfluencePage.HtmlContent("<p>X</p>"), meta, List.of(), Map.of());
+
+        var dto = ConfluencePageMapper.fromDomain(page);
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(dto.version().number()).isEqualTo(3);
+        softly.assertThat(dto.version().by()).isNull();
+        softly.assertThat(dto.version().when()).isNull();
         softly.assertAll();
     }
 

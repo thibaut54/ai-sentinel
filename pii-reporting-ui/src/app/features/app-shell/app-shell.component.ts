@@ -1,35 +1,27 @@
-import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
+import { ChangeDetectionStrategy, Component, signal, viewChild } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
-import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
-import { TabsModule } from 'primeng/tabs';
-import { LanguageSelectorComponent } from '../../core/components/language-selector/language-selector.component';
+import { AppHeaderComponent } from '../app-header/app-header.component';
 import { ConfluenceDashboardComponent } from '../confluence-dashboard/confluence-dashboard.component';
 import { PiiSettingsComponent } from '../pii-settings/pii-settings.component';
-import { ThemeService } from '../../core/services/theme.service';
 
 /**
- * Application shell with top bar and Confluence source tab.
- *
- * Hosts the global toast, confirmation dialog, and settings dialog.
+ * Application shell hosting the shared header (with the data source selector) and the
+ * Confluence dashboard, plus the global toast, confirmation dialog, and settings dialog.
  */
 @Component({
   selector: 'app-shell',
   standalone: true,
   imports: [
-    NgOptimizedImage,
     TranslocoModule,
-    ButtonModule,
     TooltipModule,
     ToastModule,
     ConfirmDialogModule,
     DialogModule,
-    TabsModule,
-    LanguageSelectorComponent,
+    AppHeaderComponent,
     ConfluenceDashboardComponent,
     PiiSettingsComponent
   ],
@@ -38,9 +30,6 @@ import { ThemeService } from '../../core/services/theme.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppShellComponent {
-  readonly themeService = inject(ThemeService);
-  readonly activeSourceId = signal('confluence');
-
   // Settings dialog state
   readonly showSettingsDialog = signal(false);
   readonly settingsInitialTab = signal(0);

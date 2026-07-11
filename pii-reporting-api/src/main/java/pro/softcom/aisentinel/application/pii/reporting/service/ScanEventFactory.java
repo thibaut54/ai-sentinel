@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceUrlProvider;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
+import pro.softcom.aisentinel.application.pii.reporting.port.out.ValueFingerprintCalculator;
 import pro.softcom.aisentinel.application.pii.reporting.usecase.DetectionReportingEventType;
 import pro.softcom.aisentinel.domain.confluence.AttachmentInfo;
 import pro.softcom.aisentinel.domain.confluence.ConfluencePage;
@@ -33,6 +34,7 @@ public class ScanEventFactory {
     private final ConfluenceUrlProvider confluenceUrlProvider;
     private final PiiContextExtractor piiContextExtractor;
     private final SeverityCalculationService severityCalculationService;
+    private final ValueFingerprintCalculator valueFingerprintCalculator;
 
 
     /**
@@ -285,6 +287,7 @@ public class ScanEventFactory {
             .sensitiveContext(sensitiveContext)
             .maskedContext(maskedContext)
             .sensitiveValue(data.value())
+            .valueFingerprint(valueFingerprintCalculator.fingerprint(data.value()))
             .piiType(type)
             .piiTypeLabel(typeLabel)
             .startPosition(data.position())

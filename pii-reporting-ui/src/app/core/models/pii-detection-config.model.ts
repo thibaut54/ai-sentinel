@@ -78,6 +78,29 @@ export interface BulkUpdatePiiTypeConfigRequest {
 }
 
 /**
+ * Open-vocabulary label proposed by Ministral that has no pii_type_config row yet,
+ * collected for operator review before being promoted or ignored.
+ */
+export interface DiscoveredLabel {
+  label: string;
+  occurrenceCount: number;
+  firstSeen: string;
+  lastSeen: string;
+  status: string;
+}
+
+/**
+ * Request DTO for promoting a discovered label into a custom PII type configuration.
+ */
+export interface PromoteDiscoveredLabelRequest {
+  category: string;
+  severity: string;
+  threshold: number;
+  detectorLabel: string;
+  countryCode?: string;
+}
+
+/**
  * Grouped PII types by detector and category for UI display.
  */
 export interface GroupedPiiTypes {

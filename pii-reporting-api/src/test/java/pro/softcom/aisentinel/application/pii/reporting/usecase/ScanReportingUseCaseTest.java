@@ -17,10 +17,14 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pro.softcom.aisentinel.application.confluence.port.out.ConfluenceSpaceRepository;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
 import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
 import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
+import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
+import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
@@ -49,6 +53,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @Testcontainers
 @DataJpaTest
@@ -176,9 +181,22 @@ class ScanReportingUseCaseTest {
         ScanPiiTypeCountService piiTypeCountService = new ScanPiiTypeCountService(scanPiiTypeCountRepository);
         scanReportingUseCase = new ScanReportingUseCase(
             scanResultQuery, scanCheckpointRepository, spaceRepository,
-            severityCountService, piiTypeCountService);
+            severityCountService, piiTypeCountService, noOpFalsePositiveFilter());
         detectionCheckpointRepository.deleteAll();
         detectionEventRepository.deleteAll();
+    }
+
+    /**
+     * The reporting behaviour under test is orthogonal to false positives; a mocked store returns
+     * no false-positive row, so the filter is a pass-through and its other collaborators are never
+     * exercised.
+     */
+    private DashboardFalsePositiveFilter noOpFalsePositiveFilter() {
+        return new DashboardFalsePositiveFilter(
+                mock(FindingRemediationStore.class),
+                mock(ScanEventFindingResolver.class),
+                mock(SeverityCalculationService.class),
+                scanResultQuery);
     }
 
     @Test

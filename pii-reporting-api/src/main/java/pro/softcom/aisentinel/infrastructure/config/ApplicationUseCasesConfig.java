@@ -23,10 +23,13 @@ import pro.softcom.aisentinel.application.confluence.service.ConfluenceSpaceCach
 import pro.softcom.aisentinel.application.confluence.usecase.FetchConfluenceSpaceContentUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchSpaceUpdateInfoUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
+import pro.softcom.aisentinel.application.pii.detection.port.in.ManageDiscoveredLabelsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
+import pro.softcom.aisentinel.application.pii.detection.port.out.DiscoveredLabelStore;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.application.pii.detection.usecase.ManageDiscoveredLabelsUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiDetectionConfigUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiTypeConfigsUseCase;
 import pro.softcom.aisentinel.application.pii.export.DetectionReportMapper;
@@ -35,6 +38,8 @@ import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextP
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
 import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
@@ -77,13 +82,24 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public DashboardFalsePositiveFilter dashboardFalsePositiveFilter(
+            FindingRemediationStore findingRemediationStore,
+            ScanEventFindingResolver scanEventFindingResolver,
+            SeverityCalculationService severityCalculationService,
+            ScanResultQuery scanResultQuery) {
+        return new DashboardFalsePositiveFilter(findingRemediationStore, scanEventFindingResolver,
+                severityCalculationService, scanResultQuery);
+    }
+
+    @Bean
     public ScanReportingPort scanResultUseCase(ScanResultQuery scanResultQuery,
                                                ScanCheckpointRepository checkpointRepo,
                                                ConfluenceSpaceRepository spaceRepository,
                                                ScanSeverityCountService scanSeverityCountService,
-                                               ScanPiiTypeCountService scanPiiTypeCountService) {
+                                               ScanPiiTypeCountService scanPiiTypeCountService,
+                                               DashboardFalsePositiveFilter dashboardFalsePositiveFilter) {
         return new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository,
-                scanSeverityCountService, scanPiiTypeCountService);
+                scanSeverityCountService, scanPiiTypeCountService, dashboardFalsePositiveFilter);
     }
 
     @Bean
@@ -94,8 +110,10 @@ public class ApplicationUseCasesConfig {
     @Bean
     public ScanEventFactory scanEventFactory(ConfluenceUrlProvider confluenceUrlProvider,
                                              PiiContextExtractor piiContextExtractor,
-                                             SeverityCalculationService severityCalculationService) {
-        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService);
+                                             SeverityCalculationService severityCalculationService,
+                                             ValueFingerprintCalculator valueFingerprintCalculator) {
+        return new ScanEventFactory(confluenceUrlProvider, piiContextExtractor, severityCalculationService,
+                                    valueFingerprintCalculator);
     }
 
     @Bean
@@ -150,6 +168,11 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public DiscoveredLabelCollector discoveredLabelCollector(DiscoveredLabelStore discoveredLabelStore) {
+        return new DiscoveredLabelCollector(discoveredLabelStore);
+    }
+
+    @Bean
     public GetScanSpaceStatsPort getScanSpaceStatsPort(
             ScanCheckpointRepository scanCheckpointRepository,
             ScanSpaceStatsRepository scanSpaceStatsRepository,
@@ -166,6 +189,7 @@ public class ApplicationUseCasesConfig {
             ScanTimeOutConfig scanTimeoutConfig,
             HtmlContentParser htmlContentParser,
             ScanSpaceStatsCollector scanSpaceStatsCollector,
+            DiscoveredLabelCollector discoveredLabelCollector,
             @Value("${scan.page-concurrency:1}") int pageConcurrency) {
         return new ScanPipelineDependencies(
                 confluenceAccessor,
@@ -175,7 +199,8 @@ public class ApplicationUseCasesConfig {
                 scanTimeoutConfig,
                 htmlContentParser,
                 scanSpaceStatsCollector,
-                pageConcurrency
+                pageConcurrency,
+                discoveredLabelCollector
         );
     }
 
@@ -304,6 +329,13 @@ public class ApplicationUseCasesConfig {
     public ManagePiiTypeConfigsPort managePiiTypeConfigsPort(
         PiiTypeConfigRepository piiTypeConfigRepository) {
         return new ManagePiiTypeConfigsUseCase(piiTypeConfigRepository);
+    }
+
+    @Bean
+    public ManageDiscoveredLabelsPort manageDiscoveredLabelsPort(
+        ManagePiiTypeConfigsPort managePiiTypeConfigsPort,
+        DiscoveredLabelStore discoveredLabelStore) {
+        return new ManageDiscoveredLabelsUseCase(managePiiTypeConfigsPort, discoveredLabelStore);
     }
 
     @Bean

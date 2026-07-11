@@ -128,7 +128,7 @@ class ContentScanOrchestratorTest {
             String scanId = "scan-async";
             String spaceKey = "ASYNC";
             List<DetectedPersonallyIdentifiableInformation> detectedEntities = List.of(
-                    new DetectedPersonallyIdentifiableInformation(10, 27, "email", "Email", 0.98, "test@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE)
+                    new DetectedPersonallyIdentifiableInformation(10, 27, "email", "Email", 0.98, "test@example.com", "context", "masked", DetectorSource.UNKNOWN_SOURCE, null)
             );
 
             ConfluenceContentScanResult event = ConfluenceContentScanResult.builder()
