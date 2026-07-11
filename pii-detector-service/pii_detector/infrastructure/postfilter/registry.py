@@ -14,6 +14,10 @@ from pii_detector.infrastructure.postfilter.strategies.avs_number import (
 from pii_detector.infrastructure.postfilter.strategies.card_number import (
     CardNumberStrategy,
 )
+from pii_detector.infrastructure.postfilter.strategies.credential_plausibility import (
+    CREDENTIAL_PII_TYPES,
+    CredentialPlausibilityStrategy,
+)
 from pii_detector.infrastructure.postfilter.strategies.iban import IbanStrategy
 from pii_detector.infrastructure.postfilter.strategies.ip_address import (
     IpAddressStrategy,
@@ -68,3 +72,15 @@ STRATEGIES["SWIFT_BIC"] = _swift_bic
 STRATEGIES["BIC"] = _swift_bic
 STRATEGIES["SWIFT_CODE"] = _swift_bic
 STRATEGIES["SWIFT"] = _swift_bic
+
+# Label variants seen on the 2026-07 Confluence scan that missed their
+# existing strategy (pure aliases, same instances).
+STRATEGIES["IPV4"] = STRATEGIES["IP_ADDRESS"]
+STRATEGIES["CREDIT_CARD"] = _card_number
+
+# Credential plausibility (2026-07 scan: 134 PASSWORD findings, ~129 were
+# keyword/config-key/placeholder/sentence mentions). One shared instance
+# registered under every credential label the denylist carves out.
+_credential_plausibility = CredentialPlausibilityStrategy()
+for _credential_key in CREDENTIAL_PII_TYPES:
+    STRATEGIES[_credential_key] = _credential_plausibility

@@ -45,7 +45,7 @@ from pii_detector.infrastructure.postfilter.postfilter_strategy import (
 # Labels meaning "this is a credential": ambiguous shapes (UUID, hex) are
 # never dropped for them. Unambiguous motifs (traceparent, base64 image)
 # still drop unconditionally.
-_CREDENTIAL_LABELS = frozenset(
+CREDENTIAL_LABELS = frozenset(
     {
         "API_KEY",
         "PASSWORD",
@@ -222,7 +222,7 @@ def _normalize_pii_type(pii_type) -> str:
     return str(pii_type).upper().replace(" ", "_").replace("-", "_")
 
 
-def _has_credential_marker(span: str) -> bool:
+def has_credential_marker(span: str) -> bool:
     if any(marker in span for marker in _SECRET_MARKERS):
         return True
     # JWT-like values start with the base64 of '{"' -- anchored so a random
@@ -275,13 +275,13 @@ def _is_plausible_dotted_date(value: str) -> bool:
 
 def _evaluate_text_patterns(core: str, pii_type: str) -> PostfilterVerdict:
     if _UUID_RE.fullmatch(core):
-        if pii_type in _CREDENTIAL_LABELS:
+        if pii_type in CREDENTIAL_LABELS:
             return PASS
         return PostfilterVerdict(False, "technical artifact: uuid")
     if _TRACEPARENT_RE.fullmatch(core):
         return PostfilterVerdict(False, "technical artifact: w3c traceparent")
     if _PURE_HEX_RE.fullmatch(core) and len(core) in _HEX_ARTIFACT_NAMES:
-        if pii_type in _CREDENTIAL_LABELS:
+        if pii_type in CREDENTIAL_LABELS:
             return PASS
         name = _HEX_ARTIFACT_NAMES[len(core)]
         return PostfilterVerdict(
@@ -332,7 +332,7 @@ def evaluate(value, pii_type) -> PostfilterVerdict:
     span = value.strip()
     if not span:
         return PASS
-    if _has_credential_marker(span):
+    if has_credential_marker(span):
         return PASS
     core = _split_context_prefix(span)
     if core is None:
@@ -344,4 +344,4 @@ def evaluate(value, pii_type) -> PostfilterVerdict:
     return _evaluate_label_shape(core, normalized_type)
 
 
-__all__ = ["evaluate"]
+__all__ = ["CREDENTIAL_LABELS", "evaluate", "has_credential_marker"]
