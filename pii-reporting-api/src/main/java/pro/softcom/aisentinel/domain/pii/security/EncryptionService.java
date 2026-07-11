@@ -9,7 +9,7 @@ public interface EncryptionService {
      * Encrypts a sensitive value with authenticated metadata.
      *
      * @param plaintext plaintext value
-     * @param metadata entity metadata (type, position, selector) for AAD
+     * @param metadata entity metadata (type, startingPosition, selector) for AAD
      * @return encrypted text in format ENC:v{version}:...
      * @throws EncryptionException if encryption fails
      */

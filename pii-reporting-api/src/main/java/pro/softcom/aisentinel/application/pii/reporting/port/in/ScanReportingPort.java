@@ -20,11 +20,11 @@ public interface ScanReportingPort {
     List<ConfluenceContentScanResult> getGlobalScanItemsEncrypted();
 
     /**
-     * Returns a complete dashboard nbOfDetectedPIIBySeverity for the specified scan.
+     * Returns a complete dashboard summary for the specified scan.
      * Combines authoritative state from scan_checkpoints with aggregated counters from scan_events.
      *
      * @param scanId the business identifier of the scan
-     * @return an Optional containing the dashboard nbOfDetectedPIIBySeverity, or empty if scan not found
+     * @return an Optional containing the dashboard summary, or empty if scan not found
      */
     Optional<ScanReportingSummary> getScanReportingSummary(String scanId);
 

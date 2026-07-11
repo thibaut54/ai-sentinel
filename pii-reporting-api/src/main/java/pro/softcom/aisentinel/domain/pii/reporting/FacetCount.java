@@ -3,11 +3,11 @@ package pro.softcom.aisentinel.domain.pii.reporting;
 /**
  * Aggregated facet metrics for a single filter option (PII type, severity bucket or status).
  *
- * @param nbSpaces         number of spaces for which this option applies
+ * @param spaceCount         number of spaces for which this option applies
  * @param totalOccurrences total number of detections contributing to this option
  */
 public record FacetCount(
-    int nbSpaces,
+    int spaceCount,
     int totalOccurrences
 ) {
 }

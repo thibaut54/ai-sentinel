@@ -70,7 +70,7 @@ public class ScanEventBuffer {
             return List.of();
         }
         
-        List<BufferedEvent> events = buffer.stream()
+        List<BufferedEvent> events = buffer.fetchItemsInOrder()
             .stream().filter(e -> e.eventId() > afterEventId)
             .toList();
         
@@ -131,7 +131,7 @@ public class ScanEventBuffer {
          * Returns all items in the buffer in chronological order.
          */
         @SuppressWarnings("unchecked")
-        synchronized List<T> stream() {
+        synchronized List<T> fetchItemsInOrder() {
             List<T> items = new ArrayList<>(size);
             int start = (size == capacity) ? head : 0;
             

@@ -135,7 +135,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                                                                       int originalTotal, int total) {
         log.info("[SCAN][CONCURRENCY] space={} pages={} pageConcurrency={}", spaceKey, total, pageConcurrency);
         return Flux.fromIterable(pages)
-            // index() stamps each page with its deterministic 0-based position in
+            // index() stamps each page with its deterministic 0-based startingPosition in
             // SOURCE order BEFORE the concurrent region, so the per-page progress
             // index stays stable regardless of pageConcurrency. flatMapSequential
             // runs up to pageConcurrency mappers at once (feeding the detector
@@ -220,7 +220,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
                 scanId, spaceKey, page, extracted.attachment(), extracted.extractedText(), detection,
                 progress);
         })
-        .timeout(scanTimeoutConfig.getPiiDetection())
+        .timeout(scanTimeoutConfig.getPiiDetectionTimeout())
         .onErrorResume(TimeoutException.class, _ -> {
             log.warn("[TIMEOUT][REACTOR] Space={}, PageId={}, AttachmentName=\"{}\", ReactorTimeout exceeded",
                     spaceKey, page.id(), extracted.attachment().name());
@@ -285,7 +285,7 @@ public abstract class AbstractStreamConfluenceScanUseCase {
         }
 
         return Mono.fromCallable(() -> detectPii(content))
-            .timeout(scanTimeoutConfig.getPiiDetection())
+            .timeout(scanTimeoutConfig.getPiiDetectionTimeout())
             .map(detection -> buildPageItemEvent(scanId, page, content, detection, scanProgress))
             .onErrorResume(exception -> {
                 // Handle TimeoutException directly

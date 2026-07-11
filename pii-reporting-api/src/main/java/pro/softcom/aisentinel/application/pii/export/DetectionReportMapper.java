@@ -15,14 +15,14 @@ public class DetectionReportMapper {
             return List.of();
         }
 
-        return confluenceContentScanResult.detectedPIIList().stream()
+        return confluenceContentScanResult.detectedPIIs().stream()
                 .map(piiEntity -> mapPiiEntityToDetectionReportEntry(piiEntity,
                                                                      confluenceContentScanResult))
                 .toList();
     }
 
     private boolean isValidResult(ConfluenceContentScanResult result) {
-        return result != null && result.detectedPIIList() != null && !result.detectedPIIList().isEmpty();
+        return result != null && result.detectedPIIs() != null && !result.detectedPIIs().isEmpty();
     }
 
     private DetectionReportEntry mapPiiEntityToDetectionReportEntry(

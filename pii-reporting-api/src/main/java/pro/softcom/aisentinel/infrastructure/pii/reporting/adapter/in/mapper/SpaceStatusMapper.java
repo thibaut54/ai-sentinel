@@ -9,13 +9,13 @@ import java.util.List;
 @Component
 public class SpaceStatusMapper {
 
-    public List<SpaceScanStateDto> toDtoList(List<ConfluenceSpaceScanState> list) {
-        if (list == null || list.isEmpty()) return List.of();
-        return list.stream().map(this::toDto).toList();
+    public List<SpaceScanStateDto> toDtoList(List<ConfluenceSpaceScanState> spaceScanStates) {
+        if (spaceScanStates == null || spaceScanStates.isEmpty()) return List.of();
+        return spaceScanStates.stream().map(this::toDto).toList();
     }
 
-    public SpaceScanStateDto toDto(ConfluenceSpaceScanState s) {
-        if (s == null) return null;
-        return new SpaceScanStateDto(s.spaceKey(), s.status(), s.pagesDone(), s.attachmentsDone(), s.lastEventTs(), s.progressPercentage());
+    public SpaceScanStateDto toDto(ConfluenceSpaceScanState spaceScanState) {
+        if (spaceScanState == null) return null;
+        return new SpaceScanStateDto(spaceScanState.spaceKey(), spaceScanState.status(), spaceScanState.pagesDone(), spaceScanState.attachmentsDone(), spaceScanState.lastEventAt(), spaceScanState.progressPercentage());
     }
 }

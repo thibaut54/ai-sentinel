@@ -315,7 +315,7 @@ class DashboardSpaceFilterTest {
                     List.of(a, b), DashboardFilterCriteria.none()).facets();
 
             FacetCount email = facets.piiTypes().get("EMAIL");
-            assertThat(email.nbSpaces()).isEqualTo(2);
+            assertThat(email.spaceCount()).isEqualTo(2);
             assertThat(email.totalOccurrences()).isEqualTo(5);
         }
 
@@ -328,9 +328,9 @@ class DashboardSpaceFilterTest {
             DashboardFacets facets = DashboardSpaceFilter.apply(
                     List.of(a, b), DashboardFilterCriteria.none()).facets();
 
-            assertThat(facets.severities().get("HIGH").nbSpaces()).isEqualTo(2);
+            assertThat(facets.severities().get("HIGH").spaceCount()).isEqualTo(2);
             assertThat(facets.severities().get("HIGH").totalOccurrences()).isEqualTo(5);
-            assertThat(facets.severities().get("MEDIUM").nbSpaces()).isEqualTo(1);
+            assertThat(facets.severities().get("MEDIUM").spaceCount()).isEqualTo(1);
             assertThat(facets.severities()).doesNotContainKey("LOW");
         }
 
@@ -343,7 +343,7 @@ class DashboardSpaceFilterTest {
             DashboardFacets facets = DashboardSpaceFilter.apply(
                     List.of(completed, running), DashboardFilterCriteria.none()).facets();
 
-            assertThat(facets.statuses().get("OK").nbSpaces()).isEqualTo(1);
+            assertThat(facets.statuses().get("OK").spaceCount()).isEqualTo(1);
             assertThat(facets.statuses().get("OK").totalOccurrences()).isEqualTo(2);
             assertThat(facets.statuses().get("RUNNING").totalOccurrences()).isEqualTo(3);
         }
@@ -361,8 +361,8 @@ class DashboardSpaceFilterTest {
                     criteria(List.of(), List.of("HIGH"), List.of(), null, null, null)).facets();
 
             // severities facet excludes its own selection -> sees both spaces
-            assertThat(facets.severities().get("HIGH").nbSpaces()).isEqualTo(1);
-            assertThat(facets.severities().get("LOW").nbSpaces()).isEqualTo(1);
+            assertThat(facets.severities().get("HIGH").spaceCount()).isEqualTo(1);
+            assertThat(facets.severities().get("LOW").spaceCount()).isEqualTo(1);
             // statuses facet respects the HIGH filter -> only the HIGH space remains
             assertThat(facets.statuses()).containsOnlyKeys("OK");
         }

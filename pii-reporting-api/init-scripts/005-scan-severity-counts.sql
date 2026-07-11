@@ -5,9 +5,9 @@
 CREATE TABLE IF NOT EXISTS scan_severity_counts (
     scan_id VARCHAR(255) NOT NULL,
     space_key VARCHAR(255) NOT NULL,
-    nb_of_high_severity INTEGER NOT NULL DEFAULT 0,
-    nb_of_medium_severity INTEGER NOT NULL DEFAULT 0,
-    nb_of_low_severity INTEGER NOT NULL DEFAULT 0,
+    high_severity_count INTEGER NOT NULL DEFAULT 0,
+    medium_severity_count INTEGER NOT NULL DEFAULT 0,
+    low_severity_count INTEGER NOT NULL DEFAULT 0,
     
     CONSTRAINT pk_scan_severity_counts 
         PRIMARY KEY (scan_id, space_key),
@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS scan_severity_counts (
     
     CONSTRAINT chk_severity_counts_non_negative 
         CHECK (
-            nb_of_high_severity >= 0 AND 
-            nb_of_medium_severity >= 0 AND 
-            nb_of_low_severity >= 0
+            high_severity_count >= 0 AND 
+            medium_severity_count >= 0 AND 
+            low_severity_count >= 0
         )
 );
 
@@ -43,11 +43,11 @@ COMMENT ON COLUMN scan_severity_counts.scan_id IS
 COMMENT ON COLUMN scan_severity_counts.space_key IS 
     'Confluence space identifier';
 
-COMMENT ON COLUMN scan_severity_counts.nb_of_high_severity IS 
+COMMENT ON COLUMN scan_severity_counts.high_severity_count IS 
     'Number of HIGH severity PII items detected (e.g., CREDIT_CARD, SSN, IBAN)';
 
-COMMENT ON COLUMN scan_severity_counts.nb_of_medium_severity IS 
+COMMENT ON COLUMN scan_severity_counts.medium_severity_count IS 
     'Number of MEDIUM severity PII items detected (e.g., PERSON, EMAIL, PHONE)';
 
-COMMENT ON COLUMN scan_severity_counts.nb_of_low_severity IS 
+COMMENT ON COLUMN scan_severity_counts.low_severity_count IS 
     'Number of LOW severity PII items detected (e.g., NATIONALITY, GENDER, DATE)';

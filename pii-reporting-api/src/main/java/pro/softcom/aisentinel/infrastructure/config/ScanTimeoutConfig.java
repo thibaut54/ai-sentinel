@@ -26,5 +26,5 @@ public class ScanTimeoutConfig {
      * to trigger first and provide more specific error information.
      * Default: 305 seconds
      */
-    private Duration piiDetection = Duration.ofSeconds(305);
+    private Duration piiDetectionTimeout = Duration.ofSeconds(305);
 }

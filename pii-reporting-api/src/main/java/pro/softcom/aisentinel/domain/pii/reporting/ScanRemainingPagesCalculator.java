@@ -16,7 +16,7 @@ public final class ScanRemainingPagesCalculator {
         //private constructor to hide the implicit public one
     }
 
-    public static ScanRemainingPages computeRemainPages(List<ConfluencePage> pages, ScanCheckpoint checkpoint) {
+    public static ScanRemainingPages computeScanRemainingPages(List<ConfluencePage> pages, ScanCheckpoint checkpoint) {
         List<ConfluencePage> safePages = pages == null ? List.of() : pages;
         int originalTotal = safePages.size();
         int analyzedOffset = computeAnalyzedOffset(safePages, checkpoint);

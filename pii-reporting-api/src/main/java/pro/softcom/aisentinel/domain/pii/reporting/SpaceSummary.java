@@ -15,7 +15,7 @@ import java.util.Map;
  * @param progressPercentage scan progress (may be null when never scanned)
  * @param pagesDone          number of pages processed
  * @param attachmentsDone    number of attachments processed
- * @param lastEventTs        timestamp of the last observed event (null when never scanned)
+ * @param lastEventAt        timestamp of the last observed event (null when never scanned)
  * @param spaceName          human-readable space name (may be null)
  * @param severityCounts     aggregated severity counts (never null; zero when no detections)
  * @param piiTypeCounts      occurrence count keyed by PII type code (never null; empty when none)
@@ -27,7 +27,7 @@ public record SpaceSummary(
     Double progressPercentage,
     long pagesDone,
     long attachmentsDone,
-    Instant lastEventTs,
+    Instant lastEventAt,
     String spaceName,
     SeverityCounts severityCounts,
     Map<String, Integer> piiTypeCounts,

@@ -67,12 +67,12 @@ public class PiiContextExtractor {
         }
 
         try {
-            List<DetectedPersonallyIdentifiableInformation> allEntities = confluenceContentScanResult.detectedPIIList();
+            List<DetectedPersonallyIdentifiableInformation> allEntities = confluenceContentScanResult.detectedPIIs();
             List<DetectedPersonallyIdentifiableInformation> enriched = allEntities.stream()
                     .map(entity -> enrichEntity(confluenceContentScanResult.sourceContent(), entity, allEntities))
                     .toList();
 
-            return confluenceContentScanResult.toBuilder().detectedPIIList(enriched).build();
+            return confluenceContentScanResult.toBuilder().detectedPIIs(enriched).build();
         } catch (IllegalArgumentException | NullPointerException e) {
             log.warn("Invalid input for PII context enrichment, scanId={}",
                      confluenceContentScanResult.scanId(), e);
@@ -90,8 +90,8 @@ public class PiiContextExtractor {
 
     private boolean needsEnrichment(ConfluenceContentScanResult confluenceContentScanResult) {
         return confluenceContentScanResult != null
-                && confluenceContentScanResult.detectedPIIList() != null
-                && !confluenceContentScanResult.detectedPIIList().isEmpty()
+                && confluenceContentScanResult.detectedPIIs() != null
+                && !confluenceContentScanResult.detectedPIIs().isEmpty()
                 && confluenceContentScanResult.sourceContent() != null
                 && !confluenceContentScanResult.sourceContent().isBlank();
     }
@@ -124,8 +124,8 @@ public class PiiContextExtractor {
      * Unified method to extract line context, with optional masking.
      *
      * @param source      complete source content
-     * @param start       PII start position
-     * @param end         PII end position
+     * @param start       PII start startingPosition
+     * @param end         PII endingPosition startingPosition
      * @param type        detected PII type (can be null if maskPii is false)
      * @param allEntities all entities to mask in the same line (can be null)
      * @param maskPii     whether to mask PII values with tokens
@@ -149,7 +149,7 @@ public class PiiContextExtractor {
             String piiSlice = (start >= lineStartInSource && end <= lineEndInSource)
                 ? source.substring(start, end) : null;
             String redactedSlice = piiSlice != null ? redactValue(piiSlice) : "<BOUNDS_ERROR>";
-            log.debug("MASKING DIAGNOSTIC: type={} | start={} end={} lineStart={} lineEnd={} | pii={} | lineContext.length={}",
+            log.debug("MASKING DIAGNOSTIC: type={} | start={} endingPosition={} lineStart={} lineEnd={} | pii={} | lineContext.length={}",
                 type, start, end, lineStartInSource, lineEndInSource, redactedSlice, lineContext.length());
         }
 
@@ -163,7 +163,7 @@ public class PiiContextExtractor {
         // Note: HTML cleaning is now done BEFORE detection in AbstractStreamConfluenceScanUseCase,
         // so the sourceContent passed here is already clean text.
 
-        // Le masquage repose uniquement sur les positions start/end fournies par le détecteur.
+        // Le masquage repose uniquement sur les positions start/endingPosition fournies par le détecteur.
         // Aucun ajustement heuristique supplémentaire n'est appliqué sur le suffixe.
         return lineContext;
     }
@@ -175,12 +175,12 @@ public class PiiContextExtractor {
                                         String mainType,
                                         List<DetectedPersonallyIdentifiableInformation> allEntities) {
         int lineLen = lineContext.length();
-        List<TempEntity> relEntities = collectRelevantEntities(
+        List<TempEntity> relevantEntities = collectRelevantEntities(
                 lineLen, lineStartInSource, mainStart, mainEnd, mainType, allEntities
         );
 
-        relEntities.sort(Comparator.comparingInt(te -> te.start));
-        return buildMaskedText(lineContext, relEntities);
+        relevantEntities.sort(Comparator.comparingInt(tempEntity -> tempEntity.start));
+        return buildMaskedText(lineContext, relevantEntities);
     }
 
     /**
@@ -237,9 +237,9 @@ public class PiiContextExtractor {
     private TempEntity createTempEntity(DetectedPersonallyIdentifiableInformation entity, int lineStartInSource, int lineLen) {
         long absS = entity.startPosition();
         long absE = entity.endPosition();
-        int rs = (int) Math.clamp(absS - lineStartInSource, 0L, lineLen);
-        int re = (int) Math.clamp(absE - lineStartInSource, rs, (long) lineLen);
-        return new TempEntity(rs, re, entity.piiType(), false);
+        int relativeStartIndex = (int) Math.clamp(absS - lineStartInSource, 0L, lineLen);
+        int relativeEndIndex = (int) Math.clamp(absE - lineStartInSource, relativeStartIndex, (long) lineLen);
+        return new TempEntity(relativeStartIndex, relativeEndIndex, entity.piiType(), false);
     }
 
     /**

@@ -130,7 +130,7 @@ public class ScanCheckpointService {
                 // Repository merge strategy preserves existing lastProcessedPageId
                 new CheckpointData(null, confluenceContentScanResult.attachmentName(), ScanStatus.RUNNING);
             case "pageComplete" -> 
-                // Persist progress at end of page - advance lastProcessedPageId
+                // Persist progress at endingPosition of page - advance lastProcessedPageId
                 new CheckpointData(confluenceContentScanResult.pageId(), null, ScanStatus.RUNNING);
             case "complete" -> 
                 // Space-level completion - reset lastProcessedPageId
@@ -211,7 +211,7 @@ public class ScanCheckpointService {
      * can later be resumed within its original scope (spaces never started still have a
      * checkpoint) and never leaks into other, unselected spaces.
      *
-     * <p>Each checkpoint is created with progress 0.0 and no page/attachment position. Because
+     * <p>Each checkpoint is created with progress 0.0 and no page/attachment startingPosition. Because
      * the scanId is fresh, the underlying upsert performs pure INSERTs, and the later
      * NOT_STARTED → RUNNING transition emitted by scan events is allowed by the SYSTEM initiator.
      *

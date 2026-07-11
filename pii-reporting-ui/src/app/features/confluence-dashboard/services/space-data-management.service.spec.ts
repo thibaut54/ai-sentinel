@@ -36,8 +36,8 @@ describe('SpaceDataManagementService', () => {
         lastUpdated: '',
         spacesCount: 2,
         spaces: [
-          { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 100, pagesDone: 10, attachmentsDone: 5, lastEventTs: '2026-01-01', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } },
-          { spaceKey: 'SPACE2', status: 'RUNNING', progressPercentage: 50, pagesDone: 5, attachmentsDone: 2, lastEventTs: '2026-01-01', severityCounts: { high: 0, medium: 1, low: 0, total: 1 } }
+          { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 100, pagesDone: 10, attachmentsDone: 5, lastEventAt: '2026-01-01', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } },
+          { spaceKey: 'SPACE2', status: 'RUNNING', progressPercentage: 50, pagesDone: 5, attachmentsDone: 2, lastEventAt: '2026-01-01', severityCounts: { high: 0, medium: 1, low: 0, total: 1 } }
         ]
       })),
       getLastScanItems: vi.fn().mockReturnValue(of([])),
@@ -294,7 +294,7 @@ describe('SpaceDataManagementService', () => {
       lastUpdated: '',
       spacesCount: 1,
       spaces: [
-        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 80, pagesDone: 10, attachmentsDone: 5, lastEventTs: '2026-01-01', severityCounts: null }
+        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 80, pagesDone: 10, attachmentsDone: 5, lastEventAt: '2026-01-01', severityCounts: null }
       ]
     }));
 
@@ -334,7 +334,7 @@ describe('SpaceDataManagementService', () => {
 
   it('Should_ReapplyCachedStatuses_When_FetchSpacesAfterStatusesLoaded', () => {
     service.lastSpaceStatuses.set([
-      { spaceKey: 'SPACE1', status: 'COMPLETED', pagesDone: 1, attachmentsDone: 0, lastEventTs: '2026-01-01', progressPercentage: 90 }
+      { spaceKey: 'SPACE1', status: 'COMPLETED', pagesDone: 1, attachmentsDone: 0, lastEventAt: '2026-01-01', progressPercentage: 90 }
     ]);
 
     service.fetchSpaces().subscribe();

@@ -164,9 +164,9 @@ class ScanEventFactoryTest {
             assertSoftly(softly -> {
                 softly.assertThat(result.eventType()).isEqualTo("item");
                 softly.assertThat(result.isFinal()).isTrue();
-                softly.assertThat(result.detectedPIIList()).isEmpty();
-                softly.assertThat(result.nbOfDetectedPIIBySeverity()).isEmpty();
-                softly.assertThat(result.nbOfDetectedPIIByType()).isEmpty();
+                softly.assertThat(result.detectedPIIs()).isEmpty();
+                softly.assertThat(result.detectedPiiCountBySeverity()).isEmpty();
+                softly.assertThat(result.detectedPiiCountByType()).isEmpty();
                 softly.assertThat(result.severity()).isNull();
             });
         }
@@ -188,7 +188,7 @@ class ScanEventFactoryTest {
             // Assert
             assertSoftly(softly -> {
                 softly.assertThat(result.eventType()).isEqualTo("item");
-                softly.assertThat(result.detectedPIIList()).isEmpty();
+                softly.assertThat(result.detectedPIIs()).isEmpty();
                 softly.assertThat(result.severity()).isNull();
                 softly.assertThat(result.detectorRunStats()).isNull();
             });
@@ -209,8 +209,8 @@ class ScanEventFactoryTest {
 
             // Assert
             assertSoftly(softly -> {
-                softly.assertThat(result.detectedPIIList()).isEmpty();
-                softly.assertThat(result.nbOfDetectedPIIBySeverity()).isEmpty();
+                softly.assertThat(result.detectedPIIs()).isEmpty();
+                softly.assertThat(result.detectedPiiCountBySeverity()).isEmpty();
             });
         }
 
@@ -240,8 +240,8 @@ class ScanEventFactoryTest {
 
             // Assert
             assertSoftly(softly -> {
-                softly.assertThat(result.detectedPIIList()).hasSize(1);
-                softly.assertThat(result.nbOfDetectedPIIByType()).containsKey("EMAIL");
+                softly.assertThat(result.detectedPIIs()).hasSize(1);
+                softly.assertThat(result.detectedPiiCountByType()).containsKey("EMAIL");
                 softly.assertThat(result.severity()).isEqualTo(PersonallyIdentifiableInformationSeverity.LOW);
             });
         }
@@ -303,7 +303,7 @@ class ScanEventFactoryTest {
                 softly.assertThat(result.attachmentName()).isEqualTo("file.pdf");
                 softly.assertThat(result.attachmentType()).isEqualTo("application/pdf");
                 softly.assertThat(result.attachmentUrl()).isEqualTo("https://wiki/attachments/file.pdf");
-                softly.assertThat(result.detectedPIIList()).isEmpty();
+                softly.assertThat(result.detectedPIIs()).isEmpty();
             });
         }
     }

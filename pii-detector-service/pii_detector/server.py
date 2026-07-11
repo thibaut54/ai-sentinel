@@ -22,6 +22,16 @@ PII_DETECTION_PROTO_FILE_NAME = "pii_detection_pb2.py"
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 
+# Load a local .env (host/dev runs) so DB_HOST/DB_PORT/credentials are set even when the
+# process is launched without them. load_dotenv does NOT override variables already present
+# in the real environment, so Docker/prod (which inject DB_HOST=postgres) are unaffected.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except Exception:
+    pass
+
 # Configure logging
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_DIR = Path(__file__).parent.parent / "logs"

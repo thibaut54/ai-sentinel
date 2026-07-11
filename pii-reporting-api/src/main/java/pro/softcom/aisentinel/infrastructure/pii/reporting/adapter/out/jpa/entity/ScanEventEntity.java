@@ -35,8 +35,8 @@ public class ScanEventEntity {
     @Column(name = "event_type", nullable = false)
     private String eventType;
 
-    @Column(name = "ts", nullable = false)
-    private Instant ts;
+    @Column(name = "occurred_at", nullable = false)
+    private Instant occurredAt;
 
     @Column(name = "page_id")
     private String pageId;

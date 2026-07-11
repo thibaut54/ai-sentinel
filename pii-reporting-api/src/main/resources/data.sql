@@ -183,7 +183,7 @@ VALUES
 
 -- ============================================================================
 -- Ministral-PII detector seed (69 entities, 8 categories).
--- Specialised LLM detector: enabled by default at first install (all types active), threshold 0.50 neutral (no exploitable per-entity score).
+-- Specialised LLM detector: enabled by default at first install (all types active), threshold 0.50 neutral (no exploitable per-entity confidenceScore).
 -- ============================================================================
 
 -- Category: IDENTITY (Identity & demographics) -- 17 entities

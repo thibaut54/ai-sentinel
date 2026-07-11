@@ -132,7 +132,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         assertThat(sd1.typeLabel()).isEqualTo("Email");
         assertThat(sd1.value()).isEqualTo("john.doe@example.com");
         assertThat(sd1.context()).contains("5-25").contains("0.95");
-        assertThat(sd1.position()).isEqualTo(5);
+        assertThat(sd1.startingPosition()).isEqualTo(5);
         assertThat(sd1.selector()).isEqualTo("pii-entity-email");
 
         ContentPiiDetection.SensitiveData sd2 = result.sensitiveDataFound().get(1);
@@ -209,7 +209,7 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         // Content with emoji 🌱 (U+1F331, supplementary char = 2 UTF-16 code units, 1 Python code point)
         // Python sees: "hello🌱world" as len=11, "world" at code point positions 6-11
         // Java sees:   "hello🌱world" as length=12, "world" at code unit positions 7-12
-        String content = "hello\uD83C\uDF31world email@test.com end";
+        String content = "hello\uD83C\uDF31world email@test.com endingPosition";
         //                 01234  56    789...
         // Python code points: h=0, e=1, l=2, l=3, o=4, 🌱=5, w=6, o=7, r=8, l=9, d=10, ' '=11, e=12...
         // Java code units:    h=0, e=1, l=2, l=3, o=4, 🌱=5-6, w=7, o=8, r=9, l=10, d=11, ' '=12, e=13...
@@ -248,9 +248,9 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
         // Then - positions must be converted to Java code unit indices
         ContentPiiDetection.SensitiveData sd = result.sensitiveDataFound().getFirst();
         assertSoftly(softly -> {
-            softly.assertThat(sd.position()).as("start position").isEqualTo(expectedJavaStart);
-            softly.assertThat(sd.end()).as("end position").isEqualTo(expectedJavaEnd);
-            softly.assertThat(content.substring(sd.position(), sd.end())).as("extracted text").isEqualTo("email@test.com");
+            softly.assertThat(sd.startingPosition()).as("start startingPosition").isEqualTo(expectedJavaStart);
+            softly.assertThat(sd.endingPosition()).as("endingPosition startingPosition").isEqualTo(expectedJavaEnd);
+            softly.assertThat(content.substring(sd.startingPosition(), sd.endingPosition())).as("extracted text").isEqualTo("email@test.com");
         });
     }
 
@@ -295,9 +295,9 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
 
         ContentPiiDetection.SensitiveData sd = result.sensitiveDataFound().getFirst();
         assertSoftly(softly -> {
-            softly.assertThat(sd.position()).as("start position").isEqualTo(expectedJavaStart);
-            softly.assertThat(sd.end()).as("end position").isEqualTo(expectedJavaEnd);
-            softly.assertThat(content.substring(sd.position(), sd.end())).as("extracted text").isEqualTo("email@x.com");
+            softly.assertThat(sd.startingPosition()).as("start startingPosition").isEqualTo(expectedJavaStart);
+            softly.assertThat(sd.endingPosition()).as("endingPosition startingPosition").isEqualTo(expectedJavaEnd);
+            softly.assertThat(content.substring(sd.startingPosition(), sd.endingPosition())).as("extracted text").isEqualTo("email@x.com");
         });
     }
 
@@ -392,9 +392,9 @@ class GrpcPiiDetectorArmeriaClientAdapterTest {
 
         ContentPiiDetection.SensitiveData sd = result.sensitiveDataFound().getFirst();
         assertSoftly(softly -> {
-            softly.assertThat(sd.position()).as("start position").isEqualTo(6);
-            softly.assertThat(sd.end()).as("end position").isEqualTo(20);
-            softly.assertThat(content.substring(sd.position(), sd.end())).as("extracted text").isEqualTo("email@test.com");
+            softly.assertThat(sd.startingPosition()).as("start startingPosition").isEqualTo(6);
+            softly.assertThat(sd.endingPosition()).as("endingPosition startingPosition").isEqualTo(20);
+            softly.assertThat(content.substring(sd.startingPosition(), sd.endingPosition())).as("extracted text").isEqualTo("email@test.com");
         });
     }
 

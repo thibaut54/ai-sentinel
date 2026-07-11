@@ -47,7 +47,7 @@ export class PiiItemsStorageService {
    * @returns true if item was added (not a duplicate), false otherwise
    */
   addPiiItemToSpace(spaceKey: string, payload: ConfluenceContentPersonallyIdentifiableInformationScanResult): boolean {
-    const entities = Array.isArray(payload.detectedPIIList) ? payload.detectedPIIList : [];
+    const entities = Array.isArray(payload.detectedPIIs) ? payload.detectedPIIs : [];
 
     // Skip creating a card when no PII entities were detected
     if (!entities.length) {
@@ -69,8 +69,8 @@ export class PiiItemsStorageService {
       emittedAt: payload.emittedAt,
       isFinal: !!payload.isFinal,
       severity,
-      summary: (payload.nbOfDetectedPIIBySeverity && typeof payload.nbOfDetectedPIIBySeverity === 'object') ? payload.nbOfDetectedPIIBySeverity : undefined,
-      piiTypeSummary: (payload.nbOfDetectedPIIByType && typeof payload.nbOfDetectedPIIByType === 'object') ? payload.nbOfDetectedPIIByType : undefined,
+      summary: (payload.detectedPiiCountBySeverity && typeof payload.detectedPiiCountBySeverity === 'object') ? payload.detectedPiiCountBySeverity : undefined,
+      piiTypeSummary: (payload.detectedPiiCountByType && typeof payload.detectedPiiCountByType === 'object') ? payload.detectedPiiCountByType : undefined,
       detectedPersonallyIdentifiableInformationList: entities.map((e: any) => {
         return {
           startPosition: e?.startPosition,

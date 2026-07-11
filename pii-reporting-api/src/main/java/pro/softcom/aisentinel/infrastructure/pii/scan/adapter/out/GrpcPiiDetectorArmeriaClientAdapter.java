@@ -199,7 +199,7 @@ public class GrpcPiiDetectorArmeriaClientAdapter implements PiiDetectorClient {
             end = codePointIndexToCodeUnitIndex(content, end);
         }
 
-        final String context = String.format(Locale.ROOT, "Detected at position %d-%d (confidence: %.2f)",
+        final String context = String.format(Locale.ROOT, "Detected at startingPosition %d-%d (confidence: %.2f)",
                 start, end, entity.getScore());
 
         DetectorSource source = convertToDetectorSource(entity.getSource());

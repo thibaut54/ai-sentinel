@@ -39,7 +39,7 @@ import java.util.Base64;
  *   <li>Unique 256-bit salt per encrypted value</li>
  *   <li>Random 96-bit IV (recommended for GCM)</li>
  *   <li>DEK derived via HKDF = per-record isolation</li>
- *   <li>AAD cryptographically binds metadata (type, position) to ciphertext</li>
+ *   <li>AAD cryptographically binds metadata (type, startingPosition) to ciphertext</li>
  *   <li>GCM tag automatically verifies integrity</li>
  * </ul>
  */

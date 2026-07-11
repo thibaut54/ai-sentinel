@@ -81,13 +81,13 @@ export class SpaceFiltersComponent {
     return this.filtering.piiTypeGroups().map(group => ({
       label: this.transloco.translate(group.labelKey),
       items: group.items.map(item => {
-        const facet = facets[item.code] ?? { nbSpaces: 0, totalOccurrences: 0 };
+        const facet = facets[item.code] ?? { spaceCount: 0, totalOccurrences: 0 };
         return {
           code: item.code,
           label: this.transloco.translate(item.labelKey),
           detector: item.detector,
           facet,
-          disabled: facet.nbSpaces === 0
+          disabled: facet.spaceCount === 0
         };
       })
     }));
@@ -98,8 +98,8 @@ export class SpaceFiltersComponent {
     this.activeLang(); // re-translate on language change
     const facets = this.filtering.severityFacetCounts();
     return this.filtering.severityOptions.map(o => {
-      const facet = facets[o.value] ?? { nbSpaces: 0, totalOccurrences: 0 };
-      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.nbSpaces === 0 };
+      const facet = facets[o.value] ?? { spaceCount: 0, totalOccurrences: 0 };
+      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.spaceCount === 0 };
     });
   });
 
@@ -108,8 +108,8 @@ export class SpaceFiltersComponent {
     this.activeLang(); // re-translate on language change
     const facets = this.filtering.statusFacetCounts();
     return this.filtering.statusOptions().map(o => {
-      const facet = facets[o.value] ?? { nbSpaces: 0, totalOccurrences: 0 };
-      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.nbSpaces === 0 };
+      const facet = facets[o.value] ?? { spaceCount: 0, totalOccurrences: 0 };
+      return { value: o.value, label: this.transloco.translate(o.labelKey), facet, disabled: facet.spaceCount === 0 };
     });
   });
 

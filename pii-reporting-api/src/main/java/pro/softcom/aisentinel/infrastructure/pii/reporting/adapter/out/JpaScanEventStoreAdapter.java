@@ -62,7 +62,7 @@ public class JpaScanEventStoreAdapter implements ScanEventStore {
                     .eventSeq(seq)
                     .spaceKey(confluenceContentScanResult.spaceKey())
                     .eventType(confluenceContentScanResult.eventType())
-                    .ts(scanRecordedAt != null ? scanRecordedAt : Instant.now())
+                    .occurredAt(scanRecordedAt != null ? scanRecordedAt : Instant.now())
                     .pageId(confluenceContentScanResult.pageId())
                     .pageTitle(confluenceContentScanResult.pageTitle())
                     .attachmentName(confluenceContentScanResult.attachmentName())

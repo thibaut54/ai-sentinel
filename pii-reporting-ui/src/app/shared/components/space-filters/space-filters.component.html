@@ -41,7 +41,7 @@
             <span class="filter-option-label">{{ option.label }}</span>
             <span class="filter-option-subtitle">{{ option.detector }}</span>
           </div>
-          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+          <span class="filter-option-badge">{{ option.facet.spaceCount }} · {{ option.facet.totalOccurrences }}</span>
         </div>
       </ng-template>
       <ng-template pTemplate="footer">
@@ -70,7 +70,7 @@
       <ng-template let-option pTemplate="item">
         <div class="filter-option" [class.filter-option--disabled]="option.disabled">
           <span class="filter-option-label">{{ option.label }}</span>
-          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+          <span class="filter-option-badge">{{ option.facet.spaceCount }} · {{ option.facet.totalOccurrences }}</span>
         </div>
       </ng-template>
       <ng-template pTemplate="footer">
@@ -99,7 +99,7 @@
       <ng-template let-option pTemplate="item">
         <div class="filter-option" [class.filter-option--disabled]="option.disabled">
           <span class="filter-option-label">{{ option.label }}</span>
-          <span class="filter-option-badge">{{ option.facet.nbSpaces }} · {{ option.facet.totalOccurrences }}</span>
+          <span class="filter-option-badge">{{ option.facet.spaceCount }} · {{ option.facet.totalOccurrences }}</span>
         </div>
       </ng-template>
       <ng-template pTemplate="footer">

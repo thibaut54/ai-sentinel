@@ -190,13 +190,13 @@ class StreamConfluenceScanUseCaseTest {
                 .id("p-" + i)
                 .title("T" + i)
                 .spaceKey(spaceKey)
-                .content(new ConfluencePage.HtmlContent("scan marker P" + i + " end"))
+                .content(new ConfluencePage.HtmlContent("scan marker P" + i + " endingPosition"))
                 .build());
             when(confluenceAttachmentService.getPageAttachments("p-" + i))
                 .thenReturn(CompletableFuture.completedFuture(List.of()));
         }
         when(confluenceService.getAllPagesInSpace(spaceKey)).thenReturn(CompletableFuture.completedFuture(pages));
-        when(scanTimeoutConfig.getPiiDetection()).thenReturn(Duration.ofSeconds(30));
+        when(scanTimeoutConfig.getPiiDetectionTimeout()).thenReturn(Duration.ofSeconds(30));
 
         // Inverse-latency detection: page 1 is SLOWEST. An unordered flatMap would
         // emit later (faster) pages first; flatMapSequential must still emit in
@@ -269,7 +269,7 @@ class StreamConfluenceScanUseCaseTest {
         StepVerifier.create(flux)
                 .expectNextMatches(ev -> ScanEventType.START.toJson().equals(ev.eventType()))
                 .expectNextMatches(ev -> ScanEventType.PAGE_START.toJson().equals(ev.eventType()) && "p-1".equals(ev.pageId()))
-                .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && ev.detectedPIIList() != null && ev.detectedPIIList().isEmpty())
+                .expectNextMatches(ev -> ScanEventType.ITEM.toJson().equals(ev.eventType()) && ev.detectedPIIs() != null && ev.detectedPIIs().isEmpty())
                 .expectNextMatches(ev -> ScanEventType.PAGE_COMPLETE.toJson().equals(ev.eventType()) && "p-1".equals(ev.pageId()))
                 .expectNextMatches(ev -> ScanEventType.COMPLETE.toJson().equals(ev.eventType()))
                 .verifyComplete();
@@ -893,7 +893,7 @@ class StreamConfluenceScanUseCaseTest {
     }
 
     @Test
-    @DisplayName("streamAllSpaces - AHVIV at first position scans all spaces")
+    @DisplayName("streamAllSpaces - AHVIV at first startingPosition scans all spaces")
     void Should_ScanAllSpaces_When_AhvivIsFirstSpace() {
         ConfluenceSpace space1 = new ConfluenceSpace("id1", "AHVIV", "AHV/IV e-Form","http://test.com", "d",
             ConfluenceSpace.SpaceType.GLOBAL, ConfluenceSpace.SpaceStatus.CURRENT, new DataOwners.NotLoaded(), null);

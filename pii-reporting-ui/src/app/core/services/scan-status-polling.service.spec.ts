@@ -35,7 +35,7 @@ describe('ScanStatusPollingService', () => {
         progressPercentage: 45,
         pagesDone: 10,
         attachmentsDone: 5,
-        lastEventTs: '2026-03-25T10:00:00Z',
+        lastEventAt: '2026-03-25T10:00:00Z',
         severityCounts: { high: 2, medium: 3, low: 1, total: 6 }
       },
       {
@@ -44,7 +44,7 @@ describe('ScanStatusPollingService', () => {
         progressPercentage: 100,
         pagesDone: 20,
         attachmentsDone: 10,
-        lastEventTs: '2026-03-25T09:55:00Z',
+        lastEventAt: '2026-03-25T09:55:00Z',
         severityCounts: { high: 0, medium: 1, low: 0, total: 1 }
       }
     ]
@@ -167,8 +167,8 @@ describe('ScanStatusPollingService', () => {
       lastUpdated: '2026-03-25T10:00:00Z',
       spacesCount: 2,
       spaces: [
-        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 100, pagesDone: 20, attachmentsDone: 10, lastEventTs: '2026-03-25T10:00:00Z', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } },
-        { spaceKey: 'SPACE2', status: 'NOT_STARTED', progressPercentage: 0, pagesDone: 0, attachmentsDone: 0, lastEventTs: null as any, severityCounts: { high: 0, medium: 0, low: 0, total: 0 } }
+        { spaceKey: 'SPACE1', status: 'COMPLETED', progressPercentage: 100, pagesDone: 20, attachmentsDone: 10, lastEventAt: '2026-03-25T10:00:00Z', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } },
+        { spaceKey: 'SPACE2', status: 'NOT_STARTED', progressPercentage: 0, pagesDone: 0, attachmentsDone: 0, lastEventAt: null as any, severityCounts: { high: 0, medium: 0, low: 0, total: 0 } }
       ]
     };
     apiMock.getDashboardSpacesSummary.mockReturnValue(of(transitionSummary));

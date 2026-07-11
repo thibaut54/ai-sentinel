@@ -31,7 +31,7 @@ public interface DetectionEventRepository extends
     @Query("select e.spaceKey as spaceKey, " +
         "sum(case when e.eventType = 'pageComplete' then 1 else 0 end) as pagesDone, " +
         "sum(case when e.eventType = 'attachmentItem' then 1 else 0 end) as attachmentsDone, " +
-        "max(e.ts) as lastEventTs " +
+        "max(e.occurredAt) as lastEventTs " +
         "from ScanEventEntity e where e.scanId = :scanId group by e.spaceKey")
     List<SpaceCountersProjection> aggregateSpaceCounters(@Param("scanId") String scanId);
 
@@ -40,7 +40,7 @@ public interface DetectionEventRepository extends
         Instant getLastUpdated();
     }
 
-    @Query("select e.scanId as scanId, max(e.ts) as lastUpdated from ScanEventEntity e group by e.scanId order by max(e.ts) desc")
+    @Query("select e.scanId as scanId, max(e.occurredAt) as lastUpdated from ScanEventEntity e group by e.scanId order by max(e.occurredAt) desc")
     java.util.List<LatestScanProjection> findLatestScanGrouped(
         Pageable pageable);
 

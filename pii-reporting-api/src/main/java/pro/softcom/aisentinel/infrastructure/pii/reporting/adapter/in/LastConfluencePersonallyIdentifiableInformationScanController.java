@@ -44,9 +44,9 @@ public class LastConfluencePersonallyIdentifiableInformationScanController {
     public ResponseEntity<@NonNull List<SpaceScanStateDto>> getLastScanSpaceStatuses() {
         return scanReportingPort.getLatestScan()
                 .map(meta -> {
-                    List<ConfluenceSpaceScanState> list = scanReportingPort.getLatestSpaceScanStateList(
+                    List<ConfluenceSpaceScanState> latestSpaceScanStates = scanReportingPort.getLatestSpaceScanStateList(
                         meta.scanId());
-                    return ResponseEntity.ok(spaceStatusMapper.toDtoList(list));
+                    return ResponseEntity.ok(spaceStatusMapper.toDtoList(latestSpaceScanStates));
                 })
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

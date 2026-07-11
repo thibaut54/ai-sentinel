@@ -331,12 +331,12 @@ class ExcelExportFullScanIntegrationTest {
                     detectedTypes.add(piiType);
                 }
 
-                // Vérifier que le confidence score est valide
+                // Vérifier que le confidence confidenceScore est valide
                 Cell scoreCell = row.getCell(5);
                 if (scoreCell != null && scoreCell.getCellType() == CellType.NUMERIC) {
                     double score = scoreCell.getNumericCellValue();
                     softly.assertThat(score)
-                        .as("Confidence score at row " + i + " should be between 0 and 1")
+                        .as("Confidence confidenceScore at row " + i + " should be between 0 and 1")
                         .isBetween(0.0, 1.0);
                 }
             }

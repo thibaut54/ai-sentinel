@@ -174,8 +174,8 @@ public class StreamConfluenceScanUseCase extends AbstractStreamConfluenceScanUse
                 contentScanOrchestrator.initializeScanScope(scanId, resolveSpaceKeys(selectedSpaces));
 
                 // If the list is empty, generate a small error Flux. Otherwise, create the scan Flux.
-                Flux<ConfluenceContentScanResult> errrorScanResultsFlux = createErrorScanResultIfNoSpace(scanId, selectedSpaces);
-                return Objects.requireNonNullElseGet(errrorScanResultsFlux, () -> createScanResultFlux(scanId, selectedSpaces));
+                Flux<ConfluenceContentScanResult> errorScanResultsFlux = createErrorScanResultIfNoSpace(scanId, selectedSpaces);
+                return Objects.requireNonNullElseGet(errorScanResultsFlux, () -> createScanResultFlux(scanId, selectedSpaces));
             })
             // Global error handling: map any exception to a readable business event
             .onErrorResume(exception -> {

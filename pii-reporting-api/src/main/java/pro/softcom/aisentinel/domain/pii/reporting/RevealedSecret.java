@@ -1,7 +1,7 @@
 package pro.softcom.aisentinel.domain.pii.reporting;
 
 /**
- * Domain model representing a revealed PII secret with its position and context.
+ * Domain model representing a revealed PII secret with its startingPosition and context.
  * 
  * <p>Business Rule: Secrets can only be revealed when explicitly authorized.</p>
  */

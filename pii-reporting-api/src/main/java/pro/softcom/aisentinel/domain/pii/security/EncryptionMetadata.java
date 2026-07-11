@@ -8,8 +8,8 @@ import java.nio.charset.StandardCharsets;
  */
 public record EncryptionMetadata(
         String piiType,      // PII type (EMAIL, PHONE, etc.)
-        Integer startPosition, // Start position in the text
-        Integer endPosition // End position in the text
+        Integer startPosition, // Start startingPosition in the text
+        Integer endPosition // End startingPosition in the text
 ) {
     /**
      * Serializes the metadata for AAD.
