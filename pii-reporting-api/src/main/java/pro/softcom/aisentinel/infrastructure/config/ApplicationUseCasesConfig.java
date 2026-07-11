@@ -40,6 +40,7 @@ import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionRepo
 import pro.softcom.aisentinel.application.pii.export.usecase.ExportDetectionReportUseCase;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanTimeFalsePositiveSuppressor;
 import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
@@ -156,6 +157,15 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
+    public ScanTimeFalsePositiveSuppressor scanTimeFalsePositiveSuppressor(
+            FindingRemediationStore findingRemediationStore,
+            ScanEventFindingResolver scanEventFindingResolver,
+            SeverityCalculationService severityCalculationService) {
+        return new ScanTimeFalsePositiveSuppressor(findingRemediationStore, scanEventFindingResolver,
+                severityCalculationService);
+    }
+
+    @Bean
     public AttachmentProcessor attachmentProcessor(
             ConfluenceAttachmentDownloader confluenceDownloadService,
             AttachmentTextExtractor attachmentTextExtractionService) {
@@ -190,6 +200,7 @@ public class ApplicationUseCasesConfig {
             HtmlContentParser htmlContentParser,
             ScanSpaceStatsCollector scanSpaceStatsCollector,
             DiscoveredLabelCollector discoveredLabelCollector,
+            ScanTimeFalsePositiveSuppressor scanTimeFalsePositiveSuppressor,
             @Value("${scan.page-concurrency:1}") int pageConcurrency) {
         return new ScanPipelineDependencies(
                 confluenceAccessor,
@@ -200,7 +211,8 @@ public class ApplicationUseCasesConfig {
                 htmlContentParser,
                 scanSpaceStatsCollector,
                 pageConcurrency,
-                discoveredLabelCollector
+                discoveredLabelCollector,
+                scanTimeFalsePositiveSuppressor
         );
     }
 

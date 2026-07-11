@@ -7,6 +7,7 @@ import pro.softcom.aisentinel.application.pii.reporting.service.ContentScanOrche
 import pro.softcom.aisentinel.application.pii.reporting.service.DiscoveredLabelCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.ScanSpaceStatsCollector;
 import pro.softcom.aisentinel.application.pii.reporting.service.parser.HtmlContentParser;
+import pro.softcom.aisentinel.application.pii.remediation.service.ScanTimeFalsePositiveSuppressor;
 import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
 
 /**
@@ -29,6 +30,9 @@ import pro.softcom.aisentinel.application.pii.scan.port.out.PiiDetectorClient;
  * @param discoveredLabelCollector  accumulates open-vocabulary MINISTRAL labels dropped for
  *                                  lacking a config; {@code null} disables label discovery
  *                                  (used by tests that do not exercise it)
+ * @param falsePositiveSuppressor   drops detections already flagged false positive before they
+ *                                  reach any store or the live view; {@code null} disables
+ *                                  scan-time suppression (used by tests that do not exercise it)
  */
 public record ScanPipelineDependencies(
     ConfluenceAccessor confluenceAccessor,
@@ -39,12 +43,14 @@ public record ScanPipelineDependencies(
     HtmlContentParser htmlContentParser,
     ScanSpaceStatsCollector scanSpaceStatsCollector,
     int pageConcurrency,
-    DiscoveredLabelCollector discoveredLabelCollector
+    DiscoveredLabelCollector discoveredLabelCollector,
+    ScanTimeFalsePositiveSuppressor falsePositiveSuppressor
 ) {
 
     /**
      * Backward-compatible constructor keeping the configured page concurrency but without
-     * label discovery. Kept so existing call sites (tests) compile unchanged.
+     * label discovery or scan-time false-positive suppression. Kept so existing call sites
+     * (tests) compile unchanged.
      */
     public ScanPipelineDependencies(
         ConfluenceAccessor confluenceAccessor,
@@ -57,14 +63,15 @@ public record ScanPipelineDependencies(
         int pageConcurrency
     ) {
         this(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor,
-             scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, pageConcurrency, null);
+             scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, pageConcurrency, null, null);
     }
 
     /**
      * Backward-compatible constructor defaulting page concurrency to 1
      * (sequential page processing — the historical behaviour) and disabling label
-     * discovery. Kept so existing call sites (tests) compile unchanged; production wiring uses
-     * the canonical constructor with the configured value.
+     * discovery and scan-time false-positive suppression. Kept so existing call sites (tests)
+     * compile unchanged; production wiring uses the canonical constructor with the configured
+     * value, the label collector and the suppressor.
      */
     public ScanPipelineDependencies(
         ConfluenceAccessor confluenceAccessor,
@@ -76,6 +83,6 @@ public record ScanPipelineDependencies(
         ScanSpaceStatsCollector scanSpaceStatsCollector
     ) {
         this(confluenceAccessor, piiDetectorClient, contentScanOrchestrator, attachmentProcessor,
-             scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, 1, null);
+             scanTimeoutConfig, htmlContentParser, scanSpaceStatsCollector, 1, null, null);
     }
 }

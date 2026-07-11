@@ -58,8 +58,6 @@ class FindingReferenceTest {
                         .as("pageId").isNotEqualTo(baseId);
                 softly.assertThat(reference().attachmentName("report.pdf").build().findingId())
                         .as("attachmentName").isNotEqualTo(baseId);
-                softly.assertThat(reference().detector("REGEX").build().findingId())
-                        .as("detector").isNotEqualTo(baseId);
                 softly.assertThat(reference().piiType("PHONE_NUMBER").build().findingId())
                         .as("piiType").isNotEqualTo(baseId);
                 softly.assertThat(reference().valueFingerprint("ffffff").build().findingId())
@@ -78,6 +76,18 @@ class FindingReferenceTest {
                     .findingId();
 
             assertThat(recalibratedId).isEqualTo(baseId);
+        }
+
+        @Test
+        @DisplayName("Should_KeepSameId_When_OnlyDetectorDiffers")
+        void Should_KeepSameId_When_OnlyDetectorDiffers() {
+            // A false positive must stay suppressed whichever detector re-surfaces the same
+            // value at the same location on a later scan, so detector never affects identity.
+            String presidioId = reference().detector("PRESIDIO").build().findingId();
+
+            String regexId = reference().detector("REGEX").build().findingId();
+
+            assertThat(regexId).isEqualTo(presidioId);
         }
 
         @Test
