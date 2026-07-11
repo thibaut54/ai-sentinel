@@ -18,9 +18,9 @@ public record ConfluenceContentScanResult(
     Integer pageIndex,
     String pageId,
     String pageTitle,
-    List<DetectedPersonallyIdentifiableInformation> detectedPIIList,
-    Map<String, Integer> nbOfDetectedPIIBySeverity,// Severity-based counts (high, medium, low) for badges
-    Map<String, Integer> nbOfDetectedPIIByType,// PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item details
+    List<DetectedPersonallyIdentifiableInformation> detectedPIIs,
+    Map<String, Integer> detectedPiiCountBySeverity,// Severity-based counts (high, medium, low) for badges
+    Map<String, Integer> detectedPiiCountByType,// PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item details
     @JsonIgnore String sourceContent,
     String maskedContent,
     String message,

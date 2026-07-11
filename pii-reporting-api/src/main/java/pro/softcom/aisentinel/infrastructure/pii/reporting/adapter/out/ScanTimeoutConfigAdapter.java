@@ -20,7 +20,7 @@ public class ScanTimeoutConfigAdapter implements ScanTimeOutConfig {
     private final ScanTimeoutConfig springConfig;
 
     @Override
-    public Duration getPiiDetection() {
-        return springConfig.getPiiDetection();
+    public Duration getPiiDetectionTimeout() {
+        return springConfig.getPiiDetectionTimeout();
     }
 }

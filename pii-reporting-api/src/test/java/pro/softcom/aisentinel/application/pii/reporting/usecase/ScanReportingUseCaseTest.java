@@ -214,7 +214,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(1L)
             .spaceKey("SPACE-A")
             .eventType("item")
-            .ts(now)
+            .occurredAt(now)
             .pageId("page-1")
             .pageTitle("Page 1")
             .payload(payload)
@@ -253,7 +253,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(1L)
             .spaceKey("SPACE-1")
             .eventType("item")
-            .ts(now)
+            .occurredAt(now)
             .pageId("page-1")
             .pageTitle("Page 1")
             .payload(payload)
@@ -297,7 +297,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(1L)
             .spaceKey("SPACE-A")
             .eventType("pageComplete")
-            .ts(event1Ts)
+            .occurredAt(event1Ts)
             .pageId("page-1")
             .pageTitle("Page 1")
             .payload(payload1)
@@ -309,7 +309,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(2L)
             .spaceKey("SPACE-A")
             .eventType("pageComplete")
-            .ts(event1Ts)
+            .occurredAt(event1Ts)
             .pageId("page-2")
             .pageTitle("Page 2")
             .payload(payload1)
@@ -326,7 +326,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(3L)
             .spaceKey("SPACE-A")
             .eventType("attachmentItem")
-            .ts(event1Ts)
+            .occurredAt(event1Ts)
             .pageId("page-1")
             .attachmentName("Attachment 1")
             .attachmentType("application/pdf")
@@ -355,7 +355,7 @@ class ScanReportingUseCaseTest {
             .eventSeq(4L)
             .spaceKey("SPACE-B")
             .eventType("pageComplete")
-            .ts(event2Ts)
+            .occurredAt(event2Ts)
             .pageId("page-b1")
             .pageTitle("Page B1")
             .payload(payload2)
@@ -381,7 +381,7 @@ class ScanReportingUseCaseTest {
 
         SoftAssertions softly = new SoftAssertions();
         
-        // Verify nbOfDetectedPIIBySeverity metadata
+        // Verify summary metadata
         softly.assertThat(scanSummary.scanId()).isEqualTo(scanId);
         softly.assertThat(scanSummary.spacesCount()).isEqualTo(2);
         softly.assertThat(scanSummary.lastUpdated()).isEqualTo(event2Ts);
@@ -389,7 +389,7 @@ class ScanReportingUseCaseTest {
         // Verify spaces list
         softly.assertThat(scanSummary.spaces()).hasSize(2);
         
-        // Find SPACE-A in nbOfDetectedPIIBySeverity
+        // Find SPACE-A in summary
         var spaceA = scanSummary.spaces().stream()
             .filter(s -> "SPACE-A".equals(s.spaceKey()))
             .findFirst()
@@ -409,7 +409,7 @@ class ScanReportingUseCaseTest {
         softly.assertThat(spaceA.attachmentsDone())
             .as("SPACE-A attachments count from events").isOne();
         
-        // Find SPACE-B in nbOfDetectedPIIBySeverity
+        // Find SPACE-B in summary
         var spaceB = scanSummary.spaces().stream()
             .filter(s -> "SPACE-B".equals(s.spaceKey()))
             .findFirst()
@@ -445,7 +445,7 @@ class ScanReportingUseCaseTest {
 
         ScanEventEntity event1 = ScanEventEntity.builder()
             .scanId(scanId1).eventSeq(1L).spaceKey("SPACE-A").eventType("pageComplete")
-            .ts(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
+            .occurredAt(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
         detectionEventRepository.save(event1);
 
         // Scan 1 checkpoint for Space A
@@ -467,7 +467,7 @@ class ScanReportingUseCaseTest {
 
         ScanEventEntity event2 = ScanEventEntity.builder()
             .scanId(scanId2).eventSeq(1L).spaceKey("SPACE-B").eventType("pageComplete")
-            .ts(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
+            .occurredAt(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
         detectionEventRepository.save(event2);
 
         // Scan 2 checkpoint for Space B
@@ -513,7 +513,7 @@ class ScanReportingUseCaseTest {
 
         ScanEventEntity event1 = ScanEventEntity.builder()
             .scanId(scanId1).eventSeq(1L).spaceKey("SPACE-A").eventType("item")
-            .ts(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
+            .occurredAt(ts1).pageId("p1").pageTitle("Page 1").payload(payload1).build();
         detectionEventRepository.save(event1);
 
         ScanCheckpoint cp1 = ScanCheckpoint.builder()
@@ -534,7 +534,7 @@ class ScanReportingUseCaseTest {
 
         ScanEventEntity event2 = ScanEventEntity.builder()
             .scanId(scanId2).eventSeq(1L).spaceKey("SPACE-B").eventType("item")
-            .ts(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
+            .occurredAt(ts2).pageId("p2").pageTitle("Page 2").payload(payload2).build();
         detectionEventRepository.save(event2);
 
         ScanCheckpoint cp2 = ScanCheckpoint.builder()

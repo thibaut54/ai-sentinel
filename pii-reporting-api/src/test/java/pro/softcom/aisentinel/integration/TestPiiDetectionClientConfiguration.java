@@ -121,7 +121,7 @@ public class TestPiiDetectionClientConfiguration {
         }
 
         private static String ctx(int start, int end) {
-            return "Detected at position " + start + "-" + end;
+            return "Detected at startingPosition " + start + "-" + end;
         }
         
         /**

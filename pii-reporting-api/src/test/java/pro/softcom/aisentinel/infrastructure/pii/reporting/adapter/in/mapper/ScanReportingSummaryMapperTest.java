@@ -160,9 +160,9 @@ class ScanReportingSummaryMapperTest {
         ScanReportingSummaryDto result = mapper.toDto(summary);
 
         // Then
-        assertThat(result.facets().piiTypes().get("EMAIL").nbSpaces()).isEqualTo(3);
+        assertThat(result.facets().piiTypes().get("EMAIL").spaceCount()).isEqualTo(3);
         assertThat(result.facets().piiTypes().get("EMAIL").totalOccurrences()).isEqualTo(12);
-        assertThat(result.facets().severities().get("HIGH").nbSpaces()).isEqualTo(2);
+        assertThat(result.facets().severities().get("HIGH").spaceCount()).isEqualTo(2);
         assertThat(result.facets().statuses().get("OK").totalOccurrences()).isEqualTo(17);
     }
 

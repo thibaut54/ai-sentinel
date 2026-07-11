@@ -136,7 +136,7 @@ class ContentScanOrchestratorTest {
                     .spaceKey(spaceKey)
                     .eventType("item")
                     .pageId("page-1")
-                    .detectedPIIList(detectedEntities)
+                    .detectedPIIs(detectedEntities)
                     .analysisProgressPercentage(50.0)
                     .build();
 
@@ -167,7 +167,7 @@ class ContentScanOrchestratorTest {
                     .spaceKey(spaceKey)
                     .eventType("item")
                     .pageId("page-1")
-                    .nbOfDetectedPIIByType(typeCounts)
+                    .detectedPiiCountByType(typeCounts)
                     .analysisProgressPercentage(50.0)
                     .build();
 
@@ -187,7 +187,7 @@ class ContentScanOrchestratorTest {
                     .spaceKey("EMPTY")
                     .eventType("item")
                     .pageId("page-1")
-                    .nbOfDetectedPIIByType(Map.of())
+                    .detectedPiiCountByType(Map.of())
                     .analysisProgressPercentage(50.0)
                     .build();
 

@@ -81,7 +81,7 @@ class ConfluenceSpaceCacheRefreshServiceTest {
         when(confluenceClient.getAllSpaces()).thenReturn(CompletableFuture.completedFuture(List.of(s1, s2)));
 
         // Act
-        refreshService.saveNewConfluenceSpaces();
+        refreshService.refreshConfluenceSpacesCache();
 
         // Assert
         List<ConfluenceSpaceEntity> all = jpaRepository.findAllByOrderByNameAsc();

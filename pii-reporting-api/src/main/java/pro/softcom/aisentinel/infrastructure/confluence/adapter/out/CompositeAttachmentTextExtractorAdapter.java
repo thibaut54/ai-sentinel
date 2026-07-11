@@ -29,18 +29,18 @@ public class CompositeAttachmentTextExtractorAdapter implements AttachmentTextEx
         if (info == null || bytes == null || bytes.length == 0) {
             return Optional.empty();
         }
-        for (AttachmentTextExtractionStrategy ex : extractors) {
+        for (AttachmentTextExtractionStrategy extractionStrategy : extractors) {
             try {
-                if (!ex.supports(info)) {
+                if (!extractionStrategy.supports(info)) {
                     continue;
                 }
-                Optional<String> text = ex.extract(info, bytes);
+                Optional<String> text = extractionStrategy.extract(info, bytes);
                 if (text.isPresent()) {
                     return text;
                 }
             } catch (Exception e) {
                 // Keep processing with next extractor while preserving stacktrace for diagnostics
-                log.warn("Extractor {} failed for '{}'", ex.getClass().getSimpleName(), info.name(), e);
+                log.warn("Extractor {} failed for '{}'", extractionStrategy.getClass().getSimpleName(), info.name(), e);
             }
         }
         return Optional.empty();

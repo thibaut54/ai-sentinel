@@ -282,9 +282,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ProblemDetail problemWith(HttpStatus status, String title, String errorKey) {
-        ProblemDetail pd = ProblemDetail.forStatus(status);
-        pd.setTitle(title);
-        pd.setProperty("errorKey", errorKey);
-        return pd;
+        ProblemDetail problemDetail = ProblemDetail.forStatus(status);
+        problemDetail.setTitle(title);
+        problemDetail.setProperty("errorKey", errorKey);
+        return problemDetail;
     }
 }

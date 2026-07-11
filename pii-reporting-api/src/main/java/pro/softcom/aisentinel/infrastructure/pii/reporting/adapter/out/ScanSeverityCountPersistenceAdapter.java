@@ -70,9 +70,9 @@ public class ScanSeverityCountPersistenceAdapter implements ScanSeverityCountRep
      */
     private SeverityCounts toDomainCounts(ScanSeverityCountEntity entity) {
         return new SeverityCounts(
-            entity.getNbOfHighSeverity(),
-            entity.getNbOfMediumSeverity(),
-            entity.getNbOfLowSeverity()
+            entity.getHighSeverityCount(),
+            entity.getMediumSeverityCount(),
+            entity.getLowSeverityCount()
         );
     }
 

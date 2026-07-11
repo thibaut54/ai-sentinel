@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Service responsible for generating monotonic event IDs for scan events.
- * Business intent: Assigns unique, sequential IDs to each event in a scan stream,
+ * Business intent: Assigns unique, sequential IDs to each event in a scan fetchItemsInOrder,
  * enabling clients to track which events they've received and support reconnection
  * with event replay via the Last-Event-ID mechanism.
  * Thread-safe: Uses ConcurrentHashMap and AtomicLong for safe concurrent access.

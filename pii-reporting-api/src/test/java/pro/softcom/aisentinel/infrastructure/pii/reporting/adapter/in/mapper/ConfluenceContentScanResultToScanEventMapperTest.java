@@ -39,8 +39,8 @@ class ConfluenceContentScanResultToScanEventMapperTest {
                 .pageIndex(3)
                 .pageId("pid")
                 .pageTitle("Title")
-                .detectedPIIList(entities)
-                .nbOfDetectedPIIBySeverity(summary)
+                .detectedPIIs(entities)
+                .detectedPiiCountBySeverity(summary)
                 .sourceContent("abc")
                 .message("msg")
                 .pageUrl("url")
@@ -64,8 +64,8 @@ class ConfluenceContentScanResultToScanEventMapperTest {
         softly.assertThat(dto.pageIndex()).isEqualTo(3);
         softly.assertThat(dto.pageId()).isEqualTo("pid");
         softly.assertThat(dto.pageTitle()).isEqualTo("Title");
-        softly.assertThat(dto.detectedPIIList()).isEqualTo(entities);
-        softly.assertThat(dto.nbOfDetectedPIIBySeverity()).isEqualTo(summary);
+        softly.assertThat(dto.detectedPIIs()).isEqualTo(entities);
+        softly.assertThat(dto.detectedPiiCountBySeverity()).isEqualTo(summary);
         softly.assertThat(dto.message()).isEqualTo("msg");
         softly.assertThat(dto.pageUrl()).isEqualTo("url");
         softly.assertThat(dto.emittedAt()).isEqualTo("emittedAt");

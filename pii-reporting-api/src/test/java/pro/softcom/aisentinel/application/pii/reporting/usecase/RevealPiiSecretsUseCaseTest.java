@@ -173,7 +173,7 @@ class RevealPiiSecretsUseCaseTest {
             .eventType("item")
             .pageId(pageId)
             .pageTitle("Page 1")
-            .detectedPIIList(List.of(entity))
+            .detectedPIIs(List.of(entity))
             .build();
 
         ObjectNode payload = objectMapper.valueToTree(confluenceContentScanResult);
@@ -183,7 +183,7 @@ class RevealPiiSecretsUseCaseTest {
             .eventSeq(1L)
             .spaceKey("SPACE-1")
             .eventType("item")
-            .ts(Instant.parse("2024-01-01T10:00:00Z"))
+            .occurredAt(Instant.parse("2024-01-01T10:00:00Z"))
             .pageId(pageId)
             .pageTitle("Page 1")
             .payload(payload)

@@ -356,7 +356,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
 
     private Instant mostRecentTimestamp(List<SpaceSummary> spaces) {
         return spaces.stream()
-            .map(SpaceSummary::lastEventTs)
+            .map(SpaceSummary::lastEventAt)
             .filter(Objects::nonNull)
             .max(Instant::compareTo)
             .orElse(Instant.now());

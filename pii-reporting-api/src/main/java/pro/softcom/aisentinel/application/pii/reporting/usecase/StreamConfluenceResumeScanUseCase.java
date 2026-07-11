@@ -106,7 +106,7 @@ public class StreamConfluenceResumeScanUseCase extends
                     confluenceAccessor.getAllPagesInSpace(space.key()))
                 .flatMapMany(pages -> {
                     ScanRemainingPages scanRemainingPages =
-                        ScanRemainingPagesCalculator.computeRemainPages(pages,
+                        ScanRemainingPagesCalculator.computeScanRemainingPages(pages,
                                                                         scanCheckpoint);
                     if (scanRemainingPages.remaining().isEmpty()) {
                         return Flux.empty();

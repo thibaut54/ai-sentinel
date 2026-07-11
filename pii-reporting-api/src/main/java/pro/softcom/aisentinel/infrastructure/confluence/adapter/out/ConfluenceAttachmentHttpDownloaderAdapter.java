@@ -63,7 +63,7 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
     }
 
     public CompletableFuture<Optional<byte[]>> downloadAttachmentContent(String pageId, String attachmentTitle) {
-        long time = System.currentTimeMillis();
+        long downloadStartTime = System.currentTimeMillis();
         if (pageId == null || pageId.isBlank() || attachmentTitle == null || attachmentTitle.isBlank()) {
             return CompletableFuture.completedFuture(Optional.empty());
         }
@@ -92,7 +92,7 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
                     return CompletableFuture.completedFuture(Optional.empty());
                 }
                 final CompletableFuture<Optional<byte[]>> optionalCompletableFuture = processDownloadFromResults(pageId, attachmentTitle, results);
-                log.info("downloadAttachmentContent took {} ms", System.currentTimeMillis() - time);
+                log.info("downloadAttachmentContent took {} ms", System.currentTimeMillis() - downloadStartTime);
                 return optionalCompletableFuture;
             } catch (Exception e) {
                 log.error("Erreur parsing JSON des pièces jointes pour page {}", pageId, e);
@@ -193,15 +193,15 @@ public class ConfluenceAttachmentHttpDownloaderAdapter implements ConfluenceAtta
         if (isBlank(downloadPath)) {
             return URI.create(buildNormalizedBaseUrl(base));
         }
-        String dp = downloadPath.trim();
-        if (dp.startsWith("http://") || dp.startsWith("https://")) {
-            return URI.create(dp);
+        String formattedDownloadPath = downloadPath.trim();
+        if (formattedDownloadPath.startsWith("http://") || formattedDownloadPath.startsWith("https://")) {
+            return URI.create(formattedDownloadPath);
         }
         String normalizedBase = buildNormalizedBaseUrl(base);
-        if (!dp.startsWith("/")) {
+        if (!formattedDownloadPath.startsWith("/")) {
             normalizedBase += "/";
         }
-        return URI.create(normalizedBase + dp);
+        return URI.create(normalizedBase + formattedDownloadPath);
     }
 
     private HttpRequest buildDownloadRequest(URI uri) {

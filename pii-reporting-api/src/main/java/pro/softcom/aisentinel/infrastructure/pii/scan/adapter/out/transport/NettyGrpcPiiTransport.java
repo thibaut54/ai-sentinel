@@ -87,10 +87,10 @@ public class NettyGrpcPiiTransport implements PiiGrpcTransport {
     }
 
     private PiiDetection.PIIDetectionResponse retryOnceWithFreshChannel(String content, float threshold, long timeoutMs) {
-        ManagedChannel tmp = null;
+        ManagedChannel piiDetectionChannel = null;
         try {
             Thread.sleep(200L);
-            tmp = ManagedChannelBuilder.forAddress(normalizeHost(config.host()), config.port())
+            piiDetectionChannel = ManagedChannelBuilder.forAddress(normalizeHost(config.host()), config.port())
                     .usePlaintext()
                     .keepAliveTime(30, TimeUnit.SECONDS)
                     .keepAliveTimeout(5, TimeUnit.SECONDS)
@@ -99,20 +99,20 @@ public class NettyGrpcPiiTransport implements PiiGrpcTransport {
                     .enableRetry()
                     .maxRetryAttempts(3)
                     .build();
-            PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub s = PIIDetectionServiceGrpc.newBlockingStub(tmp);
+            PIIDetectionServiceGrpc.PIIDetectionServiceBlockingStub piiDetectionStub = PIIDetectionServiceGrpc.newBlockingStub(piiDetectionChannel);
             PiiDetection.PIIDetectionRequest req = PiiDetection.PIIDetectionRequest.newBuilder()
                     .setContent(content == null ? "" : content)
                     .setThreshold(threshold)
                     .setFetchConfigFromDb(true)
                     .build();
-            return s.withDeadlineAfter(timeoutMs, TimeUnit.MILLISECONDS).detectPII(req);
+            return piiDetectionStub.withDeadlineAfter(timeoutMs, TimeUnit.MILLISECONDS).detectPII(req);
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new StatusRuntimeException(io.grpc.Status.CANCELLED.withDescription("Interrupted during retry"));
         } finally {
-            if (tmp != null) {
+            if (piiDetectionChannel != null) {
                 try {
-                    tmp.shutdown().awaitTermination(3, TimeUnit.SECONDS);
+                    piiDetectionChannel.shutdown().awaitTermination(3, TimeUnit.SECONDS);
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }

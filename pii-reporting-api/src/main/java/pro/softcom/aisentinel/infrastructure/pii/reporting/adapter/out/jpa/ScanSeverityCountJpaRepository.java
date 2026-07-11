@@ -40,9 +40,9 @@ public interface ScanSeverityCountJpaRepository extends
      * When a record already exists (composite key conflict on scan_id + space_key),
      * atomically adds the delta values to the existing counts:
      * <ul>
-     *   <li><strong>nb_of_high_severity:</strong> Incremented by deltaHigh</li>
-     *   <li><strong>nb_of_medium_severity:</strong> Incremented by deltaMedium</li>
-     *   <li><strong>nb_of_low_severity:</strong> Incremented by deltaLow</li>
+     *   <li><strong>high_severity_count:</strong> Incremented by deltaHigh</li>
+     *   <li><strong>medium_severity_count:</strong> Incremented by deltaMedium</li>
+     *   <li><strong>low_severity_count:</strong> Incremented by deltaLow</li>
      * </ul>
      * 
      * <p><strong>Concurrency Safety:</strong>
@@ -71,12 +71,12 @@ public interface ScanSeverityCountJpaRepository extends
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query(value = """
-        INSERT INTO scan_severity_counts (scan_id, space_key, nb_of_high_severity, nb_of_medium_severity, nb_of_low_severity)
+        INSERT INTO scan_severity_counts (scan_id, space_key, high_severity_count, medium_severity_count, low_severity_count)
         VALUES (:scanId, :spaceKey, :deltaHigh, :deltaMedium, :deltaLow)
         ON CONFLICT (scan_id, space_key) DO UPDATE
-        SET nb_of_high_severity = scan_severity_counts.nb_of_high_severity + :deltaHigh,
-            nb_of_medium_severity = scan_severity_counts.nb_of_medium_severity + :deltaMedium,
-            nb_of_low_severity = scan_severity_counts.nb_of_low_severity + :deltaLow
+        SET high_severity_count = scan_severity_counts.high_severity_count + :deltaHigh,
+            medium_severity_count = scan_severity_counts.medium_severity_count + :deltaMedium,
+            low_severity_count = scan_severity_counts.low_severity_count + :deltaLow
         """, nativeQuery = true)
     void incrementCounts(@Param("scanId") String scanId,
                          @Param("spaceKey") String spaceKey,

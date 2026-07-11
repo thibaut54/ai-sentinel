@@ -270,7 +270,7 @@ class PiiMaskingUtilsTest {
         @DisplayName("Should_PreserveTextBetweenEntities_When_EntitiesAreNotContiguous")
         void Should_PreserveTextBetweenEntities_When_EntitiesAreNotContiguous() {
             // Given
-            String source = "Start EMAIL middle PHONE end";
+            String source = "Start EMAIL middle PHONE endingPosition";
             List<DetectedPersonallyIdentifiableInformation> entities = List.of(
                     createEntity(6, 11, "EMAIL"),
                     createEntity(19, 24, "PHONE")
@@ -280,7 +280,7 @@ class PiiMaskingUtilsTest {
             String result = PiiMaskingUtils.buildMaskedContent(source, entities, 200);
 
             // Then
-            assertThat(result).isEqualTo("Start [EMAIL] middle [PHONE] end");
+            assertThat(result).isEqualTo("Start [EMAIL] middle [PHONE] endingPosition");
         }
 
         @Test

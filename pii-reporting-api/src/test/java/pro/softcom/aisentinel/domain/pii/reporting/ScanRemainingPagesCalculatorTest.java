@@ -32,7 +32,7 @@ class ScanRemainingPagesCalculatorTest {
     }
 
     @Nested
-    @DisplayName("computeRemainPages - nominal cases")
+    @DisplayName("computeScanRemainingPages - nominal cases")
     class ComputeRemainPagesNominal {
 
         @Test
@@ -42,7 +42,7 @@ class ScanRemainingPagesCalculatorTest {
             List<ConfluencePage> pages = List.of(page("p1"), page("p2"), page("p3"));
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, null);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, null);
 
             // Assert
             assertSoftly(softly -> {
@@ -60,7 +60,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanCheckpoint cp = checkpoint("p1", null, ScanStatus.COMPLETED);
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, cp);
 
             // Assert
             assertSoftly(softly -> {
@@ -77,7 +77,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanCheckpoint cp = checkpoint("p2", null, ScanStatus.RUNNING);
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, cp);
 
             // Assert
             assertSoftly(softly -> {
@@ -96,7 +96,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanCheckpoint cp = checkpoint("p2", "attachment.pdf", ScanStatus.RUNNING);
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, cp);
 
             // Assert
             assertSoftly(softly -> {
@@ -111,7 +111,7 @@ class ScanRemainingPagesCalculatorTest {
         @DisplayName("Should_ReturnEmptyList_When_PagesListIsNull")
         void Should_ReturnEmptyList_When_PagesListIsNull() {
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(null, null);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(null, null);
 
             // Assert
             assertSoftly(softly -> {
@@ -208,7 +208,7 @@ class ScanRemainingPagesCalculatorTest {
             List<ConfluencePage> pages = List.of(page("p1"), page("p2"));
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, null);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, null);
 
             // Assert
             assertThat(result.analyzedOffset()).isZero();
@@ -222,7 +222,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanCheckpoint cp = checkpoint("unknown", null, ScanStatus.RUNNING);
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, cp);
 
             // Assert
             assertThat(result.analyzedOffset()).isZero();
@@ -237,7 +237,7 @@ class ScanRemainingPagesCalculatorTest {
             ScanCheckpoint cp = checkpoint("p1", "file.pdf", ScanStatus.RUNNING);
 
             // Act
-            ScanRemainingPages result = ScanRemainingPagesCalculator.computeRemainPages(pages, cp);
+            ScanRemainingPages result = ScanRemainingPagesCalculator.computeScanRemainingPages(pages, cp);
 
             // Assert: offset must not go negative
             assertThat(result.analyzedOffset()).isGreaterThanOrEqualTo(0);

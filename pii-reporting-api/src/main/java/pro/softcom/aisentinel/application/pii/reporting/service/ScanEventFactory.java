@@ -118,9 +118,9 @@ public class ScanEventFactory {
             .isFinal(true)
             .pageId(page.id())
             .pageTitle(page.title())
-            .detectedPIIList(List.of())
-            .nbOfDetectedPIIBySeverity(Map.of())
-            .nbOfDetectedPIIByType(Map.of())
+            .detectedPIIs(List.of())
+            .detectedPiiCountBySeverity(Map.of())
+            .detectedPiiCountByType(Map.of())
             .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
             .analysisProgressPercentage(progress)
@@ -148,9 +148,9 @@ public class ScanEventFactory {
             .isFinal(true)
             .pageId(page.id())
             .pageTitle(page.title())
-            .detectedPIIList(entities)
-            .nbOfDetectedPIIBySeverity(summary)
-            .nbOfDetectedPIIByType(piiTypeSummary)
+            .detectedPIIs(entities)
+            .detectedPiiCountBySeverity(summary)
+            .detectedPiiCountByType(piiTypeSummary)
             .sourceContent(content)
             .pageUrl(buildPageUrl(spaceKey, page.id()))
             .emittedAt(Instant.now().toString())
@@ -180,9 +180,9 @@ public class ScanEventFactory {
             .isFinal(true)
             .pageId(page.id())
             .pageTitle(page.title())
-            .detectedPIIList(entities)
-            .nbOfDetectedPIIBySeverity(summary)
-            .nbOfDetectedPIIByType(piiTypeSummary)
+            .detectedPIIs(entities)
+            .detectedPiiCountBySeverity(summary)
+            .detectedPiiCountByType(piiTypeSummary)
             .sourceContent(content)
             .pageUrl(buildAttachmentsUrl(spaceKey, page.id()))
             .attachmentName(attachment.name())
@@ -244,19 +244,19 @@ public class ScanEventFactory {
 
         // DIAGNOSTIC: Verify positions against source content (redacted values only)
         if (sourceContent != null
-                && data.position() >= 0
-                && data.position() <= sourceContent.length()
-                && data.end() >= data.position()
-                && data.end() <= sourceContent.length()) {
-            String actualSlice = sourceContent.substring(data.position(), data.end());
+                && data.startingPosition() >= 0
+                && data.startingPosition() <= sourceContent.length()
+                && data.endingPosition() >= data.startingPosition()
+                && data.endingPosition() <= sourceContent.length()) {
+            String actualSlice = sourceContent.substring(data.startingPosition(), data.endingPosition());
             if (!actualSlice.equals(data.value())) {
                 log.debug("JAVA POSITION MISMATCH: type={} | value={} | content[{}:{}]={} | source={}",
                     data.type(), PiiContextExtractor.redactValue(data.value()),
-                    data.position(), data.end(), PiiContextExtractor.redactValue(actualSlice),
+                    data.startingPosition(), data.endingPosition(), PiiContextExtractor.redactValue(actualSlice),
                     data.source());
             } else {
-                log.debug("JAVA POSITION OK: type={} | position=[{}:{}] | source={}",
-                    data.type(), data.position(), data.end(), data.source());
+                log.debug("JAVA POSITION OK: type={} | startingPosition=[{}:{}] | source={}",
+                    data.type(), data.startingPosition(), data.endingPosition(), data.source());
             }
         }
 
@@ -267,21 +267,21 @@ public class ScanEventFactory {
             detection == null || detection.sensitiveDataFound() == null ? List.of() :
                 detection.sensitiveDataFound().stream()
                     .map(sd -> DetectedPersonallyIdentifiableInformation.builder()
-                            .startPosition(sd.position())
-                            .endPosition(sd.end())
+                            .startPosition(sd.startingPosition())
+                            .endPosition(sd.endingPosition())
                             .piiType(sd.type())
                             .build())
                     .toList();
 
         // Extract masked context (for immediate display, stored in clear)
         String maskedContext = piiContextExtractor.extractMaskedContext(sourceContent,
-                                                                        data.position(), data.end(),
+                                                                        data.startingPosition(), data.endingPosition(),
                                                                         type, all);
 
         // Extract real context (contains actual PII values, will be encrypted)
         String sensitiveContext = piiContextExtractor.extractSensitiveContext(sourceContent,
-                                                                              data.position(),
-                                                                              data.end());
+                                                                              data.startingPosition(),
+                                                                              data.endingPosition());
 
         return DetectedPersonallyIdentifiableInformation.builder()
             .sensitiveContext(sensitiveContext)
@@ -290,15 +290,15 @@ public class ScanEventFactory {
             .valueFingerprint(valueFingerprintCalculator.fingerprint(data.value()))
             .piiType(type)
             .piiTypeLabel(typeLabel)
-            .startPosition(data.position())
-            .endPosition(data.end())
-            .confidence(data.score())
+            .startPosition(data.startingPosition())
+            .endPosition(data.endingPosition())
+            .confidence(data.confidenceScore())
             .source(data.source())
             .build();
     }
 
     /**
-     * Calculates severity nbOfDetectedPIIBySeverity from detected PII entities. Business intent:
+     * Calculates the severity count summary from detected PII entities. Business intent:
      * Provide severity-based counts (high, medium, low) for SSE real-time display. This ensures
      * consistency between SSE streaming and persisted data.
      *
@@ -324,7 +324,7 @@ public class ScanEventFactory {
     }
 
     /**
-     * Calculates PII type nbOfDetectedPIIBySeverity from detected PII entities. Business intent:
+     * Calculates the PII type count summary from detected PII entities. Business intent:
      * Provide PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item detail display.
      *
      * @param entities List of detected PII entities

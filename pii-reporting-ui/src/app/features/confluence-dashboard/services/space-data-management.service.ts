@@ -189,7 +189,7 @@ export class SpaceDataManagementService {
             status: space.status,
             pagesDone: space.pagesDone,
             attachmentsDone: space.attachmentsDone,
-            lastEventTs: space.lastEventTs,
+            lastEventAt: space.lastEventAt,
             progressPercentage: space.progressPercentage ?? undefined,
             scanId: space.scanId
           }));
@@ -200,7 +200,7 @@ export class SpaceDataManagementService {
             const uiStatus = mapBackendStatusToUi(spaceSummary.status);
             this.spacesDashboardUtils.updateSpace(spaceSummary.spaceKey, {
               status: uiStatus,
-              lastScanTs: spaceSummary.lastEventTs
+              lastScanTs: spaceSummary.lastEventAt
             });
 
             // CRITICAL: Always use progress from checkpoint (authoritative source)
@@ -315,7 +315,7 @@ export class SpaceDataManagementService {
       const uiStatus = mapBackendStatusToUi(s.status);
       this.spacesDashboardUtils.updateSpace(s.spaceKey, {
         status: uiStatus,
-        lastScanTs: s.lastEventTs
+        lastScanTs: s.lastEventAt
       });
 
       if (s.status === 'COMPLETED') {

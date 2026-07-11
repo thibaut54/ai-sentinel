@@ -79,7 +79,7 @@ public class PiiAccessController {
     ) {}
 
     /**
-     * DTO for a single revealed secret with position information.
+     * DTO for a single revealed secret with startingPosition information.
      */
     public record RevealedSecretDto(
             int startPosition,

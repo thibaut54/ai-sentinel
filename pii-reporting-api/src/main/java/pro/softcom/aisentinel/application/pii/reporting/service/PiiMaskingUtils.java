@@ -68,7 +68,7 @@ public final class PiiMaskingUtils {
     }
 
     /**
-     * Sorts PII entities by their start position in ascending order.
+     * Sorts PII entities by their start startingPosition in ascending order.
      *
      * @param entities the entities to sort
      * @return a new sorted list of entities
@@ -81,10 +81,10 @@ public final class PiiMaskingUtils {
 
     /**
      * Masks all PII entities in the source by replacing their values with type tokens.
-     * Entities must be sorted by position before calling this method.
+     * Entities must be sorted by startingPosition before calling this method.
      *
      * @param source         the source content
-     * @param sortedEntities the entities sorted by start position
+     * @param sortedEntities the entities sorted by start startingPosition
      * @return the source content with all PII values replaced by tokens
      */
     private static String maskEntitiesInSource(String source, List<DetectedPersonallyIdentifiableInformation> sortedEntities) {

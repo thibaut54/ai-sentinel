@@ -21,7 +21,7 @@ export interface SpaceScanStateDto {
   status: string;
   pagesDone: number;
   attachmentsDone: number;
-  lastEventTs: string;
+  lastEventAt: string;
   progressPercentage?: number;
   /** Scan id of the space's latest checkpoint (absent/null if never scanned). */
   scanId?: string;
@@ -33,7 +33,7 @@ export interface SpaceSummaryDto {
   progressPercentage: number | null;
   pagesDone: number;
   attachmentsDone: number;
-  lastEventTs: string;
+  lastEventAt: string;
   severityCounts: { high: number; medium: number; low: number; total: number; } | null;
   /** Scan id of the space's latest checkpoint (absent/null if never scanned). */
   scanId?: string;
@@ -48,7 +48,7 @@ export interface SpaceSummaryDto {
 
 /** Bi-level facet counter for one filter option (server-computed, contextual). */
 export interface FacetCount {
-  nbSpaces: number;
+  spaceCount: number;
   totalOccurrences: number;
 }
 

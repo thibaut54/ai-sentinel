@@ -11,7 +11,7 @@ import pro.softcom.aisentinel.domain.pii.security.EncryptionService;
 import java.util.List;
 
 /**
- * Processor for encrypting/decrypting detectedPIIList in ScanResult.
+ * Processor for encrypting/decrypting detectedPIIs in ScanResult.
  * Business intent: orchestrate PII encryption in the business flow.
  */
 @RequiredArgsConstructor
@@ -31,7 +31,7 @@ public class ScanResultEncryptor {
      */
     public ConfluenceContentScanResult encrypt(
         ConfluenceContentScanResult confluenceContentScanResult) {
-        var entities = confluenceContentScanResult.detectedPIIList();
+        var entities = confluenceContentScanResult.detectedPIIs();
         if (entities == null) {
             return confluenceContentScanResult;
         }
@@ -39,7 +39,7 @@ public class ScanResultEncryptor {
         try {
             var encryptedEntities = encryptEntities(entities);
             return confluenceContentScanResult.toBuilder()
-                    .detectedPIIList(encryptedEntities)
+                    .detectedPIIs(encryptedEntities)
                     .build();
         } catch (EncryptionException e) {
             log.error("Failed to encrypt PII entities for scanId={}, entityCount={}",
@@ -58,7 +58,7 @@ public class ScanResultEncryptor {
      */
     public ConfluenceContentScanResult decrypt(
         ConfluenceContentScanResult confluenceContentScanResult) {
-        var entities = confluenceContentScanResult.detectedPIIList();
+        var entities = confluenceContentScanResult.detectedPIIs();
         if (entities == null) {
             return confluenceContentScanResult;
         }
@@ -69,7 +69,7 @@ public class ScanResultEncryptor {
                     .toList();
 
             return confluenceContentScanResult.toBuilder()
-                    .detectedPIIList(decryptedEntities)
+                    .detectedPIIs(decryptedEntities)
                     .build();
         } catch (EncryptionException e) {
             log.error("Failed to decrypt PII entities for scanId={}, entityCount={}",

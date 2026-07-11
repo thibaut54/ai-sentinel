@@ -19,6 +19,6 @@ public class ScheduledConfluenceSpaceCacheRefreshJob {
     )
     public void refresh() {
         log.debug("Starting background refresh of Confluence spaces cache");
-        refresher.saveNewConfluenceSpaces();
+        refresher.refreshConfluenceSpacesCache();
     }
 }

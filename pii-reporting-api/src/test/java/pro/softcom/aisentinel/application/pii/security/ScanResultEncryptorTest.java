@@ -64,10 +64,10 @@ class ScanResultEncryptorTest {
 
         // Then
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(encrypted.detectedPIIList()).hasSize(2);
-        softly.assertThat(encrypted.detectedPIIList().get(0).sensitiveValue())
+        softly.assertThat(encrypted.detectedPIIs()).hasSize(2);
+        softly.assertThat(encrypted.detectedPIIs().get(0).sensitiveValue())
             .isEqualTo("ENC:v1:encrypted_email");
-        softly.assertThat(encrypted.detectedPIIList().get(1).sensitiveValue())
+        softly.assertThat(encrypted.detectedPIIs().get(1).sensitiveValue())
             .isEqualTo("ENC:v1:encrypted_phone");
         softly.assertAll();
 
@@ -95,7 +95,7 @@ class ScanResultEncryptorTest {
         if (entities == null) {
             assertThat(result).isEqualTo(confluenceContentScanResult);
         } else {
-            assertThat(result.detectedPIIList()).isEmpty();
+            assertThat(result.detectedPIIs()).isEmpty();
         }
         verifyNoInteractions(encryptionService);
     }
@@ -151,9 +151,9 @@ class ScanResultEncryptorTest {
 
         // Then
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(decrypted.detectedPIIList().get(0).sensitiveValue())
+        softly.assertThat(decrypted.detectedPIIs().get(0).sensitiveValue())
             .isEqualTo("decrypted@email.com");
-        softly.assertThat(decrypted.detectedPIIList().get(1).sensitiveValue())
+        softly.assertThat(decrypted.detectedPIIs().get(1).sensitiveValue())
             .isEqualTo("plaintext");
         softly.assertAll();
 
@@ -183,7 +183,7 @@ class ScanResultEncryptorTest {
             .scanId("scan-123")
             .spaceKey("SPACE")
             .pageId("page-456")
-            .detectedPIIList(List.of(entity))
+            .detectedPIIs(List.of(entity))
             .build();
 
         when(encryptionService.encrypt(anyString(), any()))
@@ -225,10 +225,10 @@ class ScanResultEncryptorTest {
 
         // Then
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(decrypted.detectedPIIList()).hasSize(2);
-        softly.assertThat(decrypted.detectedPIIList().get(0).sensitiveValue())
+        softly.assertThat(decrypted.detectedPIIs()).hasSize(2);
+        softly.assertThat(decrypted.detectedPIIs().get(0).sensitiveValue())
             .isEqualTo("email@test.com");
-        softly.assertThat(decrypted.detectedPIIList().get(1).sensitiveValue())
+        softly.assertThat(decrypted.detectedPIIs().get(1).sensitiveValue())
             .isEqualTo("555-1234");
         softly.assertAll();
 
@@ -286,8 +286,8 @@ class ScanResultEncryptorTest {
 
         // Then
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(encrypted.detectedPIIList()).hasSize(501);
-        softly.assertThat(encrypted.detectedPIIList().getFirst().sensitiveValue())
+        softly.assertThat(encrypted.detectedPIIs()).hasSize(501);
+        softly.assertThat(encrypted.detectedPIIs().getFirst().sensitiveValue())
             .isEqualTo("ENC:v1:encrypted");
         softly.assertAll();
 
@@ -303,7 +303,7 @@ class ScanResultEncryptorTest {
             .scanId("scan-123")
             .spaceKey("SPACE")
             .pageId("page-456")
-            .detectedPIIList(List.of(entity))
+            .detectedPIIs(List.of(entity))
             .build();
 
         when(encryptionService.encrypt(anyString(), any()))
@@ -316,7 +316,7 @@ class ScanResultEncryptorTest {
         // Verify original scanResult is not modified (immutability)
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(original.scanId()).isEqualTo("scan-123");
-        softly.assertThat(original.detectedPIIList().getFirst().sensitiveValue())
+        softly.assertThat(original.detectedPIIs().getFirst().sensitiveValue())
             .isEqualTo("test@example.com");
         softly.assertAll();
     }
@@ -335,7 +335,7 @@ class ScanResultEncryptorTest {
     private ConfluenceContentScanResult createScanResult(List<DetectedPersonallyIdentifiableInformation> entities) {
         return ConfluenceContentScanResult.builder()
             .scanId("test-scan")
-            .detectedPIIList(entities)
+            .detectedPIIs(entities)
             .build();
     }
 }

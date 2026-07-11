@@ -23,7 +23,7 @@ public class HtmlContentParser implements ContentParser {
 
     /**
      * Pattern to match HTML block-level tags that create visual line breaks.
-     * Jsoup handles all standard HTML tags, but we use regex for position finding.
+     * Jsoup handles all standard HTML tags, but we use regex for startingPosition finding.
      */
     private static final Pattern BLOCK_TAGS = Pattern.compile(
         "(?i)</?(?:p|div|section|article|header|footer|nav|aside|blockquote|pre|table|ul|li|ol|dl|dt|dd|tr|td|th|h\\d)[^>]*>|<br/?>"
@@ -37,7 +37,7 @@ public class HtmlContentParser implements ContentParser {
     public int findLineStart(String source, int position) {
         int safePosition = Math.clamp(position, 0, source.length());
 
-        // Find the last block tag or newline before the position
+        // Find the last block tag or newline before the startingPosition
         int lastBreak = 0;
 
         // Check for block tags
@@ -59,7 +59,7 @@ public class HtmlContentParser implements ContentParser {
     public int findLineEnd(String source, int position) {
         int safePosition = Math.clamp(position, 0, source.length());
 
-        // Find the next block tag or newline after the position
+        // Find the next block tag or newline after the startingPosition
         Matcher matcher = BLOCK_TAGS.matcher(source);
         int nextBlockTag = matcher.find(safePosition) ? matcher.start() : source.length();
         int nextNewline = source.indexOf('\n', safePosition);

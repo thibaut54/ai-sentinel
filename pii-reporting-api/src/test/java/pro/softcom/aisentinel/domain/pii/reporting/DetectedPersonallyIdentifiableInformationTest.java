@@ -41,10 +41,10 @@ class DetectedPersonallyIdentifiableInformationTest {
         
         // Other fields must remain unchanged
         softly.assertThat(masked.startPosition())
-                .as("Start position should be preserved")
+                .as("Start startingPosition should be preserved")
                 .isEqualTo(10);
         softly.assertThat(masked.endPosition())
-                .as("End position should be preserved")
+                .as("End startingPosition should be preserved")
                 .isEqualTo(30);
         softly.assertThat(masked.piiType())
                 .as("PII type should be preserved")

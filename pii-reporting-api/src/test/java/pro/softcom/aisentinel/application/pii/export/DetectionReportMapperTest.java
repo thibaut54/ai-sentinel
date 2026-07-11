@@ -104,7 +104,7 @@ class DetectionReportMapperTest {
                 .pageUrl("https://custom.com/page")
                 .attachmentName("custom.doc")
                 .attachmentUrl("https://custom.com/att")
-                .detectedPIIList(List.of(createPiiEntity("EMAIL", "Email", "test@test.com", 0.9)))
+                .detectedPIIs(List.of(createPiiEntity("EMAIL", "Email", "test@test.com", 0.9)))
                 .build();
 
         // When
@@ -123,9 +123,9 @@ class DetectionReportMapperTest {
         return Stream.of(
                 Arguments.of((ConfluenceContentScanResult) null),
                 Arguments.of(
-                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIList(null).build()),
+                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIs(null).build()),
                 Arguments.of(
-                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIList(List.of()).build())
+                    ConfluenceContentScanResult.builder().scanId("scan-123").spaceKey("TEST").detectedPIIs(List.of()).build())
         );
     }
 
@@ -168,7 +168,7 @@ class DetectionReportMapperTest {
                 .pageUrl("https://example.com/page")
                 .attachmentName("doc.pdf")
                 .attachmentUrl("https://example.com/attachment")
-                .detectedPIIList(entities)
+                .detectedPIIs(entities)
                 .build();
     }
 }

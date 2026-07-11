@@ -348,9 +348,9 @@ public record ContentPiiDetection(
      * @param typeLabel human-readable label for the type (e.g. "Email", "Custom Label")
      * @param value raw value as found in the content
      * @param context short surrounding text to help understand the occurrence
-     * @param position start index of the occurrence in the content
-     * @param end end index of the occurrence in the content
-     * @param score confidence score provided by the detector (may be null)
+     * @param startingPosition start index of the occurrence in the content
+     * @param endingPosition endingPosition index of the occurrence in the content
+     * @param confidenceScore confidence confidenceScore provided by the detector (may be null)
      * @param selector optional selector or hint pointing to the element location
      * @param source source of the detected PII entity (e.g. Presidio, Ministral)
      */
@@ -359,9 +359,9 @@ public record ContentPiiDetection(
         String typeLabel,
         String value,
         String context,
-        int position,
-        int end,
-        Double score,
+        int startingPosition,
+        int endingPosition,
+        Double confidenceScore,
         String selector,
         DetectorSource source
     ) {

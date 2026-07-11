@@ -93,7 +93,7 @@ class PiiContextExtractorTest {
         ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent("My email is john.doe@example.com and my phone")
-                .detectedPIIList(List.of(entity))
+                .detectedPIIs(List.of(entity))
                 .build();
 
         // When
@@ -101,7 +101,7 @@ class PiiContextExtractorTest {
             confluenceContentScanResult);
 
         // Then
-        assertThat(result.detectedPIIList().getFirst().sensitiveContext())
+        assertThat(result.detectedPIIs().getFirst().sensitiveContext())
                 .isEqualTo(existingContext);
     }
 
@@ -380,7 +380,7 @@ class PiiContextExtractorTest {
         ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent(source)
-                .detectedPIIList(List.of(emailEntity, phoneEntity))
+                .detectedPIIs(List.of(emailEntity, phoneEntity))
                 .build();
 
         // When: Enriching contexts via enrichContexts (not direct extract call)
@@ -389,10 +389,10 @@ class PiiContextExtractorTest {
 
         // Then: BOTH entities should have contexts with BOTH PIIs masked
         assertSoftly(softly -> {
-            softly.assertThat(result.detectedPIIList()).hasSize(2);
+            softly.assertThat(result.detectedPIIs()).hasSize(2);
             
-            DetectedPersonallyIdentifiableInformation enrichedEmail = result.detectedPIIList().get(0);
-            DetectedPersonallyIdentifiableInformation enrichedPhone = result.detectedPIIList().get(1);
+            DetectedPersonallyIdentifiableInformation enrichedEmail = result.detectedPIIs().get(0);
+            DetectedPersonallyIdentifiableInformation enrichedPhone = result.detectedPIIs().get(1);
             
             // Email context should mask both EMAIL and PHONE
             softly.assertThat(enrichedEmail.maskedContext()).isNotNull();
@@ -441,7 +441,7 @@ class PiiContextExtractorTest {
                 Arguments.of("john.doe@example.com is my email address", 
                             "john.doe@example.com", "is my email", "PII at start of line"),
                 Arguments.of("My email address is john.doe@example.com", 
-                            "john.doe@example.com", "My email address is", "PII at end of line"),
+                            "john.doe@example.com", "My email address is", "PII at endingPosition of line"),
                 Arguments.of("Contact john.doe@example.com for info", 
                             "john.doe@example.com", "Contact", "PII with surrounding text")
         );
@@ -491,7 +491,7 @@ class PiiContextExtractorTest {
         return Stream.of(
                 Arguments.of("Line 1 with content\nMy email is john.doe@example.com here\nLine 3 with more", 
                             "john.doe@example.com", "email in middle line"),
-                Arguments.of("Line 1 data\nPhone: 06 11 22 33 44 end\nLine 3 more", 
+                Arguments.of("Line 1 data\nPhone: 06 11 22 33 44 endingPosition\nLine 3 more",
                             "06 11 22 33 44", "phone in middle line"),
                 Arguments.of("Line 1\nStart of line john@test.com text\nLine 3", 
                             "john@test.com", "PII after line start")
@@ -550,7 +550,7 @@ class PiiContextExtractorTest {
         ConfluenceContentScanResult confluenceContentScanResult = ConfluenceContentScanResult.builder()
                 .scanId("scan-1")
                 .sourceContent(source)
-                .detectedPIIList(List.of(entity))
+                .detectedPIIs(List.of(entity))
                 .build();
 
         // When
@@ -558,7 +558,7 @@ class PiiContextExtractorTest {
             confluenceContentScanResult);
 
         // Then: Both sensitiveContext and maskedContext should be populated
-        DetectedPersonallyIdentifiableInformation enriched = result.detectedPIIList().getFirst();
+        DetectedPersonallyIdentifiableInformation enriched = result.detectedPIIs().getFirst();
         assertSoftly(softly -> {
             // Sensitive context contains real PII value
             softly.assertThat(enriched.sensitiveContext()).isNotNull();
@@ -621,7 +621,7 @@ class PiiContextExtractorTest {
         // Given: exact scenario from bug report - positions 347 to 363
         String prefix = "X".repeat(347);
         String creditCard = "4916632082457636";
-        String suffix = " end of text";
+        String suffix = " endingPosition of text";
         String source = prefix + creditCard + suffix;
         int start = 347;
         int end = 363;

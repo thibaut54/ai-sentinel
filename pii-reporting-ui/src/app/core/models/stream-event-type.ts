@@ -22,7 +22,7 @@ export interface ConfluenceContentPersonallyIdentifiableInformationScanResult {
   isFinal?: boolean;
   pagesTotal?: number;
   pageIndex?: number;
-  detectedPIIList?: Array<{
+  detectedPIIs?: Array<{
     piiTypeLabel?: string;
     piiType?: string;
     sensitiveValue?: string;
@@ -31,8 +31,8 @@ export interface ConfluenceContentPersonallyIdentifiableInformationScanResult {
     confidence?: number;
     source?: string;
   }>;
-  nbOfDetectedPIIBySeverity?: Record<string, number>;  // Severity-based counts (high, medium, low) for badges
-  nbOfDetectedPIIByType?: Record<string, number>;  // PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item details
+  detectedPiiCountBySeverity?: Record<string, number>;  // Severity-based counts (high, medium, low) for badges
+  detectedPiiCountByType?: Record<string, number>;  // PII type-based counts (EMAIL, CREDIT_CARD, etc.) for item details
   maskedContent?: string;
   // Attachment context for 'attachment_item' events
   attachmentName?: string;

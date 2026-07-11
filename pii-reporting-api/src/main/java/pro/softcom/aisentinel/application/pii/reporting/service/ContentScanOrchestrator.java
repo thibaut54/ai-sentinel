@@ -106,14 +106,14 @@ public class ContentScanOrchestrator {
      */
     public void persistEventAsyncOperations(ConfluenceContentScanResult event) {
         // Calculate and persist severity counts if event contains PII detections
-        if (event.detectedPIIList() != null && !event.detectedPIIList().isEmpty()) {
-            SeverityCounts counts = severityCalculationService.aggregateCounts(event.detectedPIIList());
+        if (event.detectedPIIs() != null && !event.detectedPIIs().isEmpty()) {
+            SeverityCounts counts = severityCalculationService.aggregateCounts(event.detectedPIIs());
             scanSeverityCountService.incrementCounts(event.scanId(), event.spaceKey(), counts);
         }
 
         // Persist per-type occurrence counts if event carries them
-        if (event.nbOfDetectedPIIByType() != null && !event.nbOfDetectedPIIByType().isEmpty()) {
-            scanPiiTypeCountService.incrementCounts(event.scanId(), event.spaceKey(), event.nbOfDetectedPIIByType());
+        if (event.detectedPiiCountByType() != null && !event.detectedPiiCountByType().isEmpty()) {
+            scanPiiTypeCountService.incrementCounts(event.scanId(), event.spaceKey(), event.detectedPiiCountByType());
         }
 
         if (scanEventStore != null) {

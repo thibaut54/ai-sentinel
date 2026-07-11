@@ -16,11 +16,11 @@ describe('PiiItemsStorageService', () => {
     emittedAt: '2026-01-01T00:00:00Z',
     isFinal: true,
     severity: 'HIGH',
-    detectedPIIList: [
+    detectedPIIs: [
       { startPosition: 0, endPosition: 10, piiType: 'EMAIL', piiTypeLabel: 'Email', sensitiveValue: 'test@test.com', confidence: 0.95 }
     ],
-    nbOfDetectedPIIBySeverity: { high: 1, medium: 0, low: 0 },
-    nbOfDetectedPIIByType: { EMAIL: 1 },
+    detectedPiiCountBySeverity: { high: 1, medium: 0, low: 0 },
+    detectedPiiCountByType: { EMAIL: 1 },
     ...overrides
   });
 
@@ -47,7 +47,7 @@ describe('PiiItemsStorageService', () => {
   });
 
   it('Should_SkipItem_When_NoEntities', () => {
-    const result = service.addPiiItemToSpace('SPACE1', createPayload({ detectedPIIList: [] }) as any);
+    const result = service.addPiiItemToSpace('SPACE1', createPayload({ detectedPIIs: [] }) as any);
 
     expect(result).toBe(false);
     expect(service.itemsBySpace()['SPACE1']).toBeUndefined();

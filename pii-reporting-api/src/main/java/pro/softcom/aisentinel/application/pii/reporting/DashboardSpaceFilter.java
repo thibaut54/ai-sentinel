@@ -122,7 +122,7 @@ public final class DashboardSpaceFilter {
         String key = sort == null ? "" : sort;
         return switch (key) {
             case "name" -> Comparator.comparing(DashboardSpaceFilter::searchableText);
-            case "lastScan" -> Comparator.comparing(SpaceSummary::lastEventTs,
+            case "lastScan" -> Comparator.comparing(SpaceSummary::lastEventAt,
                 Comparator.nullsFirst(Comparator.naturalOrder()));
             case "severityScore" -> Comparator.comparingLong(DashboardSpaceFilter::severityScore);
             default -> Comparator.comparingInt(space -> space.severityCounts().total());
@@ -210,17 +210,17 @@ public final class DashboardSpaceFilter {
 
     private static void addSeverityFacet(Map<String, FacetCount> facets, List<SpaceSummary> context,
                                          String bucket, ToIntFunction<SeverityCounts> extractor) {
-        int nbSpaces = 0;
+        int spaceCount = 0;
         int total = 0;
         for (SpaceSummary space : context) {
             int value = extractor.applyAsInt(space.severityCounts());
             if (value > 0) {
-                nbSpaces++;
+                spaceCount++;
                 total += value;
             }
         }
-        if (nbSpaces > 0) {
-            facets.put(bucket, new FacetCount(nbSpaces, total));
+        if (spaceCount > 0) {
+            facets.put(bucket, new FacetCount(spaceCount, total));
         }
     }
 
@@ -235,7 +235,7 @@ public final class DashboardSpaceFilter {
 
     private static void accumulate(Map<String, FacetCount> facets, String key, int occurrences) {
         FacetCount current = facets.getOrDefault(key, new FacetCount(0, 0));
-        facets.put(key, new FacetCount(current.nbSpaces() + 1, current.totalOccurrences() + occurrences));
+        facets.put(key, new FacetCount(current.spaceCount() + 1, current.totalOccurrences() + occurrences));
     }
 
     // ---------------------------------------------------------------------

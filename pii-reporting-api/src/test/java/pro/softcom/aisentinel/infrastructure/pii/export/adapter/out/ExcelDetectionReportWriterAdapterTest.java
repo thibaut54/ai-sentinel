@@ -58,7 +58,7 @@ class ExcelDetectionReportWriterAdapterTest {
                             .as("File name must not contain forbidden characters")
                             .doesNotContain(forbiddenChars);
                     softly.assertThat(fileName)
-                            .as("File name must end with .xlsx")
+                            .as("File name must endingPosition with .xlsx")
                             .endsWith(".xlsx");
                     softly.assertThat(fileName)
                             .as("File name must not be empty")
@@ -98,7 +98,7 @@ class ExcelDetectionReportWriterAdapterTest {
                             .as("File name must not contain forbidden characters")
                             .doesNotContain("<", ">", ":", "\"", "/", "\\", "|", "?", "*");
                     softly.assertThat(fileName)
-                            .as("File name must end with .xlsx")
+                            .as("File name must endingPosition with .xlsx")
                             .endsWith(".xlsx");
                     softly.assertThat(fileName)
                             .as("File name must not be empty")

@@ -29,7 +29,7 @@ public class ConfluenceContentScanResultToScanEventMapper {
         if (confluenceContentScanResult == null) return null;
         
         // Delegate masking to domain business rule
-        List<DetectedPersonallyIdentifiableInformation> detectedPIIs = confluenceContentScanResult.detectedPIIList();
+        List<DetectedPersonallyIdentifiableInformation> detectedPIIs = confluenceContentScanResult.detectedPIIs();
         if (detectedPIIs != null) {
             detectedPIIs = detectedPIIs.stream()
                     .map(DetectedPersonallyIdentifiableInformation::withMaskedSensitiveData)
@@ -45,9 +45,9 @@ public class ConfluenceContentScanResultToScanEventMapper {
                 .pageIndex(confluenceContentScanResult.pageIndex())
                 .pageId(confluenceContentScanResult.pageId())
                 .pageTitle(confluenceContentScanResult.pageTitle())
-                .detectedPIIList(detectedPIIs)
-                .nbOfDetectedPIIBySeverity(confluenceContentScanResult.nbOfDetectedPIIBySeverity())
-                .nbOfDetectedPIIByType(confluenceContentScanResult.nbOfDetectedPIIByType())
+                .detectedPIIs(detectedPIIs)
+                .detectedPiiCountBySeverity(confluenceContentScanResult.detectedPiiCountBySeverity())
+                .detectedPiiCountByType(confluenceContentScanResult.detectedPiiCountByType())
                 .message(confluenceContentScanResult.message())
                 .pageUrl(confluenceContentScanResult.pageUrl())
                 .emittedAt(confluenceContentScanResult.emittedAt())

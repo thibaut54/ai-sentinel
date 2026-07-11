@@ -96,19 +96,19 @@ public class FileBenchRecorderAdapter implements PiiScanBenchRecorderPort {
         }
     }
 
-    private String formatLine(BenchRecord r) {
-        double charsPerSec = r.durationMs() > 0 ? (r.charCount() * 1000.0) / r.durationMs() : 0.0;
+    private String formatLine(BenchRecord benchRecord) {
+        double charsPerSec = benchRecord.durationMs() > 0 ? (benchRecord.charCount() * 1000.0) / benchRecord.durationMs() : 0.0;
         return String.join("\t",
             Instant.now().toString(),
             sanitize(props.getLabel()),
-            sanitize(r.scanId()),
-            sanitize(r.spaceKey()),
-            sanitize(r.itemId()),
-            sanitize(r.itemKind()),
-            Integer.toString(r.charCount()),
-            Long.toString(r.durationMs()),
+            sanitize(benchRecord.scanId()),
+            sanitize(benchRecord.spaceKey()),
+            sanitize(benchRecord.itemId()),
+            sanitize(benchRecord.itemKind()),
+            Integer.toString(benchRecord.charCount()),
+            Long.toString(benchRecord.durationMs()),
             String.format(Locale.ROOT, "%.2f", charsPerSec),
-            Integer.toString(r.findings()));
+            Integer.toString(benchRecord.findings()));
     }
 
     private static String sanitize(String s) {

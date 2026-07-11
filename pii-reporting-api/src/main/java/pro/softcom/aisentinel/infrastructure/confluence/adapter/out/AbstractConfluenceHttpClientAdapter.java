@@ -187,9 +187,9 @@ public abstract class AbstractConfluenceHttpClientAdapter implements ConfluenceC
         log.debug("Getting modified attachments for space {} since {}", spaceKey, sinceDate);
 
         var sinceDateFormatted = formatInstantForCql(sinceDate);
-        var cql = String.format("space='%s' AND type=attachment AND lastmodified >= '%s'",
+        var searchQuery = String.format("space='%s' AND type=attachment AND lastmodified >= '%s'",
                                 escapeCqlValue(spaceKey), sinceDateFormatted);
-        var request = buildGetRequest(urlBuilder.buildSearchUri(cql));
+        var request = buildGetRequest(urlBuilder.buildSearchUri(searchQuery));
 
         return retryExecutor.executeRequest(request)
             .thenApply(this::extractModifiedAttachmentsInfo)

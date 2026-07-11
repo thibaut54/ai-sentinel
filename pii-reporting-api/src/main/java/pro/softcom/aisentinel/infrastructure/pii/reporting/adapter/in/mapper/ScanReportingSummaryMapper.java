@@ -65,7 +65,7 @@ public class ScanReportingSummaryMapper {
                 space.progressPercentage(),
                 space.pagesDone(),
                 space.attachmentsDone(),
-                space.lastEventTs(),
+                space.lastEventAt(),
                 severityCountsDto,
                 space.spaceName(),
                 piiTypeCounts,
@@ -108,7 +108,7 @@ public class ScanReportingSummaryMapper {
         }
         Map<String, FacetCountDto> target = new LinkedHashMap<>();
         source.forEach((key, value) ->
-                target.put(key, new FacetCountDto(value.nbSpaces(), value.totalOccurrences())));
+                target.put(key, new FacetCountDto(value.spaceCount(), value.totalOccurrences())));
         return target;
     }
 }

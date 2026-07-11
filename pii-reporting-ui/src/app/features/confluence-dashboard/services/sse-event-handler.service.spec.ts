@@ -53,7 +53,7 @@ describe('SseEventHandlerService', () => {
   // ========== item events ==========
 
   it('Should_AddItemToStorage_When_ItemEvent', () => {
-    const payload = { spaceKey: 'SPACE1', pageId: 'page-1', detectedPIIList: [{ piiType: 'EMAIL' }] } as any;
+    const payload = { spaceKey: 'SPACE1', pageId: 'page-1', detectedPIIs: [{ piiType: 'EMAIL' }] } as any;
 
     service.routeStreamEvent('item', payload);
 
@@ -61,7 +61,7 @@ describe('SseEventHandlerService', () => {
   });
 
   it('Should_AddItemToStorage_When_AttachmentItemEvent', () => {
-    const payload = { spaceKey: 'SPACE1', attachmentName: 'file.pdf', detectedPIIList: [{ piiType: 'NAME' }] } as any;
+    const payload = { spaceKey: 'SPACE1', attachmentName: 'file.pdf', detectedPIIs: [{ piiType: 'NAME' }] } as any;
 
     service.routeStreamEvent('attachmentItem', payload);
 
@@ -69,7 +69,7 @@ describe('SseEventHandlerService', () => {
   });
 
   it('Should_UseActiveSpaceKey_When_AttachmentMissingSpaceKey', () => {
-    const payload = { attachmentName: 'file.pdf', attachmentUrl: 'url', detectedPIIList: [{ piiType: 'NAME' }] } as any;
+    const payload = { attachmentName: 'file.pdf', attachmentUrl: 'url', detectedPIIs: [{ piiType: 'NAME' }] } as any;
 
     service.routeStreamEvent('attachmentItem', payload);
 
@@ -78,7 +78,7 @@ describe('SseEventHandlerService', () => {
   });
 
   it('Should_SkipItem_When_NoSpaceKeyAndNotAttachment', () => {
-    const payload = { pageId: 'page-1', detectedPIIList: [{ piiType: 'EMAIL' }] } as any;
+    const payload = { pageId: 'page-1', detectedPIIs: [{ piiType: 'EMAIL' }] } as any;
 
     service.routeStreamEvent('item', payload);
 

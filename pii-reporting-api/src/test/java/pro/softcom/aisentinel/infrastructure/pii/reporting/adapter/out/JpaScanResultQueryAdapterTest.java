@@ -276,12 +276,12 @@ class JpaScanResultQueryAdapterTest {
     @Test
     void Should_DecryptAndAudit_When_DecryptedResultsFound() throws Exception {
         ConfluenceContentScanResult encrypted1 = sampleScanResult().toBuilder()
-            .detectedPIIList(List.of(DetectedPersonallyIdentifiableInformation.builder().build()))
+            .detectedPIIs(List.of(DetectedPersonallyIdentifiableInformation.builder().build()))
             .build();
         ConfluenceContentScanResult decrypted1 = encrypted1.toBuilder().message("dec1").build();
 
         ConfluenceContentScanResult encrypted2 = sampleScanResult().toBuilder()
-            .detectedPIIList(List.of(DetectedPersonallyIdentifiableInformation.builder().build(), DetectedPersonallyIdentifiableInformation.builder().build()))
+            .detectedPIIs(List.of(DetectedPersonallyIdentifiableInformation.builder().build(), DetectedPersonallyIdentifiableInformation.builder().build()))
             .build();
         ConfluenceContentScanResult decrypted2 = encrypted2.toBuilder().message("dec2").build();
 

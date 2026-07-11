@@ -153,7 +153,7 @@ class PlainTextParserTest {
             softly.assertThat(parser.findLineEnd(source, lineBStart))
                   .isEqualTo(lineBStart + lineB.length());
             
-            // Line C ends at source end
+            // Line C ends at source endingPosition
             int lineCStart = lineBStart + lineB.length() + NEWLINE.length();
             softly.assertThat(parser.findLineEnd(source, lineCStart)).isEqualTo(source.length());
         });

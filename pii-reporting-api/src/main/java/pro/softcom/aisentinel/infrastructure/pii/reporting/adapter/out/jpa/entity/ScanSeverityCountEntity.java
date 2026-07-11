@@ -27,14 +27,14 @@ public class ScanSeverityCountEntity {
     @EmbeddedId
     private ScanSeverityCountId id;
 
-    @Column(name = "nb_of_high_severity", nullable = false)
-    private Integer nbOfHighSeverity;
+    @Column(name = "high_severity_count", nullable = false)
+    private Integer highSeverityCount;
 
-    @Column(name = "nb_of_medium_severity", nullable = false)
-    private Integer nbOfMediumSeverity;
+    @Column(name = "medium_severity_count", nullable = false)
+    private Integer mediumSeverityCount;
 
-    @Column(name = "nb_of_low_severity", nullable = false)
-    private Integer nbOfLowSeverity;
+    @Column(name = "low_severity_count", nullable = false)
+    private Integer lowSeverityCount;
 
     /**
      * Convenience method to get scan ID from composite key.

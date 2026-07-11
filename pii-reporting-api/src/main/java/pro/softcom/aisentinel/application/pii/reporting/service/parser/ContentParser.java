@@ -12,20 +12,20 @@ package pro.softcom.aisentinel.application.pii.reporting.service.parser;
 public interface ContentParser {
     
     /**
-     * Finds the start position of the logical line containing the given position.
+     * Finds the start startingPosition of the logical line containing the given startingPosition.
      * 
      * @param source the complete source content
-     * @param position the position within the content
-     * @return the start index of the line containing the position
+     * @param position the startingPosition within the content
+     * @return the start index of the line containing the startingPosition
      */
     int findLineStart(String source, int position);
     
     /**
-     * Finds the end position of the logical line containing the given position.
+     * Finds the endingPosition startingPosition of the logical line containing the given startingPosition.
      * 
      * @param source the complete source content
-     * @param position the position within the content
-     * @return the end index of the line containing the position
+     * @param position the startingPosition within the content
+     * @return the endingPosition index of the line containing the startingPosition
      */
     int findLineEnd(String source, int position);
     

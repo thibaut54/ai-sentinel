@@ -21,10 +21,7 @@ public class ConfluenceSpaceCacheRefreshService {
     private final ConfluenceClient confluenceClient;
     private final ConfluenceSpaceRepository spaceRepository;
 
-    /**
-     * Déclenche un rafraîchissement immédiat du cache. Appelé par un scheduler d'infrastructure.
-     */
-    public void saveNewConfluenceSpaces() {
+    public void refreshConfluenceSpacesCache() {
         log.info("Starting background refresh of Confluence spaces cache");
 
         try {

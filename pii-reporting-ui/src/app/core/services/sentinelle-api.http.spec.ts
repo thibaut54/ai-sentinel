@@ -146,7 +146,7 @@ describe('SentinelleApiService HTTP methods', () => {
 
   it('Should_ReturnStatuses_When_GetLastScanSpaceStatusesReturnsArray', () => {
     const statuses: SpaceScanStateDto[] = [
-      { spaceKey: 'A', status: 'OK', pagesDone: 1, attachmentsDone: 0, lastEventTs: '2026-01-01', progressPercentage: 100 }
+      { spaceKey: 'A', status: 'OK', pagesDone: 1, attachmentsDone: 0, lastEventAt: '2026-01-01', progressPercentage: 100 }
     ];
     let result: SpaceScanStateDto[] | undefined;
     service.getLastScanSpaceStatuses().subscribe((data) => (result = data));
@@ -200,7 +200,7 @@ describe('SentinelleApiService HTTP methods', () => {
       lastUpdated: '2026-01-01',
       spacesCount: 1,
       spaces: [
-        { spaceKey: 'A', status: 'OK', progressPercentage: 100, pagesDone: 1, attachmentsDone: 0, lastEventTs: '2026-01-01', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } }
+        { spaceKey: 'A', status: 'OK', progressPercentage: 100, pagesDone: 1, attachmentsDone: 0, lastEventAt: '2026-01-01', severityCounts: { high: 1, medium: 0, low: 0, total: 1 } }
       ]
     };
     let result: ScanReportingSummaryDto | null | undefined;

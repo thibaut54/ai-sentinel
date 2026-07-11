@@ -214,7 +214,7 @@ export class ScanStatusPollingService {
 
     this.spacesUtils.updateSpace(space.spaceKey, {
       status: uiStatus,
-      lastScanTs: space.lastEventTs,
+      lastScanTs: space.lastEventAt,
       counts: space.severityCounts ?? { high: 0, medium: 0, low: 0, total: 0 }
     });
 

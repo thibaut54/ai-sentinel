@@ -164,9 +164,9 @@ class LastConfluencePersonallyIdentifiableInformationScanControllerTest {
         mockMvc.perform(get("/api/v1/scans/dashboard/spaces-summary")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.facets.piiTypes.EMAIL.nbSpaces").value(3))
+                .andExpect(jsonPath("$.facets.piiTypes.EMAIL.spaceCount").value(3))
                 .andExpect(jsonPath("$.facets.piiTypes.EMAIL.totalOccurrences").value(12))
-                .andExpect(jsonPath("$.facets.severities.HIGH.nbSpaces").value(2))
+                .andExpect(jsonPath("$.facets.severities.HIGH.spaceCount").value(2))
                 .andExpect(jsonPath("$.facets.statuses.OK.totalOccurrences").value(17))
                 .andExpect(jsonPath("$.spaces[0].piiTypeCounts.IBAN_CODE").value(4));
     }

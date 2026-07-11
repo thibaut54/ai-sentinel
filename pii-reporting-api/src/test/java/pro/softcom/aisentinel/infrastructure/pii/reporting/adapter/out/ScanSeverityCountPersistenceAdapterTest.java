@@ -38,9 +38,9 @@ class ScanSeverityCountPersistenceAdapterTest {
                 .build();
         return ScanSeverityCountEntity.builder()
                 .id(id)
-                .nbOfHighSeverity(high)
-                .nbOfMediumSeverity(medium)
-                .nbOfLowSeverity(low)
+                .highSeverityCount(high)
+                .mediumSeverityCount(medium)
+                .lowSeverityCount(low)
                 .build();
     }
 

@@ -82,7 +82,7 @@ class PurgeDetectionDataUseCaseTest {
                                  .eventSeq(1L)
                                  .spaceKey("SPACE-A")
                                  .eventType("PAGE_COMPLETE")
-                                 .ts(now)
+                                 .occurredAt(now)
                                  .pageId("p1")
                                  .pageTitle("title")
                                  .attachmentName(null)

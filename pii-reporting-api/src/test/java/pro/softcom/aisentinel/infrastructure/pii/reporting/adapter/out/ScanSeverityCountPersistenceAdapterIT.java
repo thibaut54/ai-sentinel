@@ -86,9 +86,9 @@ class ScanSeverityCountPersistenceAdapterIT {
         SoftAssertions softly = new SoftAssertions();
         softly.assertThat(entity.getScanId()).isEqualTo("scan-001");
         softly.assertThat(entity.getSpaceKey()).isEqualTo("SPACE-A");
-        softly.assertThat(entity.getNbOfHighSeverity()).isEqualTo(3);
-        softly.assertThat(entity.getNbOfMediumSeverity()).isEqualTo(5);
-        softly.assertThat(entity.getNbOfLowSeverity()).isEqualTo(2);
+        softly.assertThat(entity.getHighSeverityCount()).isEqualTo(3);
+        softly.assertThat(entity.getMediumSeverityCount()).isEqualTo(5);
+        softly.assertThat(entity.getLowSeverityCount()).isEqualTo(2);
         softly.assertAll();
     }
 
@@ -100,9 +100,9 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-002")
                 .spaceKey("SPACE-B")
                 .build())
-            .nbOfHighSeverity(10)
-            .nbOfMediumSeverity(20)
-            .nbOfLowSeverity(30)
+            .highSeverityCount(10)
+            .mediumSeverityCount(20)
+            .lowSeverityCount(30)
             .build();
         em.persist(initialEntity);
         em.flush();
@@ -120,13 +120,13 @@ class ScanSeverityCountPersistenceAdapterIT {
         var updated = jpaRepository.findById(id).orElseThrow();
         
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(updated.getNbOfHighSeverity())
+        softly.assertThat(updated.getHighSeverityCount())
             .as("High severity should be incremented from 10 by 3")
             .isEqualTo(13);
-        softly.assertThat(updated.getNbOfMediumSeverity())
+        softly.assertThat(updated.getMediumSeverityCount())
             .as("Medium severity should be incremented from 20 by 5")
             .isEqualTo(25);
-        softly.assertThat(updated.getNbOfLowSeverity())
+        softly.assertThat(updated.getLowSeverityCount())
             .as("Low severity should be incremented from 30 by 2")
             .isEqualTo(32);
         softly.assertAll();
@@ -151,9 +151,9 @@ class ScanSeverityCountPersistenceAdapterIT {
         var entity = saved.orElseThrow();
         
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(entity.getNbOfHighSeverity()).isZero();
-        softly.assertThat(entity.getNbOfMediumSeverity()).isZero();
-        softly.assertThat(entity.getNbOfLowSeverity()).isZero();
+        softly.assertThat(entity.getHighSeverityCount()).isZero();
+        softly.assertThat(entity.getMediumSeverityCount()).isZero();
+        softly.assertThat(entity.getLowSeverityCount()).isZero();
         softly.assertAll();
     }
 
@@ -165,9 +165,9 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-004")
                 .spaceKey("SPACE-D")
                 .build())
-            .nbOfHighSeverity(7)
-            .nbOfMediumSeverity(14)
-            .nbOfLowSeverity(21)
+            .highSeverityCount(7)
+            .mediumSeverityCount(14)
+            .lowSeverityCount(21)
             .build();
         em.persist(entity);
         em.flush();
@@ -204,27 +204,27 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-005")
                 .spaceKey("SPACE-C")
                 .build())
-            .nbOfHighSeverity(1)
-            .nbOfMediumSeverity(2)
-            .nbOfLowSeverity(3)
+            .highSeverityCount(1)
+            .mediumSeverityCount(2)
+            .lowSeverityCount(3)
             .build();
         var entityA = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-005")
                 .spaceKey("SPACE-A")
                 .build())
-            .nbOfHighSeverity(4)
-            .nbOfMediumSeverity(5)
-            .nbOfLowSeverity(6)
+            .highSeverityCount(4)
+            .mediumSeverityCount(5)
+            .lowSeverityCount(6)
             .build();
         var entityB = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-005")
                 .spaceKey("SPACE-B")
                 .build())
-            .nbOfHighSeverity(7)
-            .nbOfMediumSeverity(8)
-            .nbOfLowSeverity(9)
+            .highSeverityCount(7)
+            .mediumSeverityCount(8)
+            .lowSeverityCount(9)
             .build();
         
         // Persist in non-alphabetical order
@@ -267,18 +267,18 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-006")
                 .spaceKey("SPACE-A")
                 .build())
-            .nbOfHighSeverity(1)
-            .nbOfMediumSeverity(2)
-            .nbOfLowSeverity(3)
+            .highSeverityCount(1)
+            .mediumSeverityCount(2)
+            .lowSeverityCount(3)
             .build();
         var entityScan2 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-007")
                 .spaceKey("SPACE-A")
                 .build())
-            .nbOfHighSeverity(4)
-            .nbOfMediumSeverity(5)
-            .nbOfLowSeverity(6)
+            .highSeverityCount(4)
+            .mediumSeverityCount(5)
+            .lowSeverityCount(6)
             .build();
         
         em.persist(entityScan1);
@@ -302,27 +302,27 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-008")
                 .spaceKey("SPACE-A")
                 .build())
-            .nbOfHighSeverity(1)
-            .nbOfMediumSeverity(2)
-            .nbOfLowSeverity(3)
+            .highSeverityCount(1)
+            .mediumSeverityCount(2)
+            .lowSeverityCount(3)
             .build();
         var entity2 = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-008")
                 .spaceKey("SPACE-B")
                 .build())
-            .nbOfHighSeverity(4)
-            .nbOfMediumSeverity(5)
-            .nbOfLowSeverity(6)
+            .highSeverityCount(4)
+            .mediumSeverityCount(5)
+            .lowSeverityCount(6)
             .build();
         var entityOther = ScanSeverityCountEntity.builder()
             .id(ScanSeverityCountId.builder()
                 .scanId("scan-009")
                 .spaceKey("SPACE-C")
                 .build())
-            .nbOfHighSeverity(7)
-            .nbOfMediumSeverity(8)
-            .nbOfLowSeverity(9)
+            .highSeverityCount(7)
+            .mediumSeverityCount(8)
+            .lowSeverityCount(9)
             .build();
         
         em.persist(entity1);
@@ -350,9 +350,9 @@ class ScanSeverityCountPersistenceAdapterIT {
                 .scanId("scan-010")
                 .spaceKey("SPACE-A")
                 .build())
-            .nbOfHighSeverity(1)
-            .nbOfMediumSeverity(2)
-            .nbOfLowSeverity(3)
+            .highSeverityCount(1)
+            .mediumSeverityCount(2)
+            .lowSeverityCount(3)
             .build();
         em.persist(entity);
         em.flush();

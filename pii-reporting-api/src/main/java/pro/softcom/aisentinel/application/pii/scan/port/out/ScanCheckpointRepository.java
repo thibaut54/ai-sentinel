@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * Application out port to store and retrieve scan checkpoints.
- * Business purpose: keeps a per-scan and per-space position so a scan can
+ * Business purpose: keeps a per-scan and per-space startingPosition so a scan can
  * resume, reconcile progress, or clean up its state.
  */
 public interface ScanCheckpointRepository {
@@ -15,7 +15,7 @@ public interface ScanCheckpointRepository {
     /**
      * Persists or updates a checkpoint.
      *
-     * @param checkpoint the business snapshot to record (scan id, space, position)
+     * @param checkpoint the business snapshot to record (scan id, space, startingPosition)
      */
     void save(ScanCheckpoint checkpoint);
 

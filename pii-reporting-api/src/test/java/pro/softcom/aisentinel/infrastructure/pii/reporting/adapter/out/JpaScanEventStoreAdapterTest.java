@@ -142,7 +142,7 @@ class JpaScanEventStoreAdapterTest {
         adapter.append(result);
 
         verify(eventRepository).save(captor.capture());
-        assertThat(captor.getValue().getTs()).isNotNull();
+        assertThat(captor.getValue().getOccurredAt()).isNotNull();
     }
 
     @Test

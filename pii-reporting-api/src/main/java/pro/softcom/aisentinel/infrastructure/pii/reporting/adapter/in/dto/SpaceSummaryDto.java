@@ -9,7 +9,7 @@ public record SpaceSummaryDto(
         Double progressPercentage,
         long pagesDone,
         long attachmentsDone,
-        Instant lastEventTs,
+        Instant lastEventAt,
         SeverityCountsDto severityCounts,
         String spaceName,
         Map<String, Integer> piiTypeCounts,

@@ -34,7 +34,7 @@ function summaryResponse(keys: string[], facets?: DashboardFacets, total?: numbe
       progressPercentage: null,
       pagesDone: 0,
       attachmentsDone: 0,
-      lastEventTs: '',
+      lastEventAt: '',
       severityCounts: null
     })),
     facets: facets ?? { piiTypes: {}, severities: {}, statuses: {} }
@@ -91,14 +91,14 @@ describe('SpaceFilteringService (server-driven)', () => {
   it('Should_ExposeServerFacetsAndTotal_When_ResponseHasFacets', async () => {
     const { service } = setup();
     const facets: DashboardFacets = {
-      piiTypes: { EMAIL: { nbSpaces: 1, totalOccurrences: 2 } },
+      piiTypes: { EMAIL: { spaceCount: 1, totalOccurrences: 2 } },
       severities: {},
       statuses: {}
     };
     api.getDashboardSpacesSummary.mockReturnValue(of(summaryResponse(['A'], facets, 3)));
     service.severityFilter.set(['HIGH']);
     await flushFetch();
-    expect(service.piiTypeFacetCounts()['EMAIL']).toEqual({ nbSpaces: 1, totalOccurrences: 2 });
+    expect(service.piiTypeFacetCounts()['EMAIL']).toEqual({ spaceCount: 1, totalOccurrences: 2 });
     expect(service.totalSpacesCount()).toBe(3);
   });
 
