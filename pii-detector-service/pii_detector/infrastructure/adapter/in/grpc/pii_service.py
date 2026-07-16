@@ -507,6 +507,13 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 'ministral_chunk_size': db_config.get('ministral_chunk_size'),
                 'ministral_overlap': db_config.get('ministral_overlap'),
                 'postfilter_enabled': db_config.get('postfilter_enabled', False),
+                # LM Studio endpoint (host/port) serving the Ministral-PII model,
+                # threaded by _build_detection_kwargs into the composite and routed
+                # on to the Ministral detector so an operator can retarget the
+                # endpoint without a service restart. Re-read on every scan/resume
+                # (fetch_config_from_db is set per request by the backend).
+                'lm_studio_host': db_config.get('lm_studio_host'),
+                'lm_studio_port': db_config.get('lm_studio_port'),
             }
 
             logger.info(
@@ -514,7 +521,8 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 f"presidio={detector_flags['presidio_enabled']}, "
                 f"regex={detector_flags['regex_enabled']}, "
                 f"ministral={detector_flags['ministral_enabled']}, "
-                f"postfilter={detector_flags['postfilter_enabled']}"
+                f"postfilter={detector_flags['postfilter_enabled']}, "
+                f"lm_studio={detector_flags['lm_studio_host']}:{detector_flags['lm_studio_port']}"
             )
 
             if pii_type_configs:
@@ -656,6 +664,13 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 kwargs['ministral_chunk_size'] = detector_flags.get('ministral_chunk_size')
             if 'ministral_overlap' in sig.parameters:
                 kwargs['ministral_overlap'] = detector_flags.get('ministral_overlap')
+            # LM Studio endpoint (DB columns lm_studio_host / lm_studio_port)
+            # forwarded so the Ministral detector targets the operator-configured
+            # endpoint for this scan.
+            if 'lm_studio_host' in sig.parameters:
+                kwargs['lm_studio_host'] = detector_flags.get('lm_studio_host')
+            if 'lm_studio_port' in sig.parameters:
+                kwargs['lm_studio_port'] = detector_flags.get('lm_studio_port')
 
         return kwargs
     
@@ -973,20 +988,27 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         if not type_config:
             type_config = pii_type_configs.get(entity_type_upper)
 
-        if not type_config:
-            # Ministral is open-vocabulary: an unconfigured label is a model
-            # proposal, not a finding. Drop it and surface it for operator review
-            # via the sentinel reason. Every other source keeps allow-by-default.
-            if entity_source == DetectorSource.MINISTRAL.value:
+        # A config row scoped to a *different* specific detector does not apply to
+        # this entity's source. Drop it here so the entity is treated as having no
+        # applicable config: the plain-key fallback above can resolve to another
+        # detector's row (e.g. LOCATION is only configured, disabled, for
+        # PRESIDIO), and keeping on that basis would let an open-vocabulary
+        # MINISTRAL label bypass both the disabled flag and the
+        # unconfigured-MINISTRAL drop, leaking into findings.
+        if type_config:
+            config_detector = type_config.get('detector', 'ALL')
+            if config_detector != 'ALL' and config_detector != entity_source:
                 logger.debug(
-                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ DROPPED "
-                    f"(unconfigured MINISTRAL label, surfaced for discovery)"
+                    f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): config "
+                    f"detector={config_detector} doesn't match entity source={entity_source}; "
+                    f"treating as unconfigured for this source"
                 )
-                return False, f"{entity_type_upper}:{_UNKNOWN_MINISTRAL_LABEL_REASON}"
-            logger.debug(
-                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT (no config)"
+                type_config = None
+
+        if not type_config:
+            return self._decide_unconfigured_entity(
+                entity_source, entity_type_upper, idx, request_id
             )
-            return True, None
 
         logger.debug(
             f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): Config FOUND → "
@@ -996,19 +1018,10 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
             f"detector_label={type_config.get('detector_label')}"
         )
 
-        config_detector = type_config.get('detector', 'ALL')
-
-        if config_detector != 'ALL' and config_detector != entity_source:
-            logger.debug(
-                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
-                f"(config detector={config_detector} doesn't match entity source={entity_source})"
-            )
-            return True, None
-
         if not type_config.get('enabled', True):
             logger.debug(
                 f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ FILTERED OUT "
-                f"(disabled in config for detector={config_detector})"
+                f"(disabled in config for detector={type_config.get('detector', 'ALL')})"
             )
             return False, f"{entity_type_upper}:disabled"
 
@@ -1023,6 +1036,32 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         logger.debug(
             f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT "
             f"(enabled=true, score {entity_score:.3f} >= threshold {type_threshold:.3f})"
+        )
+        return True, None
+
+    @staticmethod
+    def _decide_unconfigured_entity(
+        entity_source: str, entity_type_upper: str, idx: int, request_id: str
+    ) -> tuple:
+        """Decide the fate of an entity with no *applicable* type config.
+
+        No applicable config means either no row for this type at all, or only a
+        row scoped to a different detector. Ministral is open-vocabulary: such a
+        label is a model proposal, not a finding — drop it and surface it for
+        operator review via the sentinel reason. Every other source keeps the
+        historical allow-by-default.
+
+        Returns:
+            Tuple of (kept: bool, filter_reason: Optional[str]).
+        """
+        if entity_source == DetectorSource.MINISTRAL.value:
+            logger.debug(
+                f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ❌ DROPPED "
+                f"(unconfigured MINISTRAL label, surfaced for discovery)"
+            )
+            return False, f"{entity_type_upper}:{_UNKNOWN_MINISTRAL_LABEL_REASON}"
+        logger.debug(
+            f"[{request_id}] Entity #{idx+1} ({entity_type_upper}): ✅ KEPT (no config)"
         )
         return True, None
 

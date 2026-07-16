@@ -11,8 +11,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- postfilter_enabled defaults to false (zero-effect rollout, deterministic format post-filter).
 -- ministral_enabled defaults to false (explicit operator opt-in).
 -- ============================================================================
-INSERT INTO pii_detection_config (id, presidio_enabled, regex_enabled, default_threshold, postfilter_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, updated_at, updated_by)
-VALUES (1, true, true, 0.30, false, false, 2048, 410, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, presidio_enabled, regex_enabled, default_threshold, postfilter_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, lm_studio_host, lm_studio_port, updated_at, updated_by)
+VALUES (1, true, true, 0.30, false, false, 2048, 410, 'localhost', 1234, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -168,16 +168,16 @@ VALUES
 
 -- ============================================================================
 -- REGEX PII TYPES — all enabled (high precision, low false-positive rate)
+-- Scope limited to formats with no Presidio equivalent: national identifiers
+-- (AVS/CH, SOCIALNUM for FR+BE) and credentials (API_KEY). IP_ADDRESS,
+-- MAC_ADDRESS, CREDIT_CARD_NUMBER and PHONE_NUMBER are covered by Presidio and
+-- deliberately not detected by REGEX to avoid cross-detector duplication.
 -- ============================================================================
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, severity, is_custom, country_code, created_at, updated_at, updated_by)
 VALUES
     ('AVS_NUMBER',         'REGEX', true, 0.95, 'MEDICAL',       'avs number',         'HIGH', false, 'CH', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('SOCIALNUM',          'REGEX', true, 0.75, 'IDENTITY',      'social security number', 'HIGH', false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('CREDIT_CARD_NUMBER', 'REGEX', true, 0.90, 'FINANCIAL',     'credit card number',  'HIGH', false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('PHONE_NUMBER',       'REGEX', true, 0.90, 'CONTACT',       'PHONE_NUMBER',        'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('IP_ADDRESS',         'REGEX', true, 0.95, 'IT_CREDENTIALS','ip address',          'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('MAC_ADDRESS',        'REGEX', true, 0.95, 'IT_CREDENTIALS','mac address',         'LOW',  false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('API_KEY',            'REGEX', true, 0.95, 'IT_CREDENTIALS','api key',             'HIGH', false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
@@ -227,7 +227,7 @@ VALUES
     ('COORDINATE',      'MINISTRAL', true, 0.50, 'CONTACT', 'coordinate',      false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
--- Category: GOV_ID (Government & legal IDs) -- 9 entities
+-- Category: GOV_ID (Government & legal IDs) -- 10 entities
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
 VALUES
@@ -239,7 +239,8 @@ VALUES
     ('LICENSE_PLATE',              'MINISTRAL', true, 0.50, 'GOV_ID', 'license_plate',              false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('VEHICLE_IDENTIFIER',         'MINISTRAL', true, 0.50, 'GOV_ID', 'vehicle_identifier',         false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('CERTIFICATE_LICENSE_NUMBER', 'MINISTRAL', true, 0.50, 'GOV_ID', 'certificate_license_number', false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('UNIQUE_ID',                  'MINISTRAL', true, 0.50, 'GOV_ID', 'unique_id',                  false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('UNIQUE_ID',                  'MINISTRAL', true, 0.50, 'GOV_ID', 'unique_id',                  false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('PASSPORT_NUMBER',            'MINISTRAL', true, 0.50, 'GOV_ID', 'passport_number',            false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category: MEDICAL (Healthcare) -- 3 entities
@@ -278,7 +279,7 @@ VALUES
     ('CUSTOMER_ID',       'MINISTRAL', true, 0.50, 'EMPLOYMENT', 'customer_id',       false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
--- Category: DIGITAL (Digital & network) -- 10 entities
+-- Category: DIGITAL (Digital & network) -- 14 entities
 INSERT INTO pii_type_config
 (pii_type, detector, enabled, threshold, category, detector_label, is_custom, severity, created_at, updated_at, updated_by)
 VALUES
@@ -291,7 +292,11 @@ VALUES
     ('PASSWORD',          'MINISTRAL', true, 0.50, 'DIGITAL', 'password',          false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('HTTP_COOKIE',       'MINISTRAL', true, 0.50, 'DIGITAL', 'http_cookie',       false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
     ('API_KEY',           'MINISTRAL', true, 0.50, 'DIGITAL', 'api_key',           false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
-    ('DEVICE_IDENTIFIER', 'MINISTRAL', true, 0.50, 'DIGITAL', 'device_identifier', false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
+    ('DEVICE_IDENTIFIER', 'MINISTRAL', true, 0.50, 'DIGITAL', 'device_identifier', false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('SOFTWARE_LICENSE',  'MINISTRAL', true, 0.50, 'DIGITAL', 'software_license',  false, 'MEDIUM', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('CLIENT_SECRET',     'MINISTRAL', true, 0.50, 'DIGITAL', 'client_secret',     false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('GITHUB_TOKEN',      'MINISTRAL', true, 0.50, 'DIGITAL', 'github_token',      false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system'),
+    ('ACCESS_TOKEN',      'MINISTRAL', true, 0.50, 'DIGITAL', 'access_token',      false, 'HIGH',   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (pii_type, detector) DO NOTHING;
 
 -- Category: TEMPORAL (Temporal) -- 3 entities

@@ -11,6 +11,8 @@ export interface PiiDetectionConfig {
   ministralChunkSize: number;
   ministralOverlap: number;
   defaultThreshold: number;
+  lmStudioHost: string;
+  lmStudioPort: number;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -26,6 +28,8 @@ export interface UpdatePiiDetectionConfigRequest {
   ministralChunkSize: number;
   ministralOverlap: number;
   defaultThreshold: number;
+  lmStudioHost: string;
+  lmStudioPort: number;
 }
 
 /**
@@ -75,29 +79,6 @@ export interface UpdatePiiTypeConfigRequest {
  */
 export interface BulkUpdatePiiTypeConfigRequest {
   updates: UpdatePiiTypeConfigRequest[];
-}
-
-/**
- * Open-vocabulary label proposed by Ministral that has no pii_type_config row yet,
- * collected for operator review before being promoted or ignored.
- */
-export interface DiscoveredLabel {
-  label: string;
-  occurrenceCount: number;
-  firstSeen: string;
-  lastSeen: string;
-  status: string;
-}
-
-/**
- * Request DTO for promoting a discovered label into a custom PII type configuration.
- */
-export interface PromoteDiscoveredLabelRequest {
-  category: string;
-  severity: string;
-  threshold: number;
-  detectorLabel: string;
-  countryCode?: string;
 }
 
 /**

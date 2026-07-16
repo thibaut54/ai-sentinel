@@ -26,13 +26,23 @@ class DiscoveredLabelCollectorTest {
 
     @BeforeEach
     void setUp() {
-        collector = new DiscoveredLabelCollector(store);
+        collector = new DiscoveredLabelCollector(store, true);
     }
 
     @Test
     @DisplayName("Should_NotTouchStore_When_LabelCountsNull")
     void Should_NotTouchStore_When_LabelCountsNull() {
         collector.record(null);
+
+        verifyNoInteractions(store);
+    }
+
+    @Test
+    @DisplayName("Should_NotTouchStore_When_CollectionDisabled")
+    void Should_NotTouchStore_When_CollectionDisabled() {
+        DiscoveredLabelCollector disabled = new DiscoveredLabelCollector(store, false);
+
+        disabled.record(Map.of("VEHICLE_COLOR", 2));
 
         verifyNoInteractions(store);
     }

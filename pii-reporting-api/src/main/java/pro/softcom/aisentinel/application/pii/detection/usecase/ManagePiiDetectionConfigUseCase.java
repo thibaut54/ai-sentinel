@@ -45,6 +45,8 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
                 command.ministralOverlap(),
                 command.defaultThreshold(),
                 command.postfilterEnabled(),
+                command.lmStudioHost(),
+                command.lmStudioPort(),
                 LocalDateTime.now(ZoneId.systemDefault()),
                 command.updatedBy()
         );

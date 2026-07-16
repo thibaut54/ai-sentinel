@@ -84,6 +84,8 @@ public class PiiDetectionConfigController {
                 request.ministralOverlapOrDefault(),
                 request.defaultThreshold(),
                 request.postfilterEnabledOrDefault(),
+                request.lmStudioHost(),
+                request.lmStudioPort(),
                 updatedBy
             );
             
@@ -115,6 +117,8 @@ public class PiiDetectionConfigController {
             config.ministralOverlap(),
             config.defaultThreshold(),
             config.postfilterEnabled(),
+            config.lmStudioHost(),
+            config.lmStudioPort(),
             config.updatedAt(),
             config.updatedBy()
         );

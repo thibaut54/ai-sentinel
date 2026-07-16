@@ -24,6 +24,8 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private static final Integer CONFIG_ID = 1;
     private static final int DEFAULT_MINISTRAL_CHUNK_SIZE = 2048;
     private static final int DEFAULT_MINISTRAL_OVERLAP = 410;
+    private static final String DEFAULT_LM_STUDIO_HOST = "localhost";
+    private static final int DEFAULT_LM_STUDIO_PORT = 1234;
 
     private final PiiDetectionConfigJpaRepository jpaRepository;
 
@@ -83,6 +85,8 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 DEFAULT_MINISTRAL_OVERLAP, // ministralOverlap
                 new BigDecimal("0.75"),  // defaultThreshold
                 false, // postfilterEnabled (zero-effect rollout default)
+                DEFAULT_LM_STUDIO_HOST, // lmStudioHost
+                DEFAULT_LM_STUDIO_PORT, // lmStudioPort
                 LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
         );
@@ -104,6 +108,8 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getMinistralOverlap() != null ? entity.getMinistralOverlap() : DEFAULT_MINISTRAL_OVERLAP,
                 entity.getDefaultThreshold(),
                 entity.getPostfilterEnabled() != null && entity.getPostfilterEnabled(),
+                entity.getLmStudioHost() != null ? entity.getLmStudioHost() : DEFAULT_LM_STUDIO_HOST,
+                entity.getLmStudioPort() != null ? entity.getLmStudioPort() : DEFAULT_LM_STUDIO_PORT,
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -122,6 +128,8 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .ministralOverlap(config.ministralOverlap())
                 .defaultThreshold(config.defaultThreshold())
                 .postfilterEnabled(config.postfilterEnabled())
+                .lmStudioHost(config.lmStudioHost())
+                .lmStudioPort(config.lmStudioPort())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())
                 .build();

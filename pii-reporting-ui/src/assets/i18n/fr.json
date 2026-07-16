@@ -240,8 +240,8 @@
       "detectors": "Moteurs de d\u00e9tection",
       "thresholds": "Seuils & Performance",
       "piiTypes": "Types d'IPI",
-      "confluence": "Connexion Confluence",
-      "discoveredLabels": "Nouveaux labels d\u00e9tect\u00e9s"
+      "lmStudio": "LM Studio",
+      "confluence": "Connexion Confluence"
     },
     "subtitle": "Configurez les moteurs, seuils et types d'informations \u00e0 d\u00e9tecter",
     "tabs": {
@@ -317,7 +317,18 @@
     "sections": {
       "detectors": "Moteurs de détection",
       "threshold": "Seuil de détection",
-      "performance": "Optimisation des performances"
+      "performance": "Optimisation des performances",
+      "lmStudio": "Endpoint LM Studio"
+    },
+    "lmStudio": {
+      "description": "Hôte et port de l'instance LM Studio (compatible OpenAI) qui sert le modèle Ministral-PII. Appliqués au démarrage de chaque nouveau scan ou reprise de scan.",
+      "host": "Hôte",
+      "hostPlaceholder": "localhost",
+      "hostHint": "Nom d'hôte ou adresse IP de l'instance LM Studio (ex. localhost ou 192.168.1.20).",
+      "hostError": "L'hôte est requis et ne doit pas contenir d'espaces ni de barres obliques.",
+      "port": "Port",
+      "portHint": "Port TCP exposé par LM Studio (1-65535, défaut 1234).",
+      "portError": "Le port doit être compris entre 1 et 65535."
     },
     "detectors": {
       "presidio": {
@@ -367,6 +378,7 @@
       "threshold": "Seuil de confiance",
       "ministralNoThreshold": "Ministral n'utilise pas de seuil de confiance.",
       "toggle": "Activer/désactiver {{type}}",
+      "categoryToggle": "Activer/désactiver toute la catégorie {{category}}",
       "detectors": {
         "presidio": "Détecteur Presidio",
         "ministral": "Détecteur Ministral-PII"
@@ -562,6 +574,10 @@
         "HOSTNAME": "Nom d'hôte",
         "DEVICE_ID": "Identifiant d'appareil",
         "ACCESS_TOKEN": "Jeton d'accès",
+        "PASSPORT_NUMBER": "Numéro de passeport",
+        "SOFTWARE_LICENSE": "Clé de licence logicielle",
+        "CLIENT_SECRET": "Secret client (OAuth)",
+        "GITHUB_TOKEN": "Jeton GitHub",
         "SECRET_KEY": "Clé secrète",
         "SESSION_ID": "Identifiant de session",
         "CASE_NUMBER": "Numéro de dossier",
@@ -792,6 +808,10 @@
         "HOSTNAME": "Nom d'hôte réseau ou de serveur",
         "DEVICE_ID": "Identifiant unique d'appareil",
         "ACCESS_TOKEN": "Jeton d'accès pour l'authentification",
+        "PASSPORT_NUMBER": "Numéro de passeport de voyage",
+        "SOFTWARE_LICENSE": "Clé de licence ou d'activation logicielle",
+        "CLIENT_SECRET": "Secret client OAuth / identifiant d'application",
+        "GITHUB_TOKEN": "Jeton d'accès personnel GitHub",
         "SECRET_KEY": "Clé secrète ou cryptographique",
         "SESSION_ID": "Identifiant de session web ou application",
         "CASE_NUMBER": "Numéro de dossier juridique ou administratif",
@@ -892,22 +912,6 @@
         "createError": "Erreur lors de la création du label personnalisé : {{error}}",
         "deleteSuccess": "Label personnalisé \"{{label}}\" supprimé avec succès",
         "deleteError": "Erreur lors de la suppression du label personnalisé : {{error}}"
-      }
-    },
-    "discoveredLabels": {
-      "title": "Nouveaux labels détectés ({{count}})",
-      "description": "Labels proposés par Ministral qui ne sont pas encore configurés. Ajoutez-les pour les détecter lors des prochains scans, ou ignorez-les.",
-      "empty": "Aucun nouveau label détecté pour le moment.",
-      "occurrences": "{{count}} occurrence(s)",
-      "add": "Ajouter",
-      "ignore": "Ignorer",
-      "promoteSuccess": "Label \"{{label}}\" ajouté à la configuration",
-      "promoteError": "Erreur lors de l'ajout du label : {{error}}",
-      "ignoreSuccess": "Label \"{{label}}\" ignoré",
-      "ignoreError": "Erreur lors de la mise à l'écart du label : {{error}}",
-      "ignoreConfirm": {
-        "header": "Ignorer le label",
-        "message": "Êtes-vous sûr de vouloir ignorer le label \"{{label}}\" ? Il ne sera plus proposé."
       }
     },
     "actions": {

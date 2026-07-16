@@ -101,7 +101,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             false,
             1024, 128,
             newThreshold,
-            false,
+            false, "localhost", 1234,
             updateTime,
             "integration-test"
         );
@@ -141,7 +141,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             true,
             true,
             1024, 128, new BigDecimal("0.75"),
-            true,
+            true, "localhost", 1234,
             LocalDateTime.now(),
             "postfilter-enabler"
         );
@@ -164,7 +164,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         PiiDetectionConfig config = new PiiDetectionConfig(
             CONFIG_ID,
             true, false, true, 2048, 256, new BigDecimal("0.75"),
-            false,
+            false, "localhost", 1234,
             LocalDateTime.now(),
             "ministral-enabler"
         );

@@ -178,8 +178,10 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
-    public DiscoveredLabelCollector discoveredLabelCollector(DiscoveredLabelStore discoveredLabelStore) {
-        return new DiscoveredLabelCollector(discoveredLabelStore);
+    public DiscoveredLabelCollector discoveredLabelCollector(
+            DiscoveredLabelStore discoveredLabelStore,
+            @Value("${pii.detection.discovered-labels.enabled:false}") boolean discoveredLabelsEnabled) {
+        return new DiscoveredLabelCollector(discoveredLabelStore, discoveredLabelsEnabled);
     }
 
     @Bean

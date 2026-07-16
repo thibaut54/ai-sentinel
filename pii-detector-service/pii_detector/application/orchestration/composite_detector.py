@@ -178,7 +178,9 @@ class CompositePIIDetector:
         enable_ministral: Optional[bool] = None,
         pii_type_configs: Optional[dict] = None,
         ministral_chunk_size: Optional[int] = None,
-        ministral_overlap: Optional[int] = None
+        ministral_overlap: Optional[int] = None,
+        lm_studio_host: Optional[str] = None,
+        lm_studio_port: Optional[int] = None
     ) -> List[PIIEntity]:
         """
         Detect PII using the Regex, Presidio and Ministral detectors.
@@ -206,6 +208,7 @@ class CompositePIIDetector:
         entities, _stats = self.detect_pii_with_stats(
             text, threshold, enable_regex, enable_presidio, enable_ministral,
             pii_type_configs, ministral_chunk_size, ministral_overlap,
+            lm_studio_host, lm_studio_port,
         )
         return entities
 
@@ -219,6 +222,8 @@ class CompositePIIDetector:
         pii_type_configs: Optional[dict] = None,
         ministral_chunk_size: Optional[int] = None,
         ministral_overlap: Optional[int] = None,
+        lm_studio_host: Optional[str] = None,
+        lm_studio_port: Optional[int] = None,
     ) -> Tuple[List[PIIEntity], List[Dict]]:
         """Detect PII and return per-detector execution stats alongside results.
 
@@ -245,7 +250,8 @@ class CompositePIIDetector:
 
         results_per_detector, stats = self._collect_detection_results(
             text, threshold, use_regex, use_presidio, use_ministral,
-            pii_type_configs, ministral_chunk_size, ministral_overlap
+            pii_type_configs, ministral_chunk_size, ministral_overlap,
+            lm_studio_host, lm_studio_port
         )
 
         if not results_per_detector:
@@ -293,6 +299,8 @@ class CompositePIIDetector:
         pii_type_configs: Optional[dict],
         ministral_chunk_size: Optional[int] = None,
         ministral_overlap: Optional[int] = None,
+        lm_studio_host: Optional[str] = None,
+        lm_studio_port: Optional[int] = None,
     ) -> Tuple[List[Tuple[PIIDetectorProtocol, List[PIIEntity]]], List[Dict]]:
         """Run each enabled detector, collect results and per-detector stats.
 
@@ -324,7 +332,8 @@ class CompositePIIDetector:
         if use_ministral and self.ministral_detector:
             _run(self.ministral_detector, DetectorSource.MINISTRAL,
                  lambda: self._run_ministral_detection(
-                     text, threshold, pii_type_configs, ministral_chunk_size, ministral_overlap))
+                     text, threshold, pii_type_configs, ministral_chunk_size,
+                     ministral_overlap, lm_studio_host, lm_studio_port))
         return results, stats
 
     def _log_detection_summary(
@@ -431,15 +440,19 @@ class CompositePIIDetector:
         pii_type_configs: Optional[dict] = None,
         chunk_size: Optional[int] = None,
         overlap: Optional[int] = None,
+        lm_studio_host: Optional[str] = None,
+        lm_studio_port: Optional[int] = None,
     ) -> List[PIIEntity]:
         """Run Ministral-PII detection with graceful degradation.
 
         Returns an empty list (never raises) so a Ministral failure (e.g. the
         remote LM Studio endpoint being unreachable) does not bring down the
         whole request. ``chunk_size``/``overlap`` here are the Ministral-specific
-        chunking knobs (DB columns ministral_chunk_size / ministral_overlap).
-        They and ``pii_type_configs`` are forwarded only when the detector's
-        ``detect_pii`` declares them (signature inspection).
+        chunking knobs (DB columns ministral_chunk_size / ministral_overlap);
+        ``lm_studio_host``/``lm_studio_port`` locate the LM Studio endpoint (DB
+        columns lm_studio_host / lm_studio_port). They and ``pii_type_configs``
+        are forwarded only when the detector's ``detect_pii`` declares them
+        (signature inspection).
         """
         try:
             import inspect
@@ -451,6 +464,10 @@ class CompositePIIDetector:
                 kwargs['chunk_size'] = chunk_size
             if 'overlap' in sig.parameters and overlap is not None:
                 kwargs['overlap'] = overlap
+            if 'lm_studio_host' in sig.parameters and lm_studio_host is not None:
+                kwargs['lm_studio_host'] = lm_studio_host
+            if 'lm_studio_port' in sig.parameters and lm_studio_port is not None:
+                kwargs['lm_studio_port'] = lm_studio_port
             return self.ministral_detector.detect_pii(text, threshold, **kwargs)
         except Exception as e:
             self.logger.error(

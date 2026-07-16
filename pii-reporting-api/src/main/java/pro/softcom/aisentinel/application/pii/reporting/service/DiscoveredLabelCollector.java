@@ -16,12 +16,19 @@ import java.util.Map;
  * It is self-contained and fail-open: it no-ops on empty input and swallows
  * persistence failures (logged at warn) so label collection can never make the
  * scan itself fail.
+ *
+ * <p>Collection is gated by {@code enabled}: disabled by default so no discovered
+ * labels are persisted in production. The strict type filtering that drops those
+ * unconfigured labels lives in the detector service and is independent of this
+ * gate; it always applies. Enable only for debugging the model's proposed
+ * vocabulary.
  */
 @RequiredArgsConstructor
 @Slf4j
 public class DiscoveredLabelCollector {
 
     private final DiscoveredLabelStore store;
+    private final boolean enabled;
 
     /**
      * Records the discovered-label occurrences carried by a single detection.
@@ -30,7 +37,7 @@ public class DiscoveredLabelCollector {
      *                    (ignored when null or empty)
      */
     public void record(Map<String, Integer> labelCounts) {
-        if (labelCounts == null || labelCounts.isEmpty()) {
+        if (!enabled || labelCounts == null || labelCounts.isEmpty()) {
             return;
         }
         try {

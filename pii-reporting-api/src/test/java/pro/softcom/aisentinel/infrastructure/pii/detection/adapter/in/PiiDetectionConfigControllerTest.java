@@ -44,7 +44,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_ReturnPostfilterEnabledInResponse_When_GetConfig() throws Exception {
         PiiDetectionConfig domainConfig = new PiiDetectionConfig(
-            1, true, true, false, 1024, 128, new BigDecimal("0.75"), true,
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), true, "localhost", 1234,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(domainConfig);
@@ -57,7 +57,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_UpdatePostfilterEnabled_When_PutRequestEnablesFlag() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, false, 1024, 128, new BigDecimal("0.75"), true,
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), true, "localhost", 1234,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -71,7 +71,9 @@ class PiiDetectionConfigControllerTest {
                   "ministralChunkSize": 1024,
                   "ministralOverlap": 128,
                   "defaultThreshold": 0.75,
-                  "postfilterEnabled": true
+                  "postfilterEnabled": true,
+                  "lmStudioHost": "localhost",
+                  "lmStudioPort": 1234
                 }
                 """;
 
@@ -90,7 +92,7 @@ class PiiDetectionConfigControllerTest {
     @Test
     void Should_DefaultPostfilterEnabledToFalse_When_OmittedInUpdateRequest() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false,
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false, "localhost", 1234,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -104,7 +106,9 @@ class PiiDetectionConfigControllerTest {
                   "ministralEnabled": false,
                   "ministralChunkSize": 1024,
                   "ministralOverlap": 128,
-                  "defaultThreshold": 0.75
+                  "defaultThreshold": 0.75,
+                  "lmStudioHost": "localhost",
+                  "lmStudioPort": 1234
                 }
                 """;
 

@@ -3,10 +3,8 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import { ConfirmationService } from 'primeng/api';
-import { vi } from 'vitest';
 import { PiiSettingsComponent } from './pii-settings.component';
-import { DiscoveredLabel, PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detection-config.model';
+import { CategoryGroup, PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detection-config.model';
 import { ConfluenceConnectionConfig } from '../../core/models/confluence-connection-config.model';
 
 const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
@@ -17,6 +15,8 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   ministralChunkSize: 1024,
   ministralOverlap: 128,
   defaultThreshold: 0.75,
+  lmStudioHost: 'localhost',
+  lmStudioPort: 1234,
   updatedAt: '2026-03-16T10:00:00',
 };
 
@@ -35,20 +35,7 @@ const MOCK_CONFLUENCE_CONFIG: ConfluenceConnectionConfig = {
 const FR_TRANSLATIONS = {
   common: { success: 'Succès', error: 'Erreur', warning: 'Attention', close: 'Fermer', yes: 'Oui', no: 'Non' },
   settings: {
-    nav: { detectors: 'Détecteurs', thresholds: 'Seuils', piiTypes: 'Types PII', confluence: 'Confluence', discoveredLabels: 'Nouveaux labels' },
-    discoveredLabels: {
-      title: 'Nouveaux labels détectés ({{count}})',
-      description: 'desc',
-      empty: 'Aucun nouveau label',
-      occurrences: '{{count}} occurrence(s)',
-      add: 'Ajouter',
-      ignore: 'Ignorer',
-      promoteSuccess: 'Ajouté',
-      promoteError: 'Erreur',
-      ignoreSuccess: 'Ignoré',
-      ignoreError: 'Erreur',
-      ignoreConfirm: { header: 'Ignorer', message: 'Sûr ?' },
-    },
+    nav: { detectors: 'Détecteurs', thresholds: 'Seuils', piiTypes: 'Types PII', confluence: 'Confluence' },
     sections: { detectors: 'Détecteurs', threshold: 'Seuils', performance: 'Perf' },
     detectors: {
       presidio: { label: 'Presidio', description: 'desc' },
@@ -102,7 +89,6 @@ describe('PiiSettingsComponent', () => {
     // Respond to initial config loads
     httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
     httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
-    httpMock.expectOne('/api/v1/pii-detection/discovered-labels').flush([]);
     // Confluence child may or may not load depending on section visibility
     httpMock.match('/api/v1/confluence/connection-config').forEach(
       (req: TestRequest) => req.flush(MOCK_CONFLUENCE_CONFIG)
@@ -153,30 +139,6 @@ describe('PiiSettingsComponent', () => {
 
     // Verify Confluence child saving is also resolved
     expect(confluenceChild!.saving()).toBe(false);
-  });
-
-  it('Should_KeepCoreSettings_When_DiscoveredLabelsEndpointFails', () => {
-    // Given - a fresh component whose discovered-labels endpoint is unavailable
-    // (e.g. backend not yet migrated). The auxiliary source must not blank out
-    // the core settings (fail-open).
-    const freshFixture = TestBed.createComponent(PiiSettingsComponent);
-    const fresh = freshFixture.componentInstance;
-    freshFixture.detectChanges();
-
-    // When - core loads succeed but discovered-labels returns 500
-    httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
-    httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
-    httpMock.expectOne('/api/v1/pii-detection/discovered-labels')
-      .flush('boom', { status: 500, statusText: 'Server Error' });
-    httpMock.match('/api/v1/confluence/connection-config').forEach(
-      (req: TestRequest) => req.flush(MOCK_CONFLUENCE_CONFIG)
-    );
-    freshFixture.detectChanges();
-
-    // Then - core config is loaded, the inbox degrades to empty, no stuck spinner
-    expect(fresh.currentConfig()).toEqual(MOCK_DETECTOR_CONFIG);
-    expect(fresh.discoveredLabels()).toEqual([]);
-    expect(fresh.loading()).toBe(false);
   });
 
   it('Should_SaveDetectorChanges_When_DetectorConfigModified', () => {
@@ -331,6 +293,47 @@ describe('PiiSettingsComponent', () => {
     expect(component.hasUnsavedTypeChanges()).toBe(false);
   });
 
+  // ========== Category master toggle ==========
+
+  it('Should_ReportCategoryEnabled_When_AllTypesEnabled', () => {
+    const group: CategoryGroup = { category: 'CONTACT', types: [
+      { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+      { id: 2, piiType: 'PHONE', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+    ] };
+
+    expect(component.isCategoryEnabled(group)).toBe(true);
+  });
+
+  it('Should_ReportCategoryDisabled_When_OneTypeDisabled', () => {
+    const group: CategoryGroup = { category: 'CONTACT', types: [
+      { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+      { id: 2, piiType: 'PHONE', detector: 'PRESIDIO', enabled: false, threshold: 0.5, category: 'CONTACT' },
+    ] };
+
+    expect(component.isCategoryEnabled(group)).toBe(false);
+  });
+
+  it('Should_DisableEveryTypeOfCategory_When_CategoryToggledOff', () => {
+    component.groupedPiiTypes.set([
+      { detector: 'PRESIDIO', categories: [{ category: 'CONTACT', types: [
+        { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+        { id: 2, piiType: 'PHONE', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' },
+      ] }] },
+    ]);
+    (component as unknown as { originalPiiTypes: { set: (m: Map<string, PiiTypeConfig>) => void } })
+      .originalPiiTypes.set(new Map([
+        ['PRESIDIO:EMAIL', { id: 1, piiType: 'EMAIL', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' }],
+        ['PRESIDIO:PHONE', { id: 2, piiType: 'PHONE', detector: 'PRESIDIO', enabled: true, threshold: 0.5, category: 'CONTACT' }],
+      ]));
+
+    const group = component.groupedPiiTypes()[0].categories[0];
+    component.onCategoryToggleChange(group, false);
+
+    expect(component.modifiedTypesCount).toBe(2);
+    const enabledStates = component.groupedPiiTypes()[0].categories[0].types.map(t => t.enabled);
+    expect(enabledStates).toEqual([false, false]);
+  });
+
   // ========== onSavePiiTypes ==========
 
   it('Should_NotCallBackend_When_SavePiiTypesWithoutModifications', () => {
@@ -392,13 +395,13 @@ describe('PiiSettingsComponent', () => {
   });
 
   it('Should_HideThresholdField_When_AddCustomLabelDialogOpened', () => {
-    // When - the add/promote dialog is opened (custom labels are always MINISTRAL)
+    // When - the add-custom-label dialog is opened (custom labels are always MINISTRAL)
     component.openAddCustomLabelDialog();
     component.customLabelForm.patchValue({ detectorLabel: 'my label', piiType: 'MY_LABEL' });
     fixture.detectChanges();
 
     // Then - the threshold input is gone, but the control keeps its default so the
-    // required create/promote request stays populated and the form is valid.
+    // required create request stays populated and the form is valid.
     expect(document.querySelector('#customThreshold')).toBeNull();
     expect(component.customLabelForm.get('threshold')?.value).toBe(0.8);
     expect(component.customLabelForm.valid).toBe(true);
@@ -654,7 +657,6 @@ describe('PiiSettingsComponent', () => {
     // loadAllConfigs is re-triggered on success
     httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
     httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
-    httpMock.expectOne('/api/v1/pii-detection/discovered-labels').flush([]);
 
     expect(component.creatingCustomType()).toBe(false);
     expect(component.showAddCustomLabelDialog()).toBe(false);
@@ -676,74 +678,4 @@ describe('PiiSettingsComponent', () => {
     expect(component.creatingCustomType()).toBe(false);
   });
 
-  // ========== Discovered labels ==========
-
-  function seedDiscoveredLabel(overrides: Partial<DiscoveredLabel> = {}): DiscoveredLabel {
-    const label: DiscoveredLabel = {
-      label: 'CRYPTO_WALLET',
-      occurrenceCount: 3,
-      firstSeen: '2026-07-01T00:00:00',
-      lastSeen: '2026-07-02T00:00:00',
-      status: 'PENDING',
-      ...overrides,
-    };
-    component.discoveredLabels.set([label]);
-    return label;
-  }
-
-  it('Should_RenderDiscoveredLabels_When_Loaded', () => {
-    seedDiscoveredLabel();
-    component.setActiveSection('discovered_labels');
-    fixture.detectChanges();
-
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('CRYPTO_WALLET');
-    expect(component.discoveredLabelsCount()).toBe(1);
-  });
-
-  it('Should_PromoteLabel_When_PromoteSubmitted', () => {
-    const label = seedDiscoveredLabel();
-
-    component.openPromoteDialog(label);
-    expect(component.showAddCustomLabelDialog()).toBe(true);
-    expect(component.customLabelForm.get('detectorLabel')?.value).toBe('crypto_wallet');
-    expect(component.customLabelForm.get('piiType')?.value).toBe('CRYPTO_WALLET');
-
-    component.submitCustomLabel();
-    expect(component.creatingCustomType()).toBe(true);
-
-    const req = httpMock.expectOne('/api/v1/pii-detection/discovered-labels/CRYPTO_WALLET/promote');
-    expect(req.request.method).toBe('POST');
-    req.flush({ id: 7, piiType: 'CRYPTO_WALLET', detector: 'MINISTRAL', enabled: true, threshold: 0.8, category: 'CUSTOM' });
-
-    // loadAllConfigs is re-triggered on success (both lists refresh)
-    httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
-    httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
-    httpMock.expectOne('/api/v1/pii-detection/discovered-labels').flush([]);
-
-    expect(component.creatingCustomType()).toBe(false);
-    expect(component.showAddCustomLabelDialog()).toBe(false);
-    expect(component.promotingLabel()).toBeNull();
-  });
-
-  it('Should_IgnoreLabel_When_Confirmed', () => {
-    const label = seedDiscoveredLabel({ label: 'MISC_JUNK' });
-    const confirmationService = (component as unknown as { confirmationService: ConfirmationService }).confirmationService;
-    const confirmSpy = vi.spyOn(confirmationService, 'confirm').mockImplementation(() => confirmationService);
-
-    component.ignoreLabel(label);
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-
-    // Simulate the operator accepting the confirmation dialog
-    confirmSpy.mock.calls[0][0].accept!();
-
-    const req = httpMock.expectOne('/api/v1/pii-detection/discovered-labels/MISC_JUNK/ignore');
-    expect(req.request.method).toBe('POST');
-    req.flush(null);
-
-    // loadAllConfigs is re-triggered on success
-    httpMock.expectOne('/api/v1/pii-detection/config').flush(MOCK_DETECTOR_CONFIG);
-    httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
-    httpMock.expectOne('/api/v1/pii-detection/discovered-labels').flush([]);
-  });
 });

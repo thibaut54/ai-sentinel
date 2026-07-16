@@ -240,8 +240,8 @@
       "detectors": "Detection Engines",
       "thresholds": "Thresholds & Performance",
       "piiTypes": "PII Types",
-      "confluence": "Confluence Connection",
-      "discoveredLabels": "Discovered Labels"
+      "lmStudio": "LM Studio",
+      "confluence": "Confluence Connection"
     },
     "subtitle": "Configure detection engines, thresholds and types of information to detect",
     "tabs": {
@@ -317,7 +317,18 @@
     "sections": {
       "detectors": "Detection Engines",
       "threshold": "Detection Threshold",
-      "performance": "Performance Optimization"
+      "performance": "Performance Optimization",
+      "lmStudio": "LM Studio Endpoint"
+    },
+    "lmStudio": {
+      "description": "Host and port of the OpenAI-compatible LM Studio instance serving the Ministral-PII model. Applied at the start of each new or resumed scan.",
+      "host": "Host",
+      "hostPlaceholder": "localhost",
+      "hostHint": "Hostname or IP address of the LM Studio instance (e.g. localhost or 192.168.1.20).",
+      "hostError": "Host is required and must not contain spaces or slashes.",
+      "port": "Port",
+      "portHint": "TCP port exposed by LM Studio (1-65535, default 1234).",
+      "portError": "Port must be between 1 and 65535."
     },
     "detectors": {
       "presidio": {
@@ -367,6 +378,7 @@
       "threshold": "Confidence Threshold",
       "ministralNoThreshold": "Ministral does not use a confidence threshold.",
       "toggle": "Toggle {{type}}",
+      "categoryToggle": "Toggle the whole {{category}} category",
       "detectors": {
         "presidio": "Presidio Detector",
         "ministral": "Ministral-PII Detector"
@@ -562,6 +574,10 @@
         "HOSTNAME": "Hostname",
         "DEVICE_ID": "Device ID",
         "ACCESS_TOKEN": "Access Token",
+        "PASSPORT_NUMBER": "Passport Number",
+        "SOFTWARE_LICENSE": "Software License Key",
+        "CLIENT_SECRET": "Client Secret (OAuth)",
+        "GITHUB_TOKEN": "GitHub Token",
         "SECRET_KEY": "Secret Key",
         "SESSION_ID": "Session ID",
         "CASE_NUMBER": "Case Number",
@@ -785,6 +801,10 @@
         "HOSTNAME": "Network hostname or server name",
         "DEVICE_ID": "Unique device identifier",
         "ACCESS_TOKEN": "Access token for authentication",
+        "PASSPORT_NUMBER": "Travel passport number",
+        "SOFTWARE_LICENSE": "Software license or activation key",
+        "CLIENT_SECRET": "OAuth client secret / application credential",
+        "GITHUB_TOKEN": "GitHub personal access token",
         "SECRET_KEY": "Secret or cryptographic key",
         "SESSION_ID": "Session identifier for web or app",
         "CASE_NUMBER": "Legal or administrative case number",
@@ -892,22 +912,6 @@
         "createError": "Error creating custom label: {{error}}",
         "deleteSuccess": "Custom label \"{{label}}\" deleted successfully",
         "deleteError": "Error deleting custom label: {{error}}"
-      }
-    },
-    "discoveredLabels": {
-      "title": "Discovered Labels ({{count}})",
-      "description": "Labels proposed by Ministral that are not configured yet. Add them to detect them on the next scans, or ignore them.",
-      "empty": "No new label discovered yet.",
-      "occurrences": "{{count}} occurrence(s)",
-      "add": "Add",
-      "ignore": "Ignore",
-      "promoteSuccess": "Label \"{{label}}\" added to the configuration",
-      "promoteError": "Error adding the label: {{error}}",
-      "ignoreSuccess": "Label \"{{label}}\" ignored",
-      "ignoreError": "Error ignoring the label: {{error}}",
-      "ignoreConfirm": {
-        "header": "Ignore label",
-        "message": "Are you sure you want to ignore the label \"{{label}}\"? It will no longer be proposed."
       }
     },
     "actions": {

@@ -37,11 +37,14 @@ class _RecordingMinistralDetector:
         pass
 
     def detect_pii(self, text, threshold=None, pii_type_configs=None,
-                   chunk_size=None, overlap=None):
+                   chunk_size=None, overlap=None,
+                   lm_studio_host=None, lm_studio_port=None):
         self.received = {
             "chunk_size": chunk_size,
             "overlap": overlap,
             "pii_type_configs": pii_type_configs,
+            "lm_studio_host": lm_studio_host,
+            "lm_studio_port": lm_studio_port,
         }
         if self._raises is not None:
             raise self._raises
@@ -160,3 +163,27 @@ class TestMinistralChunkKnobWiring:
         received = self._run(ministral_chunk_size=1024, ministral_overlap=128)
         assert received["chunk_size"] == 1024
         assert received["overlap"] == 128
+
+
+class TestLmStudioEndpointWiring:
+    """The LM Studio host/port must reach the Ministral detector through the
+    composite so an operator can retarget the endpoint per scan."""
+
+    def test_Should_ForwardLmStudioHostAndPort_When_Provided(self):
+        ministral = _RecordingMinistralDetector()
+        composite = CompositePIIDetector(
+            ministral_detector=ministral,
+            enable_regex=False,
+            enable_presidio=False,
+            enable_ministral=True,
+        )
+        composite.detect_pii(
+            "some text with PII",
+            enable_regex=False,
+            enable_presidio=False,
+            enable_ministral=True,
+            lm_studio_host="192.168.1.20",
+            lm_studio_port=9999,
+        )
+        assert ministral.received["lm_studio_host"] == "192.168.1.20"
+        assert ministral.received["lm_studio_port"] == 9999

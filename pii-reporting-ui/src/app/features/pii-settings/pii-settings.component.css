@@ -572,12 +572,29 @@
 .category-subheader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 8px 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--sentinel-text-secondary);
   border-bottom: 1px solid var(--sentinel-border-lightest);
+}
+
+.category-subheader-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Category master toggle: same footprint as the per-type switches (scale 0.85),
+   with a darker checked track so it reads as a category-level control.
+   ::ng-deep needed: PrimeNG toggleswitch internal structure. */
+:host .category-subheader ::ng-deep .category-toggle.p-toggleswitch {
+  transform: scale(0.85);
+  transform-origin: center;
+  --p-toggleswitch-checked-background: var(--sentinel-text-body);
+  --p-toggleswitch-checked-hover-background: var(--sentinel-text-primary);
 }
 
 .category-subheader i {
@@ -1027,19 +1044,36 @@
 }
 
 /* ============================================================
-   Ministral advanced chunking parameters
+   Ministral card: vertical layout so the advanced chunking
+   parameters live inside the card, below the main row.
+   ============================================================ */
+.detector-card.ministral {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.detector-card.ministral .detector-card-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ============================================================
+   Ministral advanced chunking parameters -- inset panel painted in
+   the modal's background colour, sitting on top of the card's amber
+   tint so the large flat amber fill is broken up.
    ============================================================ */
 .advanced-params {
-  margin-top: 16px;
-  padding: 16px 20px 20px;
+  margin: 14px 0 0;
+  padding: 14px 16px 16px;
   border: 1px solid var(--sentinel-border-default);
-  border-radius: 10px;
-  background: var(--sentinel-bg-surface);
+  border-radius: 8px;
+  background: var(--sentinel-bg-card);
 }
 
 .advanced-params-title {
-  padding: 0 6px;
-  font-size: 0.95rem;
+  padding: 0 4px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--sentinel-text-default);
 }

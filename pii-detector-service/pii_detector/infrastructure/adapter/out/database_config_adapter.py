@@ -77,7 +77,9 @@ class DatabaseConfigAdapter:
                         ministral_chunk_size,
                         ministral_overlap,
                         default_threshold,
-                        postfilter_enabled
+                        postfilter_enabled,
+                        lm_studio_host,
+                        lm_studio_port
                     FROM pii_detection_config
                     WHERE id = 1 \
                     """
@@ -86,13 +88,13 @@ class DatabaseConfigAdapter:
                 cursor.execute(query)
                 result = cursor.fetchone()
             except psycopg2.errors.UndefinedColumn:
-                # Migration not yet applied for ministral_* or postfilter_enabled
-                # -- retry without the new columns. They all default downstream so
-                # the service stays usable on a freshly-pulled environment before
-                # Hibernate DDL update.
+                # Migration not yet applied for ministral_* / postfilter_enabled /
+                # lm_studio_* -- retry without the new columns. They all default
+                # downstream so the service stays usable on a freshly-pulled
+                # environment before Hibernate DDL update.
                 logger.warning(
-                    "ministral_* / postfilter_enabled column missing in "
-                    "pii_detection_config; falling back on defaults. "
+                    "ministral_* / postfilter_enabled / lm_studio_* column missing "
+                    "in pii_detection_config; falling back on defaults. "
                     "Apply migration to enable."
                 )
                 connection.rollback()
@@ -104,7 +106,9 @@ class DatabaseConfigAdapter:
                         FALSE AS ministral_enabled,
                         2048 AS ministral_chunk_size,
                         410 AS ministral_overlap,
-                        default_threshold
+                        default_threshold,
+                        'localhost' AS lm_studio_host,
+                        1234 AS lm_studio_port
                     FROM pii_detection_config
                     WHERE id = 1
                     """
@@ -136,13 +140,23 @@ class DatabaseConfigAdapter:
             config.setdefault("ministral_overlap", 410)
             if config["ministral_overlap"] is None:
                 config["ministral_overlap"] = 410
+            # LM Studio endpoint (host/port) serving the Ministral-PII model
+            # (added by migration 014). Absent / NULL -> the documented defaults
+            # (localhost:1234) so a pre-migration DB keeps working.
+            config.setdefault("lm_studio_host", "localhost")
+            if not config["lm_studio_host"]:
+                config["lm_studio_host"] = "localhost"
+            config.setdefault("lm_studio_port", 1234)
+            if config["lm_studio_port"] is None:
+                config["lm_studio_port"] = 1234
             logger.info(
                 "Successfully fetched config from database: "
                 f"presidio={config['presidio_enabled']}, "
                 f"regex={config['regex_enabled']}, "
                 f"ministral={config['ministral_enabled']}, "
                 f"threshold={config['default_threshold']}, "
-                f"postfilter={config['postfilter_enabled']}"
+                f"postfilter={config['postfilter_enabled']}, "
+                f"lm_studio={config['lm_studio_host']}:{config['lm_studio_port']}"
             )
             return config
 

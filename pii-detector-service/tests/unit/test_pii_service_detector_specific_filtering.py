@@ -407,3 +407,92 @@ class TestDetectorSpecificFiltering:
             f"Expected 1 entity, got {len(filtered)}"
         )
         assert filtered[0]['source'] == DetectorSource.MINISTRAL
+
+    def test_Should_DropMinistralLabel_When_TypeOnlyConfiguredDisabledForOtherDetector(self):
+        """
+        BUG REPRODUCTION (live): a disabled type leaks in via Ministral passthrough.
+
+        Given: LOCATION is configured only for PRESIDIO with enabled=False (the
+               production seed shape, with the composite ``PRESIDIO:LOCATION`` key
+               the ALL-detector fetch adds alongside the plain key).
+        When:  Ministral emits LOCATION via open-vocabulary passthrough.
+        Then:  The LOCATION must be DROPPED and surfaced as a discovered label —
+               not kept via the detector-mismatch allow-by-default path.
+        """
+        # Arrange — mirror the DatabaseConfigAdapter ALL-detector dict shape:
+        # both a plain key and the composite per-detector key point to the row.
+        presidio_location = {
+            'enabled': False,
+            'threshold': 0.75,
+            'detector': 'PRESIDIO',
+            'detector_label': 'LOCATION',
+            'category': 'Location',
+            'country_code': None,
+        }
+        pii_type_configs = {
+            'LOCATION': presidio_location,
+            'PRESIDIO:LOCATION': presidio_location,
+        }
+        entities = [
+            PIIEntity(
+                text='46.5197, 6.6323',
+                pii_type='LOCATION',
+                type_label='LOCATION',
+                start=0,
+                end=15,
+                score=1.0,
+                source=DetectorSource.MINISTRAL,
+            )
+        ]
+        discovered = {}
+
+        # Act
+        filtered = self.servicer._filter_entities_by_type_config(
+            entities, pii_type_configs, self.request_id, discovered_out=discovered,
+        )
+
+        # Assert
+        assert len(filtered) == 0, (
+            "MINISTRAL LOCATION must be dropped when LOCATION is only configured "
+            f"(disabled) for PRESIDIO. Expected 0 entities, got {len(filtered)}"
+        )
+        assert discovered == {'LOCATION': 1}
+
+    def test_Should_KeepPresidioType_When_OnlyConfiguredDisabledForMinistral(self):
+        """Symmetric guard: a non-Ministral source keeps allow-by-default when the
+        type is only configured for another (Ministral) detector."""
+        # Arrange
+        ministral_only = {
+            'enabled': False,
+            'threshold': 0.5,
+            'detector': 'MINISTRAL',
+            'detector_label': 'city',
+            'category': 'Location',
+            'country_code': None,
+        }
+        pii_type_configs = {
+            'CITY': ministral_only,
+            'MINISTRAL:CITY': ministral_only,
+        }
+        entities = [
+            PIIEntity(
+                text='Lausanne',
+                pii_type='CITY',
+                type_label='CITY',
+                start=0,
+                end=8,
+                score=1.0,
+                source=DetectorSource.PRESIDIO,
+            )
+        ]
+        discovered = {}
+
+        # Act
+        filtered = self.servicer._filter_entities_by_type_config(
+            entities, pii_type_configs, self.request_id, discovered_out=discovered,
+        )
+
+        # Assert
+        assert len(filtered) == 1
+        assert filtered[0]['source'] == DetectorSource.PRESIDIO
+        assert discovered == {}

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -26,6 +27,8 @@ import java.math.BigDecimal;
  * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
  * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled.
  *                            Optional in the payload: when omitted, defaults to {@code false}.
+ * @param lmStudioHost        Host of the LM Studio endpoint serving the Ministral-PII model
+ * @param lmStudioPort        Port of the LM Studio endpoint serving the Ministral-PII model (1-65535)
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("presidioEnabled")
@@ -59,7 +62,17 @@ public record UpdatePiiDetectionConfigRequestDto(
     BigDecimal defaultThreshold,
 
     @JsonProperty("postfilterEnabled")
-    Boolean postfilterEnabled
+    Boolean postfilterEnabled,
+
+    @JsonProperty("lmStudioHost")
+    @NotBlank(message = "lmStudioHost is required")
+    String lmStudioHost,
+
+    @JsonProperty("lmStudioPort")
+    @NotNull(message = "lmStudioPort is required")
+    @Min(value = 1, message = "lmStudioPort must be at least 1")
+    @Max(value = 65535, message = "lmStudioPort must be at most 65535")
+    Integer lmStudioPort
 ) {
     /**
      * Validates business rules for the configuration request.

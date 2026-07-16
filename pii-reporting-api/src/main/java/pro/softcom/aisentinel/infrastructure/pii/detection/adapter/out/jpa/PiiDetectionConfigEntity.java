@@ -78,6 +78,22 @@ public class PiiDetectionConfigEntity {
     @Column(name = "postfilter_enabled", nullable = false)
     private Boolean postfilterEnabled;
 
+    /**
+     * Host of the OpenAI-compatible LM Studio endpoint serving the Ministral-PII
+     * model. Defaults to {@code localhost}.
+     */
+    @NotNull
+    @Column(name = "lm_studio_host", nullable = false)
+    private String lmStudioHost;
+
+    /**
+     * Port of the OpenAI-compatible LM Studio endpoint serving the Ministral-PII
+     * model. Defaults to {@code 1234}.
+     */
+    @NotNull
+    @Column(name = "lm_studio_port", nullable = false)
+    private Integer lmStudioPort;
+
     @NotNull
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;

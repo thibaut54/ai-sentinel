@@ -21,6 +21,8 @@ public record PiiDetectionConfig(
         Integer ministralOverlap,
         BigDecimal defaultThreshold,
         boolean postfilterEnabled,
+        String lmStudioHost,
+        Integer lmStudioPort,
         LocalDateTime updatedAt,
         String updatedBy) {
 
@@ -28,6 +30,8 @@ public record PiiDetectionConfig(
     private static final BigDecimal MAX_THRESHOLD = BigDecimal.ONE;
     private static final int MIN_MINISTRAL_CHUNK_SIZE = 256;
     private static final int MAX_MINISTRAL_CHUNK_SIZE = 4096;
+    private static final int MIN_PORT = 1;
+    private static final int MAX_PORT = 65535;
 
     /**
      * Compact constructor for validation.
@@ -67,6 +71,15 @@ public record PiiDetectionConfig(
                 || ministralOverlap >= ministralChunkSize) {
             throw new IllegalArgumentException(
                     "Ministral overlap must be between 0 (inclusive) and the chunk size (exclusive)");
+        }
+
+        if (lmStudioHost == null || lmStudioHost.isBlank()) {
+            throw new IllegalArgumentException("LM Studio host cannot be blank");
+        }
+
+        if (lmStudioPort == null || lmStudioPort < MIN_PORT || lmStudioPort > MAX_PORT) {
+            throw new IllegalArgumentException(
+                    "LM Studio port must be between " + MIN_PORT + " and " + MAX_PORT);
         }
     }
 }

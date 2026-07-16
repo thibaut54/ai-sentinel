@@ -157,6 +157,69 @@ class TestLabelMapping:
         assert len(entities) == 1
         assert entities[0].pii_type == "IP_ADDRESS"
 
+
+class TestLmStudioEndpointOverride:
+    """The LM Studio host/port (DB columns lm_studio_host / lm_studio_port,
+    re-read on every scan) must be honoured per request without mutating the
+    singleton detector's env-driven ``base_url``."""
+
+    def test_Should_UseConfiguredHostAndPort_When_Provided(self):
+        response = _chat_response([{"text": "john@acme.com", "label": "EMAIL"}])
+        detector = _build_detector([response])
+        configs = _configs(("EMAIL", "EMAIL", 0.0))
+
+        detector.detect_pii(
+            "Contact: john@acme.com",
+            pii_type_configs=configs,
+            lm_studio_host="192.168.1.20",
+            lm_studio_port=9999,
+        )
+
+        called_url = detector._client.post.call_args.args[0]
+        assert called_url == "http://192.168.1.20:9999/v1/chat/completions"
+
+    def test_Should_FallBackToEnvBaseUrl_When_HostOrPortMissing(self):
+        response = _chat_response([{"text": "john@acme.com", "label": "EMAIL"}])
+        detector = _build_detector([response])
+        detector.base_url = "http://env-default:1234/v1"
+        configs = _configs(("EMAIL", "EMAIL", 0.0))
+
+        # Host present but port missing -> no override, env default is used.
+        detector.detect_pii(
+            "Contact: john@acme.com",
+            pii_type_configs=configs,
+            lm_studio_host="ignored-without-port",
+            lm_studio_port=None,
+        )
+
+        called_url = detector._client.post.call_args.args[0]
+        assert called_url == "http://env-default:1234/v1/chat/completions"
+
+    def test_Should_NotMutateInstanceBaseUrl_When_OverrideProvided(self):
+        response = _chat_response([{"text": "john@acme.com", "label": "EMAIL"}])
+        detector = _build_detector([response])
+        detector.base_url = "http://env-default:1234/v1"
+        configs = _configs(("EMAIL", "EMAIL", 0.0))
+
+        detector.detect_pii(
+            "Contact: john@acme.com",
+            pii_type_configs=configs,
+            lm_studio_host="other-host",
+            lm_studio_port=4321,
+        )
+
+        # The singleton's base_url is left untouched (concurrency safety).
+        assert detector.base_url == "http://env-default:1234/v1"
+
+    def test_Should_BuildBaseUrl_When_ResolvingHostAndPort(self):
+        detector = MinistralDetector()
+        assert (
+            detector._resolve_base_url("myhost", 4000)
+            == "http://myhost:4000/v1"
+        )
+        assert detector._resolve_base_url(None, 4000) == detector.base_url
+        assert detector._resolve_base_url("myhost", None) == detector.base_url
+
     def test_Should_NormalizeCamelCaseLabel_When_PassthroughUnknown(self):
         # An unmapped camelCase label passes through as UPPER_SNAKE (not
         # "TRACKINGNUMBER"), so the Java enum can still resolve a FR label.
@@ -441,6 +504,32 @@ class TestLabelResolver:
         resolver = _ministral_resolver()
         assert resolver.resolve("") is None
         assert resolver.resolve("!!!") is None
+
+    def test_Should_ResolveModelVariant_When_LabelHasKnownAlias(self):
+        # The generative model emits qualified/synonym variants for the same
+        # concept; the alias layer maps them to the configured detector_label so
+        # they inherit that type's enabled state instead of being passed through
+        # (and then dropped by the gRPC type-config gate).
+        resolver = _ministral_resolver()
+        expected = {
+            "driver_license": "DRIVER_LICENSE_NUMBER",
+            "routing_number": "BANK_ROUTING_NUMBER",
+            "coordinates": "COORDINATE",
+            "stripe_api_key": "API_KEY",
+            "temporary_password": "PASSWORD",
+            "credit_card": "CREDIT_DEBIT_CARD",
+            "atm_pin": "PIN",
+            "employer_tax_id": "TAX_ID",
+        }
+        for variant, canonical in expected.items():
+            assert resolver.resolve(variant) == canonical, variant
+
+    def test_Should_NotAlias_When_CanonicalTargetIsNotConfigured(self):
+        # An alias only fires when its canonical detector_label is present in the
+        # mapping (i.e. the type is configured/enabled). Otherwise the variant
+        # falls back to passthrough — it never invents an unconfigured mapping.
+        resolver = _LabelResolver.from_mapping({"national_id": "NATIONAL_ID"})
+        assert resolver.resolve("stripe_api_key") == "STRIPE_API_KEY"
 
     def test_Should_ResolveEveryLoggedLabel_When_MinistralEmitsOpenVocabulary(self):
         # Goal guard-rail: none of the 115 labels from the 2026-06-28 scan may be

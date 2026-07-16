@@ -56,26 +56,55 @@ class TestRegexDetector:
         assert detector.model_id == "regex-detector"
         assert len(detector.patterns) > 0
     
-    def test_Should_DetectIPv4_When_ValidIPInText(self, detector):
-        """Should detect valid IPv4 addresses."""
-        text = "Server IP is 192.168.1.1"
-        
+    def test_Should_NotDetectIPOrMAC_When_CoveredByPresidio(self, detector):
+        """Should not detect IP/MAC/credit-card/phone (delegated to Presidio)."""
+        text = "IP 192.168.1.1, MAC 00:1B:44:11:3A:B7, card 4532015112830366"
+
         entities = detector.detect_pii(text)
-        
-        ip_entities = [e for e in entities if e.pii_type == "IP_ADDRESS"]
-        assert len(ip_entities) >= 1
-        assert any(e.text == "192.168.1.1" for e in ip_entities)
-    
-    def test_Should_DetectMACAddress_When_ValidMACInText(self, detector):
-        """Should detect valid MAC addresses."""
-        text = "Device MAC: 00:1B:44:11:3A:B7"
-        
+
+        delegated = {"IP_ADDRESS", "MAC_ADDRESS", "CREDIT_CARD_NUMBER", "PHONE_NUMBER"}
+        assert not any(e.pii_type in delegated for e in entities)
+
+    def test_Should_NotFlagElevenDigitNumber_When_NotAValidId(self, detector):
+        """Should not flag a bare 11-digit number (former German-SSN false positive)."""
+        text = "Order reference 20240115123 shipped and phone 01701234567"
+
         entities = detector.detect_pii(text)
-        
-        mac_entities = [e for e in entities if e.pii_type == "MAC_ADDRESS"]
-        assert len(mac_entities) == 1
-        assert mac_entities[0].text == "00:1B:44:11:3A:B7"
-    
+
+        assert not any(e.pii_type == "SOCIALNUM" for e in entities)
+
+    def test_Should_DetectFrenchNIR_When_ValidControlKey(self, detector):
+        """Should detect a French NIR whose mod-97 control key is valid."""
+        text = "NIR: 184127645108946 fin"  # body 1841276451089 + key 46
+
+        entities = detector.detect_pii(text)
+
+        assert any(e.pii_type == "SOCIALNUM" for e in entities)
+
+    def test_Should_RejectFrenchNIR_When_InvalidControlKey(self, detector):
+        """Should reject a 15-digit NIR-shaped run with a wrong control key."""
+        text = "num 184127645108900 end"  # same body, wrong key 00
+
+        entities = detector.detect_pii(text)
+
+        assert not any(e.pii_type == "SOCIALNUM" for e in entities)
+
+    def test_Should_DetectBelgianNRN_When_ValidControlNumber(self, detector):
+        """Should detect a Belgian NRN with a valid mod-97 control number."""
+        text = "Rijksregisternummer 850730-033-28"
+
+        entities = detector.detect_pii(text)
+
+        assert any(e.pii_type == "SOCIALNUM" for e in entities)
+
+    def test_Should_RejectSwissAVS_When_InvalidCheckDigit(self, detector):
+        """Should reject a well-formatted AVS whose EAN-13 check digit is wrong."""
+        text = "Swiss SSN: 756.1234.5678.98"  # valid checksum is 97, not 98
+
+        entities = detector.detect_pii(text)
+
+        assert not any(e.pii_type == "AVS_NUMBER" for e in entities)
+
     def test_Should_DetectGitHubToken_When_ValidTokenInText(self, detector):
         """Should detect GitHub tokens."""
         text = "Token: ghp_1234567890abcdefghijklmnopqrstuvwxyz"
@@ -167,22 +196,22 @@ class TestRegexDetector:
     
     def test_Should_SortByPosition_When_MultipleEntities(self, detector):
         """Should return entities sorted by start position."""
-        text = "Email: alice@test.com and bob@example.org, IP: 192.168.1.1"
-        
+        text = "Key AKIAIOSFODNN7EXAMPLE and AVS 756.1234.5678.97"
+
         entities = detector.detect_pii(text)
-        
+
         # Check entities are sorted by start position
         for i in range(len(entities) - 1):
             assert entities[i].start <= entities[i + 1].start
-    
+
     def test_Should_MaskPII_When_DetectedEntities(self, detector):
         """Should mask detected PII in text."""
-        text = "Device MAC: 00:1B:44:11:3A:B7"
-        
+        text = "AWS Key: AKIAIOSFODNN7EXAMPLE"
+
         masked_text, entities = detector.mask_pii(text)
-        
-        assert "[MAC_ADDRESS]" in masked_text
-        assert "00:1B:44:11:3A:B7" not in masked_text
+
+        assert "[API_KEY]" in masked_text
+        assert "AKIAIOSFODNN7EXAMPLE" not in masked_text
         assert len(entities) >= 1
     
     def test_Should_NoOpDownload_When_CalledSafely(self, detector):
@@ -218,26 +247,26 @@ class TestRegexDetectorIntegration:
         """Should detect multiple PII types in realistic text."""
         text = """
         Please contact our support team:
-        Email: support@company.com
-        Phone: 01 23 45 67 89
-        Server IP: 192.168.1.100
         AWS Key: AKIAIOSFODNN7EXAMPLE
+        GitHub token: ghp_1234567890abcdefghijklmnopqrstuvwxyz
+        Swiss AVS: 756.1234.5678.97
         """
-        
+
         entities = detector.detect_pii(text)
-        
+
         # Should detect multiple types
         pii_types = {e.pii_type for e in entities}
-        assert "IP_ADDRESS" in pii_types
+        assert "API_KEY" in pii_types
+        assert "AVS_NUMBER" in pii_types
         assert len(entities) >= 2
-    
+
     def test_Should_PreservePositions_When_Masking(self, detector):
         """Should preserve correct positions when masking."""
-        text = "Email: test@example.com and IP: 192.168.1.1"
-        
+        text = "Key: AKIAIOSFODNN7EXAMPLE and done"
+
         masked_text, entities = detector.mask_pii(text)
-        
+
         # Original structure should be preserved
-        assert "and" in masked_text
-        assert "IP:" in masked_text
-        assert "[IP_ADDRESS]" in masked_text
+        assert "and done" in masked_text
+        assert "Key:" in masked_text
+        assert "[API_KEY]" in masked_text

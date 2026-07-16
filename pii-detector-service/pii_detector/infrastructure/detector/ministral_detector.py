@@ -139,6 +139,41 @@ def _normalize_label(label: str) -> str:
     return _NON_ALNUM_RUN.sub("_", spaced.lower()).strip("_")
 
 
+# Bridge the model's inconsistent open vocabulary to the configured
+# ``detector_label`` names. Ministral-3B-PII is generative: for the same concept
+# it emits either the documented label or a qualified/synonym variant depending
+# on context (e.g. ``driver_license`` vs ``driver_license_number``,
+# ``stripe_api_key`` vs ``api_key``, ``routing_number`` vs
+# ``bank_routing_number``). The model card itself warns it "can occasionally emit
+# a label outside the documented set". Keys and values are NORMALIZED
+# (:func:`_normalize_label`) forms; a variant is rewritten to its canonical
+# ``detector_label`` before lookup, so it inherits that type's enabled state and
+# threshold. Only map variants that are unambiguously the same PII type. Captured
+# empirically from the 69-label probe (my-files/ministral-69-labels-probe*).
+_MODEL_LABEL_ALIASES: Dict[str, str] = {
+    "driver_license": "driver_license_number",
+    "routing_number": "bank_routing_number",
+    "coordinates": "coordinate",
+    "stripe_api_key": "api_key",
+    "temporary_password": "password",
+    "credit_card": "credit_debit_card",
+    "atm_pin": "pin",
+    "employer_tax_id": "tax_id",
+    "mobile_phone_number": "phone_number",
+    "fax": "fax_number",
+    "uk_postcode": "postcode",
+    "race_and_ethnicity": "race_ethnicity",
+    "preferred_spoken_language": "language",
+    "highest_education_level": "education_level",
+    "vendor": "company_name",
+    "ipv4_address": "ipv4",
+    "gateway_ipv4": "ipv4",
+    "ipv6_address": "ipv6",
+    "username": "user_name",
+    "imei": "device_identifier",
+}
+
+
 @dataclass(frozen=True)
 class _LabelResolver:
     """Resolve a model label to a canonical ``pii_type`` without ever dropping.
@@ -148,7 +183,11 @@ class _LabelResolver:
     1. **exact** — the label matches a configured ``detector_label`` verbatim;
     2. **normalized** — case/format-insensitive match (``"Ip Address"`` resolves
        to the same ``pii_type`` as the configured ``ip_address``);
-    3. **passthrough** — any still-unmapped label surfaces as its normalized
+    3. **alias** — a known model variant (:data:`_MODEL_LABEL_ALIASES`) is
+       rewritten to its canonical ``detector_label`` (e.g. ``driver_license`` ->
+       ``driver_license_number``) so the generative model's inconsistent output
+       still resolves to the configured type;
+    4. **passthrough** — any still-unmapped label surfaces as its normalized
        ``UPPER_SNAKE`` form so open-vocabulary detections are never silently
        dropped. The gRPC type-config gate keeps no-config types and drops
        disabled ones, so this never resurrects a type an operator turned off.
@@ -172,7 +211,12 @@ class _LabelResolver:
         norm = _normalize_label(label)
         if not norm:
             return None
-        return self.normalized.get(norm) or norm.upper()
+        if norm in self.normalized:
+            return self.normalized[norm]
+        alias = _MODEL_LABEL_ALIASES.get(norm)
+        if alias and alias in self.normalized:
+            return self.normalized[alias]
+        return norm.upper()
 
 
 class MinistralDetector:
@@ -229,11 +273,18 @@ class MinistralDetector:
         pii_type_configs: Optional[Dict] = None,
         chunk_size: Optional[int] = None,
         overlap: Optional[int] = None,
+        lm_studio_host: Optional[str] = None,
+        lm_studio_port: Optional[int] = None,
     ) -> List[PIIEntity]:
         if not text:
             return []
 
         effective_threshold = threshold if threshold is not None else self.threshold
+        # Per-request LM Studio endpoint override (DB columns lm_studio_host /
+        # lm_studio_port, re-read on every scan/resume). Threaded as a local so
+        # the singleton detector's ``self.base_url`` (env default) is never
+        # mutated under concurrent gRPC threads.
+        base_url = self._resolve_base_url(lm_studio_host, lm_studio_port)
         detection_id = f"ministral_{int(time.time() * 1000) % 10000}"
 
         try:
@@ -249,7 +300,7 @@ class MinistralDetector:
 
             resolver = _LabelResolver.from_mapping(label_mapping)
             entities = self._extract_over_chunks(
-                text, resolver, type_labels, chunk_size, overlap
+                text, resolver, type_labels, chunk_size, overlap, base_url
             )
             entities = self._apply_per_type_thresholds(entities, scoring_overrides)
             # Global confidence floor, for parity with the other detectors. The
@@ -281,6 +332,19 @@ class MinistralDetector:
     # Extraction over chunks (global offset rebasing)
     # ------------------------------------------------------------------
 
+    def _resolve_base_url(
+        self, lm_studio_host: Optional[str], lm_studio_port: Optional[int]
+    ) -> str:
+        """Return the effective LM Studio base URL for this request.
+
+        When the operator-configured host/port are supplied (DB columns
+        lm_studio_host / lm_studio_port), build ``http://host:port/v1``;
+        otherwise fall back to the env-driven ``self.base_url``.
+        """
+        if lm_studio_host and lm_studio_port:
+            return f"http://{lm_studio_host}:{lm_studio_port}/v1"
+        return self.base_url
+
     def _extract_over_chunks(
         self,
         text: str,
@@ -288,6 +352,7 @@ class MinistralDetector:
         type_labels: Dict[str, str],
         chunk_size: Optional[int],
         overlap: Optional[int],
+        base_url: str,
     ) -> List[PIIEntity]:
         """Chunk the text, extract per chunk, rebase offsets to global coords.
 
@@ -305,7 +370,7 @@ class MinistralDetector:
         entities: List[PIIEntity] = []
         for chunk in chunks:
             try:
-                raw_pairs = self._extract_chunk(chunk.text)
+                raw_pairs = self._extract_chunk(chunk.text, base_url)
             except (httpx.HTTPError, httpx.TimeoutException) as exc:
                 self.logger.warning(
                     "MINISTRAL_CHUNK_FAILED start=%d len=%d: %s",
@@ -453,10 +518,12 @@ class MinistralDetector:
             )
         return self._client
 
-    def _extract_chunk(self, chunk_text: str) -> List[Dict[str, Any]]:
+    def _extract_chunk(
+        self, chunk_text: str, base_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """POST one chunk to ``/chat/completions`` and parse the entity array."""
         client = self._get_client()
-        url = f"{self.base_url}/chat/completions"
+        url = f"{base_url or self.base_url}/chat/completions"
         payload = self._build_payload(chunk_text)
         resp = client.post(url, json=payload)
         resp.raise_for_status()

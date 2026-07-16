@@ -3,11 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   CreatePiiTypeConfigRequest,
-  DiscoveredLabel,
   GroupedPiiTypes,
   PiiDetectionConfig,
   PiiTypeConfig,
-  PromoteDiscoveredLabelRequest,
   UpdatePiiDetectionConfigRequest,
   UpdatePiiTypeConfigRequest
 } from '../models/pii-detection-config.model';
@@ -19,7 +17,6 @@ import {
 export class PiiDetectionConfigService {
   private readonly apiUrl = '/api/v1/pii-detection/config';
   private readonly typesApiUrl = '/api/v1/pii-detection/pii-types';
-  private readonly discoveredLabelsApiUrl = '/api/v1/pii-detection/discovered-labels';
 
   constructor(private readonly http: HttpClient) {
   }
@@ -93,26 +90,5 @@ export class PiiDetectionConfigService {
    */
   deletePiiTypeConfig(detector: string, piiType: string): Observable<void> {
     return this.http.delete<void>(`${this.typesApiUrl}/${detector}/${piiType}`);
-  }
-
-  /**
-   * Get the PENDING open-vocabulary labels discovered by Ministral awaiting review.
-   */
-  getDiscoveredLabels(): Observable<DiscoveredLabel[]> {
-    return this.http.get<DiscoveredLabel[]>(this.discoveredLabelsApiUrl);
-  }
-
-  /**
-   * Promote a discovered label into a custom PII type configuration.
-   */
-  promoteLabel(label: string, request: PromoteDiscoveredLabelRequest): Observable<PiiTypeConfig> {
-    return this.http.post<PiiTypeConfig>(`${this.discoveredLabelsApiUrl}/${encodeURIComponent(label)}/promote`, request);
-  }
-
-  /**
-   * Ignore a discovered label so it stops appearing in the review inbox.
-   */
-  ignoreLabel(label: string): Observable<void> {
-    return this.http.post<void>(`${this.discoveredLabelsApiUrl}/${encodeURIComponent(label)}/ignore`, {});
   }
 }

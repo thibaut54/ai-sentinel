@@ -336,29 +336,41 @@ class RegexDetector:
         Returns:
             List of validated matches (invalid matches removed)
         """
-        if not self.validation_settings.get("enable_luhn", True):
-            return matches
-        
+        luhn_enabled = self.validation_settings.get("enable_luhn", True)
+        validators = {
+            "luhn": self._validate_luhn,
+            "insee_key": self._validate_insee_key,
+            "avs_ean13": self._validate_avs_ean13,
+            "be_nrn": self._validate_be_nrn,
+        }
+
         validated = []
-        
+
         for match in matches:
             if not getattr(match, '_requires_validation', False):
                 validated.append(match)
                 continue
-            
+
             validation_method = getattr(match, '_validation_method', None)
-            
-            if validation_method == "luhn":
-                if self._validate_luhn(match.text):
-                    validated.append(match)
-                else:
-                    self.logger.debug(
-                        f"Luhn validation failed for: {match.text[:4]}..."
-                    )
-            else:
+
+            # Luhn stays behind its historical opt-out flag; other checksum
+            # validators always run since they are the sole precision guard
+            # for the national identifier patterns.
+            if validation_method == "luhn" and not luhn_enabled:
+                validated.append(match)
+                continue
+
+            validator = validators.get(validation_method)
+            if validator is None:
                 # Unknown validation method, keep the match
                 validated.append(match)
-        
+            elif validator(match.text):
+                validated.append(match)
+            else:
+                self.logger.debug(
+                    f"{validation_method} validation failed for: {match.text[:4]}..."
+                )
+
         return validated
     
     def _validate_luhn(self, card_number: str) -> bool:
@@ -389,7 +401,77 @@ class RegexDetector:
             odd = not odd
         
         return checksum % 10 == 0
-    
+
+    def _validate_insee_key(self, nir: str) -> bool:
+        """
+        Validate a French social security number (NIR) control key.
+
+        The 15-digit NIR is a 13-digit body plus a 2-digit control key equal to
+        97 - (body mod 97). Corsica departments are encoded 2A/2B and mapped to
+        19/18 before the computation.
+
+        Args:
+            nir: Matched NIR text (separators and Corsica letters allowed)
+
+        Returns:
+            True if the control key matches, False otherwise
+        """
+        normalized = nir.upper().replace(" ", "").replace(".", "")
+        normalized = normalized.replace("2A", "19").replace("2B", "18")
+
+        if len(normalized) != 15 or not normalized.isdigit():
+            return False
+
+        body = int(normalized[:13])
+        key = int(normalized[13:])
+        return 97 - (body % 97) == key
+
+    def _validate_avs_ean13(self, avs: str) -> bool:
+        """
+        Validate a Swiss AVS/AHV number using its EAN-13 check digit.
+
+        Args:
+            avs: Matched AVS text (e.g. "756.xxxx.xxxx.xx")
+
+        Returns:
+            True if the check digit is valid, False otherwise
+        """
+        digits = [int(c) for c in avs if c.isdigit()]
+
+        if len(digits) != 13:
+            return False
+
+        weighted = sum(
+            digit * (1 if index % 2 == 0 else 3)
+            for index, digit in enumerate(digits[:12])
+        )
+        check_digit = (10 - (weighted % 10)) % 10
+        return check_digit == digits[12]
+
+    def _validate_be_nrn(self, nrn: str) -> bool:
+        """
+        Validate a Belgian National Register Number (mod-97 control number).
+
+        The control number is 97 - (body mod 97). For people born from 2000
+        onwards a leading "2" is prepended to the 9-digit body before the
+        modulo, so both variants are accepted.
+
+        Args:
+            nrn: Matched NRN text (e.g. "YYMMDD-SSS-CC")
+
+        Returns:
+            True if the control number matches either variant, False otherwise
+        """
+        digits = "".join(c for c in nrn if c.isdigit())
+
+        if len(digits) != 11:
+            return False
+
+        body, control = digits[:9], int(digits[9:])
+        pre_2000 = 97 - (int(body) % 97)
+        post_2000 = 97 - (int("2" + body) % 97)
+        return control in (pre_2000, post_2000)
+
     def _resolve_overlaps(self, matches: List[PIIEntity]) -> List[PIIEntity]:
         """
         Resolve overlapping matches by priority.

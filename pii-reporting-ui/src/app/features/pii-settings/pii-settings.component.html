@@ -46,23 +46,23 @@
             <button
                 type="button"
                 class="sidebar-nav-item"
+                [class.active]="activeSection() === 'lm_studio'"
+                (click)="setActiveSection('lm_studio')"
+                (keydown.enter)="setActiveSection('lm_studio')"
+            >
+                <i class="pi pi-server"></i>
+                {{ 'settings.nav.lmStudio' | transloco }}
+            </button>
+
+            <button
+                type="button"
+                class="sidebar-nav-item"
                 [class.active]="activeSection() === 'confluence'"
                 (click)="setActiveSection('confluence')"
                 (keydown.enter)="setActiveSection('confluence')"
             >
                 <i class="pi pi-link"></i>
                 {{ 'settings.nav.confluence' | transloco }}
-            </button>
-
-            <button
-                type="button"
-                class="sidebar-nav-item"
-                [class.active]="activeSection() === 'discovered_labels'"
-                (click)="setActiveSection('discovered_labels')"
-                (keydown.enter)="setActiveSection('discovered_labels')"
-            >
-                <i class="pi pi-inbox"></i>
-                {{ 'settings.nav.discoveredLabels' | transloco }}
             </button>
         </nav>
 
@@ -129,27 +129,87 @@
                         <div class="detector-card ministral"
                              [class.enabled]="configForm.get('ministralEnabled')?.value"
                              [class.disabled]="!configForm.get('ministralEnabled')?.value">
-                            <div class="detector-avatar ministral"
-                                 [class.disabled-avatar]="!configForm.get('ministralEnabled')?.value">MI</div>
-                            <div class="detector-info">
-                                <div class="detector-name"
-                                     [class.disabled-text]="!configForm.get('ministralEnabled')?.value">
-                                    {{ 'settings.detectors.ministral.label' | transloco }}
+                            <div class="detector-card-main">
+                                <div class="detector-avatar ministral"
+                                     [class.disabled-avatar]="!configForm.get('ministralEnabled')?.value">MI</div>
+                                <div class="detector-info">
+                                    <div class="detector-name"
+                                         [class.disabled-text]="!configForm.get('ministralEnabled')?.value">
+                                        {{ 'settings.detectors.ministral.label' | transloco }}
+                                    </div>
+                                    <div class="detector-desc">{{ 'settings.detectors.ministral.description' | transloco }}</div>
                                 </div>
-                                <div class="detector-desc">{{ 'settings.detectors.ministral.description' | transloco }}</div>
-                            </div>
-                            <div class="detector-switches">
-                                <div class="detector-switch">
-                                    <p-toggleswitch
-                                        formControlName="ministralEnabled"
-                                        inputId="toggleMinistralEnabled"
-                                        data-testid="toggleMinistralEnabled"
-                                        (onChange)="onDetectorMasterToggle('MINISTRAL')"
-                                        [ariaLabel]="'settings.detectors.ministral.label' | transloco">
-                                    </p-toggleswitch>
-                                    <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
+                                <div class="detector-switches">
+                                    <div class="detector-switch">
+                                        <p-toggleswitch
+                                            formControlName="ministralEnabled"
+                                            inputId="toggleMinistralEnabled"
+                                            data-testid="toggleMinistralEnabled"
+                                            (onChange)="onDetectorMasterToggle('MINISTRAL')"
+                                            [ariaLabel]="'settings.detectors.ministral.label' | transloco">
+                                        </p-toggleswitch>
+                                        <span class="detector-switch-label">{{ 'settings.detectors.detectorLabel' | transloco }}</span>
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Ministral-PII advanced chunking parameters -->
+                            @if (configForm.get('ministralEnabled')?.value) {
+                                <fieldset class="advanced-params">
+                                    <legend class="advanced-params-title">{{ 'settings.detectors.ministral.advancedParams' | transloco }}</legend>
+
+                                    <!-- Chunk size -->
+                                    <div class="advanced-param-field">
+                                        <label for="ministralChunkSize" class="advanced-param-label">
+                                            {{ 'settings.detectors.ministral.chunkSize' | transloco }}
+                                        </label>
+                                        <p-inputNumber
+                                            inputId="ministralChunkSize"
+                                            formControlName="ministralChunkSize"
+                                            [min]="256"
+                                            [max]="4096"
+                                            [step]="128"
+                                            [showButtons]="true"
+                                            buttonLayout="horizontal"
+                                            incrementButtonIcon="pi pi-plus"
+                                            decrementButtonIcon="pi pi-minus"
+                                            [attr.aria-describedby]="'ministralChunkSizeHint'">
+                                        </p-inputNumber>
+                                        <small id="ministralChunkSizeHint" class="advanced-param-hint">
+                                            {{ 'settings.detectors.ministral.chunkSizeHint' | transloco }}
+                                        </small>
+                                    </div>
+
+                                    <!-- Overlap -->
+                                    <div class="advanced-param-field">
+                                        <label for="ministralOverlap" class="advanced-param-label">
+                                            {{ 'settings.detectors.ministral.overlap' | transloco }}
+                                        </label>
+                                        <p-inputNumber
+                                            inputId="ministralOverlap"
+                                            formControlName="ministralOverlap"
+                                            [min]="0"
+                                            [max]="512"
+                                            [step]="32"
+                                            [showButtons]="true"
+                                            buttonLayout="horizontal"
+                                            incrementButtonIcon="pi pi-plus"
+                                            decrementButtonIcon="pi pi-minus"
+                                            [attr.aria-describedby]="'ministralOverlapHint'">
+                                        </p-inputNumber>
+                                        <small id="ministralOverlapHint" class="advanced-param-hint">
+                                            {{ 'settings.detectors.ministral.overlapHint' | transloco }}
+                                        </small>
+                                    </div>
+
+                                    @if (ministralOverlapError) {
+                                        <div class="validation-error" role="alert">
+                                            <i class="pi pi-exclamation-circle"></i>
+                                            {{ 'settings.detectors.ministral.overlapError' | transloco }}
+                                        </div>
+                                    }
+                                </fieldset>
+                            }
                         </div>
 
                         <!-- Pré-filtre déterministe -->
@@ -180,64 +240,6 @@
                             <i class="pi pi-exclamation-circle"></i>
                             {{ 'settings.validation.atLeastOneDetector' | transloco }}
                         </div>
-                    }
-
-                    <!-- Ministral-PII advanced chunking parameters -->
-                    @if (configForm.get('ministralEnabled')?.value) {
-                        <fieldset class="advanced-params">
-                            <legend class="advanced-params-title">{{ 'settings.detectors.ministral.advancedParams' | transloco }}</legend>
-
-                            <!-- Chunk size -->
-                            <div class="advanced-param-field">
-                                <label for="ministralChunkSize" class="advanced-param-label">
-                                    {{ 'settings.detectors.ministral.chunkSize' | transloco }}
-                                </label>
-                                <p-inputNumber
-                                    inputId="ministralChunkSize"
-                                    formControlName="ministralChunkSize"
-                                    [min]="256"
-                                    [max]="4096"
-                                    [step]="128"
-                                    [showButtons]="true"
-                                    buttonLayout="horizontal"
-                                    incrementButtonIcon="pi pi-plus"
-                                    decrementButtonIcon="pi pi-minus"
-                                    [attr.aria-describedby]="'ministralChunkSizeHint'">
-                                </p-inputNumber>
-                                <small id="ministralChunkSizeHint" class="advanced-param-hint">
-                                    {{ 'settings.detectors.ministral.chunkSizeHint' | transloco }}
-                                </small>
-                            </div>
-
-                            <!-- Overlap -->
-                            <div class="advanced-param-field">
-                                <label for="ministralOverlap" class="advanced-param-label">
-                                    {{ 'settings.detectors.ministral.overlap' | transloco }}
-                                </label>
-                                <p-inputNumber
-                                    inputId="ministralOverlap"
-                                    formControlName="ministralOverlap"
-                                    [min]="0"
-                                    [max]="512"
-                                    [step]="32"
-                                    [showButtons]="true"
-                                    buttonLayout="horizontal"
-                                    incrementButtonIcon="pi pi-plus"
-                                    decrementButtonIcon="pi pi-minus"
-                                    [attr.aria-describedby]="'ministralOverlapHint'">
-                                </p-inputNumber>
-                                <small id="ministralOverlapHint" class="advanced-param-hint">
-                                    {{ 'settings.detectors.ministral.overlapHint' | transloco }}
-                                </small>
-                            </div>
-
-                            @if (ministralOverlapError) {
-                                <div class="validation-error" role="alert">
-                                    <i class="pi pi-exclamation-circle"></i>
-                                    {{ 'settings.detectors.ministral.overlapError' | transloco }}
-                                </div>
-                            }
-                        </fieldset>
                     }
                 </form>
             }
@@ -363,15 +365,6 @@
                                     {{ detectorGroup.detector }}
                                 </span>
                                 @if (detectorGroup.detector === 'MINISTRAL') {
-                                    <p-button
-                                        type="button"
-                                        icon="pi pi-plus"
-                                        [label]="'settings.customLabels.addButton' | transloco"
-                                        (click)="openAddCustomLabelDialog()"
-                                        (keydown.enter)="openAddCustomLabelDialog()"
-                                        styleClass="p-button-sm p-button-outlined"
-                                        [ariaLabel]="'settings.customLabels.addButton' | transloco">
-                                    </p-button>
                                     <span class="ministral-no-threshold-hint">
                                         <i class="pi pi-info-circle" aria-hidden="true"></i>
                                         {{ 'settings.piiTypes.ministralNoThreshold' | transloco }}
@@ -385,8 +378,17 @@
                             @for (categoryGroup of detectorGroup.categories; track categoryGroup.category) {
                                 <!-- Category sub-header -->
                                 <div class="category-subheader">
-                                    <i class="pi pi-folder-open"></i>
-                                    {{ 'settings.piiTypes.categoryNames.' + categoryGroup.category | transloco }}
+                                    <span class="category-subheader-label">
+                                        <i class="pi pi-folder-open"></i>
+                                        {{ 'settings.piiTypes.categoryNames.' + categoryGroup.category | transloco }}
+                                    </span>
+                                    <p-toggleswitch
+                                        styleClass="category-toggle"
+                                        [ngModel]="isCategoryEnabled(categoryGroup)"
+                                        (ngModelChange)="onCategoryToggleChange(categoryGroup, $event)"
+                                        [disabled]="!isDetectorEnabled(detectorGroup.detector)"
+                                        [ariaLabel]="'settings.piiTypes.categoryToggle' | transloco: {category: ('settings.piiTypes.categoryNames.' + categoryGroup.category | transloco)}">
+                                    </p-toggleswitch>
                                 </div>
 
                                 <!-- PII type rows -->
@@ -424,7 +426,7 @@
                                                     [ariaLabel]="'settings.piiTypes.toggle' | transloco: {type: type.detectorLabel || (('settings.piiTypes.typeNames.' + type.piiType) | transloco)}">
                                                 </p-toggleswitch>
                                             </div>
-                                            @if (type.enabled && detectorGroup.detector !== 'MINISTRAL') {
+                                            @if (type.enabled && detectorGroup.detector !== 'MINISTRAL' && detectorGroup.detector !== 'REGEX') {
                                                 <p-inputNumber
                                                     [(ngModel)]="type.threshold"
                                                     (ngModelChange)="onPiiTypeThresholdChange(type, $event)"
@@ -460,52 +462,68 @@
                 }
             }
 
+            <!-- ===== SECTION: LM STUDIO ===== -->
+            @if (activeSection() === 'lm_studio') {
+                <form [formGroup]="configForm">
+                    <h3 class="section-title">{{ 'settings.sections.lmStudio' | transloco }}</h3>
+                    <p class="section-desc">{{ 'settings.lmStudio.description' | transloco }}</p>
+
+                    <div class="threshold-card">
+                        <!-- Host -->
+                        <div class="advanced-param-field">
+                            <label for="lmStudioHost" class="advanced-param-label">
+                                {{ 'settings.lmStudio.host' | transloco }}
+                            </label>
+                            <input
+                                id="lmStudioHost"
+                                type="text"
+                                pInputText
+                                formControlName="lmStudioHost"
+                                [placeholder]="'settings.lmStudio.hostPlaceholder' | transloco"
+                                [attr.aria-describedby]="'lmStudioHostHint'" />
+                            <small id="lmStudioHostHint" class="advanced-param-hint">
+                                {{ 'settings.lmStudio.hostHint' | transloco }}
+                            </small>
+                            @if (configForm.get('lmStudioHost')?.invalid && configForm.get('lmStudioHost')?.touched) {
+                                <small class="field-error" role="alert">
+                                    {{ 'settings.lmStudio.hostError' | transloco }}
+                                </small>
+                            }
+                        </div>
+
+                        <!-- Port -->
+                        <div class="advanced-param-field">
+                            <label for="lmStudioPort" class="advanced-param-label">
+                                {{ 'settings.lmStudio.port' | transloco }}
+                            </label>
+                            <p-inputNumber
+                                inputId="lmStudioPort"
+                                formControlName="lmStudioPort"
+                                [min]="1"
+                                [max]="65535"
+                                [useGrouping]="false"
+                                [showButtons]="true"
+                                buttonLayout="horizontal"
+                                incrementButtonIcon="pi pi-plus"
+                                decrementButtonIcon="pi pi-minus"
+                                [attr.aria-describedby]="'lmStudioPortHint'">
+                            </p-inputNumber>
+                            <small id="lmStudioPortHint" class="advanced-param-hint">
+                                {{ 'settings.lmStudio.portHint' | transloco }}
+                            </small>
+                            @if (configForm.get('lmStudioPort')?.invalid && configForm.get('lmStudioPort')?.touched) {
+                                <small class="field-error" role="alert">
+                                    {{ 'settings.lmStudio.portError' | transloco }}
+                                </small>
+                            }
+                        </div>
+                    </div>
+                </form>
+            }
+
             <!-- ===== SECTION: CONFLUENCE ===== -->
             @if (activeSection() === 'confluence') {
                 <app-confluence-settings (saved)="settingsSaved.emit()"></app-confluence-settings>
-            }
-
-            <!-- ===== SECTION: DISCOVERED LABELS ===== -->
-            @if (activeSection() === 'discovered_labels') {
-                <h3 class="section-title">{{ 'settings.discoveredLabels.title' | transloco: {count: discoveredLabelsCount()} }}</h3>
-                <p class="section-desc">{{ 'settings.discoveredLabels.description' | transloco }}</p>
-
-                @if (discoveredLabels().length === 0) {
-                    <div class="no-results-message">
-                        <i class="pi pi-inbox"></i>
-                        <p>{{ 'settings.discoveredLabels.empty' | transloco }}</p>
-                    </div>
-                } @else {
-                    @for (label of discoveredLabels(); track label.label) {
-                        <div class="pii-type-row">
-                            <div class="pii-type-info">
-                                <span class="type-name">{{ label.label }}</span>
-                                <span class="type-code">{{ 'settings.discoveredLabels.occurrences' | transloco: {count: label.occurrenceCount} }}</span>
-                            </div>
-                            <div class="pii-type-controls">
-                                <p-button
-                                    type="button"
-                                    icon="pi pi-plus"
-                                    [label]="'settings.discoveredLabels.add' | transloco"
-                                    (click)="openPromoteDialog(label)"
-                                    (keydown.enter)="openPromoteDialog(label)"
-                                    styleClass="p-button-sm p-button-outlined"
-                                    [ariaLabel]="'settings.discoveredLabels.add' | transloco">
-                                </p-button>
-                                <p-button
-                                    type="button"
-                                    icon="pi pi-ban"
-                                    [label]="'settings.discoveredLabels.ignore' | transloco"
-                                    [text]="true"
-                                    (click)="ignoreLabel(label)"
-                                    (keydown.enter)="ignoreLabel(label)"
-                                    styleClass="p-button-sm"
-                                    [ariaLabel]="'settings.discoveredLabels.ignore' | transloco">
-                                </p-button>
-                            </div>
-                        </div>
-                    }
-                }
             }
         </div>
     </div>
@@ -572,7 +590,7 @@
         </button>
     </div>
 
-    <form [formGroup]="customLabelForm" (ngSubmit)="submitCustomLabel()">
+    <form [formGroup]="customLabelForm" (ngSubmit)="createCustomType()">
         <!-- Detector Label -->
         <div class="custom-label-field">
             <label for="detectorLabel">
@@ -602,7 +620,6 @@
                 type="text"
                 pInputText
                 formControlName="piiType"
-                [readonly]="!!promotingLabel()"
                 [placeholder]="'settings.customLabels.fields.piiTypePlaceholder' | transloco" />
             @if (customLabelForm.get('piiType')?.invalid && customLabelForm.get('piiType')?.touched) {
                 <small class="field-error">{{ 'settings.customLabels.validation.piiTypeInvalid' | transloco }}</small>

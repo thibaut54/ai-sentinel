@@ -36,6 +36,8 @@ public interface ManagePiiDetectionConfigPort {
      * @param ministralOverlap    Sliding-window overlap (characters) for the Ministral-PII detector
      * @param defaultThreshold Default confidence threshold (0.0 to 1.0)
      * @param postfilterEnabled    Whether the deterministic format precision post-filter stage is enabled
+     * @param lmStudioHost        Host of the LM Studio endpoint serving the Ministral-PII model
+     * @param lmStudioPort        Port of the LM Studio endpoint serving the Ministral-PII model
      * @param updatedBy           User identifier who is updating the configuration
      */
     record UpdatePiiDetectionConfigCommand(
@@ -46,6 +48,8 @@ public interface ManagePiiDetectionConfigPort {
             Integer ministralOverlap,
             BigDecimal defaultThreshold,
             boolean postfilterEnabled,
+            String lmStudioHost,
+            Integer lmStudioPort,
             String updatedBy
     ) {
     }

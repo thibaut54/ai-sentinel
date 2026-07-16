@@ -347,9 +347,9 @@ class TestCompositePIIDetectorIntegration:
             enable_ministral=True,
         )
 
-        text = "Contact: test@example.com, IP: 192.168.1.1"
+        text = "Contact: test@example.com, AWS key AKIAIOSFODNN7EXAMPLE"
         entities = composite.detect_pii(text)
 
-        # Should detect email and IP with regex
+        # Should detect the AWS key with the real regex detector
         pii_types = {e.pii_type for e in entities}
-        assert "IP_ADDRESS" in pii_types
+        assert "API_KEY" in pii_types

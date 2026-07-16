@@ -34,7 +34,7 @@ springdoc/OpenAPI. Tests : JUnit 5, Mockito, Awaitility, Testcontainers, ArchUni
 | **PII reporting** | `application/pii/reporting`, `infrastructure/pii/reporting` | Orchestration de scan, SSE, checkpoints, event store, compteurs de sévérité, reveal. Voir [scan-workflow](../workflows/scan-workflow.md). |
 | **PII remediation / obfuscation** | `application/pii/remediation`, `infrastructure/pii/remediation` | Plan/exécution/suivi de jobs de caviardage, cycle de vie des findings. Voir [obfuscation-workflow](../workflows/obfuscation-workflow.md). |
 | **Intégration Confluence** | `application/confluence`, `infrastructure/confluence` | Port `ConfluenceClient` ; adapters HTTP séparés Cloud vs Data Center (`Confluence{Cloud,DataCenter}HttpClientAdapter`, `DelegatingConfluenceClient`) ; pagination, retry, download d'attachements ; cache d'espaces ; `ConfluenceAccessor`. Config connexion en base (chiffrée). |
-| **Config détection / types PII** | `application/pii/detection`, `infrastructure/pii/detection` | CRUD des configs par détecteur et de la config globale. `PiiTypeConfigController`, `PiiDetectionConfigController`, `ManagePiiTypeConfigsUseCase`, `ManagePiiDetectionConfigUseCase`. |
+| **Config détection / types PII** | `application/pii/detection`, `infrastructure/pii/detection` | CRUD des configs par détecteur et de la config globale (dont **endpoint LM Studio** `lm_studio_host/port`). `PiiTypeConfigController`, `PiiDetectionConfigController`, `ManagePiiTypeConfigsUseCase`, `ManagePiiDetectionConfigUseCase`. **Inbox de labels découverts** (MINISTRAL open-vocab) : `DiscoveredLabelController`, `ManageDiscoveredLabelsUseCase`, collecte via `DiscoveredLabelCollector`. |
 | **Export** | `application/pii/export`, `infrastructure/pii/export` | Export Excel des résultats, déclenché sur l'événement `SpaceScanCompleted`. |
 | **Config / sécurité / audit** | `application/config`, `application/pii/security`, `infrastructure/config` | Config de polling, audit d'accès PII (nLPD), chiffrement (voir [system-overview](system-overview.md#chiffrement-des-données-sensibles)). |
 
@@ -52,7 +52,8 @@ springdoc/OpenAPI. Tests : JUnit 5, Mockito, Awaitility, Testcontainers, ArchUni
 | `PiiAccessController` | `/api/v1/pii` | `GET /config/reveal-allowed`, `POST /reveal-page` |
 | `PiiRemediationController` | `/api/v1/pii/remediation` | voir [obfuscation-workflow](../workflows/obfuscation-workflow.md) |
 | `PiiTypeConfigController` | `/api/v1/pii-detection/pii-types` | CRUD types + `grouped[/by-category]`, `PUT /bulk` |
-| `PiiDetectionConfigController` | `/api/v1/pii-detection/config` | `GET`, `PUT` |
+| `PiiDetectionConfigController` | `/api/v1/pii-detection/config` | `GET`, `PUT` (dont endpoint LM Studio) |
+| `DiscoveredLabelController` | `/api/v1/pii-detection/discovered-labels` | `GET` (en attente), `POST /{label}/promote`, `POST /{label}/ignore` |
 
 Doc OpenAPI : `/ai-sentinel/swagger-ui.html`.
 
@@ -78,10 +79,15 @@ Doc OpenAPI : `/ai-sentinel/swagger-ui.html`.
 | `008-confluence-connection-config.sql` | `confluence_connection_config` (token chiffré) |
 | `011-scan-space-stats.sql` | `scan_space_stats`, `scan_detector_stats` |
 | `013-add-ministral-columns.sql` | colonnes chunking Ministral + contrainte détecteur |
+| `013-scan-pii-type-counts.sql` | `scan_pii_type_counts` (compteurs agrégés par type PII et par espace, UPSERT atomique) |
 | `014-pii-finding-remediation.sql` | `pii_finding_remediation` + `pii_redaction_job` (JSONB) + **index unique partiel** un job actif par espace |
+| `014-add-lm-studio-columns.sql` | `lm_studio_host`/`lm_studio_port` sur `pii_detection_config` (endpoint LM Studio, défaut localhost:1234) |
+| `015-ministral-discovered-label.sql` | `ministral_discovered_label` (labels open-vocab droppés, comptes agrégés, statut ; **jamais de valeur PII**) |
 
-> Les numéros 009/010/012 sont absents de ce répertoire (appliqués via `ddl-auto` ou
-> ailleurs) — à confirmer si vous ajoutez une migration.
+> **Deux fichiers `013` et deux `014`** (préfixes réutilisés) coexistent : l'ordre
+> alphabétique reste cohérent car chaque script est idempotent et le schéma fait
+> autorité via `ddl-auto`. Les numéros 009/010/012 sont absents (appliqués via
+> `ddl-auto` ou ailleurs) — à confirmer si vous ajoutez une migration.
 
 ## Configuration (`application.yml` — pas de secrets)
 
