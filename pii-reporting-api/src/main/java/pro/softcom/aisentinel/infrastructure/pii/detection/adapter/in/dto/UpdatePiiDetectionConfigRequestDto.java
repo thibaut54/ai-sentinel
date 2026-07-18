@@ -29,6 +29,10 @@ import java.math.BigDecimal;
  *                            Optional in the payload: when omitted, defaults to {@code false}.
  * @param lmStudioHost        Host of the LM Studio endpoint serving the Ministral-PII model
  * @param lmStudioPort        Port of the LM Studio endpoint serving the Ministral-PII model (1-65535)
+ * @param ministralConcurrency               Number of chunk prompts sent concurrently to LM Studio (1-16, 1 = sequential)
+ * @param ministralConcurrencyAuto           Whether the service auto-tunes the concurrency at startup
+ * @param ministralConcurrencyTunedSignature The "host:port|model" signature the auto value was tuned for.
+ *                                           Optional in the payload: {@code null} means "never tuned / re-tune at next startup".
  */
 public record UpdatePiiDetectionConfigRequestDto(
     @JsonProperty("presidioEnabled")
@@ -72,7 +76,20 @@ public record UpdatePiiDetectionConfigRequestDto(
     @NotNull(message = "lmStudioPort is required")
     @Min(value = 1, message = "lmStudioPort must be at least 1")
     @Max(value = 65535, message = "lmStudioPort must be at most 65535")
-    Integer lmStudioPort
+    Integer lmStudioPort,
+
+    @JsonProperty("ministralConcurrency")
+    @NotNull(message = "ministralConcurrency is required")
+    @Min(value = 1, message = "ministralConcurrency must be at least 1")
+    @Max(value = 16, message = "ministralConcurrency must be at most 16")
+    Integer ministralConcurrency,
+
+    @JsonProperty("ministralConcurrencyAuto")
+    @NotNull(message = "ministralConcurrencyAuto is required")
+    Boolean ministralConcurrencyAuto,
+
+    @JsonProperty("ministralConcurrencyTunedSignature")
+    String ministralConcurrencyTunedSignature
 ) {
     /**
      * Validates business rules for the configuration request.

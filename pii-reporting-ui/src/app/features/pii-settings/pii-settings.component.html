@@ -209,6 +209,110 @@
                                         </div>
                                     }
                                 </fieldset>
+
+                                <!-- Ministral concurrency auto-tuning -->
+                                <fieldset class="advanced-params">
+                                    <legend class="advanced-params-title">{{ 'settings.detectors.ministral.concurrencyTitle' | transloco }}</legend>
+
+                                    <!-- Auto-tune toggle -->
+                                    <div class="advanced-param-field">
+                                        <label for="ministralConcurrencyAuto" class="advanced-param-label">
+                                            {{ 'settings.detectors.ministral.concurrencyAuto' | transloco }}
+                                        </label>
+                                        <p-toggleswitch
+                                            formControlName="ministralConcurrencyAuto"
+                                            inputId="ministralConcurrencyAuto"
+                                            [ariaLabel]="'settings.detectors.ministral.concurrencyAuto' | transloco">
+                                        </p-toggleswitch>
+                                    </div>
+
+                                    @if (configForm.get('ministralConcurrencyAuto')?.value) {
+                                        <!-- Read-only tuned state -->
+                                        <div class="advanced-param-field">
+                                            <span class="advanced-param-label">{{ 'settings.detectors.ministral.concurrencyCurrent' | transloco }}</span>
+                                            <span class="concurrency-readonly">{{ configForm.get('ministralConcurrency')?.value }}</span>
+                                        </div>
+                                        <div class="advanced-param-field">
+                                            <span class="advanced-param-label">{{ 'settings.detectors.ministral.concurrencySignature' | transloco }}</span>
+                                            <span class="concurrency-readonly">
+                                                @if (configForm.get('ministralConcurrencyTunedSignature')?.value) {
+                                                    {{ configForm.get('ministralConcurrencyTunedSignature')?.value }}
+                                                } @else {
+                                                    {{ 'settings.detectors.ministral.concurrencyNotTuned' | transloco }}
+                                                }
+                                            </span>
+                                        </div>
+                                        <div class="advanced-param-field">
+                                            <p-button
+                                                type="button"
+                                                [label]="'settings.detectors.ministral.retune' | transloco"
+                                                icon="pi pi-refresh"
+                                                [disabled]="saving()"
+                                                [loading]="saving()"
+                                                (click)="onRetuneConcurrency()"
+                                                (keydown.enter)="onRetuneConcurrency()"
+                                                styleClass="p-button-outlined p-button-sm"
+                                                [ariaLabel]="'settings.detectors.ministral.retune' | transloco">
+                                            </p-button>
+                                            <small class="advanced-param-hint">
+                                                {{ 'settings.detectors.ministral.retuneHint' | transloco }}
+                                            </small>
+                                        </div>
+                                    } @else {
+                                        <!-- Manual concurrency -->
+                                        <div class="advanced-param-field">
+                                            <label for="ministralConcurrency" class="advanced-param-label">
+                                                {{ 'settings.detectors.ministral.concurrency' | transloco }}
+                                            </label>
+                                            <p-inputNumber
+                                                inputId="ministralConcurrency"
+                                                formControlName="ministralConcurrency"
+                                                [min]="1"
+                                                [max]="16"
+                                                [step]="1"
+                                                [showButtons]="true"
+                                                buttonLayout="horizontal"
+                                                incrementButtonIcon="pi pi-plus"
+                                                decrementButtonIcon="pi pi-minus"
+                                                [attr.aria-describedby]="'ministralConcurrencyHint'">
+                                            </p-inputNumber>
+                                            <small id="ministralConcurrencyHint" class="advanced-param-hint">
+                                                {{ 'settings.detectors.ministral.concurrencyHint' | transloco }}
+                                            </small>
+                                        </div>
+                                    }
+
+                                    <!-- On-demand benchmark (no restart needed) -->
+                                    <div class="advanced-param-field">
+                                        <p-button
+                                            type="button"
+                                            data-testid="runBenchmarkButton"
+                                            [label]="'settings.detectors.ministral.runBenchmark' | transloco"
+                                            icon="pi pi-play"
+                                            [disabled]="benchRunning()"
+                                            (click)="onRunBenchmark()"
+                                            (keydown.enter)="onRunBenchmark()"
+                                            styleClass="p-button-outlined p-button-sm"
+                                            [ariaLabel]="'settings.detectors.ministral.runBenchmark' | transloco">
+                                        </p-button>
+                                        <small class="advanced-param-hint">
+                                            {{ 'settings.detectors.ministral.runBenchmarkHint' | transloco }}
+                                        </small>
+                                    </div>
+
+                                    @if (benchRunning()) {
+                                        <div class="advanced-param-field bench-progress" data-testid="benchProgress">
+                                            <p-progressBar
+                                                [value]="benchProgress()"
+                                                [showValue]="false">
+                                            </p-progressBar>
+                                            <small class="advanced-param-hint" aria-live="polite">
+                                                {{ benchStatus()?.message || ('settings.detectors.ministral.benchmarkRunning' | transloco) }}
+                                                ({{ benchProgress() }}%)
+                                            </small>
+                                        </div>
+                                    }
+                                </fieldset>
                             }
                         </div>
 

@@ -1,4 +1,4 @@
-import { Component, computed, input, OnInit, output, SecurityContext, signal, viewChild } from '@angular/core';
+import { Component, computed, input, OnDestroy, OnInit, output, SecurityContext, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import {
@@ -15,6 +15,7 @@ import { ButtonModule } from 'primeng/button';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageModule } from 'primeng/message';
+import { ProgressBarModule } from 'primeng/progressbar';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ToastModule } from 'primeng/toast';
 import { IconFieldModule } from 'primeng/iconfield';
@@ -27,13 +28,14 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { PiiDetectionConfigService } from '../../core/services/pii-detection-config.service';
 import {
     CategoryGroup,
+    ConcurrencyBenchStatus,
     CreatePiiTypeConfigRequest,
     GroupedPiiTypes,
     PiiDetectionConfig,
     PiiTypeConfig,
     UpdatePiiTypeConfigRequest
 } from '../../core/models/pii-detection-config.model';
-import { forkJoin, Observable } from 'rxjs';
+import { forkJoin, Observable, Subscription, switchMap, timer } from 'rxjs';
 import { ConfluenceSettingsComponent } from '../confluence-settings/confluence-settings.component';
 
 type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'lm_studio' | 'confluence';
@@ -56,6 +58,7 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'lm_studio' | 
         ToggleSwitchModule,
         InputNumberModule,
         MessageModule,
+        ProgressBarModule,
         ProgressSpinnerModule,
         ToastModule,
         IconFieldModule,
@@ -68,7 +71,7 @@ type SettingsSection = 'detectors' | 'thresholds' | 'pii_types' | 'lm_studio' | 
     ],
   providers: [MessageService, ConfirmationService]
 })
-export class PiiSettingsComponent implements OnInit {
+export class PiiSettingsComponent implements OnInit, OnDestroy {
   readonly dialogMode = input(false);
   readonly initialTab = input(0);
   readonly closeDialog = output();
@@ -88,6 +91,12 @@ export class PiiSettingsComponent implements OnInit {
 
   // Sidebar navigation
   activeSection = signal<SettingsSection>('detectors');
+
+  // On-demand Ministral concurrency benchmark
+  benchStatus = signal<ConcurrencyBenchStatus | null>(null);
+  benchRunning = signal(false);
+  benchProgress = computed(() => this.benchStatus()?.progress ?? 0);
+  private benchPollSubscription: Subscription | null = null;
 
   // Collapsible detector groups in PII types section
   collapsedDetectors = signal<Set<string>>(new Set());
@@ -211,6 +220,10 @@ export class PiiSettingsComponent implements OnInit {
     this.loadAllConfigs();
   }
 
+  ngOnDestroy(): void {
+    this.stopBenchPolling();
+  }
+
   private initForm(): void {
     this.configForm = this.fb.group({
       presidioEnabled: [true],
@@ -219,6 +232,9 @@ export class PiiSettingsComponent implements OnInit {
       ministralEnabled: [false],
       ministralChunkSize: [2048, [Validators.required, Validators.min(256), Validators.max(4096)]],
       ministralOverlap: [410, [Validators.required, Validators.min(0), Validators.max(512)]],
+      ministralConcurrency: [1, [Validators.required, Validators.min(1), Validators.max(16)]],
+      ministralConcurrencyAuto: [true],
+      ministralConcurrencyTunedSignature: [null as string | null],
       defaultThreshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       lmStudioHost: ['localhost', [Validators.required, Validators.pattern(/^[^\s/]+$/)]],
       lmStudioPort: [1234, [Validators.required, Validators.min(1), Validators.max(65535)]]
@@ -406,6 +422,9 @@ export class PiiSettingsComponent implements OnInit {
           ministralEnabled: detectorConfig.ministralEnabled,
           ministralChunkSize: detectorConfig.ministralChunkSize,
           ministralOverlap: detectorConfig.ministralOverlap,
+          ministralConcurrency: detectorConfig.ministralConcurrency,
+          ministralConcurrencyAuto: detectorConfig.ministralConcurrencyAuto,
+          ministralConcurrencyTunedSignature: detectorConfig.ministralConcurrencyTunedSignature ?? null,
           defaultThreshold: detectorConfig.defaultThreshold,
           lmStudioHost: detectorConfig.lmStudioHost,
           lmStudioPort: detectorConfig.lmStudioPort
@@ -619,6 +638,90 @@ export class PiiSettingsComponent implements OnInit {
   }
 
   /**
+   * Clear the tuned concurrency signature so the auto-tuner runs again on the
+   * next detector-service restart, then persist through the regular save flow.
+   */
+  onRetuneConcurrency(): void {
+    this.configForm.patchValue({ministralConcurrencyTunedSignature: null});
+    this.configForm.markAsDirty();
+    this.onSaveDetectorConfig();
+  }
+
+  /**
+   * Trigger the concurrency benchmark on the detector service without a
+   * restart, then poll its status until it terminates.
+   */
+  onRunBenchmark(): void {
+    if (this.benchRunning()) {
+      return;
+    }
+
+    this.benchRunning.set(true);
+    this.benchStatus.set(null);
+
+    this.configService.runConcurrencyBenchmark().subscribe({
+      next: () => this.startBenchPolling(),
+      error: (err) => {
+        console.error('Failed to start concurrency benchmark:', err);
+        this.benchRunning.set(false);
+        this.showBenchError(err.error?.message || err.message || 'Unknown error');
+      }
+    });
+  }
+
+  private static readonly BENCH_POLL_INTERVAL_MS = 1000;
+
+  private startBenchPolling(): void {
+    this.stopBenchPolling();
+    this.benchPollSubscription = timer(0, PiiSettingsComponent.BENCH_POLL_INTERVAL_MS)
+      .pipe(switchMap(() => this.configService.getConcurrencyBenchStatus()))
+      .subscribe({
+        next: (status) => this.handleBenchStatus(status),
+        error: (err) => {
+          console.error('Failed to poll concurrency benchmark status:', err);
+          this.stopBenchPolling();
+          this.benchRunning.set(false);
+          this.showBenchError(err.error?.message || err.message || 'Unknown error');
+        }
+      });
+  }
+
+  private handleBenchStatus(status: ConcurrencyBenchStatus): void {
+    this.benchStatus.set(status);
+
+    if (status.status === 'DONE') {
+      this.stopBenchPolling();
+      this.benchRunning.set(false);
+      this.messageService.add({
+        severity: 'success',
+        summary: this.translocoService.translate('common.success'),
+        detail: this.translocoService.translate('settings.detectors.ministral.benchmarkDone', {concurrency: status.concurrency}),
+        life: 3000
+      });
+      // Reload so the displayed concurrency reflects the tuned value.
+      this.loadAllConfigs();
+    } else if (status.status === 'FAILED') {
+      this.stopBenchPolling();
+      this.benchRunning.set(false);
+      this.showBenchError(status.message || 'Unknown error');
+    }
+  }
+
+  private showBenchError(error: string): void {
+    this.messageService.add({
+      severity: 'error',
+      summary: this.translocoService.translate('common.error'),
+      detail: this.translocoService.translate('settings.detectors.ministral.benchmarkFailed', {error}),
+      life: 5000
+    });
+  }
+
+  private stopBenchPolling(): void {
+    this.benchPollSubscription?.unsubscribe();
+    this.benchPollSubscription = null;
+  }
+
+  /**
    * Save all modified PII type configurations.
    */
   onSavePiiTypes(): void {
@@ -772,6 +875,9 @@ export class PiiSettingsComponent implements OnInit {
         ministralEnabled: this.currentConfig()!.ministralEnabled,
         ministralChunkSize: this.currentConfig()!.ministralChunkSize,
         ministralOverlap: this.currentConfig()!.ministralOverlap,
+        ministralConcurrency: this.currentConfig()!.ministralConcurrency,
+        ministralConcurrencyAuto: this.currentConfig()!.ministralConcurrencyAuto,
+        ministralConcurrencyTunedSignature: this.currentConfig()!.ministralConcurrencyTunedSignature ?? null,
         defaultThreshold: this.currentConfig()!.defaultThreshold,
         lmStudioHost: this.currentConfig()!.lmStudioHost,
         lmStudioPort: this.currentConfig()!.lmStudioPort

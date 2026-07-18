@@ -23,6 +23,9 @@ public record PiiDetectionConfig(
         boolean postfilterEnabled,
         String lmStudioHost,
         Integer lmStudioPort,
+        Integer ministralConcurrency,
+        boolean ministralConcurrencyAuto,
+        String ministralConcurrencyTunedSignature,
         LocalDateTime updatedAt,
         String updatedBy) {
 
@@ -32,6 +35,8 @@ public record PiiDetectionConfig(
     private static final int MAX_MINISTRAL_CHUNK_SIZE = 4096;
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65535;
+    private static final int MIN_MINISTRAL_CONCURRENCY = 1;
+    private static final int MAX_MINISTRAL_CONCURRENCY = 16;
 
     /**
      * Compact constructor for validation.
@@ -80,6 +85,14 @@ public record PiiDetectionConfig(
         if (lmStudioPort == null || lmStudioPort < MIN_PORT || lmStudioPort > MAX_PORT) {
             throw new IllegalArgumentException(
                     "LM Studio port must be between " + MIN_PORT + " and " + MAX_PORT);
+        }
+
+        if (ministralConcurrency == null
+                || ministralConcurrency < MIN_MINISTRAL_CONCURRENCY
+                || ministralConcurrency > MAX_MINISTRAL_CONCURRENCY) {
+            throw new IllegalArgumentException(
+                    "Ministral concurrency must be between " + MIN_MINISTRAL_CONCURRENCY
+                            + " and " + MAX_MINISTRAL_CONCURRENCY);
         }
     }
 }

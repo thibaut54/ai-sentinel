@@ -26,14 +26,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * REST mapping tests for the {@code ministralEnabled} / {@code ministralChunkSize}
- * / {@code ministralOverlap} fields on the singleton detection config. Verifies
- * GET exposes the fields, PUT persists them through to the use-case command, and
- * PUT rejects an overlap greater than or equal to the chunk size.
+ * REST mapping tests for the {@code ministralConcurrency} /
+ * {@code ministralConcurrencyAuto} / {@code ministralConcurrencyTunedSignature}
+ * fields on the singleton detection config. Verifies GET exposes the fields,
+ * PUT persists them through to the use-case command, and PUT rejects a
+ * concurrency value outside the 1-16 range.
  */
 @WebMvcTest(PiiDetectionConfigController.class)
 @Import(SecurityConfig.class)
-class PiiDetectionConfigControllerMinistralTest {
+class PiiDetectionConfigControllerConcurrencyTest {
 
     private static final String CONFIG_URL = "/api/v1/pii-detection/config";
 
@@ -44,37 +45,42 @@ class PiiDetectionConfigControllerMinistralTest {
     private ManagePiiDetectionConfigPort managePiiDetectionConfigPort;
 
     @Test
-    void Should_ExposeMinistralFields_When_GetConfig() throws Exception {
+    void Should_ExposeMinistralConcurrencyFields_When_GetConfig() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false, "localhost", 1234, 1, true, null,
+            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false, "localhost", 1234,
+            4, false, "localhost:1234|ministral",
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.ministralEnabled").value(true))
-            .andExpect(jsonPath("$.ministralChunkSize").value(2048))
-            .andExpect(jsonPath("$.ministralOverlap").value(256));
+            .andExpect(jsonPath("$.ministralConcurrency").value(4))
+            .andExpect(jsonPath("$.ministralConcurrencyAuto").value(false))
+            .andExpect(jsonPath("$.ministralConcurrencyTunedSignature").value("localhost:1234|ministral"));
     }
 
     @Test
-    void Should_DefaultMinistralEnabledFalse_When_GetConfig() throws Exception {
+    void Should_ExposeNullTunedSignature_When_NeverTuned() throws Exception {
         PiiDetectionConfig config = new PiiDetectionConfig(
-            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false, "localhost", 1234, 1, true, null,
+            1, true, true, false, 1024, 128, new BigDecimal("0.75"), false, "localhost", 1234,
+            1, true, null,
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.getConfig()).thenReturn(config);
 
         mockMvc.perform(get(CONFIG_URL))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.ministralEnabled").value(false));
+            .andExpect(jsonPath("$.ministralConcurrency").value(1))
+            .andExpect(jsonPath("$.ministralConcurrencyAuto").value(true))
+            .andExpect(jsonPath("$.ministralConcurrencyTunedSignature").doesNotExist());
     }
 
     @Test
-    void Should_PersistMinistralFields_When_PutConfig() throws Exception {
+    void Should_PersistMinistralConcurrencyFields_When_PutConfig() throws Exception {
         PiiDetectionConfig persisted = new PiiDetectionConfig(
-            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false, "localhost", 1234, 1, true, null,
+            1, true, true, true, 2048, 256, new BigDecimal("0.75"), false, "localhost", 1234,
+            8, false, "localhost:1234|ministral",
             LocalDateTime.now(), "admin"
         );
         when(managePiiDetectionConfigPort.updateConfig(any(UpdatePiiDetectionConfigCommand.class)))
@@ -90,8 +96,9 @@ class PiiDetectionConfigControllerMinistralTest {
                   "defaultThreshold": 0.75,
                   "lmStudioHost": "localhost",
                   "lmStudioPort": 1234,
-                  "ministralConcurrency": 1,
-                  "ministralConcurrencyAuto": true
+                  "ministralConcurrency": 8,
+                  "ministralConcurrencyAuto": false,
+                  "ministralConcurrencyTunedSignature": "localhost:1234|ministral"
                 }
                 """;
 
@@ -99,34 +106,52 @@ class PiiDetectionConfigControllerMinistralTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.ministralEnabled").value(true))
-            .andExpect(jsonPath("$.ministralChunkSize").value(2048))
-            .andExpect(jsonPath("$.ministralOverlap").value(256));
+            .andExpect(jsonPath("$.ministralConcurrency").value(8))
+            .andExpect(jsonPath("$.ministralConcurrencyAuto").value(false))
+            .andExpect(jsonPath("$.ministralConcurrencyTunedSignature").value("localhost:1234|ministral"));
 
         ArgumentCaptor<UpdatePiiDetectionConfigCommand> captor =
             ArgumentCaptor.forClass(UpdatePiiDetectionConfigCommand.class);
         verify(managePiiDetectionConfigPort).updateConfig(captor.capture());
         SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(captor.getValue().ministralEnabled()).isTrue();
-        softly.assertThat(captor.getValue().ministralChunkSize()).isEqualTo(2048);
-        softly.assertThat(captor.getValue().ministralOverlap()).isEqualTo(256);
+        softly.assertThat(captor.getValue().ministralConcurrency()).isEqualTo(8);
+        softly.assertThat(captor.getValue().ministralConcurrencyAuto()).isFalse();
+        softly.assertThat(captor.getValue().ministralConcurrencyTunedSignature())
+            .isEqualTo("localhost:1234|ministral");
         softly.assertAll();
     }
 
     @Test
-    void Should_RejectUpdate_When_MinistralOverlapNotLessThanChunkSize() throws Exception {
-        // ministralOverlap >= ministralChunkSize violates the cross-field rule.
+    void Should_RejectUpdate_When_MinistralConcurrencyBelowMinimum() throws Exception {
+        // ministralConcurrency is @Min(1) on the request DTO.
+        mockMvc.perform(put(CONFIG_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bodyWithConcurrency("0")))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void Should_RejectUpdate_When_MinistralConcurrencyAboveMaximum() throws Exception {
+        // ministralConcurrency is @Max(16) on the request DTO.
+        mockMvc.perform(put(CONFIG_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bodyWithConcurrency("17")))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void Should_RejectUpdate_When_MinistralConcurrencyMissing() throws Exception {
+        // ministralConcurrency is @NotNull on the request DTO.
         String body = """
                 {
                   "presidioEnabled": true,
                   "regexEnabled": true,
                   "ministralEnabled": true,
-                  "ministralChunkSize": 256,
+                  "ministralChunkSize": 2048,
                   "ministralOverlap": 256,
                   "defaultThreshold": 0.75,
                   "lmStudioHost": "localhost",
                   "lmStudioPort": 1234,
-                  "ministralConcurrency": 1,
                   "ministralConcurrencyAuto": true
                 }
                 """;
@@ -138,19 +163,19 @@ class PiiDetectionConfigControllerMinistralTest {
     }
 
     @Test
-    void Should_RejectUpdate_When_MinistralEnabledMissing() throws Exception {
-        // ministralEnabled is @NotNull on the request DTO.
+    void Should_RejectUpdate_When_MinistralConcurrencyAutoMissing() throws Exception {
+        // ministralConcurrencyAuto is @NotNull on the request DTO.
         String body = """
                 {
                   "presidioEnabled": true,
                   "regexEnabled": true,
-                  "ministralChunkSize": 1024,
-                  "ministralOverlap": 128,
+                  "ministralEnabled": true,
+                  "ministralChunkSize": 2048,
+                  "ministralOverlap": 256,
                   "defaultThreshold": 0.75,
                   "lmStudioHost": "localhost",
                   "lmStudioPort": 1234,
-                  "ministralConcurrency": 1,
-                  "ministralConcurrencyAuto": true
+                  "ministralConcurrency": 1
                 }
                 """;
 
@@ -158,5 +183,22 @@ class PiiDetectionConfigControllerMinistralTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isBadRequest());
+    }
+
+    private String bodyWithConcurrency(String concurrency) {
+        return """
+                {
+                  "presidioEnabled": true,
+                  "regexEnabled": true,
+                  "ministralEnabled": true,
+                  "ministralChunkSize": 2048,
+                  "ministralOverlap": 256,
+                  "defaultThreshold": 0.75,
+                  "lmStudioHost": "localhost",
+                  "lmStudioPort": 1234,
+                  "ministralConcurrency": %s,
+                  "ministralConcurrencyAuto": true
+                }
+                """.formatted(concurrency);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
+import pro.softcom.aisentinel.domain.pii.detection.ConcurrencyBenchStatus;
 import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDetectionConfigEntity;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDetectionConfigJpaRepository;
@@ -26,6 +27,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
     private static final int DEFAULT_MINISTRAL_OVERLAP = 410;
     private static final String DEFAULT_LM_STUDIO_HOST = "localhost";
     private static final int DEFAULT_LM_STUDIO_PORT = 1234;
+    private static final int DEFAULT_MINISTRAL_CONCURRENCY = 1;
+    private static final String BENCH_STATUS_IDLE = "IDLE";
+    private static final String BENCH_STATUS_PENDING = "PENDING";
 
     private final PiiDetectionConfigJpaRepository jpaRepository;
 
@@ -64,9 +68,62 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
 
 
         PiiDetectionConfigEntity entity = toEntity(config);
+        // The bench job columns are owned by the benchmark workflow (the
+        // detector service reports progress there); a config save must not
+        // reset them.
+        jpaRepository.findById(CONFIG_ID).ifPresent(existing -> copyBenchState(existing, entity));
         jpaRepository.save(entity);
 
         log.info("PII detection configuration updated successfully");
+    }
+
+    @Override
+    @Transactional
+    public void requestBenchmark() {
+        log.info("Flagging on-demand concurrency benchmark request");
+
+        PiiDetectionConfigEntity entity = requireConfigEntity();
+        entity.setConcurrencyBenchRequested(true);
+        entity.setConcurrencyBenchStatus(BENCH_STATUS_PENDING);
+        entity.setConcurrencyBenchProgress(0);
+        entity.setConcurrencyBenchMessage(null);
+        jpaRepository.save(entity);
+
+        log.info("Concurrency benchmark request flagged successfully");
+    }
+
+    @Override
+    @Transactional
+    public ConcurrencyBenchStatus findBenchStatus() {
+        log.debug("Retrieving concurrency benchmark status");
+
+        PiiDetectionConfigEntity entity = requireConfigEntity();
+        return new ConcurrencyBenchStatus(
+                entity.getConcurrencyBenchStatus() != null ? entity.getConcurrencyBenchStatus() : BENCH_STATUS_IDLE,
+                entity.getConcurrencyBenchProgress() != null ? entity.getConcurrencyBenchProgress() : 0,
+                entity.getConcurrencyBenchMessage(),
+                entity.getMinistralConcurrency() != null ? entity.getMinistralConcurrency() : DEFAULT_MINISTRAL_CONCURRENCY,
+                entity.getMinistralConcurrencyTunedSignature()
+        );
+    }
+
+    /**
+     * Returns the singleton configuration row, bootstrapping the default
+     * configuration when it does not exist yet.
+     */
+    private PiiDetectionConfigEntity requireConfigEntity() {
+        return jpaRepository.findById(CONFIG_ID).orElseGet(() -> {
+            findConfig();
+            return jpaRepository.findById(CONFIG_ID)
+                    .orElseThrow(() -> new IllegalStateException("PII detection configuration row could not be created"));
+        });
+    }
+
+    private void copyBenchState(PiiDetectionConfigEntity source, PiiDetectionConfigEntity target) {
+        target.setConcurrencyBenchRequested(source.getConcurrencyBenchRequested());
+        target.setConcurrencyBenchStatus(source.getConcurrencyBenchStatus());
+        target.setConcurrencyBenchProgress(source.getConcurrencyBenchProgress());
+        target.setConcurrencyBenchMessage(source.getConcurrencyBenchMessage());
     }
 
     /**
@@ -87,6 +144,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 false, // postfilterEnabled (zero-effect rollout default)
                 DEFAULT_LM_STUDIO_HOST, // lmStudioHost
                 DEFAULT_LM_STUDIO_PORT, // lmStudioPort
+                DEFAULT_MINISTRAL_CONCURRENCY, // ministralConcurrency (sequential)
+                true,  // ministralConcurrencyAuto (auto-tune at startup)
+                null,  // ministralConcurrencyTunedSignature (never tuned)
                 LocalDateTime.now(ZoneId.of("UTC")),
                 "system"
         );
@@ -110,6 +170,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 entity.getPostfilterEnabled() != null && entity.getPostfilterEnabled(),
                 entity.getLmStudioHost() != null ? entity.getLmStudioHost() : DEFAULT_LM_STUDIO_HOST,
                 entity.getLmStudioPort() != null ? entity.getLmStudioPort() : DEFAULT_LM_STUDIO_PORT,
+                entity.getMinistralConcurrency() != null ? entity.getMinistralConcurrency() : DEFAULT_MINISTRAL_CONCURRENCY,
+                entity.getMinistralConcurrencyAuto() == null || entity.getMinistralConcurrencyAuto(),
+                entity.getMinistralConcurrencyTunedSignature(),
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
@@ -130,6 +193,9 @@ public class PiiDetectionConfigPersistenceAdapter implements PiiDetectionConfigR
                 .postfilterEnabled(config.postfilterEnabled())
                 .lmStudioHost(config.lmStudioHost())
                 .lmStudioPort(config.lmStudioPort())
+                .ministralConcurrency(config.ministralConcurrency())
+                .ministralConcurrencyAuto(config.ministralConcurrencyAuto())
+                .ministralConcurrencyTunedSignature(config.ministralConcurrencyTunedSignature())
                 .updatedAt(config.updatedAt() != null ? config.updatedAt() : LocalDateTime.now(ZoneId.of("UTC")))
                 .updatedBy(config.updatedBy())
                 .build();

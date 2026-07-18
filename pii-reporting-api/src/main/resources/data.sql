@@ -11,8 +11,8 @@ ALTER TABLE pii_type_config DROP CONSTRAINT IF EXISTS pii_type_config_pii_type_c
 -- postfilter_enabled defaults to false (zero-effect rollout, deterministic format post-filter).
 -- ministral_enabled defaults to false (explicit operator opt-in).
 -- ============================================================================
-INSERT INTO pii_detection_config (id, presidio_enabled, regex_enabled, default_threshold, postfilter_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, lm_studio_host, lm_studio_port, updated_at, updated_by)
-VALUES (1, true, true, 0.30, false, false, 2048, 410, 'localhost', 1234, CURRENT_TIMESTAMP, 'system')
+INSERT INTO pii_detection_config (id, presidio_enabled, regex_enabled, default_threshold, postfilter_enabled, ministral_enabled, ministral_chunk_size, ministral_overlap, lm_studio_host, lm_studio_port, ministral_concurrency, ministral_concurrency_auto, concurrency_bench_requested, concurrency_bench_status, concurrency_bench_progress, updated_at, updated_by)
+VALUES (1, true, true, 0.30, false, false, 2048, 410, 'localhost', 1234, 1, true, false, 'IDLE', 0, CURRENT_TIMESTAMP, 'system')
     ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

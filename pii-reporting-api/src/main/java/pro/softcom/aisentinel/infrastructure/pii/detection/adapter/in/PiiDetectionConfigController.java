@@ -86,6 +86,9 @@ public class PiiDetectionConfigController {
                 request.postfilterEnabledOrDefault(),
                 request.lmStudioHost(),
                 request.lmStudioPort(),
+                request.ministralConcurrency(),
+                request.ministralConcurrencyAuto(),
+                request.ministralConcurrencyTunedSignature(),
                 updatedBy
             );
             
@@ -119,6 +122,9 @@ public class PiiDetectionConfigController {
             config.postfilterEnabled(),
             config.lmStudioHost(),
             config.lmStudioPort(),
+            config.ministralConcurrency(),
+            config.ministralConcurrencyAuto(),
+            config.ministralConcurrencyTunedSignature(),
             config.updatedAt(),
             config.updatedBy()
         );

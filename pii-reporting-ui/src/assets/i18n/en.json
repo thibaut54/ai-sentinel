@@ -347,7 +347,21 @@
         "chunkSizeHint": "Number of tokens processed per chunk (256-4096). Larger chunks give more context but slower inference.",
         "overlap": "Overlap",
         "overlapHint": "Number of tokens shared between consecutive chunks (0-512). Must stay smaller than the chunk size.",
-        "overlapError": "Overlap must be smaller than the chunk size."
+        "overlapError": "Overlap must be smaller than the chunk size.",
+        "concurrencyTitle": "Ministral concurrency",
+        "concurrencyAuto": "Auto-tune at startup",
+        "concurrency": "Concurrent requests",
+        "concurrencyHint": "Number of chunks sent to LM Studio in parallel (1-16).",
+        "concurrencyCurrent": "Current concurrency",
+        "concurrencySignature": "Tuned signature",
+        "concurrencyNotTuned": "not tuned yet",
+        "retune": "Re-tune on next restart",
+        "retuneHint": "Clears the tuned signature so the auto-tuner runs again the next time the detector service starts.",
+        "runBenchmark": "Run benchmark now",
+        "runBenchmarkHint": "Runs the concurrency benchmark immediately, without restarting the detector service.",
+        "benchmarkRunning": "Benchmark running…",
+        "benchmarkDone": "Benchmark complete — concurrency tuned to {{concurrency}}.",
+        "benchmarkFailed": "Benchmark failed: {{error}}"
       },
       "postfilter": {
         "label": "Deterministic pre-filter",

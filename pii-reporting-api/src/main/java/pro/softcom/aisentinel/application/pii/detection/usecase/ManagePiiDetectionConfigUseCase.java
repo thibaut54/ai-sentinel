@@ -47,6 +47,9 @@ public class ManagePiiDetectionConfigUseCase implements ManagePiiDetectionConfig
                 command.postfilterEnabled(),
                 command.lmStudioHost(),
                 command.lmStudioPort(),
+                command.ministralConcurrency(),
+                command.ministralConcurrencyAuto(),
+                command.ministralConcurrencyTunedSignature(),
                 LocalDateTime.now(ZoneId.systemDefault()),
                 command.updatedBy()
         );

@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.detection.port.out;
 
+import pro.softcom.aisentinel.domain.pii.detection.ConcurrencyBenchStatus;
 import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 
 /**
@@ -26,4 +27,21 @@ public interface PiiDetectionConfigRepository {
      * @throws RuntimeException if update fails
      */
     void updateConfig(PiiDetectionConfig config);
+
+    /**
+     * Flags an on-demand concurrency benchmark request on the configuration row.
+     * Resets the job status to PENDING with zero progress and no message.
+     *
+     * @throws RuntimeException if the request cannot be persisted
+     */
+    void requestBenchmark();
+
+    /**
+     * Retrieves the benchmark job status written by the detector service,
+     * together with the currently applied concurrency values.
+     *
+     * @return The current benchmark status snapshot
+     * @throws RuntimeException if the status cannot be retrieved
+     */
+    ConcurrencyBenchStatus findBenchStatus();
 }

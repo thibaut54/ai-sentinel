@@ -107,6 +107,13 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         # Use singleton detector instance
         self.detector = get_detector_instance()
 
+        # Auto-tune the Ministral chunk-prompt concurrency once, here in the parent
+        # process, BEFORE the worker pool forks. This servicer is constructed a
+        # single time at server start, so the bench runs exactly once and never
+        # contends with a real scan. Placing it in _initialize_detector_instance
+        # would re-run it in every spawn-mode worker.
+        self._run_startup_concurrency_autotune()
+
         # Optional inference worker pool (env PII_WORKER_PROCESSES > 1).
         # N worker processes give data parallelism across concurrent requests.
         # The pool is created after the singleton detector above is built so
@@ -114,9 +121,74 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
         self._worker_pool = None
         self._init_worker_pool()
 
+        # Background poller for operator-triggered (on-demand) concurrency
+        # benchmarks. Started AFTER the worker pool forks so the thread lives in
+        # the parent only (never duplicated into pool workers).
+        self._start_bench_poller()
+
         # Start memory monitoring thread if enabled
         if self.enable_memory_monitoring:
             self._start_memory_monitoring()
+
+    def _start_bench_poller(self) -> None:
+        """Start the daemon thread that runs on-demand concurrency benchmarks.
+
+        Skipped when disabled by env or when no DB credentials are configured
+        (nothing to poll, and it keeps unit tests that construct the servicer
+        free of a background DB-polling thread).
+        """
+        enabled = os.getenv("PII_BENCH_POLLER_ENABLED", "true").strip().lower()
+        if enabled not in ("1", "true", "yes", "on"):
+            logger.info("On-demand benchmark poller disabled via env")
+            return
+        if not (os.getenv("DB_USER") and os.getenv("DB_PASSWORD")):
+            logger.info(
+                "On-demand benchmark poller not started (no DB credentials)"
+            )
+            return
+        thread = threading.Thread(target=self._bench_poller_loop, daemon=True)
+        thread.start()
+        logger.info("On-demand concurrency benchmark poller started")
+
+    def _bench_poller_loop(self) -> None:
+        """Poll the DB for a benchmark request and run it, updating progress.
+
+        The request flag is claimed atomically (single conditional UPDATE) so a
+        request runs exactly once. Progress/status are written to the DB as the
+        bench advances; the UI polls them for its progress bar. Fully guarded so
+        a transient DB/HTTP error never kills the poller.
+        """
+        from pii_detector.infrastructure.adapter.out.database_config_adapter import (
+            get_database_config_adapter,
+        )
+        from pii_detector.infrastructure.model_management.concurrency_autotuner import (
+            run_ondemand_autotune,
+        )
+
+        poll_seconds = int(os.getenv("PII_BENCH_POLL_SECONDS", "3"))
+        adapter = get_database_config_adapter()
+        while True:
+            try:
+                if adapter.claim_bench_job():
+                    logger.info("[AUTOTUNE] on-demand benchmark requested; running")
+                    outcome = run_ondemand_autotune(
+                        self.detector,
+                        on_progress=adapter.update_bench_progress,
+                    )
+                    if outcome.ran and outcome.chosen is not None:
+                        adapter.complete_bench_job(outcome.chosen, outcome.signature)
+                        logger.info(
+                            "[AUTOTUNE] on-demand benchmark done: concurrency=%d",
+                            outcome.chosen,
+                        )
+                    else:
+                        adapter.fail_bench_job(f"Benchmark failed: {outcome.reason}")
+                        logger.warning(
+                            "[AUTOTUNE] on-demand benchmark failed: %s", outcome.reason
+                        )
+            except Exception:  # pragma: no cover - defensive
+                logger.error("[AUTOTUNE] bench poller iteration failed", exc_info=True)
+            time.sleep(poll_seconds)
 
     def _init_worker_pool(self) -> None:
         """Create and warm up the inference worker pool when enabled by env."""
@@ -143,6 +215,24 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 "in-process detection", exc_info=True)
             self._worker_pool = None
     
+    def _run_startup_concurrency_autotune(self) -> None:
+        """Micro-benchmark the LM Studio endpoint and persist the best concurrency.
+
+        Fully guarded: any failure (import, DB, HTTP) is swallowed so a tuning
+        problem never prevents the service from starting. The heavy lifting and
+        all skip/fail-open logic live in the concurrency_autotuner module.
+        """
+        try:
+            from pii_detector.infrastructure.model_management.concurrency_autotuner import (
+                run_startup_autotune,
+            )
+
+            run_startup_autotune(self.detector)
+        except Exception:  # pragma: no cover - defensive
+            logger.warning(
+                "Concurrency auto-tune skipped (unexpected error)", exc_info=True
+            )
+
     def _load_log_throughput_config(self) -> bool:
         """
         Load log_throughput flag from configuration.
@@ -514,6 +604,11 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 # (fetch_config_from_db is set per request by the backend).
                 'lm_studio_host': db_config.get('lm_studio_host'),
                 'lm_studio_port': db_config.get('lm_studio_port'),
+                # Number of chunk prompts the Ministral detector sends to LM Studio
+                # concurrently (DB column ministral_concurrency, auto-tuned at
+                # startup). Threaded by _build_detection_kwargs into the composite
+                # and on to the Ministral detector's chunk loop.
+                'ministral_concurrency': db_config.get('ministral_concurrency'),
             }
 
             logger.info(
@@ -671,6 +766,10 @@ class PIIDetectionServicer(pii_detection_pb2_grpc.PIIDetectionServiceServicer):
                 kwargs['lm_studio_host'] = detector_flags.get('lm_studio_host')
             if 'lm_studio_port' in sig.parameters:
                 kwargs['lm_studio_port'] = detector_flags.get('lm_studio_port')
+            # Ministral chunk-prompt concurrency (DB column ministral_concurrency),
+            # forwarded so the operator/auto-tuned value reaches the detector.
+            if 'ministral_concurrency' in sig.parameters:
+                kwargs['ministral_concurrency'] = detector_flags.get('ministral_concurrency')
 
         return kwargs
     

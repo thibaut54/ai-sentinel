@@ -1096,6 +1096,21 @@
   color: var(--sentinel-text-subtle);
 }
 
+/* Progress of the on-demand concurrency benchmark.
+   ::ng-deep needed: PrimeNG progressbar renders its own internal template */
+.bench-progress ::ng-deep .p-progressbar {
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* Read-only values (current concurrency, tuned signature) shown while the
+   Ministral concurrency auto-tuning is enabled. */
+.concurrency-readonly {
+  font-size: 0.875rem;
+  color: var(--sentinel-text-default);
+  word-break: break-all;
+}
+
 /* Discreet note shown where a confidence-threshold control would be, for the
    MINISTRAL detector — which emits no probabilistic score, so the threshold is
    inert (see the PII types list header and the add/promote dialog). */

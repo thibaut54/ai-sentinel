@@ -92,8 +92,14 @@ CHARS_PER_TOKEN = 4
 # LLM_MINISTRAL_TOKENIZER (HF repo id, tokenizer.json path, or a directory).
 MINISTRAL_TOKENIZER_REPO = "OpenMed/Ministral-3B-PII-Preview"
 
-# HTTP timeout (seconds) for one chat/completions call.
-HTTP_TIMEOUT_SECONDS = 120.0
+# Connect timeout (seconds) for a chat/completions call: fail fast only when the
+# LM Studio endpoint is unreachable. There is deliberately NO read timeout on the
+# inference itself — a single dense chunk can legitimately take minutes on a slow
+# or contended host, and production documents are large, so any fixed read
+# timeout would silently drop that chunk's findings through the fail-open path. A
+# dead mid-stream endpoint still surfaces as a broken TCP connection. Override the
+# connect timeout via env if ever needed.
+CONNECT_TIMEOUT_SECONDS = float(os.getenv("LLM_MINISTRAL_CONNECT_TIMEOUT", "30"))
 # Generation budget large enough to absorb a JSON array over a full chunk.
 MAX_TOKENS = 2048
 
@@ -275,6 +281,7 @@ class MinistralDetector:
         overlap: Optional[int] = None,
         lm_studio_host: Optional[str] = None,
         lm_studio_port: Optional[int] = None,
+        concurrency: Optional[int] = None,
     ) -> List[PIIEntity]:
         if not text:
             return []
@@ -300,7 +307,8 @@ class MinistralDetector:
 
             resolver = _LabelResolver.from_mapping(label_mapping)
             entities = self._extract_over_chunks(
-                text, resolver, type_labels, chunk_size, overlap, base_url
+                text, resolver, type_labels, chunk_size, overlap, base_url,
+                concurrency,
             )
             entities = self._apply_per_type_thresholds(entities, scoring_overrides)
             # Global confidence floor, for parity with the other detectors. The
@@ -353,6 +361,7 @@ class MinistralDetector:
         chunk_size: Optional[int],
         overlap: Optional[int],
         base_url: str,
+        concurrency: Optional[int] = None,
     ) -> List[PIIEntity]:
         """Chunk the text, extract per chunk, rebase offsets to global coords.
 
@@ -361,27 +370,90 @@ class MinistralDetector:
         shifted by ``chunk.start`` so the final ``PIIEntity`` carries GLOBAL
         character offsets. A per-chunk HTTP/timeout failure is logged and skipped
         (fail-open partial).
+
+        ``concurrency`` controls how many chunk prompts are in flight against the
+        LM Studio endpoint at once. ``<= 1`` keeps the historical sequential loop
+        (zero overhead). ``> 1`` dispatches chunks across a bounded thread pool
+        over the shared thread-safe ``httpx.Client``; because each chunk carries
+        its own ``chunk.start``, completion order is irrelevant and
+        ``DetectionMerger`` collapses the overlap regions downstream.
         """
         chunker = self._build_chunker(
             chunk_size if chunk_size is not None else DEFAULT_CHUNK_SIZE_TOKENS,
             overlap if overlap is not None else DEFAULT_CHUNK_OVERLAP_TOKENS,
         )
         chunks = chunker.chunk_text(text)
-        entities: List[PIIEntity] = []
-        for chunk in chunks:
-            try:
-                raw_pairs = self._extract_chunk(chunk.text, base_url)
-            except (httpx.HTTPError, httpx.TimeoutException) as exc:
-                self.logger.warning(
-                    "MINISTRAL_CHUNK_FAILED start=%d len=%d: %s",
-                    chunk.start, len(chunk.text), exc,
+        workers = max(1, int(concurrency)) if concurrency else 1
+        if workers <= 1 or len(chunks) <= 1:
+            entities: List[PIIEntity] = []
+            for chunk in chunks:
+                entities.extend(
+                    self._extract_one_chunk(chunk, resolver, type_labels, base_url)
                 )
-                continue
-            entities.extend(
-                self._pairs_to_entities(
-                    raw_pairs, chunk.text, chunk.start, resolver, type_labels,
-                )
+            return entities
+        return self._extract_chunks_concurrently(
+            chunks, resolver, type_labels, base_url, workers
+        )
+
+    def _extract_one_chunk(
+        self,
+        chunk: Any,
+        resolver: _LabelResolver,
+        type_labels: Dict[str, str],
+        base_url: str,
+    ) -> List[PIIEntity]:
+        """Extract one chunk's entities (global offsets); fail-open on HTTP/timeout.
+
+        A per-chunk HTTP/timeout error is logged and yields no entities so one bad
+        chunk never sinks the whole detection. Any other exception propagates (it
+        is a real bug, surfaced by ``detect_pii`` as ``PIIDetectionError``).
+        """
+        try:
+            raw_pairs = self._extract_chunk(chunk.text, base_url)
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            self.logger.warning(
+                "MINISTRAL_CHUNK_FAILED start=%d len=%d: %s",
+                chunk.start, len(chunk.text), exc,
             )
+            return []
+        return self._pairs_to_entities(
+            raw_pairs, chunk.text, chunk.start, resolver, type_labels,
+        )
+
+    def _extract_chunks_concurrently(
+        self,
+        chunks: List[Any],
+        resolver: _LabelResolver,
+        type_labels: Dict[str, str],
+        base_url: str,
+        workers: int,
+    ) -> List[PIIEntity]:
+        """Extract chunks across a bounded thread pool over the shared client.
+
+        The pool is capped at ``min(workers, len(chunks))`` — never more threads
+        than there is work. The ``httpx.Client`` is warmed up once here so its
+        lazy creation does not race across worker threads. Results are gathered in
+        submission order; each future re-raises any non-fail-open exception,
+        preserving the sequential path's error semantics.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        # Warm up the lazy shared client before the pool starts (avoid a first-use
+        # creation race between worker threads).
+        self._get_client()
+        max_workers = min(workers, len(chunks))
+        entities: List[PIIEntity] = []
+        with ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="ministral-chunk"
+        ) as pool:
+            futures = [
+                pool.submit(
+                    self._extract_one_chunk, chunk, resolver, type_labels, base_url
+                )
+                for chunk in chunks
+            ]
+            for future in futures:
+                entities.extend(future.result())
         return entities
 
     # ------------------------------------------------------------------
@@ -514,7 +586,9 @@ class MinistralDetector:
             self._client = httpx.Client(
                 http2=False,
                 trust_env=False,
-                timeout=HTTP_TIMEOUT_SECONDS,
+                # Connect timeout only; read/write/pool unbounded so a legitimately
+                # slow chunk inference is never cut off (see CONNECT_TIMEOUT_SECONDS).
+                timeout=httpx.Timeout(None, connect=CONNECT_TIMEOUT_SECONDS),
             )
         return self._client
 

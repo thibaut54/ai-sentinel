@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { PiiSettingsComponent } from './pii-settings.component';
-import { CategoryGroup, PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detection-config.model';
+import { CategoryGroup, ConcurrencyBenchStatus, PiiDetectionConfig, PiiTypeConfig } from '../../core/models/pii-detection-config.model';
 import { ConfluenceConnectionConfig } from '../../core/models/confluence-connection-config.model';
 
 const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
@@ -14,6 +15,9 @@ const MOCK_DETECTOR_CONFIG: PiiDetectionConfig = {
   ministralEnabled: false,
   ministralChunkSize: 1024,
   ministralOverlap: 128,
+  ministralConcurrency: 4,
+  ministralConcurrencyAuto: false,
+  ministralConcurrencyTunedSignature: null,
   defaultThreshold: 0.75,
   lmStudioHost: 'localhost',
   lmStudioPort: 1234,
@@ -49,6 +53,20 @@ const FR_TRANSLATIONS = {
         overlap: 'Chevauchement',
         overlapHint: 'hint',
         overlapError: 'erreur',
+        concurrencyTitle: 'Concurrence Ministral',
+        concurrencyAuto: 'Auto-réglage au démarrage',
+        concurrency: 'Requêtes simultanées',
+        concurrencyHint: 'hint',
+        concurrencyCurrent: 'Concurrence actuelle',
+        concurrencySignature: 'Signature du réglage',
+        concurrencyNotTuned: 'pas encore réglé',
+        retune: 'Re-régler au prochain redémarrage',
+        retuneHint: 'hint',
+        runBenchmark: 'Lancer le benchmark maintenant',
+        runBenchmarkHint: 'hint',
+        benchmarkRunning: 'Benchmark en cours…',
+        benchmarkDone: 'Benchmark terminé — concurrence réglée à {{concurrency}}.',
+        benchmarkFailed: 'Le benchmark a échoué : {{error}}',
       },
       postfilter: { label: 'Post-filtre déterministe', description: 'desc' },
       detectorLabel: 'Détecteur',
@@ -405,6 +423,229 @@ describe('PiiSettingsComponent', () => {
     expect(document.querySelector('#customThreshold')).toBeNull();
     expect(component.customLabelForm.get('threshold')?.value).toBe(0.8);
     expect(component.customLabelForm.valid).toBe(true);
+  });
+
+  // ========== Ministral concurrency ==========
+
+  it('Should_PatchConcurrencyControls_When_ConfigLoaded', () => {
+    expect(component.configForm.get('ministralConcurrency')?.value).toBe(4);
+    expect(component.configForm.get('ministralConcurrencyAuto')?.value).toBe(false);
+    expect(component.configForm.get('ministralConcurrencyTunedSignature')?.value).toBeNull();
+  });
+
+  it('Should_FailConcurrencyValidation_When_OutOfRange', () => {
+    component.configForm.patchValue({ ministralConcurrency: 0 });
+    expect(component.configForm.get('ministralConcurrency')?.invalid).toBe(true);
+
+    component.configForm.patchValue({ ministralConcurrency: 17 });
+    expect(component.configForm.get('ministralConcurrency')?.invalid).toBe(true);
+
+    component.configForm.patchValue({ ministralConcurrency: 8 });
+    expect(component.configForm.get('ministralConcurrency')?.valid).toBe(true);
+  });
+
+  it('Should_ShowManualConcurrencyInput_When_AutoTuneDisabled', () => {
+    // Given - Ministral enabled with auto-tuning off (from MOCK config)
+    component.configForm.patchValue({ ministralEnabled: true });
+    fixture.detectChanges();
+
+    // Then - the numeric input renders, the read-only display does not
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('#ministralConcurrency')).not.toBeNull();
+    expect(el.querySelector('.concurrency-readonly')).toBeNull();
+  });
+
+  it('Should_ShowReadonlyTunedState_When_AutoTuneEnabled', () => {
+    // Given - Ministral enabled with auto-tuning on and no signature yet
+    component.configForm.patchValue({ ministralEnabled: true, ministralConcurrencyAuto: true });
+    fixture.detectChanges();
+
+    // Then - the numeric input is gone; current value and placeholder show instead
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('#ministralConcurrency')).toBeNull();
+    const readonlyValues = el.querySelectorAll('.concurrency-readonly');
+    expect(readonlyValues.length).toBe(2);
+    expect(readonlyValues[0].textContent).toContain('4');
+    expect(readonlyValues[1].textContent).toContain('pas encore réglé');
+  });
+
+  it('Should_ShowTunedSignature_When_SignaturePresent', () => {
+    component.configForm.patchValue({
+      ministralEnabled: true,
+      ministralConcurrencyAuto: true,
+      ministralConcurrencyTunedSignature: 'cpu16-mem32',
+    });
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const readonlyValues = el.querySelectorAll('.concurrency-readonly');
+    expect(readonlyValues[1].textContent).toContain('cpu16-mem32');
+  });
+
+  it('Should_ClearSignatureAndSave_When_RetuneRequested', () => {
+    // Given - a previously tuned signature loaded in the form
+    component.configForm.patchValue({ ministralConcurrencyTunedSignature: 'cpu16-mem32' });
+
+    // When
+    component.onRetuneConcurrency();
+
+    // Then - the signature is cleared and persisted through the save flow
+    expect(component.saving()).toBe(true);
+    const req = httpMock.expectOne('/api/v1/pii-detection/config');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.ministralConcurrencyTunedSignature).toBeNull();
+    req.flush({ ...MOCK_DETECTOR_CONFIG, ministralConcurrencyTunedSignature: null });
+
+    expect(component.saving()).toBe(false);
+    expect(component.configForm.get('ministralConcurrencyTunedSignature')?.value).toBeNull();
+  });
+
+  // ========== Concurrency benchmark ==========
+
+  describe('Concurrency benchmark', () => {
+    const BENCH_RUN_URL = '/api/v1/pii-detection/concurrency-benchmark/run';
+    const BENCH_STATUS_URL = '/api/v1/pii-detection/concurrency-benchmark/status';
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function benchStatus(overrides: Partial<ConcurrencyBenchStatus> = {}): ConcurrencyBenchStatus {
+      return {
+        status: 'RUNNING',
+        progress: 0,
+        message: null,
+        concurrency: 4,
+        tunedSignature: null,
+        ...overrides,
+      };
+    }
+
+    it('Should_PostRunAndPollStatus_When_BenchmarkButtonClicked', () => {
+      // Given - Ministral enabled so the concurrency section renders
+      component.configForm.patchValue({ ministralEnabled: true });
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      const button = el.querySelector('[data-testid="runBenchmarkButton"] button') as HTMLButtonElement;
+      expect(button).not.toBeNull();
+
+      // When - the button is clicked
+      button.click();
+
+      // Then - the run endpoint is POSTed and polling starts
+      const runReq = httpMock.expectOne(BENCH_RUN_URL);
+      expect(runReq.request.method).toBe('POST');
+      runReq.flush(null);
+
+      vi.advanceTimersByTime(0);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(benchStatus({ progress: 40, message: 'measuring' }));
+      fixture.detectChanges();
+
+      // Progress bar renders the polled progress and the button is disabled
+      const progress = el.querySelector('[data-testid="benchProgress"]');
+      expect(progress).not.toBeNull();
+      expect(progress!.textContent).toContain('measuring');
+      expect(progress!.textContent).toContain('40');
+      expect(button.disabled).toBe(true);
+
+      // When - the next poll reports DONE
+      vi.advanceTimersByTime(1000);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(
+        benchStatus({ status: 'DONE', progress: 100, concurrency: 6, tunedSignature: 'cpu16-mem32' })
+      );
+
+      // Then - the config is reloaded so the tuned concurrency is displayed
+      httpMock.expectOne('/api/v1/pii-detection/config').flush({
+        ...MOCK_DETECTOR_CONFIG,
+        ministralEnabled: true,
+        ministralConcurrency: 6,
+        ministralConcurrencyTunedSignature: 'cpu16-mem32',
+      });
+      httpMock.expectOne('/api/v1/pii-detection/pii-types/grouped').flush([]);
+      fixture.detectChanges();
+
+      expect(component.benchRunning()).toBe(false);
+      expect(component.configForm.get('ministralConcurrency')?.value).toBe(6);
+      expect(el.querySelector('[data-testid="benchProgress"]')).toBeNull();
+      expect(button.disabled).toBe(false);
+
+      // And - polling has stopped
+      vi.advanceTimersByTime(3000);
+      httpMock.expectNone(BENCH_STATUS_URL);
+    });
+
+    it('Should_StopPollingAndShowError_When_BenchmarkFails', () => {
+      component.onRunBenchmark();
+      httpMock.expectOne(BENCH_RUN_URL).flush(null);
+
+      vi.advanceTimersByTime(0);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(
+        benchStatus({ status: 'FAILED', progress: 30, message: 'LM Studio unreachable' })
+      );
+
+      expect(component.benchRunning()).toBe(false);
+
+      vi.advanceTimersByTime(3000);
+      httpMock.expectNone(BENCH_STATUS_URL);
+    });
+
+    it('Should_IgnoreRunRequest_When_BenchmarkAlreadyRunning', () => {
+      component.onRunBenchmark();
+      httpMock.expectOne(BENCH_RUN_URL).flush(null);
+      vi.advanceTimersByTime(0);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(benchStatus({ progress: 10 }));
+
+      // When - a second run is requested while the first is still running
+      component.onRunBenchmark();
+
+      // Then - no second POST is issued
+      httpMock.expectNone(BENCH_RUN_URL);
+
+      // Cleanup - let the running benchmark fail to stop the polling loop
+      vi.advanceTimersByTime(1000);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(benchStatus({ status: 'FAILED', message: 'boom' }));
+    });
+
+    it('Should_StopPollingAndShowError_When_StatusPollFails', () => {
+      component.onRunBenchmark();
+      httpMock.expectOne(BENCH_RUN_URL).flush(null);
+
+      vi.advanceTimersByTime(0);
+      httpMock.expectOne(BENCH_STATUS_URL).flush('boom', { status: 500, statusText: 'Server Error' });
+
+      expect(component.benchRunning()).toBe(false);
+
+      vi.advanceTimersByTime(3000);
+      httpMock.expectNone(BENCH_STATUS_URL);
+    });
+
+    it('Should_NotStartPolling_When_RunRequestFails', () => {
+      component.onRunBenchmark();
+      httpMock.expectOne(BENCH_RUN_URL).flush('boom', { status: 500, statusText: 'Server Error' });
+
+      expect(component.benchRunning()).toBe(false);
+
+      vi.advanceTimersByTime(3000);
+      httpMock.expectNone(BENCH_STATUS_URL);
+    });
+
+    it('Should_StopPolling_When_ComponentDestroyed', () => {
+      component.onRunBenchmark();
+      httpMock.expectOne(BENCH_RUN_URL).flush(null);
+      vi.advanceTimersByTime(0);
+      httpMock.expectOne(BENCH_STATUS_URL).flush(benchStatus({ progress: 10 }));
+
+      // When - the component is destroyed mid-benchmark
+      fixture.destroy();
+
+      // Then - no further poll is issued
+      vi.advanceTimersByTime(3000);
+      httpMock.expectNone(BENCH_STATUS_URL);
+    });
   });
 
   // ========== onSaveDetectorConfig ==========

@@ -79,7 +79,10 @@ class DatabaseConfigAdapter:
                         default_threshold,
                         postfilter_enabled,
                         lm_studio_host,
-                        lm_studio_port
+                        lm_studio_port,
+                        ministral_concurrency,
+                        ministral_concurrency_auto,
+                        ministral_concurrency_tuned_signature
                     FROM pii_detection_config
                     WHERE id = 1 \
                     """
@@ -89,13 +92,13 @@ class DatabaseConfigAdapter:
                 result = cursor.fetchone()
             except psycopg2.errors.UndefinedColumn:
                 # Migration not yet applied for ministral_* / postfilter_enabled /
-                # lm_studio_* -- retry without the new columns. They all default
-                # downstream so the service stays usable on a freshly-pulled
-                # environment before Hibernate DDL update.
+                # lm_studio_* / ministral_concurrency_* -- retry without the new
+                # columns. They all default downstream so the service stays usable
+                # on a freshly-pulled environment before Hibernate DDL update.
                 logger.warning(
-                    "ministral_* / postfilter_enabled / lm_studio_* column missing "
-                    "in pii_detection_config; falling back on defaults. "
-                    "Apply migration to enable."
+                    "ministral_* / postfilter_enabled / lm_studio_* / "
+                    "ministral_concurrency_* column missing in pii_detection_config; "
+                    "falling back on defaults. Apply migration to enable."
                 )
                 connection.rollback()
                 cursor.execute(
@@ -108,7 +111,10 @@ class DatabaseConfigAdapter:
                         410 AS ministral_overlap,
                         default_threshold,
                         'localhost' AS lm_studio_host,
-                        1234 AS lm_studio_port
+                        1234 AS lm_studio_port,
+                        1 AS ministral_concurrency,
+                        TRUE AS ministral_concurrency_auto,
+                        NULL AS ministral_concurrency_tuned_signature
                     FROM pii_detection_config
                     WHERE id = 1
                     """
@@ -149,6 +155,16 @@ class DatabaseConfigAdapter:
             config.setdefault("lm_studio_port", 1234)
             if config["lm_studio_port"] is None:
                 config["lm_studio_port"] = 1234
+            # Ministral concurrency auto-tuning knobs (added by migration 015).
+            # Absent / NULL -> sequential (1), auto-tune enabled, never tuned yet,
+            # so a pre-migration DB keeps the historical single-prompt behaviour.
+            config.setdefault("ministral_concurrency", 1)
+            if config["ministral_concurrency"] is None:
+                config["ministral_concurrency"] = 1
+            config.setdefault("ministral_concurrency_auto", True)
+            if config["ministral_concurrency_auto"] is None:
+                config["ministral_concurrency_auto"] = True
+            config.setdefault("ministral_concurrency_tuned_signature", None)
             logger.info(
                 "Successfully fetched config from database: "
                 f"presidio={config['presidio_enabled']}, "
@@ -156,7 +172,9 @@ class DatabaseConfigAdapter:
                 f"ministral={config['ministral_enabled']}, "
                 f"threshold={config['default_threshold']}, "
                 f"postfilter={config['postfilter_enabled']}, "
-                f"lm_studio={config['lm_studio_host']}:{config['lm_studio_port']}"
+                f"lm_studio={config['lm_studio_host']}:{config['lm_studio_port']}, "
+                f"ministral_concurrency={config['ministral_concurrency']} "
+                f"(auto={config['ministral_concurrency_auto']})"
             )
             return config
 
@@ -295,6 +313,173 @@ class DatabaseConfigAdapter:
                 cursor.close()
             if connection:
                 connection.close()
+
+    def update_ministral_concurrency(
+        self, concurrency: int, tuned_signature: str
+    ) -> bool:
+        """Persist the auto-tuned Ministral concurrency and its host+model signature.
+
+        Written once at startup by the concurrency auto-tuner (the only Python
+        write path into ``pii_detection_config``). ``tuned_signature`` records the
+        ``"host:port|model"`` the value was measured for, so a later startup can
+        skip re-tuning when it is unchanged. Never raises: a failure is logged and
+        returns ``False`` so a persistence hiccup never aborts service startup.
+
+        Business Rule: single-row configuration table with id=1.
+
+        Returns:
+            True if the row was updated, False on any failure.
+        """
+        connection = None
+        cursor = None
+        try:
+            connection = self._get_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                UPDATE pii_detection_config
+                SET ministral_concurrency = %s,
+                    ministral_concurrency_tuned_signature = %s,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = %s
+                WHERE id = 1
+                """,
+                (int(concurrency), tuned_signature, "concurrency-autotuner"),
+            )
+            connection.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                logger.info(
+                    "Persisted auto-tuned ministral_concurrency=%d "
+                    "(signature=%s)",
+                    int(concurrency), tuned_signature,
+                )
+            else:
+                logger.warning(
+                    "update_ministral_concurrency matched no row (id=1 missing?)"
+                )
+            return updated
+        except psycopg2.Error as e:
+            logger.error("Failed to persist auto-tuned concurrency: %s", e)
+            if connection:
+                connection.rollback()
+            return False
+        except Exception as e:  # pragma: no cover - defensive
+            logger.error("Unexpected error persisting concurrency: %s", e)
+            if connection:
+                connection.rollback()
+            return False
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def _execute_commit(
+        self, sql: str, params: tuple, quiet_conn_errors: bool = False
+    ) -> int:
+        """Run a write statement, commit, return rowcount (-1 on failure, logged).
+
+        Never raises: DB write hiccups must not crash the poller/bench.
+        ``quiet_conn_errors`` downgrades connection-level failures to DEBUG — used
+        by the benchmark-request poller (``claim_bench_job``), which runs every
+        few seconds and would otherwise spam ERROR during a DB outage. Genuine
+        query errors always stay at ERROR.
+        """
+        connection = None
+        cursor = None
+        try:
+            connection = self._get_connection()
+            cursor = connection.cursor()
+            cursor.execute(sql, params)
+            connection.commit()
+            return cursor.rowcount
+        except psycopg2.OperationalError as e:
+            if quiet_conn_errors:
+                logger.debug("DB unavailable (poller, quiet): %s", e)
+            else:
+                logger.error("DB write failed (connection): %s", e)
+            if connection:
+                connection.rollback()
+            return -1
+        except psycopg2.Error as e:
+            logger.error("DB write failed: %s", e)
+            if connection:
+                connection.rollback()
+            return -1
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def claim_bench_job(self) -> bool:
+        """Atomically claim a pending on-demand benchmark request.
+
+        Flips ``concurrency_bench_requested`` false -> RUNNING in a single
+        conditional UPDATE, so only the first poller tick that sees the request
+        runs the bench (no double-run). Returns True iff a request was claimed.
+        """
+        rc = self._execute_commit(
+            """
+            UPDATE pii_detection_config
+            SET concurrency_bench_requested = false,
+                concurrency_bench_status = 'RUNNING',
+                concurrency_bench_progress = 0,
+                concurrency_bench_message = 'Starting benchmark'
+            WHERE id = 1 AND concurrency_bench_requested = true
+            """,
+            (),
+            quiet_conn_errors=True,
+        )
+        return rc > 0
+
+    def update_bench_progress(self, progress: int, message: str) -> None:
+        """Update the RUNNING benchmark progress percentage and label."""
+        self._execute_commit(
+            """
+            UPDATE pii_detection_config
+            SET concurrency_bench_status = 'RUNNING',
+                concurrency_bench_progress = %s,
+                concurrency_bench_message = %s
+            WHERE id = 1
+            """,
+            (int(progress), message),
+        )
+
+    def complete_bench_job(self, concurrency: int, signature: str) -> None:
+        """Persist the benchmark result and mark the job DONE (progress 100)."""
+        self._execute_commit(
+            """
+            UPDATE pii_detection_config
+            SET ministral_concurrency = %s,
+                ministral_concurrency_tuned_signature = %s,
+                concurrency_bench_status = 'DONE',
+                concurrency_bench_progress = 100,
+                concurrency_bench_message = %s,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = %s
+            WHERE id = 1
+            """,
+            (
+                int(concurrency),
+                signature,
+                f"Benchmark complete: concurrency={concurrency}",
+                "concurrency-autotuner",
+            ),
+        )
+
+    def fail_bench_job(self, message: str) -> None:
+        """Mark the benchmark job FAILED with a human-readable reason."""
+        self._execute_commit(
+            """
+            UPDATE pii_detection_config
+            SET concurrency_bench_status = 'FAILED',
+                concurrency_bench_message = %s
+            WHERE id = 1
+            """,
+            (message,),
+        )
 
     def _execute_pii_type_query(self, cursor, detector: Optional[str]):
         """Run the pii_type_config SELECT.

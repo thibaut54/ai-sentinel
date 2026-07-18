@@ -11,6 +11,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pro.softcom.aisentinel.AiSentinelApplication;
+import pro.softcom.aisentinel.domain.pii.detection.ConcurrencyBenchStatus;
 import pro.softcom.aisentinel.domain.pii.detection.PiiDetectionConfig;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDetectionConfigEntity;
 import pro.softcom.aisentinel.infrastructure.pii.detection.adapter.out.jpa.PiiDetectionConfigJpaRepository;
@@ -67,6 +68,9 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(config.defaultThreshold())
             .isEqualByComparingTo(new BigDecimal("0.75"));
         softly.assertThat(config.postfilterEnabled()).isFalse();
+        softly.assertThat(config.ministralConcurrency()).isEqualTo(1);
+        softly.assertThat(config.ministralConcurrencyAuto()).isTrue();
+        softly.assertThat(config.ministralConcurrencyTunedSignature()).isNull();
         softly.assertThat(config.updatedAt()).isNotNull();
         softly.assertThat(config.updatedBy()).isEqualTo("system");
 
@@ -101,7 +105,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             false,
             1024, 128,
             newThreshold,
-            false, "localhost", 1234,
+            false, "localhost", 1234, 1, true, null,
             updateTime,
             "integration-test"
         );
@@ -141,7 +145,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
             true,
             true,
             1024, 128, new BigDecimal("0.75"),
-            true, "localhost", 1234,
+            true, "localhost", 1234, 1, true, null,
             LocalDateTime.now(),
             "postfilter-enabler"
         );
@@ -164,7 +168,7 @@ class PiiDetectionConfigPersistenceAdapterTest {
         PiiDetectionConfig config = new PiiDetectionConfig(
             CONFIG_ID,
             true, false, true, 2048, 256, new BigDecimal("0.75"),
-            false, "localhost", 1234,
+            false, "localhost", 1234, 1, true, null,
             LocalDateTime.now(),
             "ministral-enabler"
         );
@@ -181,6 +185,109 @@ class PiiDetectionConfigPersistenceAdapterTest {
         softly.assertThat(entity.getMinistralEnabled()).isTrue();
         softly.assertThat(entity.getMinistralChunkSize()).isEqualTo(2048);
         softly.assertThat(entity.getMinistralOverlap()).isEqualTo(256);
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_RoundTripMinistralConcurrencyFields_When_Persisted() {
+        jpaRepository.deleteAll();
+
+        PiiDetectionConfig config = new PiiDetectionConfig(
+            CONFIG_ID,
+            true, false, true, 2048, 256, new BigDecimal("0.75"),
+            false, "localhost", 1234, 4, false, "localhost:1234|ministral",
+            LocalDateTime.now(),
+            "concurrency-tuner"
+        );
+
+        persistenceAdapter.updateConfig(config);
+
+        PiiDetectionConfig reloaded = persistenceAdapter.findConfig();
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.ministralConcurrency()).isEqualTo(4);
+        softly.assertThat(reloaded.ministralConcurrencyAuto()).isFalse();
+        softly.assertThat(reloaded.ministralConcurrencyTunedSignature()).isEqualTo("localhost:1234|ministral");
+        softly.assertThat(entity.getMinistralConcurrency()).isEqualTo(4);
+        softly.assertThat(entity.getMinistralConcurrencyAuto()).isFalse();
+        softly.assertThat(entity.getMinistralConcurrencyTunedSignature()).isEqualTo("localhost:1234|ministral");
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_FlagPendingBenchmarkRequest_When_RequestBenchmarkCalled() {
+        jpaRepository.deleteAll();
+        persistenceAdapter.findConfig();
+
+        persistenceAdapter.requestBenchmark();
+
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+        ConcurrencyBenchStatus status = persistenceAdapter.findBenchStatus();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(entity.getConcurrencyBenchRequested()).isTrue();
+        softly.assertThat(entity.getConcurrencyBenchStatus()).isEqualTo("PENDING");
+        softly.assertThat(entity.getConcurrencyBenchProgress()).isZero();
+        softly.assertThat(entity.getConcurrencyBenchMessage()).isNull();
+        softly.assertThat(status.status()).isEqualTo("PENDING");
+        softly.assertThat(status.progress()).isZero();
+        softly.assertThat(status.message()).isNull();
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_PreserveBenchState_When_ConfigIsUpdated() {
+        jpaRepository.deleteAll();
+        PiiDetectionConfig existingConfig = persistenceAdapter.findConfig();
+
+        // Simulate a benchmark reported as running by the detector service.
+        PiiDetectionConfigEntity entity = jpaRepository.findById(CONFIG_ID).orElseThrow();
+        entity.setConcurrencyBenchRequested(true);
+        entity.setConcurrencyBenchStatus("RUNNING");
+        entity.setConcurrencyBenchProgress(42);
+        entity.setConcurrencyBenchMessage("probing 4 workers");
+        jpaRepository.save(entity);
+
+        persistenceAdapter.updateConfig(new PiiDetectionConfig(
+            existingConfig.id(),
+            false, true, false, 1024, 128, new BigDecimal("0.80"),
+            false, "localhost", 1234, 1, true, null,
+            LocalDateTime.now(),
+            "bench-preserver"
+        ));
+
+        PiiDetectionConfigEntity reloaded = jpaRepository.findById(CONFIG_ID).orElseThrow();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(reloaded.getPresidioEnabled()).isFalse();
+        softly.assertThat(reloaded.getConcurrencyBenchRequested()).isTrue();
+        softly.assertThat(reloaded.getConcurrencyBenchStatus()).isEqualTo("RUNNING");
+        softly.assertThat(reloaded.getConcurrencyBenchProgress()).isEqualTo(42);
+        softly.assertThat(reloaded.getConcurrencyBenchMessage()).isEqualTo("probing 4 workers");
+        softly.assertAll();
+    }
+
+    @Test
+    void Should_ExposeConcurrencyValuesInBenchStatus_When_ConfigTuned() {
+        jpaRepository.deleteAll();
+
+        persistenceAdapter.updateConfig(new PiiDetectionConfig(
+            CONFIG_ID,
+            true, true, true, 2048, 256, new BigDecimal("0.75"),
+            false, "localhost", 1234, 4, true, "localhost:1234|ministral",
+            LocalDateTime.now(),
+            "concurrency-tuner"
+        ));
+
+        ConcurrencyBenchStatus status = persistenceAdapter.findBenchStatus();
+
+        SoftAssertions softly = new SoftAssertions();
+        softly.assertThat(status.status()).isEqualTo("IDLE");
+        softly.assertThat(status.progress()).isZero();
+        softly.assertThat(status.message()).isNull();
+        softly.assertThat(status.concurrency()).isEqualTo(4);
+        softly.assertThat(status.tunedSignature()).isEqualTo("localhost:1234|ministral");
         softly.assertAll();
     }
 }

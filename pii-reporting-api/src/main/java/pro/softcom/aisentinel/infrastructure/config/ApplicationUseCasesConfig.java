@@ -23,12 +23,14 @@ import pro.softcom.aisentinel.application.confluence.service.ConfluenceSpaceCach
 import pro.softcom.aisentinel.application.confluence.usecase.FetchConfluenceSpaceContentUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.FetchSpaceUpdateInfoUseCase;
 import pro.softcom.aisentinel.application.confluence.usecase.ManageConfluenceConnectionUseCase;
+import pro.softcom.aisentinel.application.pii.detection.port.in.ManageConcurrencyBenchmarkPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManageDiscoveredLabelsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiDetectionConfigPort;
 import pro.softcom.aisentinel.application.pii.detection.port.in.ManagePiiTypeConfigsPort;
 import pro.softcom.aisentinel.application.pii.detection.port.out.DiscoveredLabelStore;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiDetectionConfigRepository;
 import pro.softcom.aisentinel.application.pii.detection.port.out.PiiTypeConfigRepository;
+import pro.softcom.aisentinel.application.pii.detection.usecase.ManageConcurrencyBenchmarkUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManageDiscoveredLabelsUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiDetectionConfigUseCase;
 import pro.softcom.aisentinel.application.pii.detection.usecase.ManagePiiTypeConfigsUseCase;
@@ -337,6 +339,11 @@ public class ApplicationUseCasesConfig {
     @Bean
     public ManagePiiDetectionConfigPort managePiiDetectionConfigPort(PiiDetectionConfigRepository piiDetectionConfigRepository) {
         return new ManagePiiDetectionConfigUseCase(piiDetectionConfigRepository);
+    }
+
+    @Bean
+    public ManageConcurrencyBenchmarkPort manageConcurrencyBenchmarkPort(PiiDetectionConfigRepository piiDetectionConfigRepository) {
+        return new ManageConcurrencyBenchmarkUseCase(piiDetectionConfigRepository);
     }
 
     @Bean

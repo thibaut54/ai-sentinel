@@ -180,7 +180,8 @@ class CompositePIIDetector:
         ministral_chunk_size: Optional[int] = None,
         ministral_overlap: Optional[int] = None,
         lm_studio_host: Optional[str] = None,
-        lm_studio_port: Optional[int] = None
+        lm_studio_port: Optional[int] = None,
+        ministral_concurrency: Optional[int] = None,
     ) -> List[PIIEntity]:
         """
         Detect PII using the Regex, Presidio and Ministral detectors.
@@ -208,7 +209,7 @@ class CompositePIIDetector:
         entities, _stats = self.detect_pii_with_stats(
             text, threshold, enable_regex, enable_presidio, enable_ministral,
             pii_type_configs, ministral_chunk_size, ministral_overlap,
-            lm_studio_host, lm_studio_port,
+            lm_studio_host, lm_studio_port, ministral_concurrency,
         )
         return entities
 
@@ -224,6 +225,7 @@ class CompositePIIDetector:
         ministral_overlap: Optional[int] = None,
         lm_studio_host: Optional[str] = None,
         lm_studio_port: Optional[int] = None,
+        ministral_concurrency: Optional[int] = None,
     ) -> Tuple[List[PIIEntity], List[Dict]]:
         """Detect PII and return per-detector execution stats alongside results.
 
@@ -251,7 +253,7 @@ class CompositePIIDetector:
         results_per_detector, stats = self._collect_detection_results(
             text, threshold, use_regex, use_presidio, use_ministral,
             pii_type_configs, ministral_chunk_size, ministral_overlap,
-            lm_studio_host, lm_studio_port
+            lm_studio_host, lm_studio_port, ministral_concurrency,
         )
 
         if not results_per_detector:
@@ -301,6 +303,7 @@ class CompositePIIDetector:
         ministral_overlap: Optional[int] = None,
         lm_studio_host: Optional[str] = None,
         lm_studio_port: Optional[int] = None,
+        ministral_concurrency: Optional[int] = None,
     ) -> Tuple[List[Tuple[PIIDetectorProtocol, List[PIIEntity]]], List[Dict]]:
         """Run each enabled detector, collect results and per-detector stats.
 
@@ -333,7 +336,8 @@ class CompositePIIDetector:
             _run(self.ministral_detector, DetectorSource.MINISTRAL,
                  lambda: self._run_ministral_detection(
                      text, threshold, pii_type_configs, ministral_chunk_size,
-                     ministral_overlap, lm_studio_host, lm_studio_port))
+                     ministral_overlap, lm_studio_host, lm_studio_port,
+                     ministral_concurrency))
         return results, stats
 
     def _log_detection_summary(
@@ -442,6 +446,7 @@ class CompositePIIDetector:
         overlap: Optional[int] = None,
         lm_studio_host: Optional[str] = None,
         lm_studio_port: Optional[int] = None,
+        concurrency: Optional[int] = None,
     ) -> List[PIIEntity]:
         """Run Ministral-PII detection with graceful degradation.
 
@@ -468,6 +473,8 @@ class CompositePIIDetector:
                 kwargs['lm_studio_host'] = lm_studio_host
             if 'lm_studio_port' in sig.parameters and lm_studio_port is not None:
                 kwargs['lm_studio_port'] = lm_studio_port
+            if 'concurrency' in sig.parameters and concurrency is not None:
+                kwargs['concurrency'] = concurrency
             return self.ministral_detector.detect_pii(text, threshold, **kwargs)
         except Exception as e:
             self.logger.error(

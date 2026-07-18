@@ -10,6 +10,9 @@ export interface PiiDetectionConfig {
   ministralEnabled: boolean;
   ministralChunkSize: number;
   ministralOverlap: number;
+  ministralConcurrency: number;
+  ministralConcurrencyAuto: boolean;
+  ministralConcurrencyTunedSignature?: string | null;
   defaultThreshold: number;
   lmStudioHost: string;
   lmStudioPort: number;
@@ -27,9 +30,23 @@ export interface UpdatePiiDetectionConfigRequest {
   ministralEnabled: boolean;
   ministralChunkSize: number;
   ministralOverlap: number;
+  ministralConcurrency: number;
+  ministralConcurrencyAuto: boolean;
+  ministralConcurrencyTunedSignature?: string | null;
   defaultThreshold: number;
   lmStudioHost: string;
   lmStudioPort: number;
+}
+
+/**
+ * Status of the Ministral concurrency benchmark job.
+ */
+export interface ConcurrencyBenchStatus {
+  status: string;
+  progress: number;
+  message: string | null;
+  concurrency: number;
+  tunedSignature: string | null;
 }
 
 /**

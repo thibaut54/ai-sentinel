@@ -347,7 +347,21 @@
         "chunkSizeHint": "Nombre de tokens traités par fenêtre (256-4096). Des fenêtres plus grandes offrent plus de contexte mais ralentissent l'inférence.",
         "overlap": "Chevauchement",
         "overlapHint": "Nombre de tokens partagés entre deux fenêtres consécutives (0-512). Doit rester inférieur à la taille de fenêtre.",
-        "overlapError": "Le chevauchement doit être inférieur à la taille de fenêtre."
+        "overlapError": "Le chevauchement doit être inférieur à la taille de fenêtre.",
+        "concurrencyTitle": "Concurrence Ministral",
+        "concurrencyAuto": "Auto-réglage au démarrage",
+        "concurrency": "Requêtes simultanées",
+        "concurrencyHint": "Nombre de fenêtres envoyées à LM Studio en parallèle (1-16).",
+        "concurrencyCurrent": "Concurrence actuelle",
+        "concurrencySignature": "Signature du réglage",
+        "concurrencyNotTuned": "pas encore réglé",
+        "retune": "Re-régler au prochain redémarrage",
+        "retuneHint": "Efface la signature du réglage afin que l'auto-réglage s'exécute à nouveau au prochain démarrage du service de détection.",
+        "runBenchmark": "Lancer le benchmark maintenant",
+        "runBenchmarkHint": "Exécute immédiatement le benchmark de concurrence, sans redémarrer le service de détection.",
+        "benchmarkRunning": "Benchmark en cours…",
+        "benchmarkDone": "Benchmark terminé — concurrence réglée à {{concurrency}}.",
+        "benchmarkFailed": "Le benchmark a échoué : {{error}}"
       },
       "postfilter": {
         "label": "Post-filtre déterministe",
