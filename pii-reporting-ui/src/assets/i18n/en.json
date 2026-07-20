@@ -1105,7 +1105,6 @@
     "action": {
       "markManual": "Mark handled manually",
       "undoManual": "Reset to \"to handle\"",
-      "markFp": "Flag false positive",
       "restore": "Restore"
     },
     "bulk": {
@@ -1115,6 +1114,8 @@
       "clear": "Clear",
       "markTreated": "Mark handled",
       "markTreatedHint": "Mark selection as handled manually",
+      "markFp": "Flag false positive",
+      "markFpHint": "Flag selection as false positive",
       "obfuscateN": "Obfuscate ({{count}})"
     },
     "confirm": {
@@ -1129,6 +1130,7 @@
     "toast": {
       "obfuscated": "<b>{{count}}</b> finding(s) obfuscated in the source.",
       "treated": "<b>{{count}}</b> finding(s) marked handled.",
+      "fpReported": "<b>{{count}}</b> finding(s) flagged as false positive.",
       "completedWithIssues": "Obfuscation finished with errors — check the outcome details."
     },
     "pager": {

@@ -13,6 +13,8 @@ const FR_TRANSLATIONS = {
       clear: 'Effacer',
       markTreated: 'Marquer traité',
       markTreatedHint: 'Marquer la sélection comme traitée manuellement',
+      markFp: 'Signaler faux positif',
+      markFpHint: 'Signaler la sélection comme faux positif',
       obfuscateN: 'Caviarder ({{count}})',
     },
   },
@@ -110,17 +112,21 @@ describe('ObfuscationBulkBarComponent', () => {
     createComponent(plan());
     const cleared = vi.fn();
     const markTreated = vi.fn();
+    const reportFalsePositive = vi.fn();
     const obfuscate = vi.fn();
     fixture.componentInstance.cleared.subscribe(cleared);
     fixture.componentInstance.markTreated.subscribe(markTreated);
+    fixture.componentInstance.reportFalsePositive.subscribe(reportFalsePositive);
     fixture.componentInstance.obfuscate.subscribe(obfuscate);
 
     query('obfuscation-bulk-clear')?.click();
     query('obfuscation-bulk-mark-treated')?.click();
+    query('obfuscation-bulk-report-fp')?.click();
     query('obfuscation-bulk-obfuscate')?.click();
 
     expect(cleared).toHaveBeenCalledTimes(1);
     expect(markTreated).toHaveBeenCalledTimes(1);
+    expect(reportFalsePositive).toHaveBeenCalledTimes(1);
     expect(obfuscate).toHaveBeenCalledTimes(1);
   });
 });

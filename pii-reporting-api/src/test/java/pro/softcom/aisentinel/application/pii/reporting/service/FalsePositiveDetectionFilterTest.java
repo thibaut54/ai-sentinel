@@ -36,8 +36,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DashboardFalsePositiveFilter")
-class DashboardFalsePositiveFilterTest {
+@DisplayName("FalsePositiveDetectionFilter")
+class FalsePositiveDetectionFilterTest {
 
     private static final String SCAN_ID = "scan-1";
     private static final String SPACE = "SPACE";
@@ -57,12 +57,12 @@ class DashboardFalsePositiveFilterTest {
     private ScanResultQuery scanResultQuery;
 
     private ScanEventFindingResolver resolver;
-    private DashboardFalsePositiveFilter filter;
+    private FalsePositiveDetectionFilter filter;
 
     @BeforeEach
     void setUp() {
         resolver = new ScanEventFindingResolver(severityCalculationService);
-        filter = new DashboardFalsePositiveFilter(findingRemediationStore, resolver,
+        filter = new FalsePositiveDetectionFilter(findingRemediationStore, resolver,
                 severityCalculationService, scanResultQuery);
         lenient().when(severityCalculationService.calculateSeverity(anyString()))
                 .thenAnswer(invocation -> TYPE_SEVERITY.getOrDefault(

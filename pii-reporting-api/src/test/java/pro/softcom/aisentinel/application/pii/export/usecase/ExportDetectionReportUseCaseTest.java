@@ -1,5 +1,6 @@
 package pro.softcom.aisentinel.application.pii.export.usecase;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import pro.softcom.aisentinel.application.pii.export.exception.ExportException;
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
 import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
@@ -44,8 +46,17 @@ class ExportDetectionReportUseCaseTest {
     @Mock
     private ReadExportContextPort readExportContextPort;
 
+    @Mock
+    private FalsePositiveDetectionFilter falsePositiveDetectionFilter;
+
     @InjectMocks
     private ExportDetectionReportUseCase useCase;
+
+    @BeforeEach
+    void passFilterThroughByDefault() {
+        lenient().when(falsePositiveDetectionFilter.excludeFalsePositives(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     @ParameterizedTest
     @NullAndEmptySource
@@ -237,6 +248,34 @@ class ExportDetectionReportUseCaseTest {
         // Then
         verify(reportSession, times(3)).writeReportEntry(any(DetectionReportEntry.class));
         verify(reportSession).close();
+    }
+
+    @Test
+    @DisplayName("Should_ExcludeFalsePositiveDetections_When_FilterDropsThem")
+    void Should_ExcludeFalsePositiveDetections_When_FilterDropsThem() throws IOException {
+        // Given
+        ExportContext exportContext = createExportContext();
+        WriteDetectionReportPort.ReportSession reportSession = mock(WriteDetectionReportPort.ReportSession.class);
+        ConfluenceContentScanResult genuineResult = createScanResult();
+        ConfluenceContentScanResult falsePositiveResult = createScanResult().toBuilder()
+                .pageTitle("False Positive Page")
+                .build();
+        DetectionReportEntry entry = createDetectionReportEntry();
+
+        when(readExportContextPort.findContext(SourceType.CONFLUENCE, "TEST")).thenReturn(exportContext);
+        when(writeDetectionReportPort.openReportSession("scan-123", exportContext)).thenReturn(reportSession);
+        when(readScanEventsPort.streamByScanIdAndSpaceKey("scan-123", "TEST"))
+                .thenReturn(Stream.of(genuineResult, falsePositiveResult));
+        when(falsePositiveDetectionFilter.excludeFalsePositives(List.of(genuineResult, falsePositiveResult)))
+                .thenReturn(List.of(genuineResult));
+        when(detectionReportMapper.toDetectionReportEntries(genuineResult)).thenReturn(List.of(entry));
+
+        // When
+        useCase.export("scan-123", SourceType.CONFLUENCE, "TEST");
+
+        // Then
+        verify(reportSession).writeReportEntry(entry);
+        verify(detectionReportMapper, never()).toDetectionReportEntries(falsePositiveResult);
     }
 
     private ExportContext createExportContext() {

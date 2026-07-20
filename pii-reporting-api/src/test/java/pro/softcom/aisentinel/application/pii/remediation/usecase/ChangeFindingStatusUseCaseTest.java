@@ -14,6 +14,7 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusC
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeResult;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.PublishRemediationEventPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
 import pro.softcom.aisentinel.application.pii.remediation.service.EligibleFinding;
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
@@ -26,6 +27,7 @@ import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediation;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationSelection;
+import pro.softcom.aisentinel.domain.pii.remediation.SpaceFalsePositivesChanged;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
 import pro.softcom.aisentinel.domain.pii.reporting.DetectedPersonallyIdentifiableInformation;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
@@ -43,8 +45,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -73,6 +77,9 @@ class ChangeFindingStatusUseCaseTest {
     @Mock
     private SelectionResolver selectionResolver;
 
+    @Mock
+    private PublishRemediationEventPort publishRemediationEventPort;
+
     @Captor
     private ArgumentCaptor<Collection<FindingRemediation>> upsertCaptor;
 
@@ -84,7 +91,7 @@ class ChangeFindingStatusUseCaseTest {
     void setUp() {
         useCase = new ChangeFindingStatusUseCase(remediationConfigPort, scanResultQuery,
                 findingRemediationStore, new ScanEventFindingResolver(severityCalculationService),
-                selectionResolver, Clock.fixed(NOW, ZoneOffset.UTC));
+                selectionResolver, publishRemediationEventPort, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(remediationConfigPort.isRemediationEnabled()).thenReturn(true);
         lenient().when(severityCalculationService.calculateSeverity("EMAIL"))
                 .thenReturn(PersonallyIdentifiableInformationSeverity.MEDIUM);
@@ -302,6 +309,91 @@ class ChangeFindingStatusUseCaseTest {
             assertThatThrownBy(() -> useCase.changeStatusesBySelection(command))
                     .isInstanceOf(RemediationDisabledException.class);
             verifyNoInteractions(selectionResolver, findingRemediationStore);
+        }
+    }
+
+    @Nested
+    @DisplayName("false-positive change publication")
+    class FalsePositiveEventTests {
+
+        @Test
+        @DisplayName("Should_PublishSpaceFalsePositivesChanged_When_FindingReportedAsFalsePositive")
+        void Should_PublishSpaceFalsePositivesChanged_When_FindingReportedAsFalsePositive() {
+            when(findingRemediationStore.findByIds(anyCollection()))
+                    .thenReturn(List.of(existingRow(FindingRemediationStatus.PENDING)));
+
+            useCase.changeStatuses(command(
+                    new StatusChange(emailFindingId, FindingRemediationStatus.FALSE_POSITIVE)));
+
+            verify(publishRemediationEventPort)
+                    .publishFalsePositivesChanged(new SpaceFalsePositivesChanged(SCAN_ID, SPACE));
+        }
+
+        @Test
+        @DisplayName("Should_PublishSpaceFalsePositivesChanged_When_FalsePositiveRestored")
+        void Should_PublishSpaceFalsePositivesChanged_When_FalsePositiveRestored() {
+            when(findingRemediationStore.findByIds(anyCollection()))
+                    .thenReturn(List.of(existingRow(FindingRemediationStatus.FALSE_POSITIVE)));
+
+            useCase.changeStatuses(command(
+                    new StatusChange(emailFindingId, FindingRemediationStatus.PENDING)));
+
+            verify(publishRemediationEventPort)
+                    .publishFalsePositivesChanged(new SpaceFalsePositivesChanged(SCAN_ID, SPACE));
+        }
+
+        @Test
+        @DisplayName("Should_NotPublish_When_AppliedChangesDoNotTouchFalsePositives")
+        void Should_NotPublish_When_AppliedChangesDoNotTouchFalsePositives() {
+            when(findingRemediationStore.findByIds(anyCollection()))
+                    .thenReturn(List.of(existingRow(FindingRemediationStatus.PENDING)));
+
+            useCase.changeStatuses(command(
+                    new StatusChange(emailFindingId, FindingRemediationStatus.MANUALLY_HANDLED)));
+
+            verifyNoInteractions(publishRemediationEventPort);
+        }
+
+        @Test
+        @DisplayName("Should_NotPublish_When_FalsePositiveChangeRejected")
+        void Should_NotPublish_When_FalsePositiveChangeRejected() {
+            when(findingRemediationStore.findByIds(anyCollection()))
+                    .thenReturn(List.of(existingRow(FindingRemediationStatus.REDACTED)));
+
+            useCase.changeStatuses(command(
+                    new StatusChange(emailFindingId, FindingRemediationStatus.FALSE_POSITIVE)));
+
+            verifyNoInteractions(publishRemediationEventPort);
+        }
+
+        @Test
+        @DisplayName("Should_PublishOncePerScanAndSpace_When_SeveralFindingsOfSameSpaceReported")
+        void Should_PublishOncePerScanAndSpace_When_SeveralFindingsOfSameSpaceReported() {
+            when(findingRemediationStore.findByIds(anyCollection())).thenReturn(List.of(
+                    rowWithId("f-1", FindingRemediationStatus.PENDING),
+                    rowWithId("f-2", FindingRemediationStatus.PENDING)));
+
+            useCase.changeStatuses(command(
+                    new StatusChange("f-1", FindingRemediationStatus.FALSE_POSITIVE),
+                    new StatusChange("f-2", FindingRemediationStatus.FALSE_POSITIVE)));
+
+            verify(publishRemediationEventPort, times(1))
+                    .publishFalsePositivesChanged(new SpaceFalsePositivesChanged(SCAN_ID, SPACE));
+        }
+
+        @Test
+        @DisplayName("Should_KeepStatusChangeApplied_When_PublicationFails")
+        void Should_KeepStatusChangeApplied_When_PublicationFails() {
+            when(findingRemediationStore.findByIds(anyCollection()))
+                    .thenReturn(List.of(existingRow(FindingRemediationStatus.PENDING)));
+            doThrow(new IllegalStateException("broker down")).when(publishRemediationEventPort)
+                    .publishFalsePositivesChanged(new SpaceFalsePositivesChanged(SCAN_ID, SPACE));
+
+            FindingStatusChangeResult result = useCase.changeStatuses(command(
+                    new StatusChange(emailFindingId, FindingRemediationStatus.FALSE_POSITIVE)));
+
+            assertThat(result.applied()).containsExactly(emailFindingId);
+            verify(findingRemediationStore).upsertAll(anyCollection());
         }
     }
 

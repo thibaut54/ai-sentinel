@@ -31,6 +31,7 @@ export class ObfuscationBulkBarComponent {
 
   readonly cleared = output<void>();
   readonly markTreated = output<void>();
+  readonly reportFalsePositive = output<void>();
   readonly obfuscate = output<void>();
 
   readonly testIds = TestIds.obfuscation.bulkBar;

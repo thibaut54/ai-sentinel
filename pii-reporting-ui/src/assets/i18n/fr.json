@@ -1105,7 +1105,6 @@
     "action": {
       "markManual": "Marquer comme traité manuellement",
       "undoManual": "Rétablir « à traiter »",
-      "markFp": "Signaler faux positif",
       "restore": "Rétablir"
     },
     "bulk": {
@@ -1115,6 +1114,8 @@
       "clear": "Effacer",
       "markTreated": "Marquer traité",
       "markTreatedHint": "Marquer la sélection comme traitée manuellement",
+      "markFp": "Signaler faux positif",
+      "markFpHint": "Signaler la sélection comme faux positif",
       "obfuscateN": "Caviarder ({{count}})"
     },
     "confirm": {
@@ -1129,6 +1130,7 @@
     "toast": {
       "obfuscated": "<b>{{count}}</b> finding(s) caviardé(s) dans la source.",
       "treated": "<b>{{count}}</b> finding(s) marqué(s) traité(s).",
+      "fpReported": "<b>{{count}}</b> finding(s) signalé(s) comme faux positif(s).",
       "completedWithIssues": "Caviardage terminé avec des erreurs — consultez le détail des résultats."
     },
     "pager": {

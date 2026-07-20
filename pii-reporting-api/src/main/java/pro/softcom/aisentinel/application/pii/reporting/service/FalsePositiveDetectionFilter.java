@@ -21,13 +21,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Read-time exclusion of findings flagged {@code FALSE_POSITIVE} from the Confluence dashboard.
+ * Read-time exclusion of findings flagged {@code FALSE_POSITIVE} from the reporting read paths
+ * (Confluence dashboard and Excel detection report).
  *
- * <p>The dashboard reporting read path is unaware of the remediation lifecycle: a finding reported
- * as a false positive in the obfuscation review must nevertheless disappear from the dashboard —
- * both from the per-item PII detail and from the severity counters. This service joins the reporting
- * scan events with the remediation projection at read time, using the same stable {@code findingId}
- * identity as the remediation context, and:
+ * <p>Those read paths are unaware of the remediation lifecycle: a finding reported as a false
+ * positive in the obfuscation review must nevertheless disappear from the dashboard — both from
+ * the per-item PII detail and from the severity counters — and from a regenerated detection
+ * report. This service joins the reporting scan events with the remediation projection at read
+ * time, using the same stable {@code findingId} identity as the remediation context, and:
  * <ul>
  *   <li>{@link #excludeFalsePositives} strips false-positive detections from each item, recomputes
  *       the per-item severity/type summaries and drops items left with no detection;</li>
@@ -40,11 +41,11 @@ import java.util.stream.Collectors;
  * read path pays no extra cost unless false positives actually exist.</p>
  *
  * <p>The join is fail-open: if the remediation projection cannot be read, the affected space is left
- * unfiltered (and its counters undecremented) rather than hiding genuine PII from the dashboard.</p>
+ * unfiltered (and its counters undecremented) rather than hiding genuine PII.</p>
  */
 @RequiredArgsConstructor
 @Slf4j
-public class DashboardFalsePositiveFilter {
+public class FalsePositiveDetectionFilter {
 
     private static final Set<FindingRemediationStatus> FALSE_POSITIVE_ONLY =
             Set.of(FindingRemediationStatus.FALSE_POSITIVE);
@@ -99,7 +100,7 @@ public class DashboardFalsePositiveFilter {
         try {
             return countFalsePositiveOccurrences(scanId, spaceKey, severityByFindingId);
         } catch (Exception failure) {
-            log.warn("[DASHBOARD_FP] Could not compute false-positive counter delta for space {}: {} "
+            log.warn("[FP_FILTER] Could not compute false-positive counter delta for space {}: {} "
                     + "— leaving counters undecremented", spaceKey, failure.getMessage());
             return SeverityCounts.zero();
         }
@@ -133,7 +134,7 @@ public class DashboardFalsePositiveFilter {
         try {
             return findingRemediationStore.findBySpace(spaceKey, FALSE_POSITIVE_ONLY);
         } catch (Exception failure) {
-            log.warn("[DASHBOARD_FP] Could not load false-positive findings for space {}: {} "
+            log.warn("[FP_FILTER] Could not load false-positive findings for space {}: {} "
                     + "— leaving it unfiltered", spaceKey, failure.getMessage());
             return List.of();
         }

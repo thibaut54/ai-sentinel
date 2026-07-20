@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
 import pro.softcom.aisentinel.domain.pii.reporting.FacetCount;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 class ScanReportingSummaryMapperTest {
 
     @Mock
-    private DashboardFalsePositiveFilter falsePositiveFilter;
+    private FalsePositiveDetectionFilter falsePositiveFilter;
 
     private ScanReportingSummaryMapper mapper;
 

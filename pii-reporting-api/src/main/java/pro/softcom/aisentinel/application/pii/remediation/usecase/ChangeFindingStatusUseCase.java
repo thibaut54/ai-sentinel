@@ -1,6 +1,7 @@
 package pro.softcom.aisentinel.application.pii.remediation.usecase;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.ChangeFindingStatusPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeCommand.StatusChange;
@@ -8,6 +9,7 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusC
 import pro.softcom.aisentinel.application.pii.remediation.port.in.FindingStatusChangeResult.RejectedChange;
 import pro.softcom.aisentinel.application.pii.remediation.port.in.SelectionStatusChangeCommand;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.PublishRemediationEventPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
 import pro.softcom.aisentinel.application.pii.remediation.service.EligibleFinding;
 import pro.softcom.aisentinel.application.pii.remediation.service.ScanEventFindingResolver;
@@ -18,12 +20,15 @@ import pro.softcom.aisentinel.domain.pii.remediation.FindingReference;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediation;
 import pro.softcom.aisentinel.domain.pii.remediation.FindingRemediationStatus;
 import pro.softcom.aisentinel.domain.pii.remediation.RemediationDisabledException;
+import pro.softcom.aisentinel.domain.pii.remediation.SpaceFalsePositivesChanged;
 import pro.softcom.aisentinel.domain.pii.reporting.LastScanMeta;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,8 +45,15 @@ import java.util.stream.Stream;
  * <p>A finding without a projection row is implicitly {@code PENDING}; its first
  * transition materialises the row with denormalised fields resolved from the latest
  * scan events (encrypted read, no plaintext access).</p>
+ *
+ * <p>Applied changes that alter the false-positive set of a space are published as
+ * {@link SpaceFalsePositivesChanged} events (one per affected scan/space pair) after
+ * persistence, so derived read models such as the exported detection report can be
+ * refreshed. Publication is fail-open: a publishing failure never rolls back or fails
+ * the status change.</p>
  */
 @RequiredArgsConstructor
+@Slf4j
 public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
 
     private static final String REASON_UNKNOWN_FINDING = "finding not found in latest scan";
@@ -52,6 +64,7 @@ public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
     private final FindingRemediationStore findingRemediationStore;
     private final ScanEventFindingResolver findingResolver;
     private final SelectionResolver selectionResolver;
+    private final PublishRemediationEventPort publishRemediationEventPort;
     private final Clock clock;
 
     @Override
@@ -72,7 +85,9 @@ public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
         List<String> applied = new ArrayList<>();
         List<RejectedChange> rejected = new ArrayList<>();
         Map<String, FindingRemediation> toPersist = new LinkedHashMap<>();
+        Set<SpaceFalsePositivesChanged> falsePositiveChanges = new LinkedHashSet<>();
         for (StatusChange change : command.changes()) {
+            boolean touchesFalsePositives = touchesFalsePositives(change, context);
             Outcome outcome = apply(change, command.actor(), context);
             if (outcome.rejection() != null) {
                 rejected.add(outcome.rejection());
@@ -80,9 +95,14 @@ public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
                 context.rows().put(outcome.row().findingId(), outcome.row());
                 toPersist.put(outcome.row().findingId(), outcome.row());
                 applied.add(outcome.row().findingId());
+                if (touchesFalsePositives) {
+                    falsePositiveChanges.add(new SpaceFalsePositivesChanged(
+                            outcome.row().scanId(), outcome.row().spaceKey()));
+                }
             }
         }
         persist(toPersist);
+        publishFalsePositiveChanges(falsePositiveChanges);
         return new FindingStatusChangeResult(applied, rejected);
     }
 
@@ -183,6 +203,28 @@ public class ChangeFindingStatusUseCase implements ChangeFindingStatusPort {
     private void persist(Map<String, FindingRemediation> toPersist) {
         if (!toPersist.isEmpty()) {
             findingRemediationStore.upsertAll(toPersist.values());
+        }
+    }
+
+    /**
+     * A change alters the false-positive set when it enters or leaves {@code FALSE_POSITIVE};
+     * evaluated before {@link #apply} so the pre-transition status is still observable.
+     */
+    private static boolean touchesFalsePositives(StatusChange change, BatchContext context) {
+        FindingRemediation currentRow = context.rows().get(change.findingId());
+        return change.targetStatus() == FindingRemediationStatus.FALSE_POSITIVE
+                || (currentRow != null && currentRow.status() == FindingRemediationStatus.FALSE_POSITIVE);
+    }
+
+    private void publishFalsePositiveChanges(Collection<SpaceFalsePositivesChanged> events) {
+        for (SpaceFalsePositivesChanged event : events) {
+            try {
+                publishRemediationEventPort.publishFalsePositivesChanged(event);
+            } catch (Exception failure) {
+                log.warn("[FP_EVENT] Could not publish false-positive change for scan {} space {}: {} "
+                        + "— derived reports may be stale until the next regeneration",
+                        event.scanId(), event.spaceKey(), failure.getMessage());
+            }
         }
     }
 

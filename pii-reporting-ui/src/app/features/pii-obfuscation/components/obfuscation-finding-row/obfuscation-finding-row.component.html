@@ -89,16 +89,6 @@
           >
             <i class="pi pi-check" aria-hidden="true"></i>
           </button>
-          <button
-            type="button"
-            class="ob-icon-btn ob-icon-btn--warn"
-            (click)="reportFalsePositive.emit()"
-            [title]="'obfuscation.action.markFp' | transloco"
-            [attr.aria-label]="'obfuscation.action.markFp' | transloco"
-            [attr.data-testid]="testIds.reportFp"
-          >
-            <i class="pi pi-flag" aria-hidden="true"></i>
-          </button>
         }
         @case ('MANUALLY_HANDLED') {
           <button

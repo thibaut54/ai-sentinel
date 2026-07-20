@@ -65,6 +65,16 @@
           <i class="pi pi-eye-slash" aria-hidden="true"></i>
           {{ 'obfuscation.bulk.obfuscateN' | transloco: { count: currentPlan.totalFindings } }}
         </button>
+        <button
+          type="button"
+          class="ob-btn ob-btn--secondary"
+          (click)="reportFalsePositive.emit()"
+          [title]="'obfuscation.bulk.markFpHint' | transloco"
+          [attr.data-testid]="testIds.reportFp"
+        >
+          <i class="pi pi-flag" aria-hidden="true"></i>
+          {{ 'obfuscation.bulk.markFp' | transloco }}
+        </button>
       </div>
     </div>
   }

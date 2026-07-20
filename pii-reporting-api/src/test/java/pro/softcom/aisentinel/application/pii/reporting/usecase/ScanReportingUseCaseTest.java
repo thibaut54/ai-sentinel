@@ -24,7 +24,7 @@ import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
@@ -191,8 +191,8 @@ class ScanReportingUseCaseTest {
      * no false-positive row, so the filter is a pass-through and its other collaborators are never
      * exercised.
      */
-    private DashboardFalsePositiveFilter noOpFalsePositiveFilter() {
-        return new DashboardFalsePositiveFilter(
+    private FalsePositiveDetectionFilter noOpFalsePositiveFilter() {
+        return new FalsePositiveDetectionFilter(
                 mock(FindingRemediationStore.class),
                 mock(ScanEventFindingResolver.class),
                 mock(SeverityCalculationService.class),

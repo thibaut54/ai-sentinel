@@ -44,7 +44,6 @@ export class ObfuscationFindingRowComponent {
 
   readonly toggled = output<void>();
   readonly markManual = output<void>();
-  readonly reportFalsePositive = output<void>();
   readonly restore = output<void>();
 
   private readonly itemCardUtils = inject(PiiItemCardUtils);

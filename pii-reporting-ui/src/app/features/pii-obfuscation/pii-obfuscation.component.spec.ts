@@ -49,7 +49,7 @@ const FR_TRANSLATIONS = {
     filter: { all: 'Tous', pending: 'À traiter', treated: 'Traités', fp: 'Faux positifs' },
     groupBy: { label: 'Grouper par', type: 'Type', severity: 'Sévérité' },
     status: { pending: 'À traiter', redacted: 'Caviardé', manual: 'Traité (manuel)', fp: 'Faux positif' },
-    action: { markManual: 'Manuel', undoManual: 'Rétablir', markFp: 'FP', restore: 'Rétablir' },
+    action: { markManual: 'Manuel', undoManual: 'Rétablir', restore: 'Rétablir' },
     ineligible: { attachment: 'Pièce jointe non caviardable ({{kind}})' },
     bulk: {
       ariaLabel: 'Actions groupées',
@@ -58,6 +58,8 @@ const FR_TRANSLATIONS = {
       clear: 'Effacer',
       markTreated: 'Marquer traité',
       markTreatedHint: 'Marquer la sélection comme traitée manuellement',
+      markFp: 'Signaler faux positif',
+      markFpHint: 'Signaler la sélection comme faux positif',
       obfuscateN: 'Caviarder ({{count}})',
     },
     confirm: {
@@ -73,6 +75,7 @@ const FR_TRANSLATIONS = {
     toast: {
       obfuscated: '<b>{{count}}</b> finding(s) caviardé(s) dans la source.',
       treated: '<b>{{count}}</b> finding(s) marqué(s) traité(s).',
+      fpReported: '<b>{{count}}</b> finding(s) signalé(s) comme faux positif(s).',
       completedWithIssues: 'Caviardage terminé avec des erreurs — consultez le détail des résultats.',
     },
     pager: {
@@ -602,6 +605,39 @@ describe('PiiObfuscationComponent', () => {
     createEnabledComponent();
 
     fixture.componentInstance.markSelectionTreated();
+
+    expect(api.changeFindingsStatusBySelection).not.toHaveBeenCalled();
+  });
+
+  it('Should_ReportEntireSelectionServerSide_When_BulkReportFalsePositive', () => {
+    createEnabledComponent();
+    selectionService().checkType('EMAIL');
+    api.changeFindingsStatusBySelection.mockReturnValue(
+      of({ applied: ['f1', 'f2'], rejected: [] })
+    );
+
+    fixture.componentInstance.reportSelectionFalsePositive();
+
+    expect(api.changeFindingsStatusBySelection).toHaveBeenCalledWith({
+      selection: {
+        scope: { spaceKey: 'SPACE' },
+        piiTypes: ['EMAIL'],
+        severities: [],
+        excludedFindingIds: [],
+        includedFindingIds: [],
+      },
+      targetStatus: 'FALSE_POSITIVE',
+    });
+    expect(api.changeFindingsStatus).not.toHaveBeenCalled();
+    expect(selectionService().checkedTypes().size).toBe(0);
+    const toast = messageService.add.mock.calls[0][0];
+    expect(toast.detail).toContain('2 finding(s) signalé(s) comme faux positif(s)');
+  });
+
+  it('Should_NotCallBackend_When_BulkReportFalsePositiveWithoutSelectionCriteria', () => {
+    createEnabledComponent();
+
+    fixture.componentInstance.reportSelectionFalsePositive();
 
     expect(api.changeFindingsStatusBySelection).not.toHaveBeenCalled();
   });

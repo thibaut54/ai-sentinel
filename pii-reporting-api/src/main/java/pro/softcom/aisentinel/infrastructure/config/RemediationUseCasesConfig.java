@@ -9,6 +9,7 @@ import pro.softcom.aisentinel.application.pii.remediation.port.in.QueryRemediati
 import pro.softcom.aisentinel.application.pii.remediation.port.in.TrackObfuscationJobPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.FindingRemediationStore;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.ObfuscationJobStore;
+import pro.softcom.aisentinel.application.pii.remediation.port.out.PublishRemediationEventPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.RemediationConfigPort;
 import pro.softcom.aisentinel.application.pii.remediation.port.out.SourcePageRedactionPort;
 import pro.softcom.aisentinel.application.pii.remediation.service.ObfuscationJobRunner;
@@ -61,9 +62,11 @@ public class RemediationUseCasesConfig {
             ScanResultQuery scanResultQuery,
             FindingRemediationStore findingRemediationStore,
             ScanEventFindingResolver scanEventFindingResolver,
-            SelectionResolver selectionResolver) {
+            SelectionResolver selectionResolver,
+            PublishRemediationEventPort publishRemediationEventPort) {
         return new ChangeFindingStatusUseCase(remediationConfigPort, scanResultQuery,
-                findingRemediationStore, scanEventFindingResolver, selectionResolver, Clock.systemUTC());
+                findingRemediationStore, scanEventFindingResolver, selectionResolver,
+                publishRemediationEventPort, Clock.systemUTC());
     }
 
     @Bean

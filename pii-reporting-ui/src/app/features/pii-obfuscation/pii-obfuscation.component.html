@@ -333,7 +333,6 @@
                       [groupBy]="viewState.groupBy()"
                       (toggled)="onRowToggled(finding)"
                       (markManual)="onRowMarkManual(finding)"
-                      (reportFalsePositive)="onRowReportFalsePositive(finding)"
                       (restore)="onRowRestore(finding)"
                     />
                   }
@@ -372,6 +371,7 @@
         [chips]="selectedChips()"
         (cleared)="clearSelection()"
         (markTreated)="markSelectionTreated()"
+        (reportFalsePositive)="reportSelectionFalsePositive()"
         (obfuscate)="openConfirmDialog()"
       />
     }

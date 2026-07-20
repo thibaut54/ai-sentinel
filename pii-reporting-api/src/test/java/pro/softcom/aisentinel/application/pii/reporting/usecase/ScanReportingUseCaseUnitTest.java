@@ -12,7 +12,7 @@ import pro.softcom.aisentinel.application.pii.reporting.DashboardFilterCriteria;
 import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
@@ -51,7 +51,7 @@ class ScanReportingUseCaseUnitTest {
     private ScanPiiTypeCountService piiTypeCountService;
 
     @Mock
-    private DashboardFalsePositiveFilter falsePositiveFilter;
+    private FalsePositiveDetectionFilter falsePositiveFilter;
 
     private ScanReportingUseCase useCase;
 

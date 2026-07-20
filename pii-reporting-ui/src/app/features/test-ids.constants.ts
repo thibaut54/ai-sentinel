@@ -83,7 +83,6 @@ export const TestIds = {
       status: 'obfuscation-row-status',
       ineligible: 'obfuscation-row-ineligible',
       markManual: 'obfuscation-row-mark-manual',
-      reportFp: 'obfuscation-row-report-fp',
       restore: 'obfuscation-row-restore'
     },
     bulkBar: {
@@ -94,7 +93,8 @@ export const TestIds = {
       moreChip: 'obfuscation-bulk-more-chip',
       clear: 'obfuscation-bulk-clear',
       markTreated: 'obfuscation-bulk-mark-treated',
-      obfuscate: 'obfuscation-bulk-obfuscate'
+      obfuscate: 'obfuscation-bulk-obfuscate',
+      reportFp: 'obfuscation-bulk-report-fp'
     },
     confirmDialog: {
       warning: 'obfuscation-confirm-warning',

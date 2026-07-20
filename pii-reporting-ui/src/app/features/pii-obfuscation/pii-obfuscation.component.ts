@@ -356,11 +356,6 @@ export class PiiObfuscationComponent {
     this.changeStatus(finding.findingId, 'MANUALLY_HANDLED');
   }
 
-  onRowReportFalsePositive(finding: RemediationFindingDto): void {
-    this.selection.excludeFinding(finding.findingId);
-    this.changeStatus(finding.findingId, 'FALSE_POSITIVE');
-  }
-
   onRowRestore(finding: RemediationFindingDto): void {
     this.selection.forgetFinding(finding.findingId);
     this.changeStatus(finding.findingId, 'PENDING');
@@ -372,19 +367,11 @@ export class PiiObfuscationComponent {
   }
 
   markSelectionTreated(): void {
-    if (!this.hasSelectionCriteria()) {
-      return;
-    }
-    this.remediationApi
-      .changeFindingsStatusBySelection({
-        selection: this.selection.buildSelectionDto(),
-        targetStatus: 'MANUALLY_HANDLED'
-      })
-      .subscribe((result) => {
-        this.notify('success', 'obfuscation.toast.treated', { count: result.applied.length });
-        this.selection.clear();
-        this.refreshAll();
-      });
+    this.changeSelectionStatus('MANUALLY_HANDLED', 'obfuscation.toast.treated');
+  }
+
+  reportSelectionFalsePositive(): void {
+    this.changeSelectionStatus('FALSE_POSITIVE', 'obfuscation.toast.fpReported');
   }
 
   openConfirmDialog(): void {
@@ -498,6 +485,22 @@ export class PiiObfuscationComponent {
     this.remediationApi
       .changeFindingsStatus({ changes: [{ findingId, targetStatus }] })
       .subscribe(() => this.refreshAll());
+  }
+
+  private changeSelectionStatus(targetStatus: FindingTargetStatus, toastKey: string): void {
+    if (!this.hasSelectionCriteria()) {
+      return;
+    }
+    this.remediationApi
+      .changeFindingsStatusBySelection({
+        selection: this.selection.buildSelectionDto(),
+        targetStatus
+      })
+      .subscribe((result) => {
+        this.notify('success', toastKey, { count: result.applied.length });
+        this.selection.clear();
+        this.refreshAll();
+      });
   }
 
   private startJob(jobId: string): void {

@@ -9,7 +9,7 @@ import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.port.in.ScanReportingPort;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.domain.confluence.ConfluenceSpace;
 import pro.softcom.aisentinel.domain.pii.ScanStatus;
@@ -29,7 +29,7 @@ public class ScanReportingUseCase implements ScanReportingPort {
     private final ConfluenceSpaceRepository spaceRepository;
     private final ScanSeverityCountService severityCountService;
     private final ScanPiiTypeCountService piiTypeCountService;
-    private final DashboardFalsePositiveFilter falsePositiveFilter;
+    private final FalsePositiveDetectionFilter falsePositiveFilter;
 
     /**
      * Builds a lookup map of space key to space name from the cached Confluence spaces.

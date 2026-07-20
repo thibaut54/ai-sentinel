@@ -22,7 +22,7 @@ import pro.softcom.aisentinel.application.pii.reporting.ScanPiiTypeCountService;
 import pro.softcom.aisentinel.application.pii.reporting.ScanSeverityCountService;
 import pro.softcom.aisentinel.application.pii.reporting.SeverityCalculationService;
 import pro.softcom.aisentinel.application.pii.reporting.port.out.ScanResultQuery;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.application.pii.scan.port.out.ScanCheckpointRepository;
 import pro.softcom.aisentinel.application.pii.security.PiiAccessAuditService;
 import pro.softcom.aisentinel.application.pii.security.ScanResultEncryptor;
@@ -109,7 +109,7 @@ class DashboardFalsePositiveExclusionTest {
     private final ScanEventFindingResolver resolver =
             new ScanEventFindingResolver(severityCalculationService);
 
-    private DashboardFalsePositiveFilter falsePositiveFilter;
+    private FalsePositiveDetectionFilter falsePositiveFilter;
     private ScanReportingUseCase scanReportingUseCase;
 
     @TestConfiguration
@@ -164,7 +164,7 @@ class DashboardFalsePositiveExclusionTest {
 
     @BeforeEach
     void setUp() {
-        falsePositiveFilter = new DashboardFalsePositiveFilter(
+        falsePositiveFilter = new FalsePositiveDetectionFilter(
                 findingRemediationStore, resolver, severityCalculationService, scanResultQuery);
         scanReportingUseCase = new ScanReportingUseCase(scanResultQuery, scanCheckpointRepository,
                 mock(ConfluenceSpaceRepository.class), mock(ScanSeverityCountService.class),

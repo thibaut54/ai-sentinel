@@ -2,7 +2,7 @@ package pro.softcom.aisentinel.infrastructure.pii.reporting.adapter.in.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import pro.softcom.aisentinel.application.pii.reporting.service.DashboardFalsePositiveFilter;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.domain.pii.reporting.DashboardFacets;
 import pro.softcom.aisentinel.domain.pii.reporting.FacetCount;
 import pro.softcom.aisentinel.domain.pii.reporting.ScanReportingSummary;
@@ -31,7 +31,7 @@ import java.util.Map;
 public class ScanReportingSummaryMapper {
 
     private final SeverityCountsMapper severityCountsMapper;
-    private final DashboardFalsePositiveFilter falsePositiveFilter;
+    private final FalsePositiveDetectionFilter falsePositiveFilter;
 
     public ScanReportingSummaryDto toDto(ScanReportingSummary summary) {
         if (summary == null) {

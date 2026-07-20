@@ -10,6 +10,7 @@ import pro.softcom.aisentinel.application.pii.export.port.in.ExportDetectionRepo
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadExportContextPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.ReadScanEventsPort;
 import pro.softcom.aisentinel.application.pii.export.port.out.WriteDetectionReportPort;
+import pro.softcom.aisentinel.application.pii.reporting.service.FalsePositiveDetectionFilter;
 import pro.softcom.aisentinel.domain.pii.export.ExportContext;
 import pro.softcom.aisentinel.domain.pii.export.SourceType;
 import pro.softcom.aisentinel.domain.pii.reporting.ConfluenceContentScanResult;
@@ -20,6 +21,8 @@ import java.io.IOException;
  * Use case for exporting detection reports.
  * This use case orchestrates the export process by retrieving the export context,
  * reading scan events, and writing them to the report in the desired format.
+ * Detections flagged {@code FALSE_POSITIVE} in the remediation review are excluded,
+ * so a report regenerated after a false-positive report no longer lists them.
  */
 @RequiredArgsConstructor
 @Slf4j
@@ -29,6 +32,7 @@ public class ExportDetectionReportUseCase implements ExportDetectionReportPort {
     private final WriteDetectionReportPort writeDetectionReportPort;
     private final DetectionReportMapper detectionReportMapper;
     private final ReadExportContextPort readExportContextPort;
+    private final FalsePositiveDetectionFilter falsePositiveDetectionFilter;
 
     /**
      * Exports detection report for a given scan and source.
@@ -77,8 +81,9 @@ public class ExportDetectionReportUseCase implements ExportDetectionReportPort {
     ) {
         try {
             var scanResults = readScanEventsPort.streamByScanIdAndSpaceKey(scanId, sourceIdentifier);
+            var exportableResults = falsePositiveDetectionFilter.excludeFalsePositives(scanResults.toList());
 
-            for (ConfluenceContentScanResult confluenceContentScanResult : scanResults.toList()) {
+            for (ConfluenceContentScanResult confluenceContentScanResult : exportableResults) {
                 writeEntriesForScanResult(reportSession, confluenceContentScanResult);
             }
         } catch (IOException e) {

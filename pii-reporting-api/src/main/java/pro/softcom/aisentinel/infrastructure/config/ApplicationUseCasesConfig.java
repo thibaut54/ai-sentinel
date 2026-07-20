@@ -85,12 +85,12 @@ public class ApplicationUseCasesConfig {
     }
 
     @Bean
-    public DashboardFalsePositiveFilter dashboardFalsePositiveFilter(
+    public FalsePositiveDetectionFilter falsePositiveDetectionFilter(
             FindingRemediationStore findingRemediationStore,
             ScanEventFindingResolver scanEventFindingResolver,
             SeverityCalculationService severityCalculationService,
             ScanResultQuery scanResultQuery) {
-        return new DashboardFalsePositiveFilter(findingRemediationStore, scanEventFindingResolver,
+        return new FalsePositiveDetectionFilter(findingRemediationStore, scanEventFindingResolver,
                 severityCalculationService, scanResultQuery);
     }
 
@@ -100,9 +100,9 @@ public class ApplicationUseCasesConfig {
                                                ConfluenceSpaceRepository spaceRepository,
                                                ScanSeverityCountService scanSeverityCountService,
                                                ScanPiiTypeCountService scanPiiTypeCountService,
-                                               DashboardFalsePositiveFilter dashboardFalsePositiveFilter) {
+                                               FalsePositiveDetectionFilter falsePositiveDetectionFilter) {
         return new ScanReportingUseCase(scanResultQuery, checkpointRepo, spaceRepository,
-                scanSeverityCountService, scanPiiTypeCountService, dashboardFalsePositiveFilter);
+                scanSeverityCountService, scanPiiTypeCountService, falsePositiveDetectionFilter);
     }
 
     @Bean
@@ -305,12 +305,14 @@ public class ApplicationUseCasesConfig {
             ReadScanEventsPort readScanEventsPort,
             WriteDetectionReportPort writeDetectionReportPort,
             DetectionReportMapper detectionReportMapper,
-            ReadExportContextPort readExportContextPort) {
+            ReadExportContextPort readExportContextPort,
+            FalsePositiveDetectionFilter falsePositiveDetectionFilter) {
         return new ExportDetectionReportUseCase(
                 readScanEventsPort,
                 writeDetectionReportPort,
                 detectionReportMapper,
-                readExportContextPort
+                readExportContextPort,
+                falsePositiveDetectionFilter
         );
     }
 

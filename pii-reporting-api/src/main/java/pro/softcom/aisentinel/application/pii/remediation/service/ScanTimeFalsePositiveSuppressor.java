@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 /**
  * Scan-time suppression of detections already flagged {@code FALSE_POSITIVE}.
  *
- * <p>Complements {@code DashboardFalsePositiveFilter}: the dashboard filter hides false positives
+ * <p>Complements {@code FalsePositiveDetectionFilter}: the dashboard filter hides false positives
  * at read time (covering findings flagged after the last scan), whereas this suppressor drops them
  * at write time so a false positive known before a scan is never persisted nor counted again. The
  * scan events, the pre-aggregated severity counters, the per-space statistics and the live SSE view

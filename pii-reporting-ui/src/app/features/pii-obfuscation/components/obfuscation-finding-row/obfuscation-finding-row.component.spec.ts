@@ -186,7 +186,6 @@ describe('ObfuscationFindingRowComponent', () => {
     createComponent(finding());
 
     expect(query('obfuscation-row-mark-manual')).toBeTruthy();
-    expect(query('obfuscation-row-report-fp')).toBeTruthy();
     expect(query('obfuscation-row-restore')).toBeFalsy();
   });
 
@@ -195,7 +194,6 @@ describe('ObfuscationFindingRowComponent', () => {
 
     expect(query('obfuscation-row-restore')).toBeTruthy();
     expect(query('obfuscation-row-mark-manual')).toBeFalsy();
-    expect(query('obfuscation-row-report-fp')).toBeFalsy();
   });
 
   it('Should_ShowOnlyRestore_When_FindingFalsePositive', () => {
@@ -209,7 +207,6 @@ describe('ObfuscationFindingRowComponent', () => {
     createComponent(finding({ status: 'REDACTED' }));
 
     expect(query('obfuscation-row-mark-manual')).toBeFalsy();
-    expect(query('obfuscation-row-report-fp')).toBeFalsy();
     expect(query('obfuscation-row-restore')).toBeFalsy();
   });
 
@@ -223,18 +220,14 @@ describe('ObfuscationFindingRowComponent', () => {
     expect(toggled).toHaveBeenCalledTimes(1);
   });
 
-  it('Should_EmitQuickActions_When_ActionButtonsClicked', () => {
+  it('Should_EmitMarkManual_When_ActionButtonClicked', () => {
     createComponent(finding());
     const markManual = vi.fn();
-    const reportFp = vi.fn();
     fixture.componentInstance.markManual.subscribe(markManual);
-    fixture.componentInstance.reportFalsePositive.subscribe(reportFp);
 
     query('obfuscation-row-mark-manual')?.click();
-    query('obfuscation-row-report-fp')?.click();
 
     expect(markManual).toHaveBeenCalledTimes(1);
-    expect(reportFp).toHaveBeenCalledTimes(1);
   });
 
   it('Should_EmitRestore_When_RestoreClicked', () => {
