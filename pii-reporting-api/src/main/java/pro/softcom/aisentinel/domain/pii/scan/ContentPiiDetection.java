@@ -200,6 +200,9 @@ public record ContentPiiDetection(
         HTTP_COOKIE("Cookie HTTP"),
         DEVICE_IDENTIFIER("Identifiant d'appareil"),
         USER_NAME("Identifiant système ou compte de connexion"),
+        CLIENT_SECRET("Secret client (OAuth)"),
+        GITHUB_TOKEN("Jeton GitHub"),
+        SOFTWARE_LICENSE("Clé de licence logicielle"),
 
         // Medical/Healthcare
         MEDICAL("Information médicale"),
