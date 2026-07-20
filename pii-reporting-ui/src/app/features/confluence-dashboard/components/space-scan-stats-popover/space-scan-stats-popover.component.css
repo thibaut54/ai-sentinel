@@ -1,6 +1,7 @@
 .scan-stats-panel {
   min-width: 22rem;
-  max-width: 28rem;
+  max-width: min(34rem, calc(100vw - 2rem));
+  box-sizing: border-box;
   font-size: 0.875rem;
 }
 
@@ -38,16 +39,23 @@
   margin: 0;
 }
 
-.scan-stats-table {
-  width: 100%;
-  border-collapse: collapse;
+.scan-stats-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
   margin-bottom: 0.75rem;
+}
+
+.scan-stats-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
 }
 
 .scan-stats-table th,
 .scan-stats-table td {
   padding: 0.35rem 0.5rem;
   text-align: right;
+  white-space: nowrap;
   border-bottom: 1px solid var(--p-content-border-color, #e5e7eb);
 }
 

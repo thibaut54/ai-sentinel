@@ -46,30 +46,32 @@
             </div>
           </dl>
 
-          <table class="scan-stats-table">
-            <thead>
-              <tr>
-                <th scope="col"></th>
-                <th scope="col">{{ 'dashboard.scanStats.scanned' | transloco }}</th>
-                <th scope="col">{{ 'dashboard.scanStats.failed' | transloco }}</th>
-                <th scope="col">{{ 'dashboard.scanStats.chars' | transloco }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">{{ 'dashboard.scanStats.pages' | transloco }}</th>
-                <td>{{ data.pagesScanned }}</td>
-                <td>{{ data.pagesFailed }}</td>
-                <td>{{ formatChars(data.pageChars) }}</td>
-              </tr>
-              <tr>
-                <th scope="row">{{ 'dashboard.scanStats.attachments' | transloco }}</th>
-                <td>{{ data.attachmentsScanned }}</td>
-                <td>{{ data.attachmentsFailed }}</td>
-                <td>{{ formatChars(data.attachmentChars) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="scan-stats-table-scroll">
+            <table class="scan-stats-table">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">{{ 'dashboard.scanStats.scanned' | transloco }}</th>
+                  <th scope="col">{{ 'dashboard.scanStats.failed' | transloco }}</th>
+                  <th scope="col">{{ 'dashboard.scanStats.chars' | transloco }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">{{ 'dashboard.scanStats.pages' | transloco }}</th>
+                  <td>{{ data.pagesScanned }}</td>
+                  <td>{{ data.pagesFailed }}</td>
+                  <td>{{ formatChars(data.pageChars) }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">{{ 'dashboard.scanStats.attachments' | transloco }}</th>
+                  <td>{{ data.attachmentsScanned }}</td>
+                  <td>{{ data.attachmentsFailed }}</td>
+                  <td>{{ formatChars(data.attachmentChars) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           @if (data.failedItems.length > 0) {
             <section class="scan-stats-failed">
@@ -91,50 +93,52 @@
           @if (data.detectorStats.length > 0) {
             <section class="scan-stats-detectors">
               <h4>{{ 'dashboard.scanStats.detectors' | transloco }}</h4>
-              <table class="scan-stats-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{{ 'dashboard.scanStats.detector' | transloco }}</th>
-                    <th scope="col">{{ 'dashboard.scanStats.detections' | transloco }}</th>
-                    <th scope="col">{{ 'dashboard.scanStats.discarded' | transloco }}</th>
-                    <th scope="col">{{ 'dashboard.scanStats.rate' | transloco }}</th>
-                    <th scope="col">{{ 'dashboard.scanStats.busy' | transloco }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (detector of data.detectorStats; track detector.detector) {
+              <div class="scan-stats-table-scroll">
+                <table class="scan-stats-table">
+                  <thead>
                     <tr>
-                      <th scope="row">
-                        @if (isPrefilter(detector.detector)) {
-                          {{ 'dashboard.scanStats.postfilterLabel' | transloco }}
-                        } @else {
-                          {{ detector.detector }}
-                        }
-                      </th>
-                      <td>{{ detector.detections }}</td>
-                      <td>
-                        @if (isPrefilter(detector.detector)) {
-                          {{ detector.discarded }}
-                        } @else {
-                          —
-                        }
-                      </td>
-                      <td>
-                        @if (isPrefilter(detector.detector)) {
-                          —
-                        } @else {
-                          @if (detector.charsPerSecond !== null) {
-                            {{ formatRate(detector.charsPerSecond) }}&nbsp;{{ 'dashboard.scanStats.rateUnit' | transloco }}
+                      <th scope="col">{{ 'dashboard.scanStats.detector' | transloco }}</th>
+                      <th scope="col">{{ 'dashboard.scanStats.detections' | transloco }}</th>
+                      <th scope="col">{{ 'dashboard.scanStats.discarded' | transloco }}</th>
+                      <th scope="col">{{ 'dashboard.scanStats.rate' | transloco }}</th>
+                      <th scope="col">{{ 'dashboard.scanStats.busy' | transloco }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (detector of data.detectorStats; track detector.detector) {
+                      <tr>
+                        <th scope="row">
+                          @if (isPrefilter(detector.detector)) {
+                            {{ 'dashboard.scanStats.postfilterLabel' | transloco }}
+                          } @else {
+                            {{ detector.detector }}
+                          }
+                        </th>
+                        <td>{{ detector.detections }}</td>
+                        <td>
+                          @if (isPrefilter(detector.detector)) {
+                            {{ detector.discarded }}
                           } @else {
                             —
                           }
-                        }
-                      </td>
-                      <td>{{ formatDuration(detector.busyMs) }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+                        </td>
+                        <td>
+                          @if (isPrefilter(detector.detector)) {
+                            —
+                          } @else {
+                            @if (detector.charsPerSecond !== null) {
+                              {{ formatRate(detector.charsPerSecond) }}&nbsp;{{ 'dashboard.scanStats.rateUnit' | transloco }}
+                            } @else {
+                              —
+                            }
+                          }
+                        </td>
+                        <td>{{ formatDuration(detector.busyMs) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
               <p class="scan-stats-note">{{ 'dashboard.scanStats.busyNote' | transloco }}</p>
             </section>
           }
