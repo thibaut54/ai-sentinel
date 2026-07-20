@@ -244,6 +244,7 @@
                         [outlined]="true"
                         styleClass="btn-bw"
                         (click)="resetFilters()"
+                        (keydown.enter)="resetFilters()"
                         [attr.data-testid]="'empty-state-reset'">
               </p-button>
             }

@@ -21,7 +21,7 @@ describe('SpacesDashboardUtils', () => {
     utils.setSpaces(mockSpaces as any);
 
     const filtered = utils.filteredSpaces();
-    expect(filtered.length).toBe(3);
+    expect(filtered).toHaveLength(3);
     expect(filtered[0].status).toBe('NOT_STARTED');
     expect(filtered[0].counts).toEqual({ total: 0, high: 0, medium: 0, low: 0 });
     expect(filtered[0].originalIndex).toBe(0);
@@ -117,7 +117,7 @@ describe('SpacesDashboardUtils', () => {
 
     utils.globalFilter.set('alpha');
 
-    expect(utils.filteredSpaces().length).toBe(1);
+    expect(utils.filteredSpaces()).toHaveLength(1);
     expect(utils.filteredSpaces()[0].key).toBe('SPACE1');
   });
 
@@ -126,7 +126,7 @@ describe('SpacesDashboardUtils', () => {
 
     utils.globalFilter.set('SPACE2');
 
-    expect(utils.filteredSpaces().length).toBe(1);
+    expect(utils.filteredSpaces()).toHaveLength(1);
     expect(utils.filteredSpaces()[0].key).toBe('SPACE2');
   });
 
@@ -135,7 +135,7 @@ describe('SpacesDashboardUtils', () => {
 
     utils.onFilter('name', 'beta');
 
-    expect(utils.filteredSpaces().length).toBe(1);
+    expect(utils.filteredSpaces()).toHaveLength(1);
     expect(utils.filteredSpaces()[0].key).toBe('SPACE2');
   });
 
@@ -145,17 +145,17 @@ describe('SpacesDashboardUtils', () => {
 
     utils.onFilter('status', 'RUNNING');
 
-    expect(utils.filteredSpaces().length).toBe(1);
+    expect(utils.filteredSpaces()).toHaveLength(1);
     expect(utils.filteredSpaces()[0].key).toBe('SPACE1');
   });
 
   it('Should_ShowAll_When_FilterCleared', () => {
     utils.setSpaces(mockSpaces as any);
     utils.onFilter('status', 'RUNNING');
-    expect(utils.filteredSpaces().length).toBe(0);
+    expect(utils.filteredSpaces()).toHaveLength(0);
 
     utils.onFilter('status', null);
-    expect(utils.filteredSpaces().length).toBe(3);
+    expect(utils.filteredSpaces()).toHaveLength(3);
   });
 
   // ========== statusLabel ==========

@@ -153,12 +153,18 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   // Transloco key for the scan status badge label.
   // Paused must win over the "inactive" fallback so a paused scan is not shown as inactive.
-  readonly scanStatusKey = computed(() =>
-    this.actionPending() ? 'dashboard.scanStatus.loading'
-      : this.scanActive() ? 'dashboard.scanStatus.active'
-        : this.scanPaused() ? 'dashboard.scanStatus.paused'
-          : 'dashboard.scanStatus.inactive'
-  );
+  readonly scanStatusKey = computed(() => {
+    if (this.actionPending()) {
+      return 'dashboard.scanStatus.loading';
+    }
+    if (this.scanActive()) {
+      return 'dashboard.scanStatus.active';
+    }
+    if (this.scanPaused()) {
+      return 'dashboard.scanStatus.paused';
+    }
+    return 'dashboard.scanStatus.inactive';
+  });
 
   // Global severity counts across all displayed spaces
   readonly globalSeverityCounts = computed<SeverityCounts>(() => {
