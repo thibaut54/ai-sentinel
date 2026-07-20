@@ -93,8 +93,42 @@ export class SpacesDashboardUtils {
     const list = this.uiSpaces();
     const nk = (v: string | null | undefined) => String(v ?? '').trim().toLowerCase();
     const k = nk(key);
-    const updated = list.map(s => (nk(s.key) === k ? { ...s, ...patch } : s));
-    this.uiSpaces.set(updated);
+    let changed = false;
+    // Keep object identity for no-op patches: polling re-applies the same values
+    // every cycle, and recreating a space object makes the dashboard table tear
+    // down its row DOM (expanded PII cards lose scroll position and focus).
+    const updated = list.map(s => {
+      if (nk(s.key) !== k || !this.patchChangesSpace(s, patch)) {
+        return s;
+      }
+      changed = true;
+      return { ...s, ...patch };
+    });
+    if (changed) {
+      this.uiSpaces.set(updated);
+    }
+  }
+
+  private patchChangesSpace(space: UISpace, patch: Partial<UISpace>): boolean {
+    return (Object.keys(patch) as (keyof UISpace)[]).some(
+      field => !this.fieldValuesEqual(space[field], patch[field])
+    );
+  }
+
+  /** Strict equality for primitives, shallow equality for flat records (counts, piiTypeCounts). */
+  private fieldValuesEqual(a: unknown, b: unknown): boolean {
+    if (a === b) {
+      return true;
+    }
+    if (!this.isFlatRecord(a) || !this.isFlatRecord(b)) {
+      return false;
+    }
+    const keysA = Object.keys(a);
+    return keysA.length === Object.keys(b).length && keysA.every(field => a[field] === b[field]);
+  }
+
+  private isFlatRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   onFilter(field: 'name' | 'status', value: string | null = null): void {

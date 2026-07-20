@@ -58,6 +58,58 @@ describe('SpacesDashboardUtils', () => {
     expect(space?.status).toBe('OK');
   });
 
+  it('Should_PreserveObjectIdentity_When_UpdateSpacePatchIsNoOp', () => {
+    utils.setSpaces(mockSpaces as any);
+    utils.updateSpace('SPACE1', { status: 'RUNNING', counts: { total: 5, high: 2, medium: 2, low: 1 } });
+    const before = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+
+    utils.updateSpace('SPACE1', { status: 'RUNNING', counts: { total: 5, high: 2, medium: 2, low: 1 } });
+
+    const after = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+    expect(after).toBe(before);
+  });
+
+  it('Should_PreserveObjectIdentity_When_PiiTypeCountsUnchanged', () => {
+    utils.setSpaces(mockSpaces as any);
+    utils.updateSpace('SPACE1', { piiTypeCounts: { EMAIL: 3, IBAN: 1 } });
+    const before = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+
+    utils.updateSpace('SPACE1', { piiTypeCounts: { EMAIL: 3, IBAN: 1 } });
+
+    const after = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+    expect(after).toBe(before);
+  });
+
+  it('Should_CreateNewObjectIdentity_When_UpdateSpaceChangesValue', () => {
+    utils.setSpaces(mockSpaces as any);
+    const before = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+
+    utils.updateSpace('SPACE1', { status: 'RUNNING' });
+
+    const after = utils.filteredSpaces().find(s => s.key === 'SPACE1');
+    expect(after).not.toBe(before);
+    expect(after?.status).toBe('RUNNING');
+  });
+
+  it('Should_PreserveOtherSpacesIdentity_When_UpdateSpaceChangesOne', () => {
+    utils.setSpaces(mockSpaces as any);
+    const otherBefore = utils.filteredSpaces().find(s => s.key === 'SPACE2');
+
+    utils.updateSpace('SPACE1', { status: 'RUNNING' });
+
+    const otherAfter = utils.filteredSpaces().find(s => s.key === 'SPACE2');
+    expect(otherAfter).toBe(otherBefore);
+  });
+
+  it('Should_DetectChange_When_CountsValuesDiffer', () => {
+    utils.setSpaces(mockSpaces as any);
+    utils.updateSpace('SPACE1', { counts: { total: 5, high: 2, medium: 2, low: 1 } });
+
+    utils.updateSpace('SPACE1', { counts: { total: 6, high: 3, medium: 2, low: 1 } });
+
+    expect(utils.getSpaceCounts('SPACE1')).toEqual({ total: 6, high: 3, medium: 2, low: 1 });
+  });
+
   // ========== Filtering ==========
 
   it('Should_FilterByGlobal_When_GlobalFilterSet', () => {

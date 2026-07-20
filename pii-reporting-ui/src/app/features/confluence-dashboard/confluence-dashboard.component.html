@@ -23,6 +23,7 @@
   <p-table #dt [value]="sortedSpaces()"
            [(selection)]="selectedSpaces"
            dataKey="key"
+           [rowTrackBy]="trackBySpaceKey"
            sortField="name" [sortOrder]="1"
            [paginator]="true"
            [tableStyle]="{'min-width':'60rem'}"

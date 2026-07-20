@@ -9,7 +9,7 @@ import { ToggleButtonModule } from 'primeng/togglebutton';
 import { BadgeModule } from 'primeng/badge';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { SpacesDashboardUtils } from './spaces-dashboard.utils';
+import { SpacesDashboardUtils, UISpace } from './spaces-dashboard.utils';
 import { Ripple } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -90,6 +90,10 @@ export class ConfluenceDashboardComponent implements OnInit, OnDestroy {
 
   // 10 placeholder rows for loading skeleton
   readonly skeletonRows: number[] = Array.from({ length: 10 }, (_, i) => i);
+
+  // Track table rows by space key so polling updates (which replace space objects)
+  // do not recreate row DOM — recreating rows resets scroll inside expanded PII cards.
+  readonly trackBySpaceKey = (_index: number, space: UISpace): string => space.key;
 
   // PII Help dialog visibility
   readonly showPiiHelpDialog = signal(false);
